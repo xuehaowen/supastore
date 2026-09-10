@@ -8,6 +8,10 @@ export const storeSettings = pgTable('store_settings', {
   defaultLocale: text('default_locale').notNull().default('en'),
   timezone: text('timezone').notNull().default('UTC'),
   isOrderingEnabled: boolean('is_ordering_enabled').notNull().default(true),
+  // M1: pause new orders without hiding catalog or disabling existing order work
+  isPaused: boolean('is_paused').notNull().default(false),
+  // M1: timestamp recorded when store passed launch readiness checklist
+  launchReadyAt: timestamp('launch_ready_at', { withTimezone: true }),
   quoteVersion: integer('quote_version').notNull().default(1),
   isBootstrapCompleted: boolean('is_bootstrap_completed').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

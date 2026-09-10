@@ -7,3 +7,6 @@ export * from './payments';
 export * from './refunds-payouts';
 export * from './outbox';
 export * from './operations';
+export * from './shipping';
+export * from './payment-uploads';
+
