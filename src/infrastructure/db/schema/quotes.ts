@@ -5,6 +5,7 @@ export const quotes = pgTable('quotes', {
   id: uuid('id').primaryKey().defaultRandom(),
   cartId: uuid('cart_id').notNull().references(() => carts.id, { onDelete: 'restrict' }),
   cartRevision: integer('cart_revision').notNull(),
+  termsSnapshot: jsonb('terms_snapshot').notNull().default({}),
   merchandiseSubtotalCents: integer('merchandise_subtotal_cents').notNull(),
   shippingCents: integer('shipping_cents').notNull(),
   exclusiveTaxCents: integer('exclusive_tax_cents').notNull(),

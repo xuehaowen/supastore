@@ -10,3 +10,5 @@ export * from './operations';
 export * from './shipping';
 export * from './payment-uploads';
 
+export * from './auth';
+export * from './order-proposals';

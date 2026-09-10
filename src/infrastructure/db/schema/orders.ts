@@ -21,6 +21,7 @@ export const orders = pgTable('orders', {
   }).notNull().default('shipping'),
   shippingAddressSnapshot: jsonb('shipping_address_snapshot').notNull(),
   financialRevision: integer('financial_revision').notNull().default(1),
+  termsSnapshot: jsonb('terms_snapshot').notNull().default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

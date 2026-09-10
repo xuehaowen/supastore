@@ -24,6 +24,7 @@ export const paymentUploadIntents = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     orderId: uuid('order_id').notNull().references(() => orders.id, { onDelete: 'restrict' }),
     s3Key: text('s3_key').notNull().unique(),
+    finalKey: text('final_key').unique(),
     status: text('status', {
       enum: ['pending', 'staged', 'finalized', 'expired'],
     }).notNull().default('pending'),

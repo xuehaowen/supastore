@@ -3,6 +3,13 @@ import { pgTable, text, integer, boolean, timestamp, uuid } from 'drizzle-orm/pg
 export const storeSettings = pgTable('store_settings', {
   id: uuid('id').primaryKey().defaultRandom(),
   storeName: text('store_name').notNull(),
+  logoKey: text('logo_key'),
+  supportEmail: text('support_email').notNull().default(''),
+  pauseMessage: text('pause_message').notNull().default('The store is currently paused. Please check back soon.'),
+  taxRateBasisPoints: integer('tax_rate_basis_points').notNull().default(0),
+  isTaxInclusive: boolean('is_tax_inclusive').notNull().default(false),
+  setupCompleted: boolean('setup_completed').notNull().default(false),
+  emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
   currency: text('currency').notNull().default('USD'),
   precision: integer('precision').notNull().default(2),
   defaultLocale: text('default_locale').notNull().default('en'),
