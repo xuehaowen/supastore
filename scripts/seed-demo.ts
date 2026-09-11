@@ -1,3 +1,7 @@
+import {
+  seedCatalogTranslations,
+  type AttributeSeed,
+} from "./seed-catalog-translations";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -66,6 +70,7 @@ interface ConfigData {
 }
 
 interface CategoryEntry {
+  translations?: Array<{ locale: string; name: string }>;
   slug: string;
   name: string;
   parentSlug?: string;
@@ -83,6 +88,8 @@ interface ProductEntry {
     title: string;
     priceCents: number;
     attributes?: Record<string, string>;
+    attributeValues?: Record<string, string>;
+    translations?: Array<{ locale: string; title: string }>;
     isAvailable?: boolean;
     sortOrder?: number;
   }>;
@@ -118,6 +125,7 @@ const storeData = yaml<StoreData>("store.yaml");
 const configData = yaml<ConfigData>("config.yaml");
 const categoryEntries = yaml<CategoryEntry[]>("categories.yaml");
 const productEntries = yaml<ProductEntry[]>("products.yaml");
+const attributeEntries = yaml<AttributeSeed[]>("attributes.yaml");
 
 // ============================================================================
 // Helper — strip undefined values so Drizzle doesn't receive them
@@ -156,7 +164,10 @@ if (!owner) {
 await db
   .insert(staffMemberships)
   .values({ userId: owner.id, email: owner.email, role: "owner" })
-  .onConflictDoUpdate({ target: staffMemberships.userId, set: { isActive: true } });
+  .onConflictDoUpdate({
+    target: staffMemberships.userId,
+    set: { isActive: true },
+  });
 
 // ============================================================================
 // 3. Store settings (singleton — skip if already bootstrapped)
@@ -190,8 +201,11 @@ if (!existingSettings)
 
 console.log("▶ Seeding payment accounts…");
 const existingAccountIds = new Set(
-  (await db.select({ id: paymentAccounts.accountIdentifier }).from(paymentAccounts))
-    .map((r) => r.id),
+  (
+    await db
+      .select({ id: paymentAccounts.accountIdentifier })
+      .from(paymentAccounts)
+  ).map((r) => r.id),
 );
 for (const account of configData.paymentAccounts) {
   if (!existingAccountIds.has(account.accountIdentifier))
@@ -204,8 +218,9 @@ for (const account of configData.paymentAccounts) {
 
 console.log("▶ Seeding shipping zones…");
 const existingZoneNames = new Set(
-  (await db.select({ name: shippingZones.name }).from(shippingZones))
-    .map((r) => r.name),
+  (await db.select({ name: shippingZones.name }).from(shippingZones)).map(
+    (r) => r.name,
+  ),
 );
 for (const zone of configData.shippingZones) {
   if (!existingZoneNames.has(zone.name))
@@ -218,8 +233,9 @@ for (const zone of configData.shippingZones) {
 
 console.log("▶ Seeding pickup locations…");
 const existingLocationNames = new Set(
-  (await db.select({ name: pickupLocation.name }).from(pickupLocation))
-    .map((r) => r.name),
+  (await db.select({ name: pickupLocation.name }).from(pickupLocation)).map(
+    (r) => r.name,
+  ),
 );
 for (const location of configData.pickupLocations) {
   if (!existingLocationNames.has(location.name))
@@ -232,15 +248,25 @@ for (const location of configData.pickupLocations) {
 
 console.log("▶ Seeding categories…");
 const categorySlugToId = new Map(
-  (await db.select({ slug: categories.slug, id: categories.id }).from(categories))
-    .map((r) => [r.slug, r.id]),
+  (
+    await db
+      .select({ slug: categories.slug, id: categories.id })
+      .from(categories)
+  ).map((r) => [r.slug, r.id]),
 );
 for (const cat of categoryEntries) {
   if (categorySlugToId.has(cat.slug)) continue;
-  const parentId = cat.parentSlug ? categorySlugToId.get(cat.parentSlug) : undefined;
+  const parentId = cat.parentSlug
+    ? categorySlugToId.get(cat.parentSlug)
+    : undefined;
   const [inserted] = await db
     .insert(categories)
-    .values({ slug: cat.slug, name: cat.name, sortOrder: cat.sortOrder ?? 0, parentId })
+    .values({
+      slug: cat.slug,
+      name: cat.name,
+      sortOrder: cat.sortOrder ?? 0,
+      parentId,
+    })
     .returning({ id: categories.id });
   categorySlugToId.set(cat.slug, inserted.id);
 }
@@ -276,8 +302,21 @@ for (const entry of productEntries) {
       translations: entry.translations,
     }),
   });
-  console.log(`  · created '${entry.handle}' (${entry.variants.length} variant(s))`);
+  console.log(
+    `  · created '${entry.handle}' (${entry.variants.length} variant(s))`,
+  );
 }
+
+// ============================================================================
+// Catalog translations and normalized attribute assignments
+// ============================================================================
+
+console.log("▶ Seeding catalog translations…");
+await seedCatalogTranslations(db, {
+  attributes: attributeEntries,
+  categories: categoryEntries,
+  products: productEntries,
+});
 
 // ============================================================================
 // Done
@@ -285,6 +324,6 @@ for (const entry of productEntries) {
 
 console.log(
   `\n✓ Synthetic demo seeded. Owner: ${storeData.ownerEmail}` +
-  `\n  No real payments or email verification are implied.`,
+    `\n  No real payments or email verification are implied.`,
 );
 await queryClient.end();

@@ -1,0 +1,39 @@
+# Stable codes are referenced by variant attributeValues in products.yaml.
+- code: color
+  name: Color
+  sortOrder: 0
+  translations:
+    - locale: zh
+      name: 颜色
+  values:
+    - code: natural
+      label: Natural
+      sortOrder: 0
+      translations:
+        - locale: zh
+          label: 原色
+- code: size
+  name: Size
+  sortOrder: 1
+  translations:
+    - locale: zh
+      name: 尺码
+  values:
+    - code: s
+      label: S
+      sortOrder: 0
+      translations:
+        - locale: zh
+          label: 小码
+    - code: m
+      label: M
+      sortOrder: 1
+      translations:
+        - locale: zh
+          label: 中码
+    - code: l
+      label: L
+      sortOrder: 2
+      translations:
+        - locale: zh
+          label: 大码
