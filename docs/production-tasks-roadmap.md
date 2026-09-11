@@ -133,19 +133,19 @@ Contract: [Authorization boundary](architecture-overview.md#authorization-bounda
 ## M1 — A usable shop
 
 ### Storefront & Catalog Experience
-- [ ] **Public catalog browsing with React Server Components (RSC)**
+- [x] **Public catalog browsing with React Server Components (RSC)**
   - *Details:* Implement `/` (home) and `/products/[handle]` (PDP) using pure React Server Components with static generation and tag-based revalidation (`revalidateTag('catalog')`). Keep catalog rendering on the server and measure framework runtime plus interactive client code.
   - *Verification:* Record Lighthouse results under documented mobile network/CPU throttling; identify blocking time and layout-shift regressions.
-- [ ] **Product variants, categories, and availability management**
+- [x] **Product variants, categories, and availability management**
   - *Details:* Support variant attributes (size, color), category hierarchies, image asset key mapping, and instant manual availability toggles (`is_available: boolean`).
   - *Verification:* Toggling variant availability immediately reflects on the PDP without restarting the application or rebuilding pages.
-- [ ] **PostgreSQL native full-text search with trigram matching**
+- [x] **PostgreSQL native full-text search with trigram matching**
   - *Details:* Add stored generated `search_vector` (`tsvector`) column on products with GIN index and enable `pg_trgm` extension for typo-tolerant product search queries via Drizzle.
   - *Verification:* Searching with slight typos (e.g. "shrit" for "shirt") returns relevant product records; benchmark against the provisional <10ms query target on a documented dataset.
-- [ ] **Localization with `next-intl`**
+- [x] **Localization with `next-intl`**
   - *Details:* Implement multi-language routing (`/en`, `/zh`) with fallback to store default locale. Store product title/description translations in relational `product_translations` table.
   - *Verification:* Changing language switches text seamlessly while preserving currency, active cart, and pricing.
-- [ ] **Customer bundle size verification (<50KB budget)**
+- [x] **Customer bundle size verification (<50KB budget)**
   - *Details:* Restrict client-side React components (`'use client'`) to minimal interactive islands (`CartDrawer`, `QuantitySelector`, `CopyButton`, `Uploader`).
   - *Verification:* Record total gzip client JavaScript per public route, including framework runtime, against the provisional 50KB target. Document measured results and approve an evidence-based budget before release.
 
@@ -153,62 +153,62 @@ Contract: [Authorization boundary](architecture-overview.md#authorization-bounda
 
 Contract: [Cart, quote and order creation](business-workflows.md#2-cart-quote-and-order-creation) and customer journeys C2–C7.
 
-- [ ] **Persistent guest cart and session recovery (`C2`)**
+- [x] **Persistent guest cart and session recovery (`C2`)**
   - *Verification:* Refreshing or navigating across pages retains cart items; unavailable items display clear out-of-stock badges without dropping the cart.
-- [ ] **Shipping zone and flat rate evaluation (`C3`)**
+- [x] **Shipping zone and flat rate evaluation (`C3`)**
   - *Verification:* Subtotal qualifying for free shipping sets shipping fee to 0 cents and displays "Free Shipping" badge.
-- [ ] **Pickup location and time slot selection (`C3`)**
+- [x] **Pickup location and time slot selection (`C3`)**
   - *Verification:* Selecting an invalid or past pickup slot is rejected with descriptive validation feedback.
-- [ ] **Zero-total order checkout path (`C7`)**
+- [x] **Zero-total order checkout path (`C7`)**
   - *Verification:* Placing a $0 order transitions order directly to `confirmed` with zero receipts and delivers confirmation email.
-- [ ] **Order creation and payment reference presentation (`C4`)**
+- [x] **Order creation and payment reference presentation (`C4`)**
   - *Verification:* Customer sees payment instructions only after order ID and reference code are persisted in the database.
-- [ ] **Idempotent checkout and lost submission recovery (`C5`)**
+- [x] **Idempotent checkout and lost submission recovery (`C5`)**
   - *Verification:* Resubmitting the same checkout payload returns the original order with HTTP 200 rather than creating duplicate orders.
 
 ### Guest Access & Payment Evidence
 
 Contract: [Payment evidence](business-workflows.md#3-payment-and-confirmation), [access recovery](business-workflows.md#8-access-recovery-and-customer-communication) and customer journeys C4–C9.
 
-- [ ] **Scoped guest session authorization token (`C4`)**
+- [x] **Scoped guest session authorization token (`C4`)**
   - *Verification:* Customer can immediately refresh or view their order status directly from the confirmation browser.
-- [ ] **Lost link email recovery (`C8`)**
+- [x] **Lost link email recovery (`C8`)**
   - *Verification:* Magic link logs guest into order tracking session; link expires after first use or 24 hours.
-- [ ] **Direct S3 presigned payment evidence upload (`C6`)**
+- [x] **Direct S3 presigned payment evidence upload (`C6`)**
   - *Verification:* Reject invalid candidate bytes. Overwriting staging during or after finalization cannot replace reviewed evidence; concurrent retries return one final record and cleanup cannot delete an active candidate or finalized object.
-- [ ] **Resilient tracking view with delivery failure visibility (`C9`)**
+- [x] **Resilient tracking view with delivery failure visibility (`C9`)**
   - *Verification:* Simulating failed email worker delivery leaves customer order tracking intact and flags delivery failure in `/admin`.
 
 ### Pre-Receipt Order Adjustments
 
 Contract: [Permitted changes](business-workflows.md#4-unpaid-orders-and-permitted-changes) and C10.
 
-- [ ] **Merchant pre-receipt change proposal (`C10`)**
+- [x] **Merchant pre-receipt change proposal (`C10`)**
   - *Verification:* Customer sees "Order Terms Updated" notification on tracking screen with explicit "Accept New Total" button.
-- [ ] **Customer change proposal acceptance flow (`C10`)**
+- [x] **Customer change proposal acceptance flow (`C10`)**
   - *Verification:* Accepting proposal creates new order version and records acceptance audit record.
-- [ ] **Receipt arrival race condition invalidation (`C10`)**
+- [x] **Receipt arrival race condition invalidation (`C10`)**
   - *Verification:* Recording any receipt voids the pending proposal and retains the last accepted total. The customer sees the actual amount received and resulting balance, without implying full payment. Test partial, exact and excess receipts.
 
 ### Merchant Setup & Launch Controls
-- [ ] **Merchant onboarding setup wizard (`M1`)**
+- [x] **Merchant onboarding setup wizard (`M1`)**
   - *Details:* Guided `/admin/setup` wizard configuring store name, logo, currency, default locale, shipping zones, pickup location, tax rules, and manual payment accounts.
   - *Verification:* Setup steps persist to `store_settings`; wizard marks setup complete upon final step.
-- [ ] **Launch readiness checklist (`M1`)**
+- [x] **Launch readiness checklist (`M1`)**
   - *Details:* Operational checklist verifying at least one published product, one active payment method, valid shipping/pickup rules, and verified email provider before store goes live.
   - *Verification:* Disabling all payment methods flags store as not ready and prevents public order placement.
-- [ ] **Store emergency pause control (`M6`)**
+- [x] **Store emergency pause control (`M6`)**
   - *Details:* Add "Pause New Orders" toggle in store settings. When paused, storefront displays a custom pause banner and blocks cart checkout, while allowing existing orders to be tracked, paid, and fulfilled.
   - *Verification:* Attempting checkout while paused returns friendly "Store is currently paused" error without discarding customer cart.
-- [ ] **Mobile-optimized admin daily queue views (`A1`)**
+- [x] **Mobile-optimized admin daily queue views (`A1`)**
   - *Details:* Build `/admin` dashboard with segmented operational queues: "Unpaid Orders", "Payment Evidence Review", "Ready for Fulfillment", "Overdue / Abandoned", and "Failed Emails".
   - *Verification:* Admin dashboard is fully responsive on mobile screen widths (<375px) with tap-friendly action buttons.
 
 ### Verification & Exit Criteria
-- [ ] **Automated Playwright customer and merchant journey tests**
+- [x] **Automated Playwright customer and merchant journey tests**
   - *Details:* End-to-end Playwright test suite running in headless Chromium covering C1–C10 and merchant journeys M1, M2, M6. Customer C11/C12 cancellation and unavailable-purchase resolution are M2 exit gates. M1 is a synthetic demonstration milestone, not ready for live merchant orders; public release still requires M2 and M3.
   - *Verification:* 100% pass on all customer and merchant journey test scenarios.
-- [ ] **Accessibility and usability audit**
+- [x] **Accessibility and usability audit**
   - *Details:* Execute axe-core accessibility scanner across all public customer routes; verify keyboard tab order, ARIA attributes, and screen-reader announcements for cart drawers and dialogs.
   - *Verification:* Zero critical/serious WCAG 2.2 accessibility violations.
 
