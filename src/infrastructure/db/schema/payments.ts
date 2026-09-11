@@ -102,3 +102,16 @@ export const cashReceiptDetails = pgTable("cash_receipt_details", {
   changeDueCents: integer("change_due_cents").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const paymentReceiptCorrections = pgTable("payment_receipt_corrections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  receiptId: uuid("receipt_id")
+    .notNull()
+    .references(() => paymentReceipts.id, { onDelete: "restrict" }),
+  deltaAmountCents: integer("delta_amount_cents").notNull(), // signed integer
+  reason: text("reason").notNull(),
+  investigationNotes: text("investigation_notes"),
+  correctedByUserId: text("corrected_by_user_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
