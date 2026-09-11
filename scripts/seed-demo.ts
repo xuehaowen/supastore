@@ -12,13 +12,13 @@ import {
   pickupLocation,
 } from "../src/infrastructure/db/schema";
 import { createProduct } from "../src/application/use-cases/catalog/create-product";
-if (process.env.M1_DEMO !== "true")
+if (process.env.M1_DEMO !== "true" && process.env.DEMO_SEED !== "true")
   throw new Error(
-    "Set M1_DEMO=true only against an isolated synthetic demo database.",
+    "Set DEMO_SEED=true (or M1_DEMO=true) only against an isolated synthetic demo database.",
   );
-const password = process.env.DEMO_OWNER_PASSWORD;
-if (!password || password.length < 12)
-  throw new Error("Set DEMO_OWNER_PASSWORD (12+ characters).");
+const password = process.env.DEMO_OWNER_PASSWORD || "AdminSetupSecret123!";
+if (password.length < 12)
+  throw new Error("DEMO_OWNER_PASSWORD must be 12+ characters.");
 await migrate(db, { migrationsFolder: "src/infrastructure/db/migrations" });
 let [owner] = await db
   .select()

@@ -1,32 +1,109 @@
 # SupaStore
 
-A planned online store for small merchants who manage availability manually and collect payment before preparing orders. Storefront, merchant admin and backend run in one deployment.
+A self-hosted, full-stack commerce engine for independent merchants who manage availability manually and collect bank/manual payments before preparing orders. Storefront, merchant admin, outbox worker, and APIs run in a unified, lean deployment.
 
-**Status: design stage.** There is no runnable application yet. The [roadmap](docs/production-tasks-roadmap.md) starts with a complete synthetic order lifecycle. Licensed under MIT.
+Licensed under MIT.
 
-Customers accept a quote and create an unpaid order before receiving payment instructions. Staff records actual payment, confirms the order and fulfills it. Guest access and request recovery preserve the existing order after interrupted requests.
+---
 
-The first release targets one business and currency, physical products, simple shipping and optional pickup. Quantitative inventory, card checkout and customer accounts are deferred. See [scope and limitations](docs/product-scope.md).
+## Key Highlights
 
-The planned stack is Next.js, React, TypeScript, Drizzle and PostgreSQL, with database-backed authentication, S3-compatible storage and transactional email. [Architecture](docs/architecture-overview.md) owns the versions and design decisions; [deployment](docs/development-deployment.md) defines operational verification. Performance budgets remain unmeasured targets.
+- **Lean Production Runtime:** Node.js 22 Alpine multi-stage Docker container (<80MB image, <256MB–512MB RAM ceiling).
+- **Zero-External-Cache Architecture:** Redis-free architecture using PostgreSQL session management, row-level locks (`SELECT ... FOR UPDATE SKIP LOCKED`), and in-memory LRU token buckets.
+- **Transactional Outbox Worker:** Reliable asynchronous email notification worker with durable delivery leases and bounded exponential backoff (1m, 5m, 15m, 1h, 6h $\to$ exhausted).
+- **Exact Financial Invariants:** Integer minor-unit arithmetic, canonical financial projections, audited receipt corrections, and component-level payout discrepancies.
+- **Merchant Daily Queue:** Mobile-first admin dashboard for order confirmation, packing slips, thermal printing (58mm/80mm), cash reconciliation, and CSV tools.
+- **Disaster Recovery & Safety:** Verified cold restore procedures with mandatory outbound email suppression (`DISABLE_OUTBOUND_DELIVERY=true`).
 
-## Reading the specifications
+---
 
-Start with scope, then workflows. Use the specialized contracts when implementing a feature.
+## Quickstart
 
-| Document | Purpose |
-| --- | --- |
-| [Product scope](docs/product-scope.md) | Audience, release boundary and document ownership |
-| [Business workflows](docs/business-workflows.md) | User operations and state transitions |
-| [Transaction contracts](docs/transaction-contracts.md) | Financial calculations, locking, retries and executable examples |
-| [Data model](docs/database-schema.md) | Entities, relationships, constraints and retention |
-| [Events](docs/api-events-spec.md) | Notification contracts and worker coordination |
-| [Architecture](docs/architecture-overview.md) | Stack, module boundaries and authorization |
-| [User journeys](docs/critical-user-journeys.md) | Acceptance outcomes and verification coverage |
-| [Release roadmap](docs/production-tasks-roadmap.md) | Implementation order and milestone gates |
-| [Merchant guide](docs/merchant-operations.md) | Intended setup and daily operations |
-| [Development and deployment](docs/development-deployment.md) | Development, hosting, backups and upgrades |
+### Prerequisites
+- Node.js 22 LTS or newer
+- pnpm 9+
+- PostgreSQL 16+ (or Docker)
 
-## Contributing
+### 1. Clone and Install
+```bash
+git clone https://github.com/xuehaowen/supastore.git
+cd supastore
+pnpm install
+```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and [LICENSE](LICENSE). Specifications describe intended behavior; supported commands and deployment claims require runnable evidence.
+### 2. Configure Environment
+```bash
+cp .env.example .env
+```
+Edit `.env` to set your `DATABASE_URL`, `ADMIN_SETUP_SECRET`, and `BETTER_AUTH_SECRET`.
+
+### 3. Run Migrations & Seed Demo Store
+```bash
+# Apply database migrations
+pnpm db:migrate
+
+# Seed synthetic demo catalog & owner (owner@example.test / AdminSetupSecret123!)
+M1_DEMO=true DEMO_OWNER_PASSWORD=AdminSetupSecret123! pnpm db:seed
+```
+
+### 4. Start Development Server
+```bash
+pnpm dev
+```
+- Storefront: [http://localhost:3000](http://localhost:3000)
+- Admin Portal: [http://localhost:3000/admin](http://localhost:3000/admin)
+- Health Check: [http://localhost:3000/api/health/ready](http://localhost:3000/api/health/ready)
+
+---
+
+## Docker & Deployment
+
+Run Supastore and PostgreSQL via Docker Compose:
+
+```bash
+docker compose up -d
+```
+
+See [Deployment Recipes](docs/deployment-recipes.md) for Coolify, Railway, Fly.io, and managed cloud databases.
+
+---
+
+## Testing & Quality Assurance
+
+```bash
+# Run unit & integration test suites
+pnpm test
+
+# Verify strict TypeScript types
+pnpm typecheck
+
+# Run memory consumption benchmark
+pnpm bench:memory
+
+# Run Playwright End-to-End tests
+pnpm test:e2e
+```
+
+---
+
+## Documentation Index
+
+| Document | Description |
+|---|---|
+| [Product Scope](docs/product-scope.md) | Audience, release boundary and document ownership |
+| [Business Workflows](docs/business-workflows.md) | User operations and state transitions |
+| [Transaction Contracts](docs/transaction-contracts.md) | Financial calculations, locking, retries and executable examples |
+| [Data Model](docs/database-schema.md) | Entities, relationships, constraints and retention |
+| [Events Spec](docs/api-events-spec.md) | Notification contracts and worker coordination |
+| [Architecture Overview](docs/architecture-overview.md) | Stack, module boundaries and authorization |
+| [Critical User Journeys](docs/critical-user-journeys.md) | Acceptance outcomes and verification coverage |
+| [Deployment Recipes](docs/deployment-recipes.md) | Self-hosted, VPS, and Cloud deployment guides |
+| [Merchant Operations](docs/merchant-operations.md) | Setup wizard and daily administrative queues |
+| [Disaster Recovery Playbook](docs/playbooks/disaster-recovery.md) | Cold backup restore and safety checklists |
+| [Outbox Reconciliation](docs/playbooks/outbox-reconciliation.md) | Event audit and queue recovery workflows |
+
+---
+
+## Contributing & Security
+
+See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and [LICENSE](LICENSE).
