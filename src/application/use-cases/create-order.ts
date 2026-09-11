@@ -46,7 +46,7 @@ export async function createOrder(input: CreateOrderInput) {
     let pickupSlotId: string | null = null;
     if (terms.pickup) {
       const { locationId,date,startTime,endTime } = terms.pickup;
-      const [slot] = await tx.insert(pickupTimeSlots).values({locationId,date,startTime,endTime}).onConflictDoUpdate({target:[pickupTimeSlots.locationId,pickupTimeSlots.date,pickupTimeSlots.startTime],set:{locationId}}).returning();
+      const [slot] = await tx.insert(pickupTimeSlots).values({locationId,date,startTime,endTime}).onConflictDoUpdate({target:[pickupTimeSlots.locationId,pickupTimeSlots.date,pickupTimeSlots.startTime,pickupTimeSlots.endTime],set:{locationId}}).returning();
       pickupSlotId=slot!.id;
     }
     await tx.insert(orderFulfillments).values({orderId:order.id,status:'unfulfilled',pickupSlotId});

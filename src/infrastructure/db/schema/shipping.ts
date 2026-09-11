@@ -61,6 +61,6 @@ export const pickupTimeSlots = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [
-    uniqueIndex('uq_pickup_slot').on(t.locationId, t.date, t.startTime),
+    uniqueIndex('uq_pickup_slot').on(t.locationId, t.date, t.startTime, t.endTime),
   ],
 );

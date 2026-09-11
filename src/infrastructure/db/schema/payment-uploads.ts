@@ -49,3 +49,11 @@ export const paymentUploadIntents = pgTable(
     index('idx_upload_intents_expires_at').on(t.expiresAt),
   ],
 );
+
+export const uploadCandidates = pgTable('upload_candidates', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  intentId: uuid('intent_id').notNull().references(() => paymentUploadIntents.id),
+  key: text('key').notNull().unique(),
+  status: text('status', { enum: ['active', 'retired', 'attached'] }).notNull().default('active'),
+  leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }).notNull(),
+});
