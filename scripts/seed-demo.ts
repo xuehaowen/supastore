@@ -18,24 +18,11 @@ import {
 } from "../src/infrastructure/db/schema";
 import { createProduct } from "../src/application/use-cases/catalog/create-product";
 
-// ---------------------------------------------------------------------------
-// Guards
-// ---------------------------------------------------------------------------
-if (process.env.M1_DEMO !== "true" && process.env.DEMO_SEED !== "true")
-  throw new Error(
-    "Set DEMO_SEED=true (or M1_DEMO=true) only against an isolated synthetic demo database.",
-  );
-const password = process.env.DEMO_OWNER_PASSWORD || "AdminSetupSecret123!";
-if (password.length < 12)
-  throw new Error("DEMO_OWNER_PASSWORD must be 12+ characters.");
+// ============================================================================
+// Types (mirroring YAML structure)
+// ============================================================================
 
-// ---------------------------------------------------------------------------
-// Load seed data from YAML files
-// ---------------------------------------------------------------------------
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const dataDir = join(__dirname, "seed-data");
-
-const storeData = load(readFileSync(join(dataDir, "store.yaml"), "utf8")) as {
+interface StoreData {
   // Identity
   storeName: string;
   supportEmail: string;
@@ -53,9 +40,9 @@ const storeData = load(readFileSync(join(dataDir, "store.yaml"), "utf8")) as {
   isOrderingEnabled?: boolean;
   isPaused?: boolean;
   pauseMessage?: string;
-};
+}
 
-const configData = load(readFileSync(join(dataDir, "config.yaml"), "utf8")) as {
+interface ConfigData {
   paymentAccounts: Array<{
     accountName: string;
     accountIdentifier: string;
@@ -76,25 +63,21 @@ const configData = load(readFileSync(join(dataDir, "config.yaml"), "utf8")) as {
     blackoutDates?: string[];
     prepMinutes?: number;
   }>;
-};
+}
 
-const categoryEntries = load(
-  readFileSync(join(dataDir, "categories.yaml"), "utf8"),
-) as Array<{
+interface CategoryEntry {
   slug: string;
   name: string;
   parentSlug?: string;
   sortOrder?: number;
-}>;
+}
 
-const productEntries = load(
-  readFileSync(join(dataDir, "products.yaml"), "utf8"),
-) as Array<{
+interface ProductEntry {
   handle: string;
   title: string;
   description?: string;
   isPublished?: boolean;
-  categories?: string[]; // category slugs
+  categories?: string[]; // slugs defined in categories.yaml
   variants: Array<{
     sku: string;
     title: string;
@@ -103,129 +86,179 @@ const productEntries = load(
     isAvailable?: boolean;
     sortOrder?: number;
   }>;
-  translations?: Array<{ locale: string; title: string; description?: string }>;
-}>;
+  translations?: Array<{
+    locale: string;
+    title: string;
+    description?: string;
+  }>;
+}
 
-// ---------------------------------------------------------------------------
-// Run migrations
-// ---------------------------------------------------------------------------
+// ============================================================================
+// Guards
+// ============================================================================
+
+if (process.env.M1_DEMO !== "true" && process.env.DEMO_SEED !== "true")
+  throw new Error(
+    "Set DEMO_SEED=true (or M1_DEMO=true) only against an isolated synthetic demo database.",
+  );
+
+const password = process.env.DEMO_OWNER_PASSWORD ?? "AdminSetupSecret123!";
+if (password.length < 12)
+  throw new Error("DEMO_OWNER_PASSWORD must be 12+ characters.");
+
+// ============================================================================
+// Load YAML seed data
+// ============================================================================
+
+const dataDir = join(dirname(fileURLToPath(import.meta.url)), "seed-data");
+const yaml = <T>(file: string) =>
+  load(readFileSync(join(dataDir, file), "utf8")) as T;
+
+const storeData = yaml<StoreData>("store.yaml");
+const configData = yaml<ConfigData>("config.yaml");
+const categoryEntries = yaml<CategoryEntry[]>("categories.yaml");
+const productEntries = yaml<ProductEntry[]>("products.yaml");
+
+// ============================================================================
+// Helper — strip undefined values so Drizzle doesn't receive them
+// ============================================================================
+
+function defined<T extends object>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined),
+  ) as Partial<T>;
+}
+
+// ============================================================================
+// 1. Migrations
+// ============================================================================
+
+console.log("▶ Running migrations…");
 await migrate(db, { migrationsFolder: "src/infrastructure/db/migrations" });
 
-// ---------------------------------------------------------------------------
-// Owner account
-// ---------------------------------------------------------------------------
+// ============================================================================
+// 2. Owner account + staff membership
+// ============================================================================
+
+console.log("▶ Seeding owner account…");
 let [owner] = await db
   .select()
   .from(user)
   .where(eq(user.email, storeData.ownerEmail));
+
 if (!owner) {
   const result = await auth.api.signUpEmail({
     body: { email: storeData.ownerEmail, name: storeData.ownerName, password },
   });
   owner = result.user as typeof user.$inferSelect;
 }
+
 await db
   .insert(staffMemberships)
   .values({ userId: owner.id, email: owner.email, role: "owner" })
-  .onConflictDoUpdate({
-    target: staffMemberships.userId,
-    set: { isActive: true },
-  });
+  .onConflictDoUpdate({ target: staffMemberships.userId, set: { isActive: true } });
 
-// ---------------------------------------------------------------------------
-// Store settings (singleton)
-// ---------------------------------------------------------------------------
-const [settings] = await db.select().from(storeSettings);
-if (!settings)
+// ============================================================================
+// 3. Store settings (singleton — skip if already bootstrapped)
+// ============================================================================
+
+console.log("▶ Seeding store settings…");
+const [existingSettings] = await db.select().from(storeSettings);
+if (!existingSettings)
   await db.insert(storeSettings).values({
     storeName: storeData.storeName,
     supportEmail: storeData.supportEmail,
     isBootstrapCompleted: true,
     setupCompleted: true,
     emailVerifiedAt: new Date(),
-    ...(storeData.currency && { currency: storeData.currency }),
-    ...(storeData.precision !== undefined && { precision: storeData.precision }),
-    ...(storeData.defaultLocale && { defaultLocale: storeData.defaultLocale }),
-    ...(storeData.timezone && { timezone: storeData.timezone }),
-    ...(storeData.taxRateBasisPoints !== undefined && {
+    ...defined({
+      currency: storeData.currency,
+      precision: storeData.precision,
+      defaultLocale: storeData.defaultLocale,
+      timezone: storeData.timezone,
       taxRateBasisPoints: storeData.taxRateBasisPoints,
-    }),
-    ...(storeData.isTaxInclusive !== undefined && {
       isTaxInclusive: storeData.isTaxInclusive,
-    }),
-    ...(storeData.isOrderingEnabled !== undefined && {
       isOrderingEnabled: storeData.isOrderingEnabled,
+      isPaused: storeData.isPaused,
+      pauseMessage: storeData.pauseMessage,
     }),
-    ...(storeData.isPaused !== undefined && { isPaused: storeData.isPaused }),
-    ...(storeData.pauseMessage && { pauseMessage: storeData.pauseMessage }),
   });
 
-// ---------------------------------------------------------------------------
-// Payment accounts
-// ---------------------------------------------------------------------------
-const existingAccounts = await db.select().from(paymentAccounts);
+// ============================================================================
+// 4. Payment accounts (deduplicated by accountIdentifier)
+// ============================================================================
+
+console.log("▶ Seeding payment accounts…");
 const existingAccountIds = new Set(
-  existingAccounts.map((a) => a.accountIdentifier),
+  (await db.select({ id: paymentAccounts.accountIdentifier }).from(paymentAccounts))
+    .map((r) => r.id),
 );
 for (const account of configData.paymentAccounts) {
   if (!existingAccountIds.has(account.accountIdentifier))
     await db.insert(paymentAccounts).values(account);
 }
 
-// ---------------------------------------------------------------------------
-// Shipping zones
-// ---------------------------------------------------------------------------
-const existingZones = await db.select().from(shippingZones);
-const existingZoneNames = new Set(existingZones.map((z) => z.name));
+// ============================================================================
+// 5. Shipping zones (deduplicated by name)
+// ============================================================================
+
+console.log("▶ Seeding shipping zones…");
+const existingZoneNames = new Set(
+  (await db.select({ name: shippingZones.name }).from(shippingZones))
+    .map((r) => r.name),
+);
 for (const zone of configData.shippingZones) {
   if (!existingZoneNames.has(zone.name))
     await db.insert(shippingZones).values(zone);
 }
 
-// ---------------------------------------------------------------------------
-// Pickup locations
-// ---------------------------------------------------------------------------
-const existingLocations = await db.select().from(pickupLocation);
-const existingLocationNames = new Set(existingLocations.map((l) => l.name));
+// ============================================================================
+// 6. Pickup locations (deduplicated by name)
+// ============================================================================
+
+console.log("▶ Seeding pickup locations…");
+const existingLocationNames = new Set(
+  (await db.select({ name: pickupLocation.name }).from(pickupLocation))
+    .map((r) => r.name),
+);
 for (const location of configData.pickupLocations) {
   if (!existingLocationNames.has(location.name))
     await db.insert(pickupLocation).values(location);
 }
 
-// ---------------------------------------------------------------------------
-// Categories
-// Build a slug → id map for use when seeding products.
-// Parent categories must appear before their children in the YAML.
-// ---------------------------------------------------------------------------
-const existingCategories = await db.select().from(categories);
-const categorySlugToId = new Map(existingCategories.map((c) => [c.slug, c.id]));
+// ============================================================================
+// 7. Categories (deduplicated by slug; parents must precede children in YAML)
+// ============================================================================
 
+console.log("▶ Seeding categories…");
+const categorySlugToId = new Map(
+  (await db.select({ slug: categories.slug, id: categories.id }).from(categories))
+    .map((r) => [r.slug, r.id]),
+);
 for (const cat of categoryEntries) {
   if (categorySlugToId.has(cat.slug)) continue;
-  const parentId = cat.parentSlug
-    ? (categorySlugToId.get(cat.parentSlug) ?? null)
-    : null;
+  const parentId = cat.parentSlug ? categorySlugToId.get(cat.parentSlug) : undefined;
   const [inserted] = await db
     .insert(categories)
-    .values({
-      slug: cat.slug,
-      name: cat.name,
-      sortOrder: cat.sortOrder ?? 0,
-      ...(parentId && { parentId }),
-    })
+    .values({ slug: cat.slug, name: cat.name, sortOrder: cat.sortOrder ?? 0, parentId })
     .returning({ id: categories.id });
   categorySlugToId.set(cat.slug, inserted.id);
 }
 
-// ---------------------------------------------------------------------------
-// Products
-// ---------------------------------------------------------------------------
+// ============================================================================
+// 8. Products (deduplicated by handle)
+// ============================================================================
+
+console.log("▶ Seeding products…");
 for (const entry of productEntries) {
   const [existing] = await db
     .select({ id: products.id })
     .from(products)
     .where(eq(products.handle, entry.handle));
-  if (existing) continue;
+  if (existing) {
+    console.log(`  · skipping '${entry.handle}' (already exists)`);
+    continue;
+  }
 
   const categoryIds = (entry.categories ?? [])
     .map((slug) => categorySlugToId.get(slug))
@@ -241,9 +274,15 @@ for (const entry of productEntries) {
     variants: entry.variants,
     translations: entry.translations,
   });
+  console.log(`  · created '${entry.handle}' (${entry.variants.length} variant(s))`);
 }
 
+// ============================================================================
+// Done
+// ============================================================================
+
 console.log(
-  `Synthetic demo seeded. Owner: ${storeData.ownerEmail}. No real payments or email verification are implied.`,
+  `\n✓ Synthetic demo seeded. Owner: ${storeData.ownerEmail}` +
+  `\n  No real payments or email verification are implied.`,
 );
 await queryClient.end();
