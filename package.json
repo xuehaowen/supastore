@@ -18,6 +18,7 @@
     "test:postgres": "node scripts/test-postgres.mjs",
     "test:storage": "node scripts/test-storage.mjs",
     "bench:search": "tsx scripts/measure-search.ts",
+    "bench:memory": "tsx scripts/benchmark-memory.ts",
     "auth:recover-owner": "tsx scripts/recover-owner.ts"
   },
   "dependencies": {
