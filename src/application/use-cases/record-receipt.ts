@@ -1,15 +1,20 @@
-import { eq } from 'drizzle-orm';
-import { db } from '@/infrastructure/db';
+import { emitOrderEvent } from "@/application/common/events";
+import { eq, and } from "drizzle-orm";
+import { db } from "@/infrastructure/db";
 import {
   orders,
+  orderProposals,
   paymentAccounts,
   paymentReceipts,
   auditRecords,
-} from '@/infrastructure/db/schema';
-import { acquireTransactionLocks } from '@/domain/locking/lock-order';
-import { computeOrderFinancialProjection } from '@/domain/financial-projection/projection';
-import { verifyStaffInTransaction } from '@/infrastructure/auth/session';
-import { NotFoundError, InvariantViolationError } from '@/application/common/errors';
+} from "@/infrastructure/db/schema";
+import { acquireTransactionLocks } from "@/domain/locking/lock-order";
+import { computeOrderFinancialProjection } from "@/domain/financial-projection/projection";
+import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
+import {
+  NotFoundError,
+  InvariantViolationError,
+} from "@/application/common/errors";
 
 export interface RecordReceiptInput {
   orderId: string;
@@ -20,13 +25,18 @@ export interface RecordReceiptInput {
 }
 
 export async function recordReceipt(input: RecordReceiptInput) {
-  if (input.amountCents <= 0) {
-    throw new InvariantViolationError(`Receipt amount must be greater than 0. Received: ${input.amountCents}`);
+  if (!Number.isSafeInteger(input.amountCents) || input.amountCents <= 0) {
+    throw new InvariantViolationError(
+      `Receipt amount must be greater than 0. Received: ${input.amountCents}`,
+    );
   }
 
-  const normalizedReference = input.rawReference.trim().toUpperCase().replace(/\s+/g, '');
+  const normalizedReference = input.rawReference
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
   if (!normalizedReference) {
-    throw new InvariantViolationError('Receipt reference cannot be empty.');
+    throw new InvariantViolationError("Receipt reference cannot be empty.");
   }
 
   return await db.transaction(async (tx) => {
@@ -39,7 +49,11 @@ export async function recordReceipt(input: RecordReceiptInput) {
       paymentAccountIds: [input.paymentAccountId],
     });
 
-    const [order] = await tx.select().from(orders).where(eq(orders.id, input.orderId)).limit(1);
+    const [order] = await tx
+      .select()
+      .from(orders)
+      .where(eq(orders.id, input.orderId))
+      .limit(1);
     if (!order) {
       throw new NotFoundError(`Order with ID '${input.orderId}' not found.`);
     }
@@ -50,10 +64,14 @@ export async function recordReceipt(input: RecordReceiptInput) {
       .where(eq(paymentAccounts.id, input.paymentAccountId))
       .limit(1);
     if (!account) {
-      throw new NotFoundError(`Payment account '${input.paymentAccountId}' not found.`);
+      throw new NotFoundError(
+        `Payment account '${input.paymentAccountId}' not found.`,
+      );
     }
     if (!account.isActive) {
-      throw new InvariantViolationError(`Payment account '${account.accountName}' is currently inactive.`);
+      throw new InvariantViolationError(
+        `Payment account '${account.accountName}' is currently inactive.`,
+      );
     }
 
     // Insert payment receipt
@@ -69,6 +87,16 @@ export async function recordReceipt(input: RecordReceiptInput) {
       })
       .returning();
 
+    const voided = await tx
+      .update(orderProposals)
+      .set({ status: "voided", resolvedAt: new Date() })
+      .where(
+        and(
+          eq(orderProposals.orderId, order.id),
+          eq(orderProposals.status, "pending"),
+        ),
+      )
+      .returning();
     // Query all receipts for this order to recompute projection
     const allReceipts = await tx
       .select()
@@ -77,20 +105,35 @@ export async function recordReceipt(input: RecordReceiptInput) {
 
     const projection = computeOrderFinancialProjection({
       purchaseTotalCents: order.purchaseTotalCents,
-      isConfirmed: order.lifecycleStatus === 'confirmed' || order.lifecycleStatus === 'completed',
-      isCancelled: order.lifecycleStatus === 'cancelled',
+      isConfirmed:
+        order.lifecycleStatus === "confirmed" ||
+        order.lifecycleStatus === "completed",
+      isCancelled: order.lifecycleStatus === "cancelled",
       receipts: allReceipts.map((r) => ({
         id: r.id,
         originalAmountCents: r.amountCents,
       })),
     });
 
+    if (voided.length)
+      await emitOrderEvent(
+        tx,
+        order.id,
+        "order.change_invalidated",
+        order.guestEmail,
+        {
+          orderId: order.id,
+          receivedCents: projection.netReceivedCents,
+          purchaseTotalCents: order.purchaseTotalCents,
+          balanceCents: order.purchaseTotalCents - projection.netReceivedCents,
+        },
+      );
     // Record audit record
     await tx.insert(auditRecords).values({
-      entityType: 'payment_receipt',
+      entityType: "payment_receipt",
       entityId: receipt!.id,
       actorId: staff.userId,
-      action: 'payment.receipt_recorded',
+      action: "payment.receipt_recorded",
       reason: `Recorded payment receipt of ${input.amountCents} cents`,
       details: {
         orderId: order.id,

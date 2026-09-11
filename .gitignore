@@ -32,7 +32,9 @@ Thumbs.db
 next-env.d.ts
 
 # Drizzle Kit (auto-generated migration snapshots)
-src/infrastructure/db/migrations/meta/
 
 # Vitest coverage
 coverage/
+.test-postgres/
+playwright-report/
+test-results/

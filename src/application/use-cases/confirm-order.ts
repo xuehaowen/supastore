@@ -1,5 +1,5 @@
-import { eq } from 'drizzle-orm';
-import { db } from '@/infrastructure/db';
+import { eq, sql } from "drizzle-orm";
+import { db } from "@/infrastructure/db";
 import {
   orders,
   paymentReceipts,
@@ -7,11 +7,14 @@ import {
   outboxEvents,
   eventDeliveries,
   auditRecords,
-} from '@/infrastructure/db/schema';
-import { acquireTransactionLocks } from '@/domain/locking/lock-order';
-import { computeOrderFinancialProjection } from '@/domain/financial-projection/projection';
-import { verifyStaffInTransaction } from '@/infrastructure/auth/session';
-import { NotFoundError, InvariantViolationError } from '@/application/common/errors';
+} from "@/infrastructure/db/schema";
+import { acquireTransactionLocks } from "@/domain/locking/lock-order";
+import { computeOrderFinancialProjection } from "@/domain/financial-projection/projection";
+import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
+import {
+  NotFoundError,
+  InvariantViolationError,
+} from "@/application/common/errors";
 
 export interface ConfirmOrderInput {
   orderId: string;
@@ -26,13 +29,19 @@ export async function confirmOrder(input: ConfirmOrderInput) {
     // 2. Lock order
     await acquireTransactionLocks(tx, { orderIds: [input.orderId] });
 
-    const [order] = await tx.select().from(orders).where(eq(orders.id, input.orderId)).limit(1);
+    const [order] = await tx
+      .select()
+      .from(orders)
+      .where(eq(orders.id, input.orderId))
+      .limit(1);
     if (!order) {
       throw new NotFoundError(`Order with ID '${input.orderId}' not found.`);
     }
 
-    if (order.lifecycleStatus !== 'unpaid') {
-      throw new InvariantViolationError(`Cannot confirm order in '${order.lifecycleStatus}' status.`);
+    if (order.lifecycleStatus !== "unpaid") {
+      throw new InvariantViolationError(
+        `Cannot confirm order in '${order.lifecycleStatus}' status.`,
+      );
     }
 
     // Fetch receipts and lock them
@@ -41,7 +50,9 @@ export async function confirmOrder(input: ConfirmOrderInput) {
       .from(paymentReceipts)
       .where(eq(paymentReceipts.orderId, order.id));
 
-    await acquireTransactionLocks(tx, { receiptIds: receipts.map((r) => r.id) });
+    await acquireTransactionLocks(tx, {
+      receiptIds: receipts.map((r) => r.id),
+    });
 
     const projection = computeOrderFinancialProjection({
       purchaseTotalCents: order.purchaseTotalCents,
@@ -53,14 +64,16 @@ export async function confirmOrder(input: ConfirmOrderInput) {
       })),
     });
 
-    if (projection.netReceivedCents < order.purchaseTotalCents) {
+    if (projection.netReceivedCents !== order.purchaseTotalCents) {
       throw new InvariantViolationError(
-        `Order is underfunded. Required: ${order.purchaseTotalCents} cents, Net Received: ${projection.netReceivedCents} cents.`
+        `Order is underfunded. Required: ${order.purchaseTotalCents} cents, Net Received: ${projection.netReceivedCents} cents.`,
       );
     }
 
     if (projection.totalUnsentRemainderCents > 0) {
-      throw new InvariantViolationError('Cannot confirm order while open excess returns remain unsettled.');
+      throw new InvariantViolationError(
+        "Cannot confirm order while open excess returns remain unsettled.",
+      );
     }
 
     // Freeze confirmation funding (Fi)
@@ -81,7 +94,7 @@ export async function confirmOrder(input: ConfirmOrderInput) {
     const [updatedOrder] = await tx
       .update(orders)
       .set({
-        lifecycleStatus: 'confirmed',
+        lifecycleStatus: "confirmed",
         updatedAt: new Date(),
       })
       .where(eq(orders.id, order.id))
@@ -91,10 +104,19 @@ export async function confirmOrder(input: ConfirmOrderInput) {
     const [event] = await tx
       .insert(outboxEvents)
       .values({
-        eventType: 'order.confirmed',
-        aggregateType: 'order',
+        eventType: "order.confirmed",
+        aggregateType: "order",
         aggregateId: order.id,
-        sequence: 2,
+        sequence: Number(
+          (
+            await tx
+              .select({
+                value: sql`coalesce(max(${outboxEvents.sequence}),0)+1`,
+              })
+              .from(outboxEvents)
+              .where(eq(outboxEvents.aggregateId, order.id))
+          )[0]!.value,
+        ),
         payload: {
           orderId: order.id,
           referenceCode: order.referenceCode,
@@ -108,17 +130,17 @@ export async function confirmOrder(input: ConfirmOrderInput) {
     await tx.insert(eventDeliveries).values({
       eventId: event!.id,
       recipient: order.guestEmail,
-      channel: 'email',
-      status: 'pending',
+      channel: "email",
+      status: "pending",
       retryAfter: new Date(),
     });
 
     await tx.insert(auditRecords).values({
-      entityType: 'order',
+      entityType: "order",
       entityId: order.id,
       actorId: staff.userId,
-      action: 'order.confirmed',
-      reason: 'Order payment verified and confirmed',
+      action: "order.confirmed",
+      reason: "Order payment verified and confirmed",
     });
 
     return {

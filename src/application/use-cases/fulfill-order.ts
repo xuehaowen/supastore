@@ -1,15 +1,18 @@
-import { eq } from 'drizzle-orm';
-import { db } from '@/infrastructure/db';
+import { eq, sql } from "drizzle-orm";
+import { db } from "@/infrastructure/db";
 import {
   orders,
   orderFulfillments,
   outboxEvents,
   eventDeliveries,
   auditRecords,
-} from '@/infrastructure/db/schema';
-import { acquireTransactionLocks } from '@/domain/locking/lock-order';
-import { verifyStaffInTransaction } from '@/infrastructure/auth/session';
-import { NotFoundError, InvariantViolationError } from '@/application/common/errors';
+} from "@/infrastructure/db/schema";
+import { acquireTransactionLocks } from "@/domain/locking/lock-order";
+import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
+import {
+  NotFoundError,
+  InvariantViolationError,
+} from "@/application/common/errors";
 
 export interface FulfillOrderInput {
   orderId: string;
@@ -26,22 +29,28 @@ export async function fulfillOrder(input: FulfillOrderInput) {
     // 2. Lock order
     await acquireTransactionLocks(tx, { orderIds: [input.orderId] });
 
-    const [order] = await tx.select().from(orders).where(eq(orders.id, input.orderId)).limit(1);
+    const [order] = await tx
+      .select()
+      .from(orders)
+      .where(eq(orders.id, input.orderId))
+      .limit(1);
     if (!order) {
       throw new NotFoundError(`Order with ID '${input.orderId}' not found.`);
     }
 
-    if (order.lifecycleStatus !== 'confirmed') {
-      throw new InvariantViolationError(`Cannot fulfill order in '${order.lifecycleStatus}' status. Must be 'confirmed'.`);
+    if (order.lifecycleStatus !== "confirmed") {
+      throw new InvariantViolationError(
+        `Cannot fulfill order in '${order.lifecycleStatus}' status. Must be 'confirmed'.`,
+      );
     }
 
     // Update fulfillment record
     await tx
       .update(orderFulfillments)
       .set({
-        status: 'fulfilled',
-        carrier: input.carrier ?? 'Standard',
-        trackingNumber: input.trackingNumber ?? 'MOCK-TRACK-123',
+        status: "fulfilled",
+        carrier: input.carrier ?? "Standard",
+        trackingNumber: input.trackingNumber ?? "MOCK-TRACK-123",
         fulfilledAt: new Date(),
         updatedAt: new Date(),
       })
@@ -51,7 +60,7 @@ export async function fulfillOrder(input: FulfillOrderInput) {
     const [updatedOrder] = await tx
       .update(orders)
       .set({
-        lifecycleStatus: 'completed',
+        lifecycleStatus: "completed",
         updatedAt: new Date(),
       })
       .where(eq(orders.id, order.id))
@@ -61,15 +70,24 @@ export async function fulfillOrder(input: FulfillOrderInput) {
     const [event] = await tx
       .insert(outboxEvents)
       .values({
-        eventType: 'order.completed',
-        aggregateType: 'order',
+        eventType: "order.completed",
+        aggregateType: "order",
         aggregateId: order.id,
-        sequence: 3,
+        sequence: Number(
+          (
+            await tx
+              .select({
+                value: sql`coalesce(max(${outboxEvents.sequence}),0)+1`,
+              })
+              .from(outboxEvents)
+              .where(eq(outboxEvents.aggregateId, order.id))
+          )[0]!.value,
+        ),
         payload: {
           orderId: order.id,
           referenceCode: order.referenceCode,
-          carrier: input.carrier ?? 'Standard',
-          trackingNumber: input.trackingNumber ?? 'MOCK-TRACK-123',
+          carrier: input.carrier ?? "Standard",
+          trackingNumber: input.trackingNumber ?? "MOCK-TRACK-123",
           completedAt: new Date().toISOString(),
         },
       })
@@ -78,23 +96,23 @@ export async function fulfillOrder(input: FulfillOrderInput) {
     await tx.insert(eventDeliveries).values({
       eventId: event!.id,
       recipient: order.guestEmail,
-      channel: 'email',
-      status: 'pending',
+      channel: "email",
+      status: "pending",
       retryAfter: new Date(),
     });
 
     await tx.insert(auditRecords).values({
-      entityType: 'order',
+      entityType: "order",
       entityId: order.id,
       actorId: staff.userId,
-      action: 'order.fulfilled',
-      reason: 'Order fulfilled and completed',
+      action: "order.fulfilled",
+      reason: "Order fulfilled and completed",
     });
 
     return {
       orderId: updatedOrder!.id,
       lifecycleStatus: updatedOrder!.lifecycleStatus,
-      fulfillmentStatus: 'fulfilled',
+      fulfillmentStatus: "fulfilled",
     };
   });
 }
