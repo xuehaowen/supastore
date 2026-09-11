@@ -1,3 +1,5 @@
+# @format
+
 storeName: "Supa / everyday"
 supportEmail: "support@example.test"
 ownerEmail: "owner@example.test"
@@ -7,10 +9,10 @@ ownerName: "Demo Owner"
 currency: USD
 precision: 2
 defaultLocale: en
-timezone: UTC
+timezone: America/Los_Angeles
 
 # Tax
-taxRateBasisPoints: 0     # 100 = 1%
+taxRateBasisPoints: 0 # 100 = 1%
 isTaxInclusive: false
 
 # Ordering

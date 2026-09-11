@@ -13,9 +13,9 @@ export const paymentAccounts = pgTable("payment_accounts", {
   id: uuid("id").primaryKey().defaultRandom(),
   accountIdentifier: text("account_identifier").notNull().unique(),
   accountName: text("account_name").notNull(),
-  accountType: text("account_type", { enum: ["bank_transfer", "cash", "other"] })
+  accountType: text("account_type", { enum: ["cash", "zelle", "venmo", "other"] })
     .notNull()
-    .default("bank_transfer"),
+    .default("other"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

@@ -50,7 +50,7 @@ interface ConfigData {
   paymentAccounts: Array<{
     accountName: string;
     accountIdentifier: string;
-    accountType?: "bank_transfer" | "cash" | "other";
+    accountType?: typeof paymentAccounts.$inferInsert.accountType;
     isActive?: boolean;
   }>;
   shippingZones: Array<{
