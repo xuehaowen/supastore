@@ -1,3 +1,4 @@
+import "./load-env";
 import {
   seedCatalogTranslations,
   type AttributeSeed,
@@ -10,6 +11,7 @@ import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { eq } from "drizzle-orm";
 import { db, queryClient } from "../src/infrastructure/db";
 import { auth } from "../src/infrastructure/auth";
+import { loadConfig } from "../src/infrastructure/config";
 import {
   user,
   staffMemberships,
@@ -101,8 +103,10 @@ interface ProductEntry {
 }
 
 // ============================================================================
-// Guards
+// Guards & Configuration Precheck
 // ============================================================================
+
+loadConfig();
 
 if (process.env.M1_DEMO !== "true" && process.env.DEMO_SEED !== "true")
   throw new Error(
