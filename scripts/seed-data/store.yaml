@@ -2,3 +2,11 @@ storeName: "Supa / everyday"
 supportEmail: "support@example.test"
 ownerEmail: "owner@example.test"
 ownerName: "Demo Owner"
+
+# Optional store settings (schema defaults shown as comments)
+currency: USD               # default: USD
+precision: 2                # decimal places
+defaultLocale: en
+timezone: UTC
+taxRateBasisPoints: 0       # 100 = 1%
+isTaxInclusive: false

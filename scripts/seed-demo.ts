@@ -36,16 +36,35 @@ const storeData = load(readFileSync(join(dataDir, "store.yaml"), "utf8")) as {
   supportEmail: string;
   ownerEmail: string;
   ownerName: string;
+  currency?: string;
+  precision?: number;
+  defaultLocale?: string;
+  timezone?: string;
+  taxRateBasisPoints?: number;
+  isTaxInclusive?: boolean;
 };
 
 const configData = load(readFileSync(join(dataDir, "config.yaml"), "utf8")) as {
-  paymentAccount: { accountName: string; accountIdentifier: string };
-  shippingZone: { name: string; rateCents: number; freeThresholdCents: number };
-  pickupLocation: {
+  paymentAccounts: Array<{
+    accountName: string;
+    accountIdentifier: string;
+    accountType?: "bank_transfer" | "cash" | "other";
+    isActive?: boolean;
+  }>;
+  shippingZones: Array<{
+    name: string;
+    rateCents: number;
+    freeThresholdCents?: number;
+    countryCodes?: string[] | null;
+    sortOrder?: number;
+  }>;
+  pickupLocations: Array<{
     name: string;
     address: string;
     weeklySchedule: Record<string, [string, string][]>;
-  };
+    blackoutDates?: string[];
+    prepMinutes?: number;
+  }>;
 };
 
 const productEntries = load(
@@ -97,25 +116,43 @@ if (!settings)
     isBootstrapCompleted: true,
     setupCompleted: true,
     emailVerifiedAt: new Date(),
+    ...(storeData.currency && { currency: storeData.currency }),
+    ...(storeData.precision !== undefined && { precision: storeData.precision }),
+    ...(storeData.defaultLocale && { defaultLocale: storeData.defaultLocale }),
+    ...(storeData.timezone && { timezone: storeData.timezone }),
+    ...(storeData.taxRateBasisPoints !== undefined && { taxRateBasisPoints: storeData.taxRateBasisPoints }),
+    ...(storeData.isTaxInclusive !== undefined && { isTaxInclusive: storeData.isTaxInclusive }),
   });
 
 // ---------------------------------------------------------------------------
-// Payment account
+// Payment accounts
 // ---------------------------------------------------------------------------
-if (!(await db.select().from(paymentAccounts)).length)
-  await db.insert(paymentAccounts).values(configData.paymentAccount);
+const existingAccounts = await db.select().from(paymentAccounts);
+const existingAccountIds = new Set(existingAccounts.map((a) => a.accountIdentifier));
+for (const account of configData.paymentAccounts) {
+  if (!existingAccountIds.has(account.accountIdentifier))
+    await db.insert(paymentAccounts).values(account);
+}
 
 // ---------------------------------------------------------------------------
-// Shipping zone
+// Shipping zones
 // ---------------------------------------------------------------------------
-if (!(await db.select().from(shippingZones)).length)
-  await db.insert(shippingZones).values(configData.shippingZone);
+const existingZones = await db.select().from(shippingZones);
+const existingZoneNames = new Set(existingZones.map((z) => z.name));
+for (const zone of configData.shippingZones) {
+  if (!existingZoneNames.has(zone.name))
+    await db.insert(shippingZones).values(zone);
+}
 
 // ---------------------------------------------------------------------------
-// Pickup location
+// Pickup locations
 // ---------------------------------------------------------------------------
-if (!(await db.select().from(pickupLocation)).length)
-  await db.insert(pickupLocation).values(configData.pickupLocation);
+const existingLocations = await db.select().from(pickupLocation);
+const existingLocationNames = new Set(existingLocations.map((l) => l.name));
+for (const location of configData.pickupLocations) {
+  if (!existingLocationNames.has(location.name))
+    await db.insert(pickupLocation).values(location);
+}
 
 // ---------------------------------------------------------------------------
 // Products

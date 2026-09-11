@@ -1,20 +1,26 @@
-paymentAccount:
-  accountName: "Demo bank transfer"
-  accountIdentifier: "SYNTHETIC ONLY — Do not send real funds."
+paymentAccounts:
+  - accountName: "Demo bank transfer"
+    accountIdentifier: "SYNTHETIC ONLY — Do not send real funds."
+    accountType: bank_transfer   # bank_transfer | cash | other
+    isActive: true
 
-shippingZone:
-  name: "Standard"
-  rateCents: 500
-  freeThresholdCents: 5000
+shippingZones:
+  - name: "Standard"
+    rateCents: 500
+    freeThresholdCents: 5000
+    countryCodes: null           # null = catch-all (any destination)
+    sortOrder: 0
 
-pickupLocation:
-  name: "The studio"
-  address: "1 Demo Street"
-  weeklySchedule:
-    mon: [["12:00", "17:00"]]
-    tue: [["12:00", "17:00"]]
-    wed: [["12:00", "17:00"]]
-    thu: [["12:00", "17:00"]]
-    fri: [["12:00", "17:00"]]
-    sat: [["12:00", "17:00"]]
-    sun: [["12:00", "17:00"]]
+pickupLocations:
+  - name: "The studio"
+    address: "1 Demo Street"
+    prepMinutes: 60
+    blackoutDates: []            # ISO date strings e.g. ["2026-12-25"]
+    weeklySchedule:
+      mon: [["12:00", "17:00"]]
+      tue: [["12:00", "17:00"]]
+      wed: [["12:00", "17:00"]]
+      thu: [["12:00", "17:00"]]
+      fri: [["12:00", "17:00"]]
+      sat: [["12:00", "17:00"]]
+      sun: [["12:00", "17:00"]]
