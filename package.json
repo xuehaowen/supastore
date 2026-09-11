@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.750.0",
+    "@aws-sdk/s3-request-presigner": "^3.1128.0",
     "better-auth": "^1.1.18",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.39.3",
@@ -23,6 +24,7 @@
     "lucide-react": "^0.475.0",
     "next": "^15.1.7",
     "next-intl": "^3.26.4",
+    "nodemailer": "^10.0.1",
     "postgres": "^3.4.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -30,13 +32,18 @@
     "valibot": "^1.0.0-beta.9"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.0.7",
     "@types/node": "^22.13.4",
+    "@types/nodemailer": "^8.0.1",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "drizzle-kit": "^0.30.4",
+    "embedded-postgres": "18.4.0-beta.17",
     "postcss": "^8.5.2",
     "tailwindcss": "^4.0.7",
+    "tsx": "^4.23.13",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"
   },
