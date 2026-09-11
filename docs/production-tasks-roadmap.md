@@ -218,21 +218,21 @@ Contract: [Permitted changes](business-workflows.md#4-unpaid-orders-and-permitte
 
 ### Staff Governance & Security
 Authentication and use-case authorization are M0 prerequisites. This milestone adds governance and recovery tooling on that foundation.
-- [ ] **Protected owner recovery workflow (`M5`)**
+- [x] **Protected owner recovery workflow (`M5`)**
   - *Details:* Provide CLI-based owner recovery command (`pnpm run auth:recover-owner --email=...`) requiring direct server/console access, bypassing public web endpoints.
   - *Verification:* Recovery command promotes specified email to owner and generates a temporary one-time login URL.
-- [ ] **Last active owner deletion guard**
+- [x] **Last active owner deletion guard**
   - *Details:* Database trigger or transaction invariant preventing deletion or deactivation of the last remaining active owner membership.
   - *Verification:* Attempting to remove the sole active owner throws a validation error.
 
 ### Payment Accounts & Cash Reconciliation
-- [ ] **Payment account normalization and alias management**
+- [x] **Payment account normalization and alias management**
   - *Details:* Implement versioned reference normalization rules (e.g. stripping spaces, dashes, case folding) for bank account numbers, Pix keys, and PromptPay IDs.
   - *Verification:* Entering `REF-1234-ABCD` and `ref 1234 abcd` normalize to identical canonical references.
-- [ ] **Cash drawer collection workflows with sequential numbering (`A2`)**
+- [x] **Cash drawer collection workflows with sequential numbering (`A2`)**
   - *Details:* Dedicated cash receipt recording dialog generating monotonic sequential cash receipt numbers (e.g. `CASH-2026-0001`) with recorded drawer and payer identity.
   - *Verification:* Concurrent cash receipt creations produce strictly ordered, non-overlapping sequential receipt numbers.
-- [ ] **Cash drawer end-of-day reconciliation reports**
+- [x] **Cash drawer end-of-day reconciliation reports**
   - *Details:* Generate printable summary of all cash collected, refunds paid out, and net drawer balance per staff member and shift.
   - *Verification:* Report matches sum of individual cash receipts and payout entries for the selected date range.
 
@@ -240,75 +240,75 @@ Authentication and use-case authorization are M0 prerequisites. This milestone a
 
 Contract: [Payment](business-workflows.md#3-payment-and-confirmation), [refunds and cancellation](business-workflows.md#6-refunds-excess-returns-and-cancellation) and [financial projection](transaction-contracts.md#canonical-financial-projection).
 
-- [ ] **Exact-payment confirmation gate (`A2`)**
+- [x] **Exact-payment confirmation gate (`A2`)**
   - *Verification:* Underpayment blocks confirmation with the shortfall shown. A $40 order with $50 received and $10 excess returned can confirm only after settlement and all other gates pass.
-- [ ] **Surplus overpayment return authorization (`A7`)**
+- [x] **Surplus overpayment return authorization (`A7`)**
   - *Verification:* Order cannot be confirmed until the excess return is authorized and resolved.
-- [ ] **Abandoned unpaid order review queue (`A10`)**
+- [x] **Abandoned unpaid order review queue (`A10`)**
   - *Verification:* Cancelling unpaid order updates status to `cancelled`, cancels fulfillment, and emits `order.cancelled` event with zero refund obligations.
-- [ ] **Late payment receipt on cancelled orders (`A7`)**
+- [x] **Late payment receipt on cancelled orders (`A7`)**
   - *Verification:* Late receipt is flagged as "Return Required - Paid After Cancellation" in admin payout queue.
-- [ ] **Customer cancellation requests and staff resolution (`C11`, `C12`)**
+- [x] **Customer cancellation requests and staff resolution (`C11`, `C12`)**
   - *Verification:* Cancelling confirmed order halts fulfillment and generates refund authorizations for purchased merchandise.
 
 ### Financial Refunds & Payout Settlement
 
 Contract: [Payout workflow](business-workflows.md#6-refunds-excess-returns-and-cancellation) and [payout contracts and examples](transaction-contracts.md#payout-discrepancies).
 
-- [ ] **Component-level partial refund authorizations (`A6`)**
+- [x] **Component-level partial refund authorizations (`A6`)**
   - *Verification:* Authorizing refund for item A reduces item A's refundable ceiling to $0 while leaving item B refundable.
-- [ ] **Exclusive single-sender payout claim locking (`A8`)**
+- [x] **Exclusive single-sender payout claim locking (`A8`)**
   - *Verification:* Two owner sessions clicking "Send Payout" simultaneously result in one successful claim and one "Payout already claimed by another user" error.
-- [ ] **Uncertain payout reconciliation workflow (`A8`)**
+- [x] **Uncertain payout reconciliation workflow (`A8`)**
   - *Verification:* System prevents re-attempting a payout without explicit operator audit resolution.
-- [ ] **Payout discrepancy recording and resolution (`A8`)**
+- [x] **Payout discrepancy recording and resolution (`A8`)**
   - *Verification:* Execute every payout example in the transaction contract, including $50 paid against a $30 claim on a $50 authorization (full settlement, zero loss, claim breach), and late original-attempt evidence while a replacement is unresolved. Test proven-unsent and already-sent replacements, both reconciliation orders, concurrent claims and exact retries. Verify remaining entitlement never includes money already settled and replacement actionability changes atomically with late-evidence review.
-- [ ] **Supplemental returns and partial payout remainder tracking**
+- [x] **Supplemental returns and partial payout remainder tracking**
   - *Verification:* A verified $30 transfer against a $50 claim yields C=30, E=0, S_i=30 and U_i=20 without a discrepancy. Evidence that no remainder is pending closes the attempt and permits a new $20 claim; an uncertain remainder blocks it. A verified full $50 transfer must classify C=50, and exact retries never increment settlement again.
 
 ### Audited Receipt Corrections & Funding Loss
 
 Contract: [Receipt corrections](business-workflows.md#7-receipt-corrections) and [correction losses](transaction-contracts.md#correction-losses).
 
-- [ ] **Audited receipt correction cases (`A9`)**
+- [x] **Audited receipt correction cases (`A9`)**
   - *Verification:* Correcting a confirmed $100 receipt down to $10 caps effective original funding at $10; future authorizations obey remaining entitlement and capacity after prior payouts.
-- [ ] **Allocation revisions and settled payout preservation**
+- [x] **Allocation revisions and settled payout preservation**
   - *Verification:* System does not rewrite or delete historical settled outgoing transfers.
-- [ ] **Operational funding loss calculation (`A9`)**
+- [x] **Operational funding loss calculation (`A9`)**
   - *Verification:* A confirmed $100 purchase corrected to $10 after a settled $30 purchase refund shows $90 total shortfall, not $110; preserve settled history and original-source backing.
-- [ ] **Cross-order duplicate receipt investigation (`A9`)**
+- [x] **Cross-order duplicate receipt investigation (`A9`)**
   - *Verification:* Cross-order correction acquires locks on both orders simultaneously without deadlock and updates both order projections atomically.
 
 ### Fulfillment Operations & Packing Slips
-- [ ] **Thermal printer styles (58mm/80mm) for packing slips and receipts (`A3`)**
+- [x] **Thermal printer styles (58mm/80mm) for packing slips and receipts (`A3`)**
   - *Details:* Implement dedicated print CSS stylesheets (`@media print`) and clean HTML templates optimized for standard 58mm and 80mm ESC/POS thermal receipt printers.
   - *Verification:* Browser print preview formats packing slip perfectly within 80mm width with crisp barcodes and zero layout clipping.
-- [ ] **Audited fulfillment corrections (`A4`)**
+- [x] **Audited fulfillment corrections (`A4`)**
   - *Details:* Allow staff to correct shipping address typos, change carrier, or update tracking numbers on paid orders without altering financial totals.
   - *Verification:* Address change records timestamped audit log and sends tracking update email to customer.
-- [ ] **Pickup handoff and manual delivery completion (`A3`)**
+- [x] **Pickup handoff and manual delivery completion (`A3`)**
   - *Details:* Complete fulfillment workflow: staff marks order "Ready for Pickup" (delivers notification), verifies the recipient using their scoped order page or owner-assisted identity verification, and records handoff actor/time before marking the order `completed`. Follow the handoff contract in [workflows](business-workflows.md#5-fulfillment); no separate pickup code is required.
   - *Verification:* Completing fulfillment transitions fulfillment to `fulfilled` and order lifecycle to `completed` and closes active fulfillment queue item.
 
 ### CSV Import & Export Tools
-- [ ] **Product CSV upload with client-side Web Worker preview (`M3`)**
+- [x] **Product CSV upload with client-side Web Worker preview (`M3`)**
   - *Details:* Implement CSV importer parsing files in a Web Worker, validating required headers (`handle`, `sku`, `title`, `price_cents`), checking for duplicate SKUs, and displaying visual diff preview (new vs updated products).
   - *Verification:* Importing CSV with invalid rows highlights exact line numbers and syntax errors before database execution.
-- [ ] **Atomic product CSV import execution (`M3`)**
+- [x] **Atomic product CSV import execution (`M3`)**
   - *Details:* Execute import use case inserting new products and updating existing handles within a single transaction.
   - *Verification:* If row 50 of 100 fails validation, the entire batch rolls back with zero partial writes.
-- [ ] **Read-only CSV export for products and orders (`M3`)**
+- [x] **Read-only CSV export for products and orders (`M3`)**
   - *Details:* Implement streaming CSV exports for products (including variants/prices) and orders (including line items, receipt references, and fulfillment states).
   - *Verification:* Exported product CSV can be re-imported cleanly without format conversion errors.
 
 ### Verification & Exit Criteria
-- [ ] **Executable accounting contract test suite**
+- [x] **Executable accounting contract test suite**
   - *Details:* Run automated Vitest test suite executing the base accounting table and payout-discrepancy examples defined in [transaction contracts](transaction-contracts.md).
   - *Verification:* All scenarios pass with exact minor-unit precision, including erroneous payouts and recoveries.
-- [ ] **Cancellation and unavailable-purchase journeys (`C11`, `C12`)**
+- [x] **Cancellation and unavailable-purchase journeys (`C11`, `C12`)**
   - *Details:* Execute the deferred customer journeys using owner cancellation and actual-funds reconciliation, including unpaid, partially paid and confirmed purchases.
   - *Verification:* Support contact is visible, only eligible orders cancel, actual obligations remain actionable, and shipment/handoff races cannot both succeed with cancellation. These gates must pass before live merchant use.
-- [ ] **Fuzzing and race condition integration tests**
+- [x] **Fuzzing and race condition integration tests**
   - *Details:* Concurrency test suite executing randomized simultaneous operations: racing payout claims, simultaneous receipt recording and order cancellation, and parallel duplicate receipt corrections.
   - *Verification:* Zero data corruption, zero negative balances, and zero unhandled database deadlocks.
 
