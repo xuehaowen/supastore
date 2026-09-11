@@ -1,6 +1,8 @@
+import { localizeVariants, translatedField } from "../catalog/localize";
 import { eq, and, isNull, inArray } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
+  storeSettings,
   carts,
   cartItems,
   productVariants,
@@ -39,7 +41,7 @@ export interface CartDetail {
 }
 
 export async function getCart(input: GetCartInput): Promise<CartDetail | null> {
-  const { guestSessionId, cartId, locale = "en" } = input;
+  const { guestSessionId, cartId } = input;
 
   if (!guestSessionId) {
     throw new Error("Either guestSessionId or cartId must be provided");
@@ -98,6 +100,16 @@ export async function getCart(input: GetCartInput): Promise<CartDetail | null> {
 
   const productIds = Array.from(new Set(items.map((i) => i.productId)));
 
+  const [settings] = await db.select().from(storeSettings).limit(1);
+  const defaultLocale = settings?.defaultLocale ?? "en";
+  const locale = input.locale ?? defaultLocale;
+  const localizedVariants = await localizeVariants(
+    items.map((i) => ({ id: i.variantId, title: i.variantTitle })),
+    locale,
+    defaultLocale,
+  );
+  const variantTitles = new Map(localizedVariants.map((v) => [v.id, v.title]));
+
   // Batch fetch translations and images
   const [translations, images] = await Promise.all([
     db
@@ -106,7 +118,9 @@ export async function getCart(input: GetCartInput): Promise<CartDetail | null> {
       .where(
         and(
           inArray(productTranslations.productId, productIds),
-          eq(productTranslations.locale, locale),
+          inArray(productTranslations.locale, [
+            ...new Set([locale, defaultLocale]),
+          ]),
         ),
       ),
     db
@@ -120,9 +134,6 @@ export async function getCart(input: GetCartInput): Promise<CartDetail | null> {
       .orderBy(productImages.sortOrder),
   ]);
 
-  const translationMap = new Map(
-    translations.map((t) => [t.productId, t.title]),
-  );
   const imageMap = new Map<string, string>();
   for (const img of images) {
     if (img.variantId && !imageMap.has(`var_${img.variantId}`)) {
@@ -145,13 +156,19 @@ export async function getCart(input: GetCartInput): Promise<CartDetail | null> {
       imageMap.get(`var_${i.variantId}`) ??
       imageMap.get(`prod_${i.productId}`) ??
       null;
-    const translatedTitle = translationMap.get(i.productId) ?? i.productTitle;
+    const translatedTitle = translatedField(
+      translations.filter((t) => t.productId === i.productId),
+      "title",
+      locale,
+      defaultLocale,
+      i.productTitle,
+    );
 
     return {
       id: i.id,
       variantId: i.variantId,
       sku: i.sku,
-      title: i.variantTitle,
+      title: variantTitles.get(i.variantId) ?? i.variantTitle,
       productTitle: translatedTitle,
       productHandle: i.productHandle,
       priceCents: i.priceCents,

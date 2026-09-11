@@ -1,3 +1,4 @@
+import { localizeCategories } from "@/application/use-cases/catalog/localize";
 import Link from "next/link";
 import { unstable_cache } from "next/cache";
 import { listProducts } from "@/application/use-cases/catalog/list-products";
@@ -16,7 +17,7 @@ export default async function Catalog({
   locale: string;
   query?: { q?: string; category?: string; page?: string };
 }) {
-  const t = await getTranslations({locale});
+  const t = await getTranslations({ locale });
   const result = await catalog({
     locale,
     search: query.q ?? "",
@@ -24,7 +25,14 @@ export default async function Catalog({
     page: Number(query.page) || 1,
   });
   const [store] = await db.select().from(storeSettings).limit(1);
-  const groups = await db.select().from(categories);
+  const groups = await localizeCategories(
+    await db
+      .select()
+      .from(categories)
+      .orderBy(categories.sortOrder, categories.slug),
+    locale,
+    store?.defaultLocale ?? "en",
+  );
   return (
     <>
       <section className="hero">

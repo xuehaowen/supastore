@@ -1,3 +1,4 @@
+import { translatedField } from "./localize";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
@@ -70,23 +71,31 @@ export async function listProducts(input: ListProductsInput = {}) {
       pageSize,
       total: count!.total,
       items: rows.map((p) => {
-        const translated =
-          translations.find(
-            (t) =>
-              t.productId === p.id &&
-              t.locale === (input.locale ?? settings?.defaultLocale ?? "en"),
-          ) ??
-          translations.find(
-            (t) => t.productId === p.id && t.locale === settings?.defaultLocale,
-          );
+        const productTranslations = translations.filter(
+          (t) => t.productId === p.id,
+        );
+        const defaultLocale = settings?.defaultLocale ?? "en";
+        const locale = input.locale ?? defaultLocale;
         const prices = variants
           .filter((v) => v.productId === p.id)
           .map((v) => v.priceCents);
         return {
           id: p.id,
           handle: p.handle,
-          title: translated?.title ?? p.title,
-          description: translated?.description ?? p.description,
+          title: translatedField(
+            productTranslations,
+            "title",
+            locale,
+            defaultLocale,
+            p.title,
+          ),
+          description: translatedField(
+            productTranslations,
+            "description",
+            locale,
+            defaultLocale,
+            p.description,
+          ),
           isPublished: p.isPublished,
           coverImageKey:
             images.find((i) => i.productId === p.id)?.s3Key ?? null,

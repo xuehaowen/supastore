@@ -18,7 +18,7 @@ export default async function Product({
   params: Promise<{ locale: string; handle: string }>;
 }) {
   const { locale, handle } = await params;
-  const t = await getTranslations({locale});
+  const t = await getTranslations({ locale });
   const p = await product({ handle, locale }).catch((error) => {
     if (error instanceof NotFoundError) notFound();
     throw error;
@@ -51,8 +51,11 @@ export default async function Product({
             <select name="variantId">
               {p.variants.map((v) => (
                 <option key={v.id} value={v.id} disabled={!v.isAvailable}>
-                  {v.title} —{" "}
-                  {money(v.priceCents, store?.currency, store?.precision)}
+                  {v.title}
+                  {v.localizedAttributes.length > 0
+                    ? ` (${v.localizedAttributes.map((a) => `${a.name}: ${a.label}`).join(" / ")})`
+                    : ""}{" "}
+                  — {money(v.priceCents, store?.currency, store?.precision)}
                   {!v.isAvailable ? " · " + t("unavailable") : ""}
                 </option>
               ))}
@@ -70,7 +73,10 @@ export default async function Product({
             />
           </label>
           <button disabled={!p.variants.some((v) => v.isAvailable)}>
-            {p.variants.some((v) => v.isAvailable) ? t("add") : t("unavailable")} ↗
+            {p.variants.some((v) => v.isAvailable)
+              ? t("add")
+              : t("unavailable")}{" "}
+            ↗
           </button>
         </form>
         <p className="muted">Shipping and local pickup options at checkout.</p>
