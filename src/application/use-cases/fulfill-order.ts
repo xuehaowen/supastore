@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '@/infrastructure/db';
 import {
   orders,
@@ -64,7 +64,7 @@ export async function fulfillOrder(input: FulfillOrderInput) {
         eventType: 'order.completed',
         aggregateType: 'order',
         aggregateId: order.id,
-        sequence: 3,
+        sequence: Number((await tx.select({value:sql`coalesce(max(${outboxEvents.sequence}),0)+1`}).from(outboxEvents).where(eq(outboxEvents.aggregateId,order.id)))[0]!.value),
         payload: {
           orderId: order.id,
           referenceCode: order.referenceCode,

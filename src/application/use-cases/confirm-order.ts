@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '@/infrastructure/db';
 import {
   orders,
@@ -53,7 +53,7 @@ export async function confirmOrder(input: ConfirmOrderInput) {
       })),
     });
 
-    if (projection.netReceivedCents < order.purchaseTotalCents) {
+    if (projection.netReceivedCents !== order.purchaseTotalCents) {
       throw new InvariantViolationError(
         `Order is underfunded. Required: ${order.purchaseTotalCents} cents, Net Received: ${projection.netReceivedCents} cents.`
       );
@@ -94,7 +94,7 @@ export async function confirmOrder(input: ConfirmOrderInput) {
         eventType: 'order.confirmed',
         aggregateType: 'order',
         aggregateId: order.id,
-        sequence: 2,
+        sequence: Number((await tx.select({value:sql`coalesce(max(${outboxEvents.sequence}),0)+1`}).from(outboxEvents).where(eq(outboxEvents.aggregateId,order.id)))[0]!.value),
         payload: {
           orderId: order.id,
           referenceCode: order.referenceCode,

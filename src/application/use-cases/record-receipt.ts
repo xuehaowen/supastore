@@ -1,7 +1,9 @@
-import { eq } from 'drizzle-orm';
+import { emitOrderEvent } from '@/application/common/events';
+import { eq, and } from 'drizzle-orm';
 import { db } from '@/infrastructure/db';
 import {
   orders,
+  orderProposals,
   paymentAccounts,
   paymentReceipts,
   auditRecords,
@@ -20,7 +22,7 @@ export interface RecordReceiptInput {
 }
 
 export async function recordReceipt(input: RecordReceiptInput) {
-  if (input.amountCents <= 0) {
+  if (!Number.isSafeInteger(input.amountCents) || input.amountCents <= 0) {
     throw new InvariantViolationError(`Receipt amount must be greater than 0. Received: ${input.amountCents}`);
   }
 
@@ -69,6 +71,7 @@ export async function recordReceipt(input: RecordReceiptInput) {
       })
       .returning();
 
+    const voided = await tx.update(orderProposals).set({status:'voided',resolvedAt:new Date()}).where(and(eq(orderProposals.orderId,order.id),eq(orderProposals.status,'pending'))).returning();
     // Query all receipts for this order to recompute projection
     const allReceipts = await tx
       .select()
@@ -85,6 +88,7 @@ export async function recordReceipt(input: RecordReceiptInput) {
       })),
     });
 
+    if (voided.length) await emitOrderEvent(tx,order.id,'order.change_invalidated',order.guestEmail,{orderId:order.id,receivedCents:projection.netReceivedCents,purchaseTotalCents:order.purchaseTotalCents,balanceCents:order.purchaseTotalCents-projection.netReceivedCents});
     // Record audit record
     await tx.insert(auditRecords).values({
       entityType: 'payment_receipt',
