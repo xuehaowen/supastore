@@ -1,0 +1,32 @@
+- handle: everyday-shirt
+  title: Everyday shirt
+  description: "Soft cotton. A relaxed fit for unhurried days."
+  priceCents: 3200
+  variantTitle: Natural
+  variantColor: Natural
+  translations:
+    - locale: zh
+      title: 日常衬衫
+      description: 精心挑选的日常好物。
+
+- handle: studio-cup
+  title: Studio cup
+  description: "A generous ceramic cup, made for your morning ritual."
+  priceCents: 2400
+  variantTitle: Natural
+  variantColor: Natural
+  translations:
+    - locale: zh
+      title: 陶瓷杯
+      description: 精心挑选的日常好物。
+
+- handle: market-tote
+  title: Market tote
+  description: "Carry a little less. A durable everyday canvas bag."
+  priceCents: 1800
+  variantTitle: Natural
+  variantColor: Natural
+  translations:
+    - locale: zh
+      title: 帆布袋
+      description: 精心挑选的日常好物。

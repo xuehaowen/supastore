@@ -1,3 +1,7 @@
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { load } from "js-yaml";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { eq } from "drizzle-orm";
 import { db, queryClient } from "../src/infrastructure/db";
@@ -12,6 +16,7 @@ import {
   pickupLocation,
 } from "../src/infrastructure/db/schema";
 import { createProduct } from "../src/application/use-cases/catalog/create-product";
+
 if (process.env.M1_DEMO !== "true" && process.env.DEMO_SEED !== "true")
   throw new Error(
     "Set DEMO_SEED=true (or M1_DEMO=true) only against an isolated synthetic demo database.",
@@ -19,14 +24,57 @@ if (process.env.M1_DEMO !== "true" && process.env.DEMO_SEED !== "true")
 const password = process.env.DEMO_OWNER_PASSWORD || "AdminSetupSecret123!";
 if (password.length < 12)
   throw new Error("DEMO_OWNER_PASSWORD must be 12+ characters.");
+
+// ---------------------------------------------------------------------------
+// Load seed data from YAML files
+// ---------------------------------------------------------------------------
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const dataDir = join(__dirname, "seed-data");
+
+const storeData = load(readFileSync(join(dataDir, "store.yaml"), "utf8")) as {
+  storeName: string;
+  supportEmail: string;
+  ownerEmail: string;
+  ownerName: string;
+};
+
+const configData = load(readFileSync(join(dataDir, "config.yaml"), "utf8")) as {
+  paymentAccount: { accountName: string; accountIdentifier: string };
+  shippingZone: { name: string; rateCents: number; freeThresholdCents: number };
+  pickupLocation: {
+    name: string;
+    address: string;
+    weeklySchedule: Record<string, [string, string][]>;
+  };
+};
+
+const productEntries = load(
+  readFileSync(join(dataDir, "products.yaml"), "utf8"),
+) as Array<{
+  handle: string;
+  title: string;
+  description: string;
+  priceCents: number;
+  variantTitle: string;
+  variantColor: string;
+  translations: Array<{ locale: string; title: string; description: string }>;
+}>;
+
+// ---------------------------------------------------------------------------
+// Run migrations
+// ---------------------------------------------------------------------------
 await migrate(db, { migrationsFolder: "src/infrastructure/db/migrations" });
+
+// ---------------------------------------------------------------------------
+// Owner account
+// ---------------------------------------------------------------------------
 let [owner] = await db
   .select()
   .from(user)
-  .where(eq(user.email, "owner@example.test"));
+  .where(eq(user.email, storeData.ownerEmail));
 if (!owner) {
   const result = await auth.api.signUpEmail({
-    body: { email: "owner@example.test", name: "Demo Owner", password },
+    body: { email: storeData.ownerEmail, name: storeData.ownerName, password },
   });
   owner = result.user as typeof user.$inferSelect;
 }
@@ -37,96 +85,65 @@ await db
     target: staffMemberships.userId,
     set: { isActive: true },
   });
+
+// ---------------------------------------------------------------------------
+// Store settings
+// ---------------------------------------------------------------------------
 const [settings] = await db.select().from(storeSettings);
 if (!settings)
-  await db
-    .insert(storeSettings)
-    .values({
-      storeName: "Supa / everyday",
-      supportEmail: "support@example.test",
-      isBootstrapCompleted: true,
-      setupCompleted: true,
-      emailVerifiedAt: new Date(),
-    });
+  await db.insert(storeSettings).values({
+    storeName: storeData.storeName,
+    supportEmail: storeData.supportEmail,
+    isBootstrapCompleted: true,
+    setupCompleted: true,
+    emailVerifiedAt: new Date(),
+  });
+
+// ---------------------------------------------------------------------------
+// Payment account
+// ---------------------------------------------------------------------------
 if (!(await db.select().from(paymentAccounts)).length)
-  await db
-    .insert(paymentAccounts)
-    .values({
-      accountName: "Demo bank transfer",
-      accountIdentifier: "SYNTHETIC ONLY — Do not send real funds.",
-    });
+  await db.insert(paymentAccounts).values(configData.paymentAccount);
+
+// ---------------------------------------------------------------------------
+// Shipping zone
+// ---------------------------------------------------------------------------
 if (!(await db.select().from(shippingZones)).length)
-  await db
-    .insert(shippingZones)
-    .values({ name: "Standard", rateCents: 500, freeThresholdCents: 5000 });
+  await db.insert(shippingZones).values(configData.shippingZone);
+
+// ---------------------------------------------------------------------------
+// Pickup location
+// ---------------------------------------------------------------------------
 if (!(await db.select().from(pickupLocation)).length)
-  await db
-    .insert(pickupLocation)
-    .values({
-      name: "The studio",
-      address: "1 Demo Street",
-      weeklySchedule: {
-        mon: [["12:00", "17:00"]],
-        tue: [["12:00", "17:00"]],
-        wed: [["12:00", "17:00"]],
-        thu: [["12:00", "17:00"]],
-        fri: [["12:00", "17:00"]],
-        sat: [["12:00", "17:00"]],
-        sun: [["12:00", "17:00"]],
-      },
-    });
-const entries = [
-  [
-    "everyday-shirt",
-    "Everyday shirt",
-    "Soft cotton. A relaxed fit for unhurried days.",
-    3200,
-    "日常衬衫",
-  ],
-  [
-    "studio-cup",
-    "Studio cup",
-    "A generous ceramic cup, made for your morning ritual.",
-    2400,
-    "陶瓷杯",
-  ],
-  [
-    "market-tote",
-    "Market tote",
-    "Carry a little less. A durable everyday canvas bag.",
-    1800,
-    "帆布袋",
-  ],
-];
-for (const [handle, title, description, price, zh] of entries) {
+  await db.insert(pickupLocation).values(configData.pickupLocation);
+
+// ---------------------------------------------------------------------------
+// Products
+// ---------------------------------------------------------------------------
+for (const entry of productEntries) {
   if (
-    (
-      await db
-        .select()
-        .from(products)
-        .where(eq(products.handle, String(handle)))
-    ).length
+    (await db.select().from(products).where(eq(products.handle, entry.handle)))
+      .length
   )
     continue;
   await createProduct({
     staffUserId: owner.id,
-    handle: String(handle),
-    title: String(title),
-    description: String(description),
+    handle: entry.handle,
+    title: entry.title,
+    description: entry.description,
     variants: [
       {
-        sku: String(handle) + "-01",
-        title: "Natural",
-        priceCents: Number(price),
-        attributes: { color: "Natural" },
+        sku: entry.handle + "-01",
+        title: entry.variantTitle,
+        priceCents: entry.priceCents,
+        attributes: { color: entry.variantColor },
       },
     ],
-    translations: [
-      { locale: "zh", title: String(zh), description: "精心挑选的日常好物。" },
-    ],
+    translations: entry.translations,
   });
 }
+
 console.log(
-  "Synthetic demo seeded. Owner: owner@example.test. No real payments or email verification are implied.",
+  `Synthetic demo seeded. Owner: ${storeData.ownerEmail}. No real payments or email verification are implied.`,
 );
 await queryClient.end();

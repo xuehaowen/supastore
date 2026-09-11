@@ -1,0 +1,20 @@
+paymentAccount:
+  accountName: "Demo bank transfer"
+  accountIdentifier: "SYNTHETIC ONLY — Do not send real funds."
+
+shippingZone:
+  name: "Standard"
+  rateCents: 500
+  freeThresholdCents: 5000
+
+pickupLocation:
+  name: "The studio"
+  address: "1 Demo Street"
+  weeklySchedule:
+    mon: [["12:00", "17:00"]]
+    tue: [["12:00", "17:00"]]
+    wed: [["12:00", "17:00"]]
+    thu: [["12:00", "17:00"]]
+    fri: [["12:00", "17:00"]]
+    sat: [["12:00", "17:00"]]
+    sun: [["12:00", "17:00"]]
