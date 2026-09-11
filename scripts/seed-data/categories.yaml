@@ -1,0 +1,15 @@
+# Categories are seeded before products.
+# Products reference categories by slug.
+# parentSlug is optional — set to another category's slug for subcategories.
+
+- slug: apparel
+  name: Apparel
+  sortOrder: 0
+
+- slug: homeware
+  name: Homeware
+  sortOrder: 1
+
+- slug: accessories
+  name: Accessories
+  sortOrder: 2

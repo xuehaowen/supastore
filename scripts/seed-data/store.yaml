@@ -3,10 +3,17 @@ supportEmail: "support@example.test"
 ownerEmail: "owner@example.test"
 ownerName: "Demo Owner"
 
-# Optional store settings (schema defaults shown as comments)
-currency: USD               # default: USD
-precision: 2                # decimal places
+# Localisation
+currency: USD
+precision: 2
 defaultLocale: en
 timezone: UTC
-taxRateBasisPoints: 0       # 100 = 1%
+
+# Tax
+taxRateBasisPoints: 0     # 100 = 1%
 isTaxInclusive: false
+
+# Ordering
+isOrderingEnabled: true
+isPaused: false
+pauseMessage: "The store is currently paused. Please check back soon."
