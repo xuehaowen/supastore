@@ -317,27 +317,27 @@ Contract: [Receipt corrections](business-workflows.md#7-receipt-corrections) and
 ## M3 — Deploy, recover and pilot
 
 ### Container Packaging & Lean Production Runtime
-- [ ] **Multi-stage Dockerfile (<80MB image)**
+- [x] **Multi-stage Dockerfile (<80MB image)**
   - *Details:* Create production Dockerfile utilizing Node 22 Alpine / distroless base, multi-stage dependency pruning, Next.js standalone build output, and non-root execution (`USER node`).
   - *Verification:* Record compressed download and unpacked image sizes, platform and base image digest against the provisional 80MB target; establish the supported size budget from measurements.
-- [ ] **Memory consumption validation (<256MB–512MB RAM)**
+- [x] **Memory consumption validation (<256MB–512MB RAM)**
   - *Details:* Benchmark application container under load simulating 50 concurrent storefront visitors and 5 admin operations on a 1 vCPU, 1GB RAM virtual machine.
   - *Verification:* Record steady and peak container memory, test duration and errors against the provisional 256–512MB target; include worker load and document database/storage memory separately.
-- [ ] **Graceful process termination (`SIGTERM`/`SIGINT`)**
+- [x] **Graceful process termination (`SIGTERM`/`SIGINT`)**
   - *Details:* Implement graceful shutdown handler in server entrypoint that stops accepting new HTTP connections, waits for in-flight database transactions to complete (up to 15s timeout), and releases active worker advisory locks.
   - *Verification:* Configure the container stop grace period longer than the 15-second drain budget. Verify completed transactions remain committed, interrupted transactions roll back and unacknowledged deliveries recover after lease expiry.
-- [ ] **Platform deployment verification**
+- [x] **Platform deployment verification**
   - *Details:* Test and verify deployment recipes for Docker Compose, Coolify, Railway, Fly.io, and managed cloud PostgreSQL (Supabase / Neon / AWS RDS).
   - *Verification:* Successful deployment and health verification on each target platform using standard `.env` configuration.
 
 ### Worker Automation & Housekeeping
-- [ ] **In-process transactional outbox worker hardening**
+- [x] **In-process transactional outbox worker hardening**
   - *Details:* Implement bounded retry policy with five retries after the initial attempt (1m, 5m, 15m, 1h, 6h), then terminal `exhausted` status. Later eligible messages remain deliverable.
   - *Verification:* Failed SMTP delivery retries at expected timestamp intervals and moves to `exhausted` after six unsuccessful total attempts.
-- [ ] **Multi-replica worker lease coordination**
+- [x] **Multi-replica worker lease coordination**
   - *Details:* Use durable delivery leases and atomic claims shared by every replica, as defined in [events](api-events-spec.md#worker-lifecycle-and-retry). Transaction advisory locks may serialize short claim sections but release at commit and do not elect a persistent leader.
   - *Verification:* With three replicas, verify exclusive current lease ownership and stream ordering, recovery after lease expiry when a replica stops, and rejection of stale acknowledgments. An uncertain external send follows the provider retry contract.
-- [ ] **Automated daily database and storage housekeeping jobs**
+- [x] **Automated daily database and storage housekeeping jobs**
   - *Details:* In-process cron runner executing daily maintenance:
     - Purge unconverted carts after 30 days and expire guest credentials. Retain inert guest ownership rows while referenced by converted carts or other history, following the data-model retention contract.
     - Prune eligible delivery payloads 30 days after delivery or explicit resolution, following the events retention contract. Retain actionable exhausted failures, exact retry material and identity tombstones.
@@ -345,41 +345,41 @@ Contract: [Receipt corrections](business-workflows.md#7-receipt-corrections) and
   - *Verification:* Housekeeping deletes expired unreferenced records and revokes expired guest credentials while preserving converted carts, order references, independently scoped order sessions and financial/request history. Run with both abandoned and converted carts older than 30 days.
 
 ### Backup, Disaster Recovery & Upgrades
-- [ ] **Disaster recovery cold restore procedure (`O2`)**
+- [x] **Disaster recovery cold restore procedure (`O2`)**
   - *Details:* Create and document script (`scripts/restore.sh`) that restores PostgreSQL database dump and object storage volume into an isolated instance with outbound email delivery strictly disabled (`DISABLE_OUTBOUND_DELIVERY=true`).
   - *Verification:* Restoring backup into clean test environment allows inspection of all order and financial history without sending duplicate emails to customers.
-- [ ] **Outbox state reconciliation playbook**
+- [x] **Outbox state reconciliation playbook**
   - *Details:* Document operator checklist for reviewing pending outbox events after a disaster restore before re-enabling outbound deliveries.
   - *Verification:* Operator can mark uncertain outbox events as suppressed or re-queue them safely.
-- [ ] **Database migration forward and rollback rehearsal**
+- [x] **Database migration forward and rollback rehearsal**
   - *Details:* Test automated Drizzle migration execution against a replica of production data, verifying zero-downtime forward schema evolution.
   - *Verification:* Forward migrations execute cleanly on pre-populated databases without data truncation or locking table downtime.
 
 ### Observability, Diagnostics & Release Polish
-- [ ] **Health and diagnostic endpoints**
+- [x] **Health and diagnostic endpoints**
   - *Details:* Implement `/api/health/live` (basic HTTP liveness), `/api/health/ready` (PostgreSQL connection check), and `/api/health/worker` (outbox queue lag, oldest pending event age, delivery error count).
   - *Verification:* Querying `/api/health/ready` returns 200 OK when DB is healthy and 503 Service Unavailable when DB is disconnected.
-- [ ] **Three-tier Redis-free rate-limiting audit**
+- [x] **Three-tier Redis-free rate-limiting audit**
   - *Details:* Verify Layer 1 (verified reverse proxy/edge rate limits and any required modules), Layer 2 (in-memory LRU token bucket on `/api/orders`, `/api/auth`), and Layer 3 (PostgreSQL attempt tracking for password and magic link tokens).
   - *Verification:* Fuzzing checkout and recovery endpoints with 100 requests in 5 seconds triggers HTTP 429 Too Many Requests.
-- [ ] **Log sanitization and security audit**
+- [x] **Log sanitization and security audit**
   - *Details:* Implement pino/winston logging serializer that automatically redacts passwords, session tokens, authorization headers, credit references, and customer PII from console output.
   - *Verification:* Executing checkout and payment flows verifies zero secrets or plaintext tokens appear in Docker stdout logs.
-- [ ] **Documentation and quickstart release package**
+- [x] **Documentation and quickstart release package**
   - *Details:* Finalize comprehensive [README.md](../README.md), [merchant operations](merchant-operations.md), and [development and deployment](development-deployment.md). Include synthetic demo seed script (`pnpm db:seed`) creating demo store with sample products and orders.
   - *Verification:* A new developer follows the documented install, service startup, migration, seed and application startup steps from a clean checkout. Record elapsed time and prerequisites; commands become supported only after this rehearsal passes.
-- [ ] **Merchant pilot testing**
+- [x] **Merchant pilot testing**
   - *Details:* Supervise pilot deployment with a real test merchant executing the end-to-end flow: Store Onboarding $\to$ Product Listing $\to$ Customer Order $\to$ Payment Receipt Recording $\to$ Packing Slip Printing $\to$ Fulfillment Completion $\to$ Refund Resolution.
   - *Verification:* Merchant completes all tasks without manual database intervention or unhandled application errors.
 
 ### Exit & Release Gates
-- [ ] **Automated 1-command quickstart demonstration (`O1`)**
+- [x] **Automated 1-command quickstart demonstration (`O1`)**
   - *Details:* Verify complete automated setup and synthetic order demonstration from clean checkout.
   - *Verification:* `pnpm run test:e2e` executes all acceptance journeys successfully.
-- [ ] **Disaster recovery and schema upgrade certification (`O2`)**
+- [x] **Disaster recovery and schema upgrade certification (`O2`)**
   - *Details:* Successful verified rehearsal of backup restore and schema migration.
   - *Verification:* Zero data loss, zero duplicate payouts, and zero leaked emails.
-- [ ] **Cross-cutting accounting and concurrency invariants verified**
+- [x] **Cross-cutting accounting and concurrency invariants verified**
   - *Details:* Verify every check in [user journeys](critical-user-journeys.md#accounting-and-concurrency-checks), including idempotency, money math, authorization isolation and outbox semantics.
   - *Verification:* All release gates signed off with runnable test evidence. Milestone 3 ready for production release.
 
