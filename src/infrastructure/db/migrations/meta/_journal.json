@@ -43,6 +43,13 @@
       "when": 1789160026239,
       "tag": "0005_catalog_translations",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789162195655,
+      "tag": "0006_mushy_ben_urich",
+      "breakpoints": true
     }
   ]
 }
