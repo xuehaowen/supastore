@@ -265,3 +265,124 @@ export async function reconcilePayout(input: ReconcilePayoutInput) {
     };
   });
 }
+
+export interface ResolvePayoutDiscrepancyInput {
+  discrepancyId: string;
+  writeOffCents: number;
+  resolutionReason: string;
+  ownerUserId: string;
+}
+
+/**
+ * Resolves an open payout discrepancy with operator audit notes and optional write-off.
+ * Unblocks subsequent payout attempts once the anomaly is investigated.
+ */
+export async function resolvePayoutDiscrepancy(
+  input: ResolvePayoutDiscrepancyInput
+) {
+  return await db.transaction(async (tx) => {
+    const owner = await verifyStaffInTransaction(tx, input.ownerUserId, "owner");
+
+    const [discrepancy] = await tx
+      .select()
+      .from(payoutDiscrepancies)
+      .where(eq(payoutDiscrepancies.id, input.discrepancyId))
+      .limit(1)
+      .for("update");
+
+    if (!discrepancy) {
+      throw new NotFoundError(
+        `Payout discrepancy '${input.discrepancyId}' not found.`
+      );
+    }
+
+    if (discrepancy.status === "resolved") {
+      throw new InvariantViolationError(
+        "Discrepancy has already been resolved."
+      );
+    }
+
+    const [updated] = await tx
+      .update(payoutDiscrepancies)
+      .set({
+        status: "resolved",
+        writeOffCents: input.writeOffCents || 0,
+        resolvedByUserId: owner.userId,
+        resolvedAt: new Date(),
+      })
+      .where(eq(payoutDiscrepancies.id, discrepancy.id))
+      .returning();
+
+    // Update attempt status from reconciliation_required to reconciled
+    await tx
+      .update(payoutAttempts)
+      .set({
+        status: "reconciled",
+        updatedAt: new Date(),
+      })
+      .where(eq(payoutAttempts.id, discrepancy.payoutAttemptId));
+
+    await tx.insert(auditRecords).values({
+      entityType: "payout_discrepancy",
+      entityId: discrepancy.id,
+      actorId: owner.userId,
+      action: "payout.discrepancy_resolved",
+      reason: input.resolutionReason,
+      details: {
+        discrepancyId: discrepancy.id,
+        writeOffCents: input.writeOffCents || 0,
+      },
+    });
+
+    return updated!;
+  });
+}
+
+export interface ClosePayoutAttemptInput {
+  attemptId: string;
+  reason: string;
+  ownerUserId: string;
+}
+
+/**
+ * Closes an open or partial payout attempt when verified evidence confirms no further
+ * remainder transfer is pending on the attempt.
+ */
+export async function closePayoutAttempt(input: ClosePayoutAttemptInput) {
+  return await db.transaction(async (tx) => {
+    const owner = await verifyStaffInTransaction(tx, input.ownerUserId, "owner");
+
+    await acquireTransactionLocks(tx, { payoutAttemptIds: [input.attemptId] });
+
+    const [attempt] = await tx
+      .select()
+      .from(payoutAttempts)
+      .where(eq(payoutAttempts.id, input.attemptId))
+      .limit(1);
+
+    if (!attempt) {
+      throw new NotFoundError(`Payout attempt '${input.attemptId}' not found.`);
+    }
+
+    const [updated] = await tx
+      .update(payoutAttempts)
+      .set({
+        status: "reconciled",
+        updatedAt: new Date(),
+      })
+      .where(eq(payoutAttempts.id, attempt.id))
+      .returning();
+
+    await tx.insert(auditRecords).values({
+      entityType: "payout_attempt",
+      entityId: attempt.id,
+      actorId: owner.userId,
+      action: "payout.attempt_closed",
+      reason: input.reason,
+      details: { attemptId: attempt.id },
+    });
+
+    return updated!;
+  });
+}
+
