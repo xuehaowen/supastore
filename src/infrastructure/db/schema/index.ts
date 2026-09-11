@@ -12,3 +12,4 @@ export * from "./payment-uploads";
 
 export * from "./auth";
 export * from "./order-proposals";
+export * from "./catalog-translations";
