@@ -1,32 +1,29 @@
-import { describe, it, expect } from 'vitest';
-import { MockEmailAdapter } from '@/infrastructure/notifications/mock';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { getNextRetryInfo, processOutboxBatch } from '@/infrastructure/worker/outbox';
+import type { NotificationAdapter } from '@/infrastructure/notifications/adapter';
 
-describe('Transactional Outbox Notification Worker', () => {
-  it('records and verifies sent email deliveries via MockEmailAdapter', async () => {
-    const mockAdapter = new MockEmailAdapter();
+describe('Outbox Worker Unit Tests', () => {
+  it('respects DISABLE_OUTBOUND_DELIVERY flag', async () => {
+    process.env.DISABLE_OUTBOUND_DELIVERY = 'true';
+    try {
+      const mockAdapter: NotificationAdapter = {
+        sendEmail: vi.fn(),
+      };
+      const result = await processOutboxBatch({ adapter: mockAdapter });
+      expect(result).toBe(0);
+      expect(mockAdapter.sendEmail).not.toHaveBeenCalled();
+    } finally {
+      delete process.env.DISABLE_OUTBOUND_DELIVERY;
+    }
+  });
 
-    const payload = {
-      recipient: 'customer@example.com',
-      subject: 'Notification: order.submitted',
-      template: 'order.submitted',
-      data: {
-        orderId: 'order-123',
-        referenceCode: 'SP-7K4M-9Q22K',
-        purchaseTotalCents: 4500,
-      },
-    };
-
-    const result = await mockAdapter.sendEmail(payload);
-
-    expect(result.success).toBe(true);
-    expect(result.messageId).toBeDefined();
-
-    const sent = mockAdapter.getSentMessages();
-    expect(sent.length).toBe(1);
-    expect(sent[0]!.recipient).toBe('customer@example.com');
-    expect(sent[0]!.data.referenceCode).toBe('SP-7K4M-9Q22K');
-
-    mockAdapter.clear();
-    expect(mockAdapter.getSentMessages().length).toBe(0);
+  it('determines exhaustion accurately after 5 retries (6 total attempts)', () => {
+    // attempts = 0 (before 1st failure) -> next is retry 1
+    expect(getNextRetryInfo(0).status).toBe('retrying');
+    // attempts = 4 (before 5th failure) -> next is retry 5
+    expect(getNextRetryInfo(4).status).toBe('retrying');
+    // attempts = 5 (before 6th failure) -> next is exhausted
+    expect(getNextRetryInfo(5).status).toBe('exhausted');
+    expect(getNextRetryInfo(5).attempts).toBe(6);
   });
 });

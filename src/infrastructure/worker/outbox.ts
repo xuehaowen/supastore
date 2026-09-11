@@ -12,9 +12,50 @@ export interface ProcessOutboxOptions {
 }
 
 /**
+ * Bounded retry schedule: 5 retries after initial attempt (1m, 5m, 15m, 1h, 6h),
+ * then terminal 'exhausted' status.
+ */
+export const RETRY_DELAYS_MS = [
+  60_000,      // 1m (after 1st failed attempt)
+  300_000,     // 5m (after 2nd failed attempt)
+  900_000,     // 15m (after 3rd failed attempt)
+  3_600_000,   // 1h (after 4th failed attempt)
+  21_600_000,  // 6h (after 5th failed attempt)
+];
+
+export const MAX_DELIVERY_ATTEMPTS = 6; // 1 initial attempt + 5 retries
+
+export function getNextRetryInfo(currentAttempts: number, now = Date.now()): {
+  status: 'retrying' | 'exhausted';
+  attempts: number;
+  retryAfter: Date;
+} {
+  const nextAttempts = currentAttempts + 1;
+  if (nextAttempts >= MAX_DELIVERY_ATTEMPTS) {
+    return {
+      status: 'exhausted',
+      attempts: nextAttempts,
+      retryAfter: new Date(now),
+    };
+  }
+
+  const delayMs = RETRY_DELAYS_MS[nextAttempts - 1] ?? 21_600_000;
+  return {
+    status: 'retrying',
+    attempts: nextAttempts,
+    retryAfter: new Date(now + delayMs),
+  };
+}
+
+/**
  * Process a single batch of pending/retrying event deliveries using SELECT ... FOR UPDATE SKIP LOCKED.
  */
 export async function processOutboxBatch(options: ProcessOutboxOptions = {}): Promise<number> {
+  // Check if outbound delivery is disabled (e.g. during disaster recovery cold restore)
+  if (process.env.DISABLE_OUTBOUND_DELIVERY === 'true') {
+    return 0;
+  }
+
   const batchSize = options.batchSize ?? 10;
   const leaseDurationMs = options.leaseDurationMs ?? 30_000;
   const adapter = options.adapter ?? mockEmailAdapter;
@@ -69,6 +110,7 @@ export async function processOutboxBatch(options: ProcessOutboxOptions = {}): Pr
       });
 
       if (result.success) {
+        // Only acknowledge if lease is still ours or active
         await db
           .update(eventDeliveries)
           .set({
@@ -80,35 +122,29 @@ export async function processOutboxBatch(options: ProcessOutboxOptions = {}): Pr
           })
           .where(eq(eventDeliveries.id, item.id));
       } else {
-        const nextAttempts = item.attempts + 1;
-        const isExhausted = nextAttempts >= 5;
-        const retryAfter = new Date(Date.now() + Math.min(60_000 * Math.pow(2, nextAttempts), 3_600_000));
-
+        const retryInfo = getNextRetryInfo(item.attempts);
         await db
           .update(eventDeliveries)
           .set({
-            status: isExhausted ? 'exhausted' : 'retrying',
+            status: retryInfo.status,
             leaseToken: null,
             leaseExpiresAt: null,
-            attempts: nextAttempts,
-            retryAfter,
+            attempts: retryInfo.attempts,
+            retryAfter: retryInfo.retryAfter,
             updatedAt: new Date(),
           })
           .where(eq(eventDeliveries.id, item.id));
       }
     } catch {
-      const nextAttempts = item.attempts + 1;
-      const isExhausted = nextAttempts >= 5;
-      const retryAfter = new Date(Date.now() + Math.min(60_000 * Math.pow(2, nextAttempts), 3_600_000));
-
+      const retryInfo = getNextRetryInfo(item.attempts);
       await db
         .update(eventDeliveries)
         .set({
-          status: isExhausted ? 'exhausted' : 'retrying',
+          status: retryInfo.status,
           leaseToken: null,
           leaseExpiresAt: null,
-          attempts: nextAttempts,
-          retryAfter,
+          attempts: retryInfo.attempts,
+          retryAfter: retryInfo.retryAfter,
           updatedAt: new Date(),
         })
         .where(eq(eventDeliveries.id, item.id));

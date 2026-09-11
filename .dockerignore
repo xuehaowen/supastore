@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.gitignore
+.dockerignore
+Dockerfile*
+docker-compose*.yml
+.test-postgres
+test-results
+coverage
+*.log
+.env*.local
+docs
+tests
