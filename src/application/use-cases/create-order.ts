@@ -1,179 +1,60 @@
+import { isDeepStrictEqual } from 'node:util';
 import { eq } from 'drizzle-orm';
+import * as v from 'valibot';
 import { db } from '@/infrastructure/db';
-import {
-  carts,
-  quotes,
-  orders,
-  orderItems,
-  orderFulfillments,
-  outboxEvents,
-  eventDeliveries,
-} from '@/infrastructure/db/schema';
-import { acquireTransactionLocks } from '@/domain/locking/lock-order';
+import { carts, quotes, orders, orderItems, orderFulfillments, storeSettings, pickupTimeSlots } from '@/infrastructure/db/schema';
 import { generateOrderReferenceCode } from '@/domain/money/reference-code';
-import { NotFoundError, InvariantViolationError } from '@/application/common/errors';
-import { withIdempotency } from '@/application/common/idempotency';
-
-export interface CreateOrderInput {
-  quoteId: string;
-  guestEmail: string;
-  guestName: string;
-  shippingAddress: Record<string, any>;
-  requestKey?: string;
-}
-
+import { InvariantViolationError, UnauthorizedError } from '@/application/common/errors';
+import { emitOrderEvent } from '@/application/common/events';
+import { issueOrderSession } from './guest/create-guest-session';
+import { calculateQuote, type QuoteTerms } from './get-quote';
+import { getLaunchReadiness } from './store/get-launch-readiness';
+export interface CreateOrderInput { quoteId: string; guestSessionId: string; guestEmail: string; guestName: string; requestKey?: string }
 export async function createOrder(input: CreateOrderInput) {
-  return await db.transaction(async (tx) => {
-    // 1. Fetch quote
-    const [quote] = await tx.select().from(quotes).where(eq(quotes.id, input.quoteId)).limit(1);
-    if (!quote) {
-      throw new NotFoundError(`Quote with ID '${input.quoteId}' not found.`);
-    }
-
-    if (new Date() > new Date(quote.expiresAt)) {
-      throw new InvariantViolationError('Quote has expired. Please refresh your cart to generate a new quote.');
-    }
-
-    // 2. Lock cart
-    await acquireTransactionLocks(tx, { cartIds: [quote.cartId] });
-
-    const [cart] = await tx.select().from(carts).where(eq(carts.id, quote.cartId)).limit(1);
-    if (!cart) {
-      throw new NotFoundError(`Cart '${quote.cartId}' not found.`);
-    }
-
-    // If cart was already converted, idempotently return the existing order
+  const email = v.parse(v.pipe(v.string(),v.trim(),v.email()),input.guestEmail);
+  const name = v.parse(v.pipe(v.string(),v.trim(),v.minLength(1),v.maxLength(120)),input.guestName);
+  return db.transaction(async tx => {
+    const [settings] = await tx.select().from(storeSettings).for('update').limit(1);
+    const [quote] = await tx.select().from(quotes).where(eq(quotes.id,input.quoteId)).limit(1);
+    if (!quote) throw new UnauthorizedError('Quote not found.');
+    const [cart] = await tx.select().from(carts).where(eq(carts.id,quote.cartId)).for('update').limit(1);
+    if (!cart || cart.guestSessionId !== input.guestSessionId) throw new UnauthorizedError();
+    // Authorized source-cart recovery precedes expiry and current launch gates.
     if (cart.convertedOrderId) {
-      const [existingOrder] = await tx
-        .select()
-        .from(orders)
-        .where(eq(orders.id, cart.convertedOrderId))
-        .limit(1);
-
-      if (existingOrder) {
-        return {
-          orderId: existingOrder.id,
-          referenceCode: existingOrder.referenceCode,
-          lifecycleStatus: existingOrder.lifecycleStatus,
-          purchaseTotalCents: existingOrder.purchaseTotalCents,
-          isExisting: true,
-        };
-      }
+      const [existing] = await tx.select().from(orders).where(eq(orders.id,cart.convertedOrderId));
+      const session = await issueOrderSession(tx,existing!.id);
+      return { ...existing!, orderId:existing!.id, sessionToken:session.rawToken,isExisting:true };
     }
-
-    return await withIdempotency({
-      tx,
-      requestKey: input.requestKey,
-      actorScope: `guest:${input.guestEmail}`,
-      action: 'order.create',
-      input,
-      execute: async () => {
-        // Generate unique reference code with collision retry loop
-        let referenceCode = '';
-        let isUnique = false;
-        let attempts = 0;
-
-        while (!isUnique && attempts < 10) {
-          attempts++;
-          referenceCode = generateOrderReferenceCode('SP');
-          const [duplicate] = await tx
-            .select({ id: orders.id })
-            .from(orders)
-            .where(eq(orders.referenceCode, referenceCode))
-            .limit(1);
-
-          if (!duplicate) {
-            isUnique = true;
-          }
-        }
-
-        if (!isUnique) {
-          throw new InvariantViolationError('Failed to generate a unique order reference code after multiple attempts.');
-        }
-
-        // Insert order
-        const [order] = await tx
-          .insert(orders)
-          .values({
-            sourceCartId: cart.id,
-            referenceCode,
-            quoteId: quote.id,
-            lifecycleStatus: 'unpaid',
-            purchaseTotalCents: quote.totalPayableCents,
-            guestEmail: input.guestEmail,
-            guestName: input.guestName,
-            shippingAddressSnapshot: input.shippingAddress,
-            financialRevision: 1,
-          })
-          .returning();
-
-        // Insert order items from quote snapshot
-        const itemsSnapshot = quote.itemsSnapshot as Array<{
-          variantId: string;
-          quantity: number;
-          unitPriceCents: number;
-        }>;
-
-        for (const item of itemsSnapshot) {
-          await tx.insert(orderItems).values({
-            orderId: order!.id,
-            variantId: item.variantId,
-            quantity: item.quantity,
-            unitPriceCents: item.unitPriceCents,
-            lineTotalCents: item.unitPriceCents * item.quantity,
-          });
-        }
-
-        // Insert initial fulfillment record
-        await tx.insert(orderFulfillments).values({
-          orderId: order!.id,
-          status: 'unfulfilled',
-        });
-
-        // Mark cart as converted
-        await tx
-          .update(carts)
-          .set({
-            convertedOrderId: order!.id,
-            updatedAt: new Date(),
-          })
-          .where(eq(carts.id, cart.id));
-
-        // Insert transactional outbox event
-        const [event] = await tx
-          .insert(outboxEvents)
-          .values({
-            eventType: 'order.submitted',
-            aggregateType: 'order',
-            aggregateId: order!.id,
-            sequence: 1,
-            payload: {
-              orderId: order!.id,
-              referenceCode: order!.referenceCode,
-              purchaseTotalCents: order!.purchaseTotalCents,
-              guestEmail: order!.guestEmail,
-              guestName: order!.guestName,
-            },
-          })
-          .returning();
-
-        // Insert event delivery record
-        await tx.insert(eventDeliveries).values({
-          eventId: event!.id,
-          recipient: input.guestEmail,
-          channel: 'email',
-          status: 'pending',
-          retryAfter: new Date(),
-        });
-
-        return {
-          orderId: order!.id,
-          referenceCode: order!.referenceCode,
-          lifecycleStatus: order!.lifecycleStatus,
-          purchaseTotalCents: order!.purchaseTotalCents,
-          isExisting: false,
-        };
-      },
-    });
+    if (!settings || settings.isPaused || !settings.isOrderingEnabled) throw new InvariantViolationError(settings?.pauseMessage ?? 'Store is currently paused.');
+    const readiness = await getLaunchReadiness(tx);
+    // Free purchases do not require a manual payment method.
+    if (readiness.checklist.some(c=>!c.isReady && !(c.key==='payment' && quote.totalPayableCents===0))) throw new InvariantViolationError('Store setup is incomplete. Please contact the store.');
+    if (quote.expiresAt <= new Date() || quote.cartRevision !== cart.revision) throw new InvariantViolationError('Your quote changed or expired. Review a new quote before ordering.');
+    const terms = quote.termsSnapshot as QuoteTerms;
+    const current = await calculateQuote(tx,{cartId:cart.id,guestSessionId:input.guestSessionId,...terms.input});
+    if (!isDeepStrictEqual(current.terms, terms) || !isDeepStrictEqual(current.calculationItems, quote.itemsSnapshot) || current.result.totalPayableCents !== quote.totalPayableCents) throw new InvariantViolationError('Prices or fulfillment terms changed. Review a new quote before ordering.');
+    let order: typeof orders.$inferSelect | undefined;
+    for (let attempt=0;attempt<10 && !order;attempt++) {
+      [order] = await tx.insert(orders).values({
+        sourceCartId:cart.id,referenceCode:generateOrderReferenceCode('SP'),quoteId:quote.id,
+        lifecycleStatus:quote.totalPayableCents===0?'confirmed':'unpaid',purchaseTotalCents:quote.totalPayableCents,
+        guestEmail:email,guestName:name,fulfillmentType:terms.fulfillmentType,shippingAddressSnapshot:terms.shippingAddress,termsSnapshot:terms,
+      }).onConflictDoNothing().returning();
+    }
+    if (!order) throw new InvariantViolationError('Unable to allocate an order reference. Please retry.');
+    await tx.insert(orderItems).values(current.calculationItems.map(i=>({orderId:order!.id,variantId:i.variantId,quantity:i.quantity,unitPriceCents:i.unitPriceCents,lineTotalCents:i.unitPriceCents*i.quantity})));
+    let pickupSlotId: string | null = null;
+    if (terms.pickup) {
+      const { locationId,date,startTime,endTime } = terms.pickup;
+      const [slot] = await tx.insert(pickupTimeSlots).values({locationId,date,startTime,endTime}).onConflictDoUpdate({target:[pickupTimeSlots.locationId,pickupTimeSlots.date,pickupTimeSlots.startTime],set:{locationId}}).returning();
+      pickupSlotId=slot!.id;
+    }
+    await tx.insert(orderFulfillments).values({orderId:order.id,status:'unfulfilled',pickupSlotId});
+    await tx.update(carts).set({convertedOrderId:order.id,updatedAt:new Date()}).where(eq(carts.id,cart.id));
+    await emitOrderEvent(tx,order.id,'order.submitted',email,{orderId:order.id,referenceCode:order.referenceCode,purchaseTotalCents:order.purchaseTotalCents});
+    if (quote.totalPayableCents===0) await emitOrderEvent(tx,order.id,'order.confirmed',email,{orderId:order.id,purchaseTotalCents:0});
+    const session = await issueOrderSession(tx,order.id);
+    return { ...order,orderId:order.id,sessionToken:session.rawToken,isExisting:false };
   });
 }
+

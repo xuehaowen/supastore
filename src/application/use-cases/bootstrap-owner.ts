@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '@/infrastructure/db';
 import { storeSettings, staffMemberships, auditRecords } from '@/infrastructure/db/schema';
 import { ForbiddenError, UnauthorizedError } from '@/application/common/errors';
@@ -19,6 +19,7 @@ export async function bootstrapOwner(input: BootstrapOwnerInput) {
   }
 
   return await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(817234)`);
     // Check if store settings already initialized
     const existing = await tx.select().from(storeSettings).limit(1);
 
