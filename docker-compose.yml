@@ -1,4 +1,46 @@
 services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: supastore-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-supastore}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d supastore"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  adminer:
+    image: adminer:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    ports:
+      - "9001:8080"
+
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: supastore-rustfs
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY_ID:-rustfsadmin}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_ACCESS_KEY:-rustfsadmin}
+    volumes:
+      - rustfs_data:/data
+
   app:
     build:
       context: .
@@ -10,24 +52,29 @@ services:
       - "${PORT:-3000}:3000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://supastore:${POSTGRES_PASSWORD:-postgres_secure_password}@db:5432/supastore?sslmode=disable
-      - ADMIN_SETUP_SECRET=${ADMIN_SETUP_SECRET:-replace_with_a_secure_admin_secret}
-      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-replace_with_a_secure_better_auth_secret_at_least_32_chars}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-supastore}?sslmode=disable
+      - ADMIN_SETUP_SECRET=${ADMIN_SETUP_SECRET:-change-me-to-a-secure-random-secret-for-bootstrap}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-change-me-to-a-secure-random-auth-secret-min-32-chars}
       - BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://localhost:3000}
-      - S3_ENDPOINT=${S3_ENDPOINT:-}
-      - S3_BUCKET=${S3_BUCKET:-supastore-evidence}
-      - S3_REGION=${S3_REGION:-us-east-1}
-      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID:-}
-      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-}
-      - SMTP_HOST=${SMTP_HOST:-}
-      - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_USER=${SMTP_USER:-}
-      - SMTP_PASS=${SMTP_PASS:-}
-      - SMTP_FROM=${SMTP_FROM:-noreply@example.com}
+      - APP_URL=${APP_URL:-http://localhost:3000}
+      - S3_ENDPOINT=http://rustfs:9000
+      - S3_BUCKET_PRIVATE=supastore-private
+      - S3_BUCKET_PUBLIC=supastore-public
+      - S3_REGION=us-east-1
+      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID:-rustfsadmin}
+      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-rustfsadmin}
       - ENABLE_OUTBOX_WORKER=true
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=465
+      - SMTP_SECURE=true
+      - SMTP_USER=milkybakery.contact@gmail.com
+      - SMTP_PASSWORD="nypj zryl ylsi lhxu"
+      - SMTP_FROM="Milky Bakery <milkybakery.contact@gmail.com>"
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
+      rustfs:
+        condition: service_started
     deploy:
       resources:
         limits:
@@ -36,26 +83,6 @@ services:
         reservations:
           memory: 256M
 
-  db:
-    image: postgres:16-alpine
-    container_name: supastore-db
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=supastore
-      - POSTGRES_USER=supastore
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres_secure_password}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U supastore -d supastore"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 256M
-
 volumes:
   postgres_data:
+  rustfs_data:

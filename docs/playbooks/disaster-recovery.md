@@ -13,7 +13,7 @@ This playbook guides the recovery of Supastore following severe infrastructure l
 
 ### Step 1: Provision Isolated Instance
 1. Provision a clean PostgreSQL database (e.g. `supastore_recovery`).
-2. Verify object storage (S3/MinIO) backup artifacts are staged.
+2. Verify object storage (S3/RustFS) backup artifacts are staged.
 
 ### Step 2: Execute Restore Script
 ```bash
