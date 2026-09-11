@@ -268,11 +268,13 @@ for (const entry of productEntries) {
     staffUserId: owner.id,
     handle: entry.handle,
     title: entry.title,
-    description: entry.description,
-    isPublished: entry.isPublished,
     categoryIds,
     variants: entry.variants,
-    translations: entry.translations,
+    ...defined({
+      description: entry.description,
+      isPublished: entry.isPublished,
+      translations: entry.translations,
+    }),
   });
   console.log(`  · created '${entry.handle}' (${entry.variants.length} variant(s))`);
 }
