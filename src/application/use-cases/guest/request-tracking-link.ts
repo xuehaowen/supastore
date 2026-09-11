@@ -1,3 +1,4 @@
+import { allowRequest } from '@/application/common/rate-limit';
 import { randomBytes } from 'node:crypto';
 import { and, eq, sql } from 'drizzle-orm';
 import * as v from 'valibot';
@@ -8,6 +9,7 @@ import { emitOrderEvent } from '@/application/common/events';
 import { acquireTransactionLocks } from '@/domain/locking/lock-order';
 export async function requestTrackingLink(input: { email: string; referenceCode: string }) {
   const email = v.parse(v.pipe(v.string(), v.trim(), v.email()), input.email).toLowerCase();
+  if(!allowRequest('recovery:'+hashToken(email))) return {success:true,message:'If an order was found, a recovery link has been sent.'};
   await db.transaction(async tx => {
     const [order] = await tx.select().from(orders).where(and(
       sql`lower(${orders.guestEmail}) = ${email}`, eq(orders.referenceCode, input.referenceCode.trim().toUpperCase()),
