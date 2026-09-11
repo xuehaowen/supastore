@@ -35,3 +35,6 @@ next-env.d.ts
 
 # Vitest coverage
 coverage/
+.test-postgres/
+playwright-report/
+test-results/

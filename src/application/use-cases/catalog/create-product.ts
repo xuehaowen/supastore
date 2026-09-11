@@ -1,16 +1,19 @@
-import * as v from 'valibot';
-import { storeSettings } from '@/infrastructure/db/schema';
-import { verifyStaffInTransaction } from '@/infrastructure/auth/session';
-import { eq } from 'drizzle-orm';
-import { db } from '@/infrastructure/db';
+import * as v from "valibot";
+import { storeSettings } from "@/infrastructure/db/schema";
+import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
+import { eq } from "drizzle-orm";
+import { db } from "@/infrastructure/db";
 import {
   products,
   productVariants,
   productTranslations,
   productImages,
   productCategories,
-} from '@/infrastructure/db/schema';
-import { ConflictError, InvariantViolationError } from '@/application/common/errors';
+} from "@/infrastructure/db/schema";
+import {
+  ConflictError,
+  InvariantViolationError,
+} from "@/application/common/errors";
 
 export interface CreateProductVariantInput {
   attributes?: Record<string, string>;
@@ -46,12 +49,16 @@ export interface CreateProductInput {
 }
 
 export async function createProduct(input: CreateProductInput) {
-  v.parse(v.pipe(v.string(), v.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)), input.handle);
-  for (const variant of input.variants) v.parse(v.pipe(v.number(), v.integer(), v.minValue(0)), variant.priceCents);
+  v.parse(
+    v.pipe(v.string(), v.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)),
+    input.handle,
+  );
+  for (const variant of input.variants)
+    v.parse(v.pipe(v.number(), v.integer(), v.minValue(0)), variant.priceCents);
   const {
     handle,
     title,
-    description = '',
+    description = "",
     isPublished = true,
     categoryIds = [],
     variants,
@@ -60,23 +67,26 @@ export async function createProduct(input: CreateProductInput) {
   } = input;
 
   if (!variants || variants.length === 0) {
-    throw new InvariantViolationError('A product must have at least one variant');
+    throw new InvariantViolationError(
+      "A product must have at least one variant",
+    );
   }
 
-  return db.transaction(async tx => {
-  await verifyStaffInTransaction(tx, input.staffUserId, 'owner');
-  await tx.select().from(storeSettings).for('update');
-  // Check unique handle
-  const [existing] = await tx
-    .select({ id: products.id })
-    .from(products)
-    .where(eq(products.handle, handle))
-    .limit(1);
+  return db.transaction(async (tx) => {
+    await verifyStaffInTransaction(tx, input.staffUserId, "owner");
+    await tx.select().from(storeSettings).for("update");
+    // Check unique handle
+    const [existing] = await tx
+      .select({ id: products.id })
+      .from(products)
+      .where(eq(products.handle, handle))
+      .limit(1);
 
-  if (existing) {
-    throw new ConflictError(`A product with handle '${handle}' already exists`);
-  }
-
+    if (existing) {
+      throw new ConflictError(
+        `A product with handle '${handle}' already exists`,
+      );
+    }
 
     const [product] = await tx
       .insert(products)
@@ -121,7 +131,7 @@ export async function createProduct(input: CreateProductInput) {
           productId: product.id,
           locale: t.locale,
           title: t.title,
-          description: t.description ?? '',
+          description: t.description ?? "",
         })),
       );
     }
@@ -132,7 +142,7 @@ export async function createProduct(input: CreateProductInput) {
         images.map((img, idx) => ({
           productId: product.id,
           s3Key: img.s3Key,
-          altText: img.altText ?? '',
+          altText: img.altText ?? "",
           sortOrder: img.sortOrder ?? idx,
         })),
       );

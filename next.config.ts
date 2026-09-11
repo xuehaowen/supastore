@@ -1,10 +1,12 @@
-import type { NextConfig } from 'next';
+import createNextIntlPlugin from "next-intl/plugin";
+import type { NextConfig } from "next";
 
-const isStandalone = process.env.STANDALONE === 'true' || process.env.DOCKER_BUILD === 'true';
+const isStandalone =
+  process.env.STANDALONE === "true" || process.env.DOCKER_BUILD === "true";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  ...(isStandalone ? { output: 'standalone' } : {}),
+  ...(isStandalone ? { output: "standalone" } : {}),
 };
 
-export default nextConfig;
+export default createNextIntlPlugin("./src/i18n/request.ts")(nextConfig);

@@ -1,7 +1,11 @@
-import { eq, sql } from 'drizzle-orm';
-import { db } from '@/infrastructure/db';
-import { storeSettings, staffMemberships, auditRecords } from '@/infrastructure/db/schema';
-import { ForbiddenError, UnauthorizedError } from '@/application/common/errors';
+import { eq, sql } from "drizzle-orm";
+import { db } from "@/infrastructure/db";
+import {
+  storeSettings,
+  staffMemberships,
+  auditRecords,
+} from "@/infrastructure/db/schema";
+import { ForbiddenError, UnauthorizedError } from "@/application/common/errors";
 
 export interface BootstrapOwnerInput {
   adminSetupSecret: string;
@@ -15,7 +19,7 @@ export interface BootstrapOwnerInput {
 export async function bootstrapOwner(input: BootstrapOwnerInput) {
   const expectedSecret = process.env.ADMIN_SETUP_SECRET;
   if (!expectedSecret || input.adminSetupSecret !== expectedSecret) {
-    throw new UnauthorizedError('Invalid admin setup secret.');
+    throw new UnauthorizedError("Invalid admin setup secret.");
   }
 
   return await db.transaction(async (tx) => {
@@ -24,7 +28,7 @@ export async function bootstrapOwner(input: BootstrapOwnerInput) {
     const existing = await tx.select().from(storeSettings).limit(1);
 
     if (existing.length > 0 && existing[0]!.isBootstrapCompleted) {
-      throw new ForbiddenError('Bootstrap setup has already been completed.');
+      throw new ForbiddenError("Bootstrap setup has already been completed.");
     }
 
     let storeId: string;
@@ -34,7 +38,7 @@ export async function bootstrapOwner(input: BootstrapOwnerInput) {
         .insert(storeSettings)
         .values({
           storeName: input.storeName,
-          currency: input.currency ?? 'USD',
+          currency: input.currency ?? "USD",
           precision: input.precision ?? 2,
           isBootstrapCompleted: true,
           isOrderingEnabled: true,
@@ -46,7 +50,7 @@ export async function bootstrapOwner(input: BootstrapOwnerInput) {
         .update(storeSettings)
         .set({
           storeName: input.storeName,
-          currency: input.currency ?? 'USD',
+          currency: input.currency ?? "USD",
           precision: input.precision ?? 2,
           isBootstrapCompleted: true,
           updatedAt: new Date(),
@@ -62,13 +66,13 @@ export async function bootstrapOwner(input: BootstrapOwnerInput) {
       .values({
         userId: input.ownerUserId,
         email: input.ownerEmail,
-        role: 'owner',
+        role: "owner",
         isActive: true,
       })
       .onConflictDoUpdate({
         target: staffMemberships.userId,
         set: {
-          role: 'owner',
+          role: "owner",
           isActive: true,
           updatedAt: new Date(),
         },
@@ -76,11 +80,11 @@ export async function bootstrapOwner(input: BootstrapOwnerInput) {
       .returning();
 
     await tx.insert(auditRecords).values({
-      entityType: 'store_settings',
+      entityType: "store_settings",
       entityId: storeId,
       actorId: input.ownerUserId,
-      action: 'store.bootstrap_completed',
-      reason: 'Initial system bootstrap completed',
+      action: "store.bootstrap_completed",
+      reason: "Initial system bootstrap completed",
       details: {
         storeName: input.storeName,
         ownerEmail: input.ownerEmail,
@@ -91,7 +95,7 @@ export async function bootstrapOwner(input: BootstrapOwnerInput) {
       storeId,
       ownerMembershipId: membership!.id,
       storeName: input.storeName,
-      status: 'BOOTSTRAP_COMPLETED',
+      status: "BOOTSTRAP_COMPLETED",
     };
   });
 }

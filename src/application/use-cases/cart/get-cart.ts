@@ -1,5 +1,5 @@
-import { eq, and, isNull, inArray } from 'drizzle-orm';
-import { db } from '@/infrastructure/db';
+import { eq, and, isNull, inArray } from "drizzle-orm";
+import { db } from "@/infrastructure/db";
 import {
   carts,
   cartItems,
@@ -7,10 +7,10 @@ import {
   products,
   productImages,
   productTranslations,
-} from '@/infrastructure/db/schema';
+} from "@/infrastructure/db/schema";
 
 export interface GetCartInput {
-  guestSessionId?: string;
+  guestSessionId: string;
   cartId?: string;
   locale?: string;
 }
@@ -39,10 +39,10 @@ export interface CartDetail {
 }
 
 export async function getCart(input: GetCartInput): Promise<CartDetail | null> {
-  const { guestSessionId, cartId, locale = 'en' } = input;
+  const { guestSessionId, cartId, locale = "en" } = input;
 
-  if (!guestSessionId && !cartId) {
-    throw new Error('Either guestSessionId or cartId must be provided');
+  if (!guestSessionId) {
+    throw new Error("Either guestSessionId or cartId must be provided");
   }
 
   const conditions = [isNull(carts.convertedOrderId)];
@@ -120,7 +120,9 @@ export async function getCart(input: GetCartInput): Promise<CartDetail | null> {
       .orderBy(productImages.sortOrder),
   ]);
 
-  const translationMap = new Map(translations.map((t) => [t.productId, t.title]));
+  const translationMap = new Map(
+    translations.map((t) => [t.productId, t.title]),
+  );
   const imageMap = new Map<string, string>();
   for (const img of images) {
     if (img.variantId && !imageMap.has(`var_${img.variantId}`)) {
@@ -139,7 +141,10 @@ export async function getCart(input: GetCartInput): Promise<CartDetail | null> {
     subtotalCents += lineTotal;
     itemCount += i.quantity;
 
-    const imgKey = imageMap.get(`var_${i.variantId}`) ?? imageMap.get(`prod_${i.productId}`) ?? null;
+    const imgKey =
+      imageMap.get(`var_${i.variantId}`) ??
+      imageMap.get(`prod_${i.productId}`) ??
+      null;
     const translatedTitle = translationMap.get(i.productId) ?? i.productTitle;
 
     return {
