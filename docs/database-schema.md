@@ -93,3 +93,43 @@ To prevent PostgreSQL table and index bloat over long-running operations without
 ## Migration and access verification
 
 Use positive-quantity checks, owned foreign keys, request/reference uniqueness and immutable-history protection. Enable RLS and explicitly verify browser, runtime and migration-role privileges. Index published catalog lookup, guest-scoped orders, admin queues/deadlines, pending deliveries and financial identities. Test clean install and forward upgrade with every slice, including private storage policies where introduced.
+
+## Catalog translation storage
+
+`product_translations`, `category_translations`, `attribute_translations`,
+`attribute_value_translations`, and `variant_translations` each hold one row per
+entity and locale, with a unique entity/locale index and cascading translation
+cleanup. Category and attribute translations provide `name`, attribute values
+provide `label`, and optional custom variant translations provide `title`.
+
+`attributes` has a globally unique stable `code` and a base-language `name`.
+`attribute_values` has a code unique within its attribute and a base-language
+`label`. Both include sort order. `variant_attribute_values` allows one value per
+attribute per variant; a composite foreign key ensures that value belongs to the
+specified attribute. Assigned values cannot be deleted until unlinked; deleting
+a variant removes its assignments and translations.
+
+Migration 0005 adds this storage without converting existing variant attribute
+JSON. Storefront readers use normalized assignments when available and retain the original variant title for legacy variants. General backfill, normalized attribute editing, and translation editing are follow-up application work. Locale validation remains an application concern,
+and writers must explicitly update `updated_at` when editing rows.
+
+
+Demo seed data includes `attributes.yaml` with stable attribute/value codes and
+Chinese display translations. Categories and variants declare their own
+translations; variant `attributeValues` maps stable codes to value codes while
+legacy `attributes` retains display labels for existing readers. The seed loader
+upserts these translations and assignments in a transaction, including for
+existing demo products. Undeclared rows are retained. Unknown attribute values or
+missing referenced entities fail the transaction. Run the existing guarded
+`db:seed` command against an isolated demo database after reviewing the YAML.
+
+
+Storefront category filters, product details, variant options, and cart titles
+resolve requested locale, then store default locale, then original text. Empty
+translated strings are intentional and do not trigger fallback. Variant titles
+prefer a translated custom title; otherwise normalized attribute value labels
+form a title in attribute sort order, with the original title used when no
+assignments exist. Option labels also expose translated attribute names. Locale
+is part of the existing cached product/catalog function arguments; after changing
+translations, invalidate the `catalog` cache tag or allow its TTL to expire.
+
