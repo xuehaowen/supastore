@@ -27,21 +27,22 @@ export default async function Cart({
     : null;
   const [store] = await db.select().from(storeSettings).limit(1);
   return (
-    <section className="mx-auto my-12 min-h-[50vh] max-w-4xl">
+    <section className="mx-auto my-12 min-h-[50vh] max-w-5xl">
       <p className="mb-6 text-[10px] font-bold tracking-[0.2em]">YOUR SELECTION</p>
       <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">{t("cart")}</h1>
       <Notice error={error} />
       {cart?.items.length ? (
         <>
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
           <div className="space-y-4">
             {cart.items.map((item) => (
               <Card key={item.id}>
-                <CardContent className="grid items-center gap-4 sm:grid-cols-[2fr_1fr_auto_auto]">
+                <CardContent className="grid items-center gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(9rem,1fr)_auto_auto]">
                 <div>
                   <Link href={"/" + locale + "/products/" + item.productHandle}>
                     <h2>{item.productTitle}</h2>
                   </Link>
-                  <p>{item.title}</p>
+                  <p className="text-sm text-muted-foreground">{item.title}</p>
                   {!item.isAvailable && (
                     <Badge variant="secondary">{t("unavailable")}</Badge>
                   )}
@@ -64,7 +65,7 @@ export default async function Cart({
                   </div>
                   <Button type="submit" variant="outline">Update</Button>
                 </form>
-                <strong>
+                 <strong className="tabular-nums">
                   {money(
                     item.lineTotalCents,
                     store?.currency,
@@ -81,15 +82,20 @@ export default async function Cart({
               </Card>
             ))}
           </div>
-          <div className="mt-6 flex justify-between border-t py-6 text-xl">
-            <span>Subtotal</span>
-            <strong>
-              {money(cart.subtotalCents, store?.currency, store?.precision)}
-            </strong>
+          <aside aria-label="Order summary" className="rounded-xl border bg-card p-5 lg:sticky lg:top-6">
+            <p className="text-sm font-medium text-muted-foreground">Order summary</p>
+            <div className="mt-5 flex justify-between border-t pt-5 text-xl">
+              <span>Subtotal</span>
+              <strong className="tabular-nums">
+                {money(cart.subtotalCents, store?.currency, store?.precision)}
+              </strong>
+            </div>
+            <p className="mt-3 text-xs leading-5 text-muted-foreground">Shipping, tax, and fulfillment options are confirmed at checkout.</p>
+            <Button className="mt-5 w-full" render={<Link href={"/" + locale + "/checkout"} />}>
+              {t("checkout")} <span aria-hidden="true">→</span>
+            </Button>
+          </aside>
           </div>
-          <Button render={<Link href={"/" + locale + "/checkout"} />}>
-            {t("checkout")} →
-          </Button>
         </>
       ) : (
         <>
