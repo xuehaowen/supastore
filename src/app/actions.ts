@@ -58,6 +58,7 @@ import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { DomainError } from "@/application/common/errors";
 import { ValiError } from "valibot";
 import {
+  parseActionBoolean,
   parseActionEnum,
   parseActionDestination,
   parseActionInteger,
@@ -132,7 +133,7 @@ export async function quoteCart(form: FormData) {
           }
         : {}),
       pickupTime: field(form, "pickupTime"),
-      paymentAccountId: field(form, "paymentAccountId"),
+      ...(field(form, "paymentAccountId") ? { paymentAccountId: parseActionUuid(field(form, "paymentAccountId"), "Payment account") } : {}),
     });
     return "/" + locale + "/checkout?quote=" + quote.id;
   });
@@ -173,10 +174,13 @@ export async function exchangeLink(form: FormData) {
   });
 }
 export async function acceptProposal(form: FormData) {
-  const id = parseActionUuid(field(form, "orderId"), "Order");
+  const rawId = field(form, "orderId");
+  const locale = localeOf(field(form, "locale"));
+  const validId = /^[0-9a-f-]{36}$/i.test(rawId);
   return perform(
-    "/" + localeOf(field(form, "locale")) + "/orders/" + id,
+    validId ? "/" + locale + "/orders/" + rawId : "/recover",
     async () => {
+      const id = parseActionUuid(rawId, "Order");
       await acceptOrderChange({
         orderId: id,
         proposalId: parseActionUuid(field(form, "proposalId"), "Proposal"),
@@ -206,10 +210,10 @@ export async function saveSettings(form: FormData) {
       storeName: field(form, "storeName"),
       supportEmail: field(form, "supportEmail"),
       currency: field(form, "currency"),
-      precision: Number(field(form, "precision")),
-      defaultLocale: localeOf(field(form, "defaultLocale")),
+      precision: parseActionInteger(field(form, "precision"), "Decimal places", 0, 4),
+      defaultLocale: parseActionEnum(field(form, "defaultLocale"), "Default language", ["en", "zh"] as const),
       timezone: field(form, "timezone"),
-      taxRateBasisPoints: Number(field(form, "taxRate")),
+      taxRateBasisPoints: parseActionInteger(field(form, "taxRate"), "Tax rate", 0, 10000),
       isTaxInclusive: form.has("taxInclusive"),
       logoKey: field(form, "logoKey"),
       setupCompleted: true,
@@ -230,9 +234,9 @@ export async function saveShipping(form: FormData) {
                 .split(",")
                 .map((s) => s.trim().toUpperCase())
             : null,
-          rateCents: Number(field(form, "rate")),
+          rateCents: parseActionInteger(field(form, "rate"), "Shipping rate", 0, 2147483647),
           freeThresholdCents: field(form, "freeThreshold")
-            ? Number(field(form, "freeThreshold"))
+            ? parseActionInteger(field(form, "freeThreshold"), "Free shipping threshold", 0, 2147483647)
             : null,
         },
       ],
@@ -258,7 +262,7 @@ export async function savePickup(form: FormData) {
         name: field(form, "name"),
         address: field(form, "address"),
         weeklySchedule: schedule,
-        prepMinutes: Number(field(form, "prepMinutes")),
+        prepMinutes: parseActionInteger(field(form, "prepMinutes"), "Preparation notice", 0, 2147483647),
       },
     });
   });
@@ -269,16 +273,16 @@ export async function savePayment(form: FormData) {
     await db.transaction(async (tx) => {
       await verifyStaffInTransaction(tx, staff, "owner");
       await tx.select().from(storeSettings).for("update");
-      const id = field(form, "id");
+      const id = field(form, "id") ? parseActionUuid(field(form, "id"), "Payment account") : "";
       if (id)
         await tx
           .update(paymentAccounts)
-          .set({ isActive: field(form, "active") === "true" })
+          .set({ isActive: parseActionBoolean(field(form, "active"), "Active") })
           .where(eq(paymentAccounts.id, id));
-      else if (field(form, "name") && field(form, "instructions"))
+      else
         await tx.insert(paymentAccounts).values({
-          accountName: field(form, "name"),
-          accountIdentifier: field(form, "instructions"),
+          accountName: parseActionRequiredText(field(form, "name"), "Payment method name", 120),
+          accountIdentifier: parseActionRequiredText(field(form, "instructions"), "Payment instructions", 2000),
         });
     });
   });
@@ -287,7 +291,7 @@ export async function togglePause(form: FormData) {
   return perform("/admin", async () => {
     await updateStoreSettings({
       staffUserId: await staffIdentity(),
-      isPaused: field(form, "paused") === "true",
+      isPaused: parseActionBoolean(field(form, "paused"), "Paused"),
       pauseMessage: field(form, "message") || "Store is currently paused.",
     });
     revalidateTag("catalog");
@@ -303,11 +307,11 @@ export async function saveProduct(form: FormData) {
       description: field(form, "description"),
       categoryIds: form.getAll("categoryIds").map(String),
       variants: Array.from(
-        { length: Math.min(50, Number(field(form, "variantCount")) || 1) },
+        { length: parseActionInteger(field(form, "variantCount"), "Variant count", 1, 50) },
         (_, i) => ({
           sku: field(form, "sku-" + i),
           title: field(form, "variantTitle-" + i),
-          priceCents: Number(field(form, "price-" + i)),
+          priceCents: parseActionInteger(field(form, "price-" + i), "Variant price", 0, 2_147_483_647),
           attributes: {
             color: field(form, "color-" + i),
             size: field(form, "size-" + i),
@@ -337,12 +341,12 @@ export async function toggleAvailability(form: FormData) {
       staffUserId: await staffIdentity(),
       ...(field(form, "productId")
         ? {
-            productId: field(form, "productId"),
-            isPublished: field(form, "published") === "true",
+            productId: parseActionUuid(field(form, "productId"), "Product"),
+            isPublished: parseActionBoolean(field(form, "published"), "Published"),
           }
         : {
-            variantId: field(form, "variantId"),
-            isAvailable: field(form, "available") === "true",
+            variantId: parseActionUuid(field(form, "variantId"), "Variant"),
+            isAvailable: parseActionBoolean(field(form, "available"), "Available"),
           }),
     });
     revalidateTag("catalog");
@@ -353,8 +357,8 @@ export async function proposeChange(form: FormData) {
   return perform("/admin", async () => {
     await proposeOrderChange({
       staffUserId: await staffIdentity(),
-      orderId: field(form, "orderId"),
-      totalCents: Number(field(form, "total")),
+      orderId: parseActionUuid(field(form, "orderId"), "Order"),
+      totalCents: parseActionInteger(field(form, "total"), "Proposed total", 0, 2147483647),
       reason: field(form, "reason"),
     });
   });
@@ -367,9 +371,9 @@ export async function receivePayment(form: FormData) {
       );
     await recordReceipt({
       staffUserId: await staffIdentity(),
-      orderId: field(form, "orderId"),
-      paymentAccountId: field(form, "accountId"),
-      amountCents: Number(field(form, "amount")),
+      orderId: parseActionUuid(field(form, "orderId"), "Order"),
+      paymentAccountId: parseActionUuid(field(form, "accountId"), "Payment account"),
+      amountCents: parseActionInteger(field(form, "amount"), "Received amount", 1, 2147483647),
       rawReference: field(form, "reference"),
     });
   });
@@ -378,7 +382,7 @@ export async function confirmPayment(form: FormData) {
   return perform("/admin", async () => {
     await confirmOrder({
       staffUserId: await staffIdentity(),
-      orderId: field(form, "orderId"),
+      orderId: parseActionUuid(field(form, "orderId"), "Order"),
     });
   });
 }
@@ -543,7 +547,7 @@ export async function updateStaffMember(form: FormData) {
       actorUserId: await staffIdentity(),
       targetUserId: parseActionRequiredText(field(form, "targetUserId"), "Staff user", 200),
       role: parseActionEnum(field(form, "role"), "Staff role", ["owner", "staff"] as const),
-      isActive: field(form, "active") === "true",
+      isActive: parseActionBoolean(field(form, "active"), "Active"),
     });
   });
 }
@@ -584,10 +588,11 @@ export async function saveCategory(form: FormData) {
       await tx.insert(categories).values({
         name: field(form, "name"),
         slug,
-        parentId: field(form, "parentId") || null,
+        parentId: field(form, "parentId") ? parseActionUuid(field(form, "parentId"), "Parent category") : null,
       });
     });
     revalidateTag("catalog");
     revalidatePath("/[locale]", "layout");
   });
 }
+
