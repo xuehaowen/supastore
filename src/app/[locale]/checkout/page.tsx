@@ -12,7 +12,13 @@ import { getCart } from "@/application/use-cases/cart/get-cart";
 import type { QuoteTerms } from "@/application/use-cases/get-quote";
 import { quoteCart, placeOrder } from "@/app/actions";
 import { Field, Hidden, Notice } from "@/app/components";
+import { CheckoutFields } from "@/app/checkout-fields";
+import { pickupAvailability } from "@/domain/pickup-availability";
 import { getTranslations } from "next-intl/server";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 export default async function Checkout({
   params,
   searchParams,
@@ -22,7 +28,7 @@ export default async function Checkout({
 }) {
   const { locale } = await params;
   const query = await searchParams;
-  const t = await getTranslations({locale});
+  const t = await getTranslations({ locale });
   const identity = await guestIdentity();
   const cart = identity
     ? await getCart({ guestSessionId: identity, locale })
@@ -32,7 +38,10 @@ export default async function Checkout({
     .select({ id: paymentAccounts.id, name: paymentAccounts.accountName })
     .from(paymentAccounts)
     .where(eq(paymentAccounts.isActive, true));
-  const [pickup] = await db.select().from(pickupLocation).limit(1);
+  const locations = await db
+    .select()
+    .from(pickupLocation)
+    .orderBy(pickupLocation.name);
   const [ownedQuote] = query.quote
     ? await db
         .select({ quote: quotes })
@@ -44,41 +53,58 @@ export default async function Checkout({
     : [];
   const quote = ownedQuote?.quote;
   return (
-    <section className="narrow">
-      <p className="eyebrow">ONE LAST LOOK</p>
-      <h1>{t("review")}</h1>
+    <section className="mx-auto my-12 min-h-[50vh] max-w-4xl">
+      <p className="mb-6 text-[10px] font-bold tracking-[0.2em]">{t("eyebrowCheckout")}</p>
+      <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">{t("review")}</h1>
       <Notice error={query.error} />
       {quote ? (
-        <div className="checkout-grid">
-          <div>
-            <h2>Accepted quote</h2>
+        <div className="grid gap-8 md:grid-cols-2">
+          <Card><CardHeader><CardTitle>{t("finalOrderTotal")}</CardTitle></CardHeader><CardContent>
+            <a href={"/" + locale + "/checkout"}>{t("editFulfillment")}</a>
             <p>
               {(quote.termsSnapshot as QuoteTerms).fulfillmentType ===
               "shipping"
-                ? "Shipping"
-                : "Local pickup"}
+                ? t("shipping")
+                : t("pickup")}
             </p>
-            <dl>
-              <dt>Merchandise</dt>
-              <dd>
+            {(quote.termsSnapshot as QuoteTerms).pickup && (
+              <p>
+                {(quote.termsSnapshot as QuoteTerms).pickup!.address}
+                <br />
+                {(quote.termsSnapshot as QuoteTerms).pickup!.date} ·{" "}
+                {(quote.termsSnapshot as QuoteTerms).pickup!.startTime} –{" "}
+                {(quote.termsSnapshot as QuoteTerms).pickup!.endTime} (
+                {store?.timezone})
+              </p>
+            )}
+            {(quote.termsSnapshot as QuoteTerms).fulfillmentType ===
+              "shipping" && (
+              <p>
+                {(quote.termsSnapshot as QuoteTerms).shippingAddress.address},{" "}
+                {(quote.termsSnapshot as QuoteTerms).shippingAddress.country}
+              </p>
+            )}
+            <dl className="grid grid-cols-2 gap-4 border-t pt-5">
+              <dt>{t("merchandise")}</dt>
+              <dd className="m-0 text-right">
                 {money(
                   quote.merchandiseSubtotalCents,
                   store?.currency,
                   store?.precision,
                 )}
               </dd>
-              <dt>Shipping</dt>
-              <dd>
+              <dt>{t("delivery")}</dt>
+              <dd className="m-0 text-right">
                 {quote.shippingCents === 0
-                  ? t("free")
+                  ? money(0, store?.currency, store?.precision)
                   : money(
                       quote.shippingCents,
                       store?.currency,
                       store?.precision,
                     )}
               </dd>
-              <dt>Tax</dt>
-              <dd>
+              <dt>{t("tax")}</dt>
+              <dd className="m-0 text-right">
                 {money(
                   quote.exclusiveTaxCents + quote.inclusiveTaxCents,
                   store?.currency,
@@ -86,7 +112,7 @@ export default async function Checkout({
                 )}
               </dd>
               <dt>{t("total")}</dt>
-              <dd>
+              <dd className="m-0 text-right">
                 <strong>
                   {money(
                     quote.totalPayableCents,
@@ -96,81 +122,46 @@ export default async function Checkout({
                 </strong>
               </dd>
             </dl>
-            <p className="muted">
-              Valid until {quote.expiresAt.toISOString()}. Payment instructions
-              appear after your order is saved.
-            </p>
-          </div>
-          <form action={placeOrder}>
+            <p className="mt-5 text-sm text-muted-foreground">{t("finalTotalNotice")}</p>
+          </CardContent></Card>
+          <Card><CardContent><form className="grid gap-4" action={placeOrder}>
             <Hidden name="locale" value={locale} />
             <Hidden name="quoteId" value={quote.id} />
             <Field label={t("name")} name="name" />
             <Field label={t("email")} name="email" type="email" />
-            <label className="check">
-              <input type="checkbox" name="accepted" value="yes" required />I
-              accept this total and fulfillment terms.
-            </label>
-            <button>{t("place")}</button>
-          </form>
+            <Label className="flex items-start gap-3 font-normal">
+              <Input className="mt-0.5 size-4 shrink-0" type="checkbox" name="accepted" value="yes" required />
+              {t("acceptTerms")}
+            </Label>
+            <Button type="submit">{t("place")}</Button>
+          </form></CardContent></Card>
         </div>
       ) : cart?.items.length ? (
-        <form action={quoteCart}>
+        <form className="grid max-w-xl gap-5" action={quoteCart}>
           <Hidden name="locale" value={locale} />
           <Hidden name="cartId" value={cart.id} />
-          <label>
-            Fulfillment
-            <select name="fulfillmentType">
-              <option value="shipping">{t("shipping")}</option>
-              {pickup && <option value="pickup">{t("pickup")}</option>}
-            </select>
-          </label>
-          <Field label={t("address")} name="address" required={false} />
-          <Field label={t("country")} name="country" value="US" required={false} />
-          {pickup && (
-            <fieldset>
-              <legend>
-                {t("pickup")} · {pickup.name}
-              </legend>
-              <p>{pickup.address}</p>
-              <Field
-                label="Pickup date"
-                name="pickupDate"
-                type="date"
-                required={false}
-              />
-              <label>
-                Pickup time
-                <select name="pickupTime">
-                  <option value="">Choose a time</option>
-                  {[
-                    ...new Set(
-                      Object.values(pickup.weeklySchedule)
-                        .flat()
-                        .map((s) => s[0]),
-                    ),
-                  ].map((time) => (
-                    <option key={time}>{time}</option>
-                  ))}
-                </select>
-              </label>
-              <p className="muted">
-                At least {pickup.prepMinutes} minutes notice. Times are in{" "}
-                {store?.timezone}.
-              </p>
-            </fieldset>
-          )}
-          <label>
+          <CheckoutFields
+            timezone={store?.timezone ?? "UTC"}
+            locations={locations.map((location) => ({
+              id: location.id,
+              name: location.name,
+              address: location.address,
+              dates: pickupAvailability(location, store?.timezone ?? "UTC"),
+            }))}
+          />
+          <div className="grid gap-2">
+          <Label>
             {t("payment")}
-            <select name="paymentAccountId">
-              <option value="">No payment required for a free order</option>
+            <select className="h-8 w-full rounded-lg border bg-transparent px-2.5 text-sm" name="paymentAccountId">
+              <option value="">{t("freeOrderNoPayment")}</option>
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
                 </option>
               ))}
             </select>
-          </label>
-          <button>{t("quote")} →</button>
+          </Label></div>
+          <Button type="submit">{t("review")} →</Button>
         </form>
       ) : (
         <p>{t("empty")}</p>

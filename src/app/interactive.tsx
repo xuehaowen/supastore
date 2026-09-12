@@ -2,12 +2,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 export function CopyButton({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <button
+    <Button
       type="button"
-      className="secondary"
+      variant="outline"
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(value);
@@ -18,14 +22,14 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
       }}
     >
       {copied ? "Copied" : label}
-    </button>
+    </Button>
   );
 }
 export function Uploader({ orderId }: { orderId: string }) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   return (
-    <form
+    <form className="grid gap-4"
       onSubmit={async (event) => {
         event.preventDefault();
         const form = event.currentTarget;
@@ -65,17 +69,18 @@ export function Uploader({ orderId }: { orderId: string }) {
         }
       }}
     >
-      <label>
+      <div className="grid gap-2">
+      <Label>
         Payment image (JPEG, PNG, WebP, under 5 MB)
-        <input
+        <Input
           type="file"
           name="file"
           accept="image/jpeg,image/png,image/webp"
           required
         />
-      </label>
-      <button disabled={busy}>{busy ? "Uploading…" : "Upload evidence"}</button>
-      <p role="status" aria-live="polite">
+      </Label></div>
+      <Button type="submit" disabled={busy}>{busy ? "Uploading…" : "Upload evidence"}</Button>
+      <p className="text-sm text-muted-foreground" role="status" aria-live="polite">
         {message}
       </p>
     </form>
@@ -83,59 +88,39 @@ export function Uploader({ orderId }: { orderId: string }) {
 }
 export function AuthForm() {
   const [message, setMessage] = useState("");
-  const [register, setRegister] = useState(false);
   return (
-    <form
+    <form className="grid gap-4"
       onSubmit={async (event) => {
         event.preventDefault();
         const fields = new FormData(event.currentTarget);
-        const response = await fetch(
-          "/api/auth/" + (register ? "sign-up/email" : "sign-in/email"),
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email: fields.get("email"),
-              password: fields.get("password"),
-              name: fields.get("name"),
-            }),
-          },
-        );
+        const response = await fetch("/api/auth/sign-in/email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: fields.get("email"),
+            password: fields.get("password"),
+          }),
+        });
         if (response.ok) window.location.href = "/admin/setup";
         else setMessage("Sign-in failed. Check your details and try again.");
       }}
     >
-      {register && (
-        <label>
-          Name
-          <input name="name" required />
-        </label>
-      )}
-      <label>
+      <div className="grid gap-2"><Label>
         Email
-        <input type="email" name="email" required autoComplete="email" />
-      </label>
-      <label>
+        <Input type="email" name="email" required autoComplete="email" />
+      </Label></div>
+      <div className="grid gap-2"><Label>
         Password
-        <input
+        <Input
           type="password"
           name="password"
           minLength={12}
           required
-          autoComplete={register ? "new-password" : "current-password"}
+          autoComplete="current-password"
         />
-      </label>
-      <button>{register ? "Create account" : "Sign in"}</button>
-      <button
-        type="button"
-        className="text-button"
-        onClick={() => setRegister(!register)}
-      >
-        {register
-          ? "Already have an account?"
-          : "First visit? Create your account"}
-      </button>
-      <p role="alert">{message}</p>
+      </Label></div>
+      <Button type="submit">Sign in</Button>
+      {message && <Alert variant="destructive"><AlertDescription>{message}</AlertDescription></Alert>}
     </form>
   );
 }
@@ -160,46 +145,46 @@ export function VariantFields() {
     <>
       <input type="hidden" name="variantCount" value={count} />
       {Array.from({ length: count }, (_, i) => (
-        <fieldset key={i}>
+        <fieldset className="grid gap-4 rounded-lg border p-4" key={i}>
           <legend>Variant {i + 1}</legend>
-          <label>
+          <div className="grid gap-2"><Label>
             SKU
-            <input name={"sku-" + i} required />
-          </label>
-          <label>
+            <Input name={"sku-" + i} required />
+          </Label></div>
+          <div className="grid gap-2"><Label>
             Variant name
-            <input name={"variantTitle-" + i} required defaultValue="Default" />
-          </label>
-          <label>
+            <Input name={"variantTitle-" + i} required defaultValue="Default" />
+          </Label></div>
+          <div className="grid gap-2"><Label>
             Price in minor units
-            <input
+            <Input
               name={"price-" + i}
               type="number"
               min="0"
               step="1"
               required
             />
-          </label>
-          <div className="two-col">
-            <label>
+          </Label></div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-2"><Label>
               Color
-              <input name={"color-" + i} />
-            </label>
-            <label>
+              <Input name={"color-" + i} />
+            </Label></div>
+            <div className="grid gap-2"><Label>
               Size
-              <input name={"size-" + i} />
-            </label>
+              <Input name={"size-" + i} />
+            </Label></div>
           </div>
         </fieldset>
       ))}
-      <button
-        className="secondary"
+      <Button
+        variant="outline"
         type="button"
         disabled={count >= 50}
         onClick={() => setCount(count + 1)}
       >
         Add variant
-      </button>
+      </Button>
     </>
   );
 }

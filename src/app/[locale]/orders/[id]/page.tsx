@@ -6,6 +6,10 @@ import type { QuoteTerms } from "@/application/use-cases/get-quote";
 import { CopyButton, Uploader } from "@/app/interactive";
 import { Hidden, Notice } from "@/app/components";
 import { acceptProposal } from "@/app/actions";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export default async function OrderPage({
   params,
   searchParams,
@@ -22,22 +26,22 @@ export default async function OrderPage({
   const { order, proposal, receivedCents, fulfillment, evidence } = result;
   const terms = order.termsSnapshot as QuoteTerms;
   return (
-    <section className="narrow">
-      <p className="eyebrow">YOUR ORDER IS SAVED</p>
-      <h1>{order.referenceCode}</h1>
+    <section className="mx-auto my-12 min-h-[50vh] max-w-3xl">
+      <p className="mb-6 text-[10px] font-bold tracking-[0.2em]">YOUR ORDER IS SAVED</p>
+      <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">{order.referenceCode}</h1>
       <Notice error={query.error} />
-      <p className="badge">
+      <Badge variant="secondary" className="mb-6">
         {order.lifecycleStatus} · {fulfillment?.status.replaceAll("_", " ")}
-      </p>
-      <dl>
+      </Badge>
+      <dl className="grid grid-cols-2 gap-4 border-t pt-5">
         <dt>Order total</dt>
-        <dd>
+        <dd className="m-0 text-right">
           {money(order.purchaseTotalCents, terms.currency, terms.precision)}
         </dd>
         <dt>Received</dt>
-        <dd>{money(receivedCents, terms.currency, terms.precision)}</dd>
+        <dd className="m-0 text-right">{money(receivedCents, terms.currency, terms.precision)}</dd>
         <dt>Balance</dt>
-        <dd>
+        <dd className="m-0 text-right">
           {money(
             order.purchaseTotalCents - receivedCents,
             terms.currency,
@@ -46,8 +50,9 @@ export default async function OrderPage({
         </dd>
       </dl>
       {proposal ? (
-        <section className="notice">
-          <h2>Order Terms Updated</h2>
+        <Alert className="mt-6">
+          <AlertTitle>Order Terms Updated</AlertTitle>
+          <AlertDescription>
           <p>{proposal.reason}</p>
           <p>
             New total:{" "}
@@ -64,17 +69,19 @@ export default async function OrderPage({
             <Hidden name="locale" value={locale} />
             <Hidden name="orderId" value={id} />
             <Hidden name="proposalId" value={proposal.id} />
-            <button>Accept New Total</button>
+            <Button type="submit">Accept New Total</Button>
           </form>
-        </section>
+          </AlertDescription>
+        </Alert>
       ) : order.purchaseTotalCents > 0 &&
         order.lifecycleStatus === "unpaid" &&
         terms.payment ? (
-        <section className="panel">
-          <h2>Payment instructions</h2>
+        <Card className="mt-6">
+          <CardHeader><CardTitle>Payment instructions</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
           <p>{terms.payment.name}</p>
-          <p className="description">{terms.payment.instructions}</p>
-          <div className="actions">
+          <p className="whitespace-pre-line text-muted-foreground">{terms.payment.instructions}</p>
+          <div className="flex flex-wrap gap-3">
             <CopyButton
               value={(order.purchaseTotalCents / 10 ** terms.precision).toFixed(
                 terms.precision,
@@ -90,7 +97,8 @@ export default async function OrderPage({
             Use this reference for your payment. If you already paid, wait for
             the store to verify it; do not send a second payment.
           </p>
-        </section>
+          </CardContent>
+        </Card>
       ) : null}
       {terms.pickup && (
         <p>
@@ -102,7 +110,7 @@ export default async function OrderPage({
         <p>No payment or payment evidence is required.</p>
       )}
       {order.purchaseTotalCents > 0 && (
-        <section>
+        <section className="mt-8">
           <h2>Payment evidence</h2>
           <p>
             {evidence.length} image(s) received. Evidence does not confirm
@@ -111,7 +119,7 @@ export default async function OrderPage({
           <Uploader orderId={id} />
         </section>
       )}
-      <p className="muted">
+      <p className="mt-8 text-sm text-muted-foreground">
         Bookmark this page. Your order remains available here even if an email
         is delayed.
       </p>

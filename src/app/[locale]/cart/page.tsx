@@ -6,6 +6,11 @@ import { storeSettings } from "@/infrastructure/db/schema";
 import { getTranslations } from "next-intl/server";
 import { changeItem } from "@/app/actions";
 import { Hidden, Notice } from "@/app/components";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 export default async function Cart({
   params,
   searchParams,
@@ -22,30 +27,32 @@ export default async function Cart({
     : null;
   const [store] = await db.select().from(storeSettings).limit(1);
   return (
-    <section className="narrow">
-      <p className="eyebrow">YOUR SELECTION</p>
-      <h1>{t("cart")}</h1>
+    <section className="mx-auto my-12 min-h-[50vh] max-w-4xl">
+      <p className="mb-6 text-[10px] font-bold tracking-[0.2em]">YOUR SELECTION</p>
+      <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">{t("cart")}</h1>
       <Notice error={error} />
       {cart?.items.length ? (
         <>
-          <div className="cart-lines">
+          <div className="space-y-4">
             {cart.items.map((item) => (
-              <article className="cart-line" key={item.id}>
+              <Card key={item.id}>
+                <CardContent className="grid items-center gap-4 sm:grid-cols-[2fr_1fr_auto_auto]">
                 <div>
                   <Link href={"/" + locale + "/products/" + item.productHandle}>
                     <h2>{item.productTitle}</h2>
                   </Link>
                   <p>{item.title}</p>
                   {!item.isAvailable && (
-                    <strong className="badge">{t("unavailable")}</strong>
+                    <Badge variant="secondary">{t("unavailable")}</Badge>
                   )}
                 </div>
                 <form action={changeItem}>
                   <Hidden name="locale" value={locale} />
                   <Hidden name="itemId" value={item.id} />
-                  <label>
+                  <div className="grid gap-2">
+                  <Label>
                     {t("quantity")}
-                    <input
+                    <Input
                       aria-label={t("quantity") + " " + item.productTitle}
                       name="quantity"
                       type="number"
@@ -53,8 +60,9 @@ export default async function Cart({
                       max="999"
                       defaultValue={item.quantity}
                     />
-                  </label>
-                  <button className="secondary">Update</button>
+                  </Label>
+                  </div>
+                  <Button type="submit" variant="outline">Update</Button>
                 </form>
                 <strong>
                   {money(
@@ -67,27 +75,28 @@ export default async function Cart({
                   <Hidden name="locale" value={locale} />
                   <Hidden name="itemId" value={item.id} />
                   <Hidden name="quantity" value="0" />
-                  <button className="text-button">{t("remove")}</button>
+                  <Button type="submit" variant="link">{t("remove")}</Button>
                 </form>
-              </article>
+                </CardContent>
+              </Card>
             ))}
           </div>
-          <div className="total">
+          <div className="mt-6 flex justify-between border-t py-6 text-xl">
             <span>Subtotal</span>
             <strong>
               {money(cart.subtotalCents, store?.currency, store?.precision)}
             </strong>
           </div>
-          <Link className="button" href={"/" + locale + "/checkout"}>
+          <Button render={<Link href={"/" + locale + "/checkout"} />}>
             {t("checkout")} →
-          </Link>
+          </Button>
         </>
       ) : (
         <>
           <p>{t("empty")}</p>
-          <Link className="button" href={"/" + locale}>
+          <Button render={<Link href={"/" + locale} />}>
             {t("shop")}
-          </Link>
+          </Button>
         </>
       )}
     </section>
