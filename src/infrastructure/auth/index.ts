@@ -14,6 +14,7 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: true,
     sendResetPassword: async ({ user, url, token }) => {
+      if (process.env.DISABLE_OUTBOUND_DELIVERY === "true") return;
       try {
         await smtpAdapter.sendEmail({
           recipient: user.email,
@@ -34,6 +35,7 @@ export const auth = betterAuth({
     sendOnSignUp: true,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url, token }) => {
+      if (process.env.DISABLE_OUTBOUND_DELIVERY === "true") return;
       try {
         await smtpAdapter.sendEmail({
           recipient: user.email,

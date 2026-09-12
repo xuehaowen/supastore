@@ -89,6 +89,32 @@ describe("Auth Module Configuration and Callbacks", () => {
     sendEmailSpy.mockRestore();
   });
 
+  it("suppresses verification delivery when outbound delivery is disabled", async () => {
+    const sendEmailSpy = vi.spyOn(smtpAdapter, "sendEmail");
+    const previous = process.env.DISABLE_OUTBOUND_DELIVERY;
+    process.env.DISABLE_OUTBOUND_DELIVERY = "true";
+    try {
+      const sendVerificationEmail = auth.options.emailVerification?.sendVerificationEmail;
+      await sendVerificationEmail?.({
+        user: {
+          id: "user-disabled",
+          email: "disabled@example.com",
+          name: "Disabled",
+          emailVerified: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        url: "http://localhost/verify",
+        token: "token-disabled",
+      });
+      expect(sendEmailSpy).not.toHaveBeenCalled();
+    } finally {
+      if (previous === undefined) delete process.env.DISABLE_OUTBOUND_DELIVERY;
+      else process.env.DISABLE_OUTBOUND_DELIVERY = previous;
+      sendEmailSpy.mockRestore();
+    }
+  });
+
   it("exposes essential customer auth and profile management endpoints", () => {
     const endpoints = auth.api;
     expect(endpoints.signUpEmail).toBeDefined();
