@@ -6,6 +6,9 @@ import {
   paymentAccounts,
   paymentUploadIntents,
   paymentReceipts,
+  payoutAllocations,
+  payoutAttempts,
+  payoutDiscrepancies,
   eventDeliveries,
   storeSettings,
 } from "@/infrastructure/db/schema";
@@ -26,6 +29,10 @@ import {
   receiveCashPayment,
   correctRecordedReceipt,
   correctOrderFulfillment,
+  claimOrderPayout,
+  reconcileOrderPayout,
+  resolveOrderPayoutDiscrepancy,
+  closeOrderPayoutAttempt,
 } from "@/app/actions";
 import { Field, Hidden, Notice, AdminNav } from "@/app/components";
 import { Button } from "@/components/ui/button";
@@ -49,6 +56,9 @@ export default async function Admin({
         .limit(100);
       const accounts = await tx.select().from(paymentAccounts);
       const receipts = await tx.select().from(paymentReceipts);
+      const allocations = await tx.select().from(payoutAllocations);
+      const attempts = await tx.select().from(payoutAttempts);
+      const discrepancies = await tx.select().from(payoutDiscrepancies);
       const evidence = await tx
         .select()
         .from(paymentUploadIntents)
@@ -63,6 +73,9 @@ export default async function Admin({
         rows,
         accounts,
         receipts,
+        allocations,
+        attempts,
+        discrepancies,
         evidence,
         failures,
         store,
@@ -70,7 +83,7 @@ export default async function Admin({
       };
     })
     .catch(() => redirect("/admin/login?error=staff"));
-  const { member, rows, accounts, receipts, evidence, failures, store, readiness } = data;
+  const { member, rows, accounts, receipts, allocations, attempts, discrepancies, evidence, failures, store, readiness } = data;
   return (
     <main className="admin">
       <AdminNav />
@@ -309,6 +322,68 @@ export default async function Admin({
           </p>
         ))}
       </section>
+      {member.role === "owner" && (
+        <section id="payouts">
+          <h2>Payouts and discrepancies</h2>
+          {allocations.map((allocation) => {
+            const attempt = attempts.find((item) => item.allocationId === allocation.id);
+            const discrepancy = attempt
+              ? discrepancies.find((item) => item.payoutAttemptId === attempt.id && item.status === "open")
+              : undefined;
+            return (
+              <details className="panel" key={allocation.id}>
+                <summary>Payout allocation {allocation.id} · {allocation.authorizedAmountCents} minor units</summary>
+                {!attempt ? (
+                  <form action={claimOrderPayout} className="mt-2">
+                    <Hidden name="allocationId" value={allocation.id} />
+                    <Field label="Claim amount (minor units)" name="amount" type="number" />
+                    <NativeSelect name="destinationType" defaultValue="bank_account">
+                      <option value="bank_account">Bank account</option>
+                      <option value="card">Card</option>
+                      <option value="cash">Cash</option>
+                    </NativeSelect>
+                    <Field label="Verified return destination" name="destination" />
+                    <Button type="submit" variant="outline">Claim payout</Button>
+                  </form>
+                ) : (
+                  <>
+                    <p>Attempt {attempt.id} · {attempt.status}</p>
+                    {attempt.status === "sending" && (
+                      <form action={reconcileOrderPayout} className="mt-2">
+                        <Hidden name="attemptId" value={attempt.id} />
+                        <Field label="Actual payout amount (minor units)" name="actualAmount" type="number" />
+                        <Field label="Transfer reference" name="transferReference" />
+                        <NativeSelect name="destinationType" defaultValue="bank_account">
+                          <option value="bank_account">Bank account</option>
+                          <option value="card">Card</option>
+                          <option value="cash">Cash</option>
+                        </NativeSelect>
+                        <Field label="Actual destination" name="destination" />
+                        <Button type="submit" variant="outline">Reconcile payout</Button>
+                      </form>
+                    )}
+                    {discrepancy && (
+                      <form action={resolveOrderPayoutDiscrepancy} className="mt-2">
+                        <Hidden name="discrepancyId" value={discrepancy.id} />
+                        <Field label="Write-off amount (minor units)" name="writeOff" type="number" />
+                        <Field label="Resolution reason" name="reason" />
+                        <Button type="submit" variant="outline">Resolve discrepancy</Button>
+                      </form>
+                    )}
+                    {!discrepancy && attempt.status !== "reconciled" && (
+                      <form action={closeOrderPayoutAttempt} className="mt-2">
+                        <Hidden name="attemptId" value={attempt.id} />
+                        <Field label="Closure reason" name="reason" />
+                        <Button type="submit" variant="outline">Close payout attempt</Button>
+                      </form>
+                    )}
+                  </>
+                )}
+              </details>
+            );
+          })}
+        </section>
+      )}
     </main>
   );
 }
