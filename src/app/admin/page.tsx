@@ -26,7 +26,9 @@ export default async function Admin({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  const staff = await staffIdentity().catch(() => redirect("/admin/login"));
+  const staff = await staffIdentity().catch(() =>
+    redirect("/admin/login?error=sign-in"),
+  );
   const data = await db
     .transaction(async (tx) => {
       const member = await verifyStaffInTransaction(tx, staff);
@@ -55,7 +57,7 @@ export default async function Admin({
         readiness: await getLaunchReadiness(tx),
       };
     })
-    .catch(() => redirect("/admin/setup"));
+    .catch(() => redirect("/admin/login?error=staff"));
   const { member, rows, accounts, evidence, failures, store, readiness } = data;
   return (
     <main className="admin">

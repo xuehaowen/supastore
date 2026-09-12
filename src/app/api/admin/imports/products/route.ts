@@ -5,11 +5,23 @@ import {
   parseProductCsv,
 } from "@/application/use-cases/catalog/import-products-csv";
 import { auth } from "@/infrastructure/auth";
+import { db } from "@/infrastructure/db";
+import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
+import { ForbiddenError } from "@/application/common/errors";
 
 export async function POST(request: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    await db.transaction((tx) => verifyStaffInTransaction(tx, session.user.id));
+  } catch (error) {
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json({ error: "Staff access required" }, { status: 403 });
+    }
+    return NextResponse.json({ error: "Unable to verify access" }, { status: 500 });
   }
 
   const formData = await request.formData();
@@ -33,8 +45,10 @@ export async function POST(request: NextRequest) {
   try {
     const result = await importProductsCsv({ rows, staffUserId: session.user.id });
     return NextResponse.json({ success: true, ...result });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Import failed";
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json(
+      { success: false, error: "Import failed. Please try again." },
+      { status: 500 },
+    );
   }
 }

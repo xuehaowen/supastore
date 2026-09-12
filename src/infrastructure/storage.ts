@@ -5,6 +5,7 @@ import {
   CopyObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  CreateBucketCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 export const storage = new S3Client({
@@ -33,6 +34,29 @@ export async function presignUpload(key: string, mime: string, size: number) {
     }),
     { expiresIn: 900 },
   );
+}
+
+export async function putUpload(key: string, mime: string, body: Uint8Array) {
+  const bucketName = bucket();
+  try {
+    await storage.send(new PutObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+      ContentType: mime,
+      ContentLength: body.byteLength,
+      Body: body,
+    }));
+  } catch (error) {
+    if ((error as { name?: string }).name !== "NoSuchBucket") throw error;
+    await storage.send(new CreateBucketCommand({ Bucket: bucketName }));
+    await storage.send(new PutObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+      ContentType: mime,
+      ContentLength: body.byteLength,
+      Body: body,
+    }));
+  }
 }
 export async function copyCandidate(stagingKey: string, candidateKey: string) {
   await storage.send(

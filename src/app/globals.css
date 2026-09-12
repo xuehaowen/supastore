@@ -80,7 +80,10 @@
 
   * { @apply border-border; }
   html { @apply font-sans; }
-  body { @apply min-h-screen bg-background text-foreground antialiased; }
+  body {
+    @apply min-h-screen bg-background text-foreground antialiased;
+    background-image: radial-gradient(circle at 90% -10%, oklch(0.9 0.065 112 / 0.35), transparent 28rem);
+  }
   a { @apply underline-offset-4; }
   a:hover { @apply underline; }
 }
@@ -91,6 +94,40 @@
     margin-inline: auto;
     padding-block: clamp(1.5rem, 4vw, 4rem);
   }
+
+  .admin-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1rem;
+  }
+
+  .admin-brand,
+  .auth-brand {
+    color: var(--foreground);
+    font-family: var(--font-serif);
+    font-size: 1.35rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .admin-brand span {
+    margin-left: 0.4rem;
+    color: var(--muted-foreground);
+    font-family: var(--font-sans);
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    vertical-align: middle;
+  }
+
+  .admin-links { display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: center; font-size: 0.875rem; }
+  .admin-links a { color: var(--muted-foreground); text-decoration: none; transition: color 160ms ease; }
+  .admin-links a:hover { color: var(--foreground); }
+  .admin-links .admin-shop-link { color: var(--foreground); font-weight: 600; }
 
   .admin > h1,
   .standalone > h1 {
@@ -238,11 +275,95 @@
     padding: clamp(1.25rem, 3vw, 2rem);
   }
 
+  .auth-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(22rem, 0.9fr);
+    min-height: 100vh;
+    background: var(--background);
+  }
+
+  .auth-intro {
+    display: flex;
+    min-height: 32rem;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    background: var(--primary);
+    background-image: radial-gradient(circle at 10% 90%, oklch(0.46 0.09 135 / 0.55), transparent 28rem), radial-gradient(circle at 90% 12%, oklch(0.74 0.1 105 / 0.32), transparent 20rem);
+    color: var(--primary-foreground);
+    padding: clamp(2rem, 6vw, 6rem);
+  }
+
+  .auth-intro .auth-brand { color: inherit; }
+  .auth-intro h1 { margin: 0; font-family: var(--font-serif); font-size: clamp(3.5rem, 7vw, 7rem); line-height: 0.84; letter-spacing: -0.065em; }
+  .auth-intro p:last-child { max-width: 25rem; margin-top: 1.75rem; color: color-mix(in oklch, var(--primary-foreground), transparent 25%); line-height: 1.65; }
+  .auth-intro .eyebrow { color: color-mix(in oklch, var(--primary-foreground), transparent 25%); }
+
+  .auth-panel {
+    display: grid;
+    align-content: center;
+    gap: 2rem;
+    max-width: 34rem;
+    padding: clamp(2rem, 6vw, 6rem);
+  }
+  .auth-panel h2 { margin: 0; font-family: var(--font-serif); font-size: clamp(2.5rem, 4vw, 4rem); line-height: 0.95; letter-spacing: -0.05em; }
+  .auth-panel [data-slot="card"] { box-shadow: 0 1.5rem 3rem oklch(0.2 0.02 158 / 0.1); }
+  .auth-card { width: 100%; max-width: 32rem; }
+  .auth-field-label { display: block; }
+
+  .account-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(22rem, 0.7fr);
+    gap: clamp(2rem, 8vw, 8rem);
+    align-items: center;
+    min-height: calc(100vh - 13rem);
+    max-width: 68rem;
+    margin-inline: auto;
+    padding-block: clamp(3rem, 9vw, 7rem);
+  }
+  .account-heading h1 { max-width: 30rem; margin: 0; font-family: var(--font-serif); font-size: clamp(3rem, 6vw, 5.5rem); line-height: 0.88; letter-spacing: -0.06em; }
+  .account-heading > p:last-child { max-width: 27rem; margin-top: 1.5rem; color: var(--muted-foreground); line-height: 1.7; }
+  .account-card { box-shadow: 0 1.5rem 4rem oklch(0.2 0.02 158 / 0.09); }
+
+  .cart-quantity-form { display: flex; align-items: flex-end; gap: 0.5rem; }
+  .cart-quantity-control { display: flex; align-items: flex-end; gap: 0.5rem; }
+  .cart-quantity-control label { display: grid; min-width: 5rem; gap: 0.35rem; }
+  .cart-quantity-control button { margin-bottom: 0; }
+  .checkout-layout { display: grid; gap: 1.5rem; align-items: start; grid-template-columns: minmax(0, 1fr) 18rem; }
+  .checkout-form-card { box-shadow: 0 1.5rem 3rem oklch(0.2 0.02 158 / 0.06); }
+  .checkout-summary-card { position: sticky; top: 1.5rem; }
+
+  .pickup-calendar-container { display: grid; gap: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--card); padding: 1rem; }
+  .pickup-calendar-header, .pickup-calendar-title-nav { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+  .pickup-calendar-title { font-size: 0.875rem; font-weight: 600; text-align: center; }
+  .pickup-calendar-nav-btn { width: 2rem; padding: 0; font-size: 1.25rem; }
+  .pickup-calendar-toggle-btn { font-size: 0.75rem; }
+  .pickup-calendar-weekdays-row, .pickup-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.25rem; }
+  .pickup-calendar-weekday-header { padding-block: 0.25rem; color: var(--muted-foreground); font-size: 0.625rem; font-weight: 700; text-align: center; text-transform: uppercase; }
+  .pickup-calendar-day-btn { position: relative; width: 100%; min-height: 2.3rem; padding: 0; border: 1px solid transparent; background: transparent; color: var(--foreground); }
+  .pickup-calendar-day-btn:hover:not(:disabled), .pickup-calendar-day-btn.selected { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+  .pickup-calendar-day-btn:disabled { opacity: 0.28; }
+  .available-dot { position: absolute; right: 50%; bottom: 0.25rem; width: 0.2rem; height: 0.2rem; border-radius: 999px; background: currentColor; transform: translateX(50%); }
+  .pickup-calendar-status { min-height: 1.25rem; color: var(--muted-foreground); font-size: 0.75rem; text-align: center; }
+  .pickup-calendar-selected-label strong { color: var(--foreground); }
+  .pickup-date-selection-group { display: grid; gap: 0.5rem; }
+  .pickup-calendar-label { font-size: 0.875rem; font-weight: 500; }
+  .muted { color: var(--muted-foreground); font-size: 0.875rem; line-height: 1.5; }
+
   @media (max-width: 42rem) {
     .queue-row { grid-template-columns: 1fr; }
     .queue-row form { display: block; }
     .queue-row form + form { margin-top: -0.5rem; }
     .two-col { grid-template-columns: 1fr; }
+    .admin-nav { align-items: flex-start; flex-direction: column; gap: 0.85rem; }
+    .admin-links { gap: 0.85rem; }
+    .auth-shell, .account-shell { grid-template-columns: 1fr; }
+    .auth-intro { min-height: 24rem; }
+    .auth-panel { max-width: none; padding-top: 3rem; }
+    .account-shell { min-height: auto; gap: 2.5rem; }
+    .checkout-layout { grid-template-columns: 1fr; }
+    .checkout-summary-card { position: static; }
+    .pickup-calendar-header { align-items: flex-start; flex-direction: column; }
   }
 
   @media (prefers-reduced-motion: reduce) {

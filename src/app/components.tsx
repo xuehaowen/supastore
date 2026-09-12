@@ -5,8 +5,11 @@ import { Label } from "@/components/ui/label";
 
 export function Notice({ error }: { error?: string | undefined }) {
   return error ? (
-    <Alert variant="destructive">
-      <AlertDescription>{error}</AlertDescription>
+    <Alert variant="destructive" className="mb-6">
+      <AlertDescription>
+        <strong className="font-medium">We couldn’t complete that yet.</strong>{" "}
+        {error} Please review the details and try again.
+      </AlertDescription>
     </Alert>
   ) : null;
 }
@@ -39,11 +42,14 @@ export function Hidden({ name, value }: { name: string; value: string }) {
 
 export function AdminNav() {
   return (
-    <nav className="mb-10 flex flex-wrap gap-x-6 gap-y-3 border-b pb-5 text-sm" aria-label="Admin">
-      <Link href="/admin">Daily queue</Link>
-      <Link href="/admin/products">Products</Link>
-      <Link href="/admin/setup">Store setup</Link>
-      <Link href="/">View shop ↗</Link>
+    <nav className="admin-nav" aria-label="Admin">
+      <Link href="/admin" className="admin-brand">SupaStore <span>ADMIN</span></Link>
+      <div className="admin-links">
+        <Link href="/admin">Daily queue</Link>
+        <Link href="/admin/products">Products</Link>
+        <Link href="/admin/setup">Store setup</Link>
+        <Link href="/" className="admin-shop-link">View shop ↗</Link>
+      </div>
     </nav>
   );
 }

@@ -2,11 +2,22 @@ import { type NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { streamOrdersCsv } from "@/application/use-cases/catalog/export-csv";
 import { auth } from "@/infrastructure/auth";
+import { db } from "@/infrastructure/db";
+import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
+import { ForbiddenError } from "@/application/common/errors";
 
 export async function GET(_request: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  try {
+    await db.transaction((tx) => verifyStaffInTransaction(tx, session.user.id));
+  } catch (error) {
+    if (error instanceof ForbiddenError) {
+      return NextResponse.json({ error: "Staff access required" }, { status: 403 });
+    }
+    return NextResponse.json({ error: "Unable to verify access" }, { status: 500 });
   }
 
   const filename = `orders-${new Date().toISOString().slice(0, 10)}.csv`;

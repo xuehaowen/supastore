@@ -33,6 +33,8 @@ type PreviewState =
 
 export default function ProductImportExportPage() {
   const [preview, setPreview] = useState<PreviewState>({ status: "idle" });
+  const [exportError, setExportError] = useState("");
+  const [exporting, setExporting] = useState<"products" | "orders" | null>(null);
   const [parsedRows, setParsedRows] = useState<ProductCsvRow[]>([]);
   const fileRef = useRef<File | null>(null);
   const workerRef = useRef<Worker | null>(null);
@@ -117,8 +119,31 @@ export default function ProductImportExportPage() {
     fileRef.current = null;
   };
 
-  const downloadExport = (type: "products" | "orders") => {
-    window.location.href = `/api/admin/exports/${type}`;
+  const downloadExport = async (type: "products" | "orders") => {
+    setExportError("");
+    setExporting(type);
+    try {
+      const response = await fetch(`/api/admin/exports/${type}`);
+      if (!response.ok) {
+        const failure = await response.json().catch(() => null);
+        throw new Error(failure?.error ?? "Unable to download the export.");
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const filename = /filename="?([^";]+)"?/.exec(disposition)?.[1] ?? `${type}.csv`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setExportError(
+        error instanceof Error ? error.message : "Unable to download the export.",
+      );
+    } finally {
+      setExporting(null);
+    }
   };
 
   return (
@@ -140,17 +165,20 @@ export default function ProductImportExportPage() {
           <Button
             id="export-products-btn"
             onClick={() => downloadExport("products")}
+            disabled={exporting !== null}
           >
-            ↓ Products CSV
+            {exporting === "products" ? "Preparing…" : "↓ Products CSV"}
           </Button>
           <Button
             id="export-orders-btn"
             onClick={() => downloadExport("orders")}
             variant="outline"
+            disabled={exporting !== null}
           >
-            ↓ Orders CSV
+            {exporting === "orders" ? "Preparing…" : "↓ Orders CSV"}
           </Button>
         </div>
+        {exportError && <p className="mt-3 text-sm text-red-700" role="alert">{exportError}</p>}
         <p className="mt-3 text-xs text-gray-400">
           Tip: the exported products CSV can be re-imported cleanly without format conversion.
         </p>

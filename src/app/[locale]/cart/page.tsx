@@ -7,7 +7,8 @@ import { getTranslations } from "next-intl/server";
 import { changeItem } from "@/app/actions";
 import { Hidden, Notice } from "@/app/components";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,10 +48,10 @@ export default async function Cart({
                     <Badge variant="secondary">{t("unavailable")}</Badge>
                   )}
                 </div>
-                <form action={changeItem}>
+                <form className="cart-quantity-form" action={changeItem}>
                   <Hidden name="locale" value={locale} />
                   <Hidden name="itemId" value={item.id} />
-                  <div className="grid gap-2">
+                  <div className="cart-quantity-control">
                   <Label>
                     {t("quantity")}
                     <Input
@@ -61,10 +62,10 @@ export default async function Cart({
                       max="999"
                       defaultValue={item.quantity}
                     />
-                  </Label>
+                   </Label>
+                   <Button type="submit" variant="outline">Update</Button>
                   </div>
-                  <Button type="submit" variant="outline">Update</Button>
-                </form>
+                 </form>
                  <strong className="tabular-nums">
                   {money(
                     item.lineTotalCents,
@@ -91,18 +92,18 @@ export default async function Cart({
               </strong>
             </div>
             <p className="mt-3 text-xs leading-5 text-muted-foreground">Shipping, tax, and fulfillment options are confirmed at checkout.</p>
-            <Button className="mt-5 w-full" render={<Link href={"/" + locale + "/checkout"} />}>
+            <Link className={cn(buttonVariants({ size: "lg" }), "mt-5 w-full no-underline")} href={"/" + locale + "/checkout"}>
               {t("checkout")} <span aria-hidden="true">→</span>
-            </Button>
+            </Link>
           </aside>
           </div>
         </>
       ) : (
         <>
           <p>{t("empty")}</p>
-          <Button render={<Link href={"/" + locale} />}>
+          <Link className={cn(buttonVariants(), "mt-4 no-underline")} href={"/" + locale}>
             {t("shop")}
-          </Button>
+          </Link>
         </>
       )}
     </section>

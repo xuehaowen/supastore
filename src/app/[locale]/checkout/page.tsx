@@ -16,7 +16,7 @@ import { CheckoutFields } from "@/app/checkout-fields";
 import { pickupAvailability } from "@/domain/pickup-availability";
 import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -138,32 +138,57 @@ export default async function Checkout({
           </form></CardContent></Card>
         </div>
       ) : cart?.items.length ? (
-        <form className="grid max-w-xl gap-5" action={quoteCart}>
-          <Hidden name="locale" value={locale} />
-          <Hidden name="cartId" value={cart.id} />
-          <CheckoutFields
-            timezone={store?.timezone ?? "UTC"}
-            locations={locations.map((location) => ({
-              id: location.id,
-              name: location.name,
-              address: location.address,
-              dates: pickupAvailability(location, store?.timezone ?? "UTC"),
-            }))}
-          />
-          <div className="grid gap-2">
-          <Label>
-            {t("payment")}
-            <NativeSelect name="paymentAccountId">
-              <option value="">{t("freeOrderNoPayment")}</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
+        <div className="checkout-layout">
+          <Card className="checkout-form-card">
+            <CardHeader>
+              <CardTitle>How should we get it to you?</CardTitle>
+              <CardDescription>Choose delivery or a local pickup window. We’ll confirm the final total next.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form className="grid gap-5" action={quoteCart}>
+                <Hidden name="locale" value={locale} />
+                <Hidden name="cartId" value={cart.id} />
+                <CheckoutFields
+                  timezone={store?.timezone ?? "UTC"}
+                  locations={locations.map((location) => ({
+                    id: location.id,
+                    name: location.name,
+                    address: location.address,
+                    dates: pickupAvailability(location, store?.timezone ?? "UTC"),
+                  }))}
+                />
+                <div className="grid gap-2">
+                <Label>
+                  {t("payment")}
+                  <NativeSelect name="paymentAccountId">
+                    <option value="">{t("freeOrderNoPayment")}</option>
+                    {accounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                </Label></div>
+                <Button type="submit" size="lg">{t("review")} →</Button>
+              </form>
+            </CardContent>
+          </Card>
+          <Card className="checkout-summary-card">
+            <CardHeader><CardTitle>Your bag</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {cart.items.map((item) => (
+                <div className="flex justify-between gap-4 text-sm" key={item.id}>
+                  <span>{item.quantity} × {item.productTitle}</span>
+                  <span className="shrink-0 tabular-nums">{money(item.lineTotalCents, store?.currency, store?.precision)}</span>
+                </div>
               ))}
-            </NativeSelect>
-          </Label></div>
-          <Button type="submit">{t("review")} →</Button>
-        </form>
+              <div className="flex justify-between border-t pt-4 font-medium">
+                <span>Subtotal</span>
+                <span className="tabular-nums">{money(cart.subtotalCents, store?.currency, store?.precision)}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       ) : (
         <p>{t("empty")}</p>
       )}

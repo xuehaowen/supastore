@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/infrastructure/db";
 import { storeSettings } from "@/infrastructure/db/schema";
+import { auth } from "@/infrastructure/auth";
+import { headers } from "next/headers";
 import { getTranslations } from "next-intl/server";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 export default async function ShopLayout({
@@ -16,8 +18,10 @@ export default async function ShopLayout({
   if (!["en", "zh"].includes(locale)) notFound();
   const t = await getTranslations({locale});
   const [store] = await db.select().from(storeSettings).limit(1);
+  const rawSession = await auth.api.getSession({ headers: await headers() });
+  const session = rawSession?.user.emailVerified ? rawSession : null;
   return (
-    <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col px-[6%]" lang={locale}>
+    <div className="mx-auto flex min-h-screen max-w-375 flex-col px-[6%]" lang={locale}>
       <a className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded focus:bg-background focus:p-4" href="#main">
         Skip to content
       </a>
@@ -38,6 +42,9 @@ export default async function ShopLayout({
         <nav className="flex flex-wrap items-center justify-end gap-x-5 gap-y-3 text-sm max-sm:max-w-52 max-sm:gap-x-3" aria-label="Shop">
           <Link className="transition-colors hover:text-muted-foreground" href={"/" + locale}>{t("shop")}</Link>
           <Link className="transition-colors hover:text-muted-foreground" href="/recover">{t("recover")}</Link>
+          <Link className="transition-colors hover:text-muted-foreground" href={"/" + locale + "/account"}>
+            {session ? "Account" : "Sign in"}
+          </Link>
           <Link className="rounded-md border px-3 py-1.5 font-medium no-underline transition-colors hover:bg-muted" href={"/" + locale + "/cart"}>{t("cart")} <span aria-hidden="true">↗</span></Link>
           <LanguageLink locale={locale} />
         </nav>
