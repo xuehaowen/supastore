@@ -7,14 +7,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-async function signOutSession() {
-  return fetch("/api/auth/sign-out", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: "{}",
-  });
-}
+import {
+  authenticate,
+  signOutSession,
+  uploadEvidence,
+} from "@/app/client-requests";
 export function CopyButton({ value, label }: { value: string; label: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -42,32 +39,14 @@ export function Uploader({ orderId }: { orderId: string }) {
       onSubmit={async (event) => {
         event.preventDefault();
         const form = event.currentTarget;
-        const file = new FormData(form).get("file") as File;
         setBusy(true);
         setMessage("Uploading…");
         try {
-          const response = await fetch("/api/evidence", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ orderId, mime: file.type, size: file.size }),
-          });
-          const intent = await response.json();
-          if (!response.ok) throw new Error(intent.error);
-          const upload = await fetch(`/api/evidence/upload?orderId=${encodeURIComponent(orderId)}&intentId=${encodeURIComponent(intent.intentId)}`, {
-            method: "PUT",
-            headers: { "Content-Type": file.type },
-            body: file,
-          });
-          if (!upload.ok) {
-            const failure = await upload.json().catch(() => null);
-            throw new Error(failure?.error ?? "Upload interrupted. Please retry.");
+          const fileValue = new FormData(form).get("file");
+          if (!(fileValue instanceof File) || fileValue.size === 0) {
+            throw new Error("Choose an image to upload.");
           }
-          const finalized = await fetch("/api/evidence", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ orderId, intentId: intent.intentId }),
-          });
-          if (!finalized.ok) throw new Error((await finalized.json()).error);
+          await uploadEvidence(orderId, fileValue);
           setMessage("Evidence received. This is not a payment receipt.");
           form.reset();
         } catch (error) {
@@ -101,9 +80,13 @@ export function Uploader({ orderId }: { orderId: string }) {
 
 export function SessionVerificationGuard() {
   useEffect(() => {
-    void signOutSession().then((response) => {
-      if (response.ok) window.location.reload();
-    });
+    void signOutSession()
+      .then((response) => {
+        if (response.ok) window.location.reload();
+      })
+      .catch(() => {
+        // A transient sign-out failure should not create an unhandled rejection.
+      });
   }, []);
   return null;
 }
@@ -128,35 +111,12 @@ export function AuthForm({
         setBusy(true);
         setMessage("");
         try {
-          const response = await fetch(
-            mode === "sign-up" ? "/api/auth/sign-up/email" : "/api/auth/sign-in/email",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                name: fields.get("name"),
-                email: fields.get("email"),
-                password: fields.get("password"),
-                callbackURL: destination,
-              }),
-            },
-          );
-          const payload = (await response.json().catch(() => null)) as
-            | {
-                message?: string;
-                error?: { message?: string };
-                user?: { emailVerified?: boolean };
-              }
-            | null;
-          if (!response.ok) {
-            const reason = payload?.error?.message ?? payload?.message ?? "";
-            throw new Error(
-              isCustomer && /verif/i.test(reason)
-                ? "Please verify your email before signing in. Check your inbox or spam folder for the verification link."
-                : reason ||
-                "We couldn't sign you in. Please check your details and try again.",
-            );
-          }
+          const payload = await authenticate(mode, {
+            name: fields.get("name"),
+            email: fields.get("email"),
+            password: fields.get("password"),
+            callbackURL: destination,
+          }, { customer: isCustomer });
           if (mode === "sign-up") {
             setMessage(
               "Account created. Check your inbox to verify your email, then come back to sign in.",
@@ -165,7 +125,14 @@ export function AuthForm({
             form.reset();
             return;
           }
-          if (isCustomer && payload?.user?.emailVerified === false) {
+          if (
+            isCustomer &&
+            payload &&
+            typeof payload.user === "object" &&
+            payload.user !== null &&
+            "emailVerified" in payload.user &&
+            payload.user.emailVerified === false
+          ) {
             await signOutSession();
             throw new Error(
               "Please verify your email before signing in. Check your inbox or spam folder for the verification link.",

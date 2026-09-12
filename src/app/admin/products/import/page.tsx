@@ -4,6 +4,10 @@ import { useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  downloadAdminExport,
+  importProductsCsv,
+} from "@/app/client-requests";
 
 interface CsvParseError {
   line: number;
@@ -84,32 +88,14 @@ export default function ProductImportExportPage() {
     if (!fileRef.current || parsedRows.length === 0) return;
     setPreview({ status: "importing" });
 
-    const formData = new FormData();
-    formData.append("file", fileRef.current);
-
     try {
-      const res = await fetch("/api/admin/imports/products", {
-        method: "POST",
-        body: formData,
+      const data = await importProductsCsv(fileRef.current);
+      setPreview({ status: "done", created: data.created ?? 0, updated: data.updated ?? 0 });
+    } catch (error) {
+      setPreview({
+        status: "failed",
+        message: error instanceof Error ? error.message : "Network error during import",
       });
-      const data = (await res.json()) as {
-        success: boolean;
-        created?: number;
-        updated?: number;
-        error?: string;
-        errors?: CsvParseError[];
-      };
-
-      if (!res.ok || !data.success) {
-        setPreview({
-          status: "failed",
-          message: data.error ?? data.errors?.map((e) => `Line ${e.line}: ${e.message}`).join("; ") ?? "Import failed",
-        });
-      } else {
-        setPreview({ status: "done", created: data.created ?? 0, updated: data.updated ?? 0 });
-      }
-    } catch {
-      setPreview({ status: "failed", message: "Network error during import" });
     }
   }, [parsedRows]);
 
@@ -123,14 +109,7 @@ export default function ProductImportExportPage() {
     setExportError("");
     setExporting(type);
     try {
-      const response = await fetch(`/api/admin/exports/${type}`);
-      if (!response.ok) {
-        const failure = await response.json().catch(() => null);
-        throw new Error(failure?.error ?? "Unable to download the export.");
-      }
-      const blob = await response.blob();
-      const disposition = response.headers.get("content-disposition") ?? "";
-      const filename = /filename="?([^";]+)"?/.exec(disposition)?.[1] ?? `${type}.csv`;
+      const { blob, filename } = await downloadAdminExport(type);
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
