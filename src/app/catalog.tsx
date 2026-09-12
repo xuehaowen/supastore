@@ -67,28 +67,40 @@ export default async function Catalog({
             <Button type="submit">{t("searchButton")}</Button>
           </form>
         </div>
-        <nav className="my-6 flex flex-wrap gap-x-5 gap-y-3 text-sm" aria-label="Categories">
-          <Link href={"/" + locale}>{t("all")}</Link>
+        <nav className="my-7 flex flex-wrap gap-2" aria-label="Categories">
+          <Link
+            className={"rounded-full border px-3 py-1.5 no-underline transition-colors " + (!query.category ? "border-primary bg-primary text-primary-foreground" : "border-transparent hover:border-border hover:bg-muted")}
+            href={"/" + locale}
+            aria-current={query.category ? undefined : "page"}
+          >
+            {t("all")}
+          </Link>
           {groups.map((g) => (
-            <Link key={g.id} href={"/" + locale + "/search?category=" + g.slug}>
-              {g.parentId ? "↳ " : ""}
+            <Link
+              className={"rounded-full border px-3 py-1.5 no-underline transition-colors " + (query.category === g.slug ? "border-primary bg-primary text-primary-foreground" : "border-transparent hover:border-border hover:bg-muted")}
+              key={g.id}
+              href={"/" + locale + "/search?category=" + g.slug}
+              aria-current={query.category === g.slug ? "page" : undefined}
+            >
+              {g.parentId ? <span aria-hidden="true">↳ </span> : null}
               {g.name}
             </Link>
           ))}
         </nav>
         <div className="grid grid-cols-2 gap-x-6 gap-y-9 md:grid-cols-3">
           {result.items.map((p, i) => (
-            <article key={p.id}>
-              <Link href={"/" + locale + "/products/" + p.handle}>
+            <article className="group" key={p.id}>
+              <Link className="block no-underline" href={"/" + locale + "/products/" + p.handle}>
                 <div className={"flex aspect-square items-center justify-center overflow-hidden " + (i % 3 === 1 ? "bg-[#eee2d6]" : "bg-[#e5e8df]")}>
                   {p.coverImageKey ? (
-                    <img className="size-full object-cover"
+                    <img className="size-full object-cover transition-transform duration-300 motion-reduce:transition-none group-hover:scale-[1.02]"
                       src={
                         "/api/assets?key=" + encodeURIComponent(p.coverImageKey)
                       }
                       alt={p.title}
                       width="600"
                       height="600"
+                      sizes="(max-width: 767px) 44vw, (max-width: 1024px) 30vw, 27vw"
                     />
                   ) : (
                     <span className="font-serif text-8xl text-[#889475]" aria-hidden="true">{p.title.slice(0, 1)}</span>
@@ -96,7 +108,7 @@ export default async function Catalog({
                 </div>
                 <div className="mt-4 flex justify-between gap-3 text-sm max-sm:block">
                   <h3 className="text-base font-medium">{p.title}</h3>
-                  <span>
+                  <span className="shrink-0 text-muted-foreground group-hover:text-foreground">
                     {money(
                       p.lowestPriceCents ?? 0,
                       store?.currency,
