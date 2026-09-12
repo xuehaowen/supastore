@@ -40,4 +40,14 @@ describe("frontend visual foundations", () => {
     expect(shopLayout).toContain('role="contentinfo"');
     expect(shopLayout).toContain('aria-label="Customer support"');
   });
+
+  it("marks the active catalog filter for assistive technology", async () => {
+    const catalog = await readFile(
+      path.join(workspaceRoot, "src/app/catalog.tsx"),
+      "utf8",
+    );
+
+    expect(catalog).toContain('aria-current={query.category ? undefined : "page"}');
+    expect(catalog).toContain('aria-current={query.category === g.slug ? "page" : undefined}');
+  });
 });
