@@ -30,4 +30,14 @@ describe("frontend visual foundations", () => {
       expect(stylesheet).toMatch(new RegExp(`\\${selector}\\s*\\{`));
     }
   });
+
+  it("gives the storefront shell a labeled support landmark", async () => {
+    const shopLayout = await readFile(
+      path.join(workspaceRoot, "src/app/[locale]/layout.tsx"),
+      "utf8",
+    );
+
+    expect(shopLayout).toContain('role="contentinfo"');
+    expect(shopLayout).toContain('aria-label="Customer support"');
+  });
 });
