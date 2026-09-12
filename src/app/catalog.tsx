@@ -6,6 +6,9 @@ import { db } from "@/infrastructure/db";
 import { storeSettings, categories } from "@/infrastructure/db/schema";
 import { getTranslations } from "next-intl/server";
 import { money } from "@/infrastructure/web";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 const catalog = unstable_cache(listProducts, ["public-catalog"], {
   tags: ["catalog"],
   revalidate: 3600,
@@ -35,36 +38,36 @@ export default async function Catalog({
   );
   return (
     <>
-      <section className="hero">
-        <p className="eyebrow">THE EVERYDAY COLLECTION / 01</p>
-        <h1>{t("intro")}</h1>
-        <p>{t("subtitle")}</p>
-        <a className="text-link" href="#collection">
+      <section className="relative min-h-[480px] border-b py-18 pr-[48%] max-sm:min-h-[580px] max-sm:py-10 max-sm:pr-0">
+        <p className="mb-7 text-[10px] font-bold tracking-[0.2em]">THE EVERYDAY COLLECTION / 01</p>
+        <h1 className="mb-7 font-serif text-5xl leading-none tracking-[-0.045em] md:text-7xl">{t("intro")}</h1>
+        <p className="max-w-sm leading-7 text-muted-foreground">{t("subtitle")}</p>
+        <a className="mt-6 inline-block border-b pb-1.5 text-sm no-underline" href="#collection">
           {t("collection")} ↓
         </a>
-        <div className="hero-art" aria-hidden="true">
-          <div className="vase" />
-          <div className="orb" />
-          <span>LESS, BUT BETTER.</span>
+        <div className="absolute top-0 right-0 -z-10 h-[90%] w-[43%] overflow-hidden rounded-t-full bg-[#e6e7d5] max-sm:top-auto max-sm:bottom-5 max-sm:h-60 max-sm:w-[65%]" aria-hidden="true">
+          <div className="absolute bottom-[15%] left-[20%] h-[50%] w-[37%] rounded-[30%_30%_42%_42%] bg-[#bc8962] shadow-xl" />
+          <div className="absolute right-[7%] bottom-[22%] aspect-square w-[34%] rounded-full bg-[radial-gradient(circle_at_35%_30%,#f3eed2,#b3b89b)] shadow-xl" />
+          <span className="absolute right-6 bottom-5 text-[9px] tracking-[0.22em]">LESS, BUT BETTER.</span>
         </div>
       </section>
       <section id="collection">
-        <div className="section-heading">
+        <div className="flex items-center justify-between gap-6 max-sm:flex-col max-sm:items-start">
           <h2>{t("collection")}</h2>
-          <form className="search" action={"/" + locale + "/search"}>
+          <form className="flex gap-2 max-sm:w-full" action={"/" + locale + "/search"}>
             <label className="sr-only" htmlFor="search">
               {t("search")}
             </label>
-            <input
+            <Input
               id="search"
               name="q"
               placeholder={t("search")}
               defaultValue={query.q}
             />
-            <button>{t("searchButton")}</button>
+            <Button type="submit">{t("searchButton")}</Button>
           </form>
         </div>
-        <nav className="filters" aria-label="Categories">
+        <nav className="my-6 flex flex-wrap gap-x-5 gap-y-3 text-sm" aria-label="Categories">
           <Link href={"/" + locale}>{t("all")}</Link>
           {groups.map((g) => (
             <Link key={g.id} href={"/" + locale + "/search?category=" + g.slug}>
@@ -73,13 +76,13 @@ export default async function Catalog({
             </Link>
           ))}
         </nav>
-        <div className="product-grid">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-9 md:grid-cols-3">
           {result.items.map((p, i) => (
             <article key={p.id}>
               <Link href={"/" + locale + "/products/" + p.handle}>
-                <div className={"product-image tone-" + (i % 3)}>
+                <div className={"flex aspect-square items-center justify-center overflow-hidden " + (i % 3 === 1 ? "bg-[#eee2d6]" : "bg-[#e5e8df]")}>
                   {p.coverImageKey ? (
-                    <img
+                    <img className="size-full object-cover"
                       src={
                         "/api/assets?key=" + encodeURIComponent(p.coverImageKey)
                       }
@@ -88,11 +91,11 @@ export default async function Catalog({
                       height="600"
                     />
                   ) : (
-                    <span aria-hidden="true">{p.title.slice(0, 1)}</span>
+                    <span className="font-serif text-8xl text-[#889475]" aria-hidden="true">{p.title.slice(0, 1)}</span>
                   )}
                 </div>
-                <div className="product-meta">
-                  <h3>{p.title}</h3>
+                <div className="mt-4 flex justify-between gap-3 text-sm max-sm:block">
+                  <h3 className="text-base font-medium">{p.title}</h3>
                   <span>
                     {money(
                       p.lowestPriceCents ?? 0,
@@ -105,8 +108,8 @@ export default async function Catalog({
             </article>
           ))}
         </div>
-        {!result.items.length && <p className="notice">No products found.</p>}
-        <div className="pagination">
+        {!result.items.length && <Alert><AlertDescription>No products found.</AlertDescription></Alert>}
+        <div className="flex justify-between py-7">
           {result.page > 1 && (
             <Link
               href={
