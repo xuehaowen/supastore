@@ -13,13 +13,14 @@ Completed in this pass:
 - Added browser-level rejection scenarios for invalid customer quantities and premature pickup handoff.
 - Added `test:browser` and `test:all` commands plus CI jobs for unit, coverage, build, PostgreSQL integration, and browser validation.
 - PostgreSQL integration suite currently passes: 20 tests across four files.
+- Seeded Chromium browser suite passes: 8 tests covering customer checkout/recovery/accessibility, admin pause/catalog, and customer/admin rejection journeys.
 - Enforced owner-only cancellation/refund authorization.
 - Removed mock tracking defaults and require an explicit carrier/manual-delivery method.
 - Required pickup readiness and a supported verification method before handoff.
 
 Still required before the plan is complete:
 
-- Add browser coverage for receipt corrections, cash receipts, payout claims/reconciliation/discrepancies, staff governance, and fulfillment corrections/rescheduling; the local environment can list but has not executed the browser suite against a running seeded app.
+- Add browser coverage for receipt corrections, cash receipts, payout claims/reconciliation/discrepancies, staff governance, and fulfillment corrections/rescheduling; these admin journeys remain unexecuted in the browser suite.
 - Add direct server-action tests for every exported action and browser coverage for all C/A journey rows.
 - Add database/storage race tests and make browser/integration suites mandatory CI gates.
 
