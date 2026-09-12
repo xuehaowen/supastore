@@ -2,6 +2,7 @@ import { defineConfig } from "vitest/config";
 import path from "node:path";
 
 export default defineConfig({
+  esbuild: { jsx: "automatic" },
   test: {
     environment: "node",
     exclude: ["tests/browser/**", "node_modules/**"],
@@ -34,3 +35,4 @@ export default defineConfig({
     },
   },
 });
+
