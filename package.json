@@ -11,6 +11,8 @@
     "test": "vitest run tests/unit tests/e2e",
     "test:unit": "vitest run tests/unit",
     "test:integration": "node scripts/test-integration.mjs",
+    "test:browser": "playwright test",
+    "test:all": "npm run typecheck && npm test && npm run test:integration && npm run test:browser",
     "test:coverage": "vitest run tests/unit --coverage",
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
