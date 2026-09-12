@@ -44,6 +44,10 @@ import { authorizeSurplusReturn } from "@/application/use-cases/orders/surplus-r
 import { recordCashReceipt } from "@/application/use-cases/payments/record-cash-receipt";
 import { correctReceipt } from "@/application/use-cases/payments/correct-receipt";
 import { correctFulfillment } from "@/application/use-cases/fulfillment/fulfillment-operations";
+import {
+  updateStaffMembership,
+  removeStaffMembership,
+} from "@/application/use-cases/staff/manage-staff";
 import { db } from "@/infrastructure/db";
 import {
   paymentAccounts,
@@ -57,6 +61,7 @@ import {
   parseActionEnum,
   parseActionDestination,
   parseActionInteger,
+  parseActionRequiredText,
   parseActionUuid,
 } from "@/application/common/request-validation";
 const field = (form: FormData, name: string) =>
@@ -528,6 +533,26 @@ export async function closeOrderPayoutAttempt(form: FormData) {
       ownerUserId: await staffIdentity(),
       attemptId: parseActionUuid(field(form, "attemptId"), "Payout attempt"),
       reason: field(form, "reason"),
+    });
+  });
+}
+
+export async function updateStaffMember(form: FormData) {
+  return perform("/admin/setup", async () => {
+    await updateStaffMembership({
+      actorUserId: await staffIdentity(),
+      targetUserId: parseActionRequiredText(field(form, "targetUserId"), "Staff user", 200),
+      role: parseActionEnum(field(form, "role"), "Staff role", ["owner", "staff"] as const),
+      isActive: field(form, "active") === "true",
+    });
+  });
+}
+
+export async function removeStaffMember(form: FormData) {
+  return perform("/admin/setup", async () => {
+    await removeStaffMembership({
+      actorUserId: await staffIdentity(),
+      targetUserId: parseActionRequiredText(field(form, "targetUserId"), "Staff user", 200),
     });
   });
 }

@@ -4,6 +4,7 @@ import {
   storeSettings,
   paymentAccounts,
   pickupLocation,
+  staffMemberships,
 } from "@/infrastructure/db/schema";
 import { staffIdentity } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
@@ -14,6 +15,8 @@ import {
   saveShipping,
   savePickup,
   savePayment,
+  updateStaffMember,
+  removeStaffMember,
 } from "@/app/actions";
 import { Field, Hidden, Notice, AdminNav } from "@/app/components";
 import { Button } from "@/components/ui/button";
@@ -48,6 +51,7 @@ export default async function Setup({
     .select()
     .from(pickupLocation)
     .orderBy(pickupLocation.name);
+  const staffMembers = await db.select().from(staffMemberships);
   return (
     <main className="admin">
       <AdminNav />
@@ -212,6 +216,31 @@ export default async function Setup({
             </label>
             <Button type="submit">Add payment method</Button>
           </form>
+        </section>
+        <section className="panel">
+          <h2>04 / Staff access</h2>
+          <p>Only owners can change staff access. The last active owner cannot be removed or demoted.</p>
+          {staffMembers.map((member) => (
+            <div key={member.id} className="border-t py-3">
+              <p>{member.email} · {member.role} · {member.isActive ? "active" : "inactive"}</p>
+              <form action={updateStaffMember} className="mt-2">
+                <Hidden name="targetUserId" value={member.userId} />
+                <NativeSelect name="role" defaultValue={member.role}>
+                  <option value="staff">Staff</option>
+                  <option value="owner">Owner</option>
+                </NativeSelect>
+                <NativeSelect name="active" defaultValue={String(member.isActive)}>
+                  <option value="true">Active</option>
+                  <option value="false">Inactive</option>
+                </NativeSelect>
+                <Button type="submit" variant="outline">Save access</Button>
+              </form>
+              <form action={removeStaffMember} className="mt-2">
+                <Hidden name="targetUserId" value={member.userId} />
+                <Button type="submit" variant="outline">Remove membership</Button>
+              </form>
+            </div>
+          ))}
         </section>
       </div>
     </main>
