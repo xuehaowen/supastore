@@ -77,8 +77,18 @@ See [Deployment Recipes](docs/deployment-recipes.md) for Coolify, Railway, Fly.i
 ## Testing & Quality Assurance
 
 ```bash
-# Run unit & integration test suites
+# Run the default fast suite (unit + synthetic lifecycle)
 pnpm test
+
+# Run unit tests only
+pnpm test:unit
+
+# Run real PostgreSQL integration tests with an isolated embedded database
+pnpm test:integration
+
+# Enforce 90% minimum coverage for lines, statements, functions, and branches;
+# write HTML/LCOV reports to coverage/
+pnpm test:coverage
 
 # Verify strict TypeScript types
 pnpm typecheck
