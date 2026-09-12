@@ -1,6 +1,9 @@
 "use client";
 
 import { useRef, useState, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface CsvParseError {
   line: number;
@@ -134,20 +137,19 @@ export default function ProductImportExportPage() {
           Download a full CSV snapshot. Exports stream directly and do not load into memory.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
-          <button
+          <Button
             id="export-products-btn"
             onClick={() => downloadExport("products")}
-            className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 transition-colors"
           >
             ↓ Products CSV
-          </button>
-          <button
+          </Button>
+          <Button
             id="export-orders-btn"
             onClick={() => downloadExport("orders")}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 transition-colors"
+            variant="outline"
           >
             ↓ Orders CSV
-          </button>
+          </Button>
         </div>
         <p className="mt-3 text-xs text-gray-400">
           Tip: the exported products CSV can be re-imported cleanly without format conversion.
@@ -179,7 +181,7 @@ export default function ProductImportExportPage() {
                 Click to select a CSV file
               </span>
               <span className="text-xs text-gray-400">or drag and drop</span>
-              <input
+              <Input
                 id="csv-file-input"
                 type="file"
                 accept=".csv,text/csv"
@@ -213,9 +215,9 @@ export default function ProductImportExportPage() {
                 )}
               </ul>
             </div>
-            <button onClick={reset} className="text-sm text-gray-500 underline hover:text-gray-700">
+            <Button onClick={reset} variant="link">
               Choose a different file
-            </button>
+            </Button>
           </div>
         )}
 
@@ -227,32 +229,20 @@ export default function ProductImportExportPage() {
 
             {/* Visual diff preview */}
             <div className="overflow-x-auto rounded-lg border border-gray-200">
-              <table className="min-w-full text-xs">
-                <thead className="bg-gray-50 text-left text-gray-500">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">Handle</th>
-                    <th className="px-3 py-2 font-medium">SKU</th>
-                    <th className="px-3 py-2 font-medium">Title</th>
-                    <th className="px-3 py-2 font-medium">Variant</th>
-                    <th className="px-3 py-2 font-medium text-right">Price (cents)</th>
-                    <th className="px-3 py-2 font-medium text-center">Available</th>
-                    <th className="px-3 py-2 font-medium text-center">Published</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
+              <Table className="text-xs">
+                <TableHeader className="bg-muted text-left text-muted-foreground">
+                  <TableRow>
+                    <TableHead>Handle</TableHead><TableHead>SKU</TableHead><TableHead>Title</TableHead><TableHead>Variant</TableHead><TableHead className="text-right">Price (cents)</TableHead><TableHead className="text-center">Available</TableHead><TableHead className="text-center">Published</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {preview.rows.slice(0, 50).map((row, i) => (
-                    <tr key={i} className="hover:bg-gray-50">
-                      <td className="px-3 py-1.5 font-mono">{row.handle}</td>
-                      <td className="px-3 py-1.5 font-mono">{row.sku}</td>
-                      <td className="px-3 py-1.5">{row.productTitle}</td>
-                      <td className="px-3 py-1.5 text-gray-500">{row.variantTitle}</td>
-                      <td className="px-3 py-1.5 text-right tabular-nums">{row.priceCents}</td>
-                      <td className="px-3 py-1.5 text-center">{row.isAvailable ? "✓" : "✗"}</td>
-                      <td className="px-3 py-1.5 text-center">{row.isPublished ? "✓" : "✗"}</td>
-                    </tr>
+                    <TableRow key={i}>
+                      <TableCell className="font-mono">{row.handle}</TableCell><TableCell className="font-mono">{row.sku}</TableCell><TableCell>{row.productTitle}</TableCell><TableCell className="text-muted-foreground">{row.variantTitle}</TableCell><TableCell className="text-right tabular-nums">{row.priceCents}</TableCell><TableCell className="text-center">{row.isAvailable ? "✓" : "✗"}</TableCell><TableCell className="text-center">{row.isPublished ? "✓" : "✗"}</TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
               {preview.rows.length > 50 && (
                 <p className="px-3 py-2 text-xs text-gray-400">
                   Showing first 50 of {preview.rows.length} rows
@@ -261,19 +251,18 @@ export default function ProductImportExportPage() {
             </div>
 
             <div className="flex gap-3">
-              <button
+              <Button
                 id="confirm-import-btn"
                 onClick={handleImport}
-                className="rounded-lg bg-gray-900 px-5 py-2 text-sm font-medium text-white hover:bg-gray-700 transition-colors"
               >
                 Import {preview.rows.length} rows
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={reset}
-                className="text-sm text-gray-500 underline hover:text-gray-700"
+                variant="link"
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -289,9 +278,9 @@ export default function ProductImportExportPage() {
             <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
               ✓ Import complete — {preview.created} created, {preview.updated} updated
             </div>
-            <button onClick={reset} className="text-sm text-gray-500 underline hover:text-gray-700">
+            <Button onClick={reset} variant="link">
               Import another file
-            </button>
+            </Button>
           </div>
         )}
 
@@ -300,9 +289,9 @@ export default function ProductImportExportPage() {
             <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
               ✗ {preview.message}
             </div>
-            <button onClick={reset} className="text-sm text-gray-500 underline hover:text-gray-700">
+            <Button onClick={reset} variant="link">
               Try again
-            </button>
+            </Button>
           </div>
         )}
       </section>

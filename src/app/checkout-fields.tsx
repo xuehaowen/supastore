@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { Button } from "@/components/ui/button";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Input } from "@/components/ui/input";
 
 export type PickupOption = {
   id: string;
@@ -125,31 +128,31 @@ function PickupCalendar({
     <div className="pickup-calendar-container">
       <div className="pickup-calendar-header">
         <div className="pickup-calendar-title-nav">
-          <button
+          <Button
             type="button"
             className="secondary pickup-calendar-nav-btn"
             onClick={handlePrev}
             aria-label={viewMode === "week" ? "Previous week" : "Previous month"}
           >
             ‹
-          </button>
+          </Button>
           <span className="pickup-calendar-title">{headerTitle}</span>
-          <button
+          <Button
             type="button"
             className="secondary pickup-calendar-nav-btn"
             onClick={handleNext}
             aria-label={viewMode === "week" ? "Next week" : "Next month"}
           >
             ›
-          </button>
+          </Button>
         </div>
-        <button
+        <Button
           type="button"
           className="secondary pickup-calendar-toggle-btn"
           onClick={() => setViewMode(viewMode === "week" ? "month" : "week")}
         >
           {viewMode === "week" ? "Monthly view 📅" : "Weekly view 📅"}
-        </button>
+        </Button>
       </div>
 
       <div className="pickup-calendar-weekdays-row">
@@ -167,7 +170,7 @@ function PickupCalendar({
             const isAvailable = availableSet.has(key);
             const isSelected = selectedDate === key;
             return (
-              <button
+              <Button
                 type="button"
                 key={key}
                 disabled={!isAvailable}
@@ -176,7 +179,7 @@ function PickupCalendar({
               >
                 <span className="day-number">{d.getDate()}</span>
                 {isAvailable && <span className="available-dot" />}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -190,7 +193,7 @@ function PickupCalendar({
             const isAvailable = availableSet.has(key);
             const isSelected = selectedDate === key;
             return (
-              <button
+              <Button
                 type="button"
                 key={key}
                 disabled={!isAvailable}
@@ -199,7 +202,7 @@ function PickupCalendar({
               >
                 <span className="day-number">{d.getDate()}</span>
                 {isAvailable && <span className="available-dot" />}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -249,7 +252,7 @@ export function CheckoutFields({
             : []),
         ].map((item) => (
           <label className="check" key={item.value}>
-            <input
+            <Input
               type="radio"
               name="fulfillmentType"
               value={item.value}
@@ -264,11 +267,11 @@ export function CheckoutFields({
         <>
           <label>
             Street address
-            <input name="address" required autoComplete="street-address" />
+            <Input name="address" required autoComplete="street-address" />
           </label>
           <label>
             Country code
-            <input
+            <Input
               name="country"
               required
               defaultValue="US"
@@ -282,7 +285,7 @@ export function CheckoutFields({
           <legend>Pickup details</legend>
           {locations.map((item) => (
             <label className="check" key={item.id}>
-              <input
+              <Input
                 type="radio"
                 name="pickupLocationId"
                 value={item.id}
@@ -311,7 +314,7 @@ export function CheckoutFields({
 
           <label>
             Pickup window
-            <select
+            <NativeSelect
               name="pickupTime"
               required
               key={locationId + date}
@@ -326,7 +329,7 @@ export function CheckoutFields({
                   {slot.startTime} – {slot.endTime}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </label>
           {!location?.dates.length && (
             <p role="status">
@@ -343,4 +346,3 @@ export function CheckoutFields({
     </>
   );
 }
-

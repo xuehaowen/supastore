@@ -11,6 +11,9 @@ import { staffIdentity, money } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { saveCategory, saveProduct, toggleAvailability } from "@/app/actions";
 import { Field, Hidden, Notice, AdminNav } from "@/app/components";
+import { Button } from "@/components/ui/button";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Textarea } from "@/components/ui/textarea";
 export default async function Products({
   searchParams,
 }: {
@@ -44,16 +47,16 @@ export default async function Products({
               <form action={toggleAvailability}>
                 <Hidden name="productId" value={p.id} />
                 <Hidden name="published" value={String(!p.isPublished)} />
-                <button className="secondary">
+                <Button type="submit" variant="outline">
                   {p.isPublished ? "Unpublish product" : "Publish product"}
-                </button>
+                </Button>
               </form>
               <form action={toggleAvailability}>
                 <Hidden name="variantId" value={v.id} />
                 <Hidden name="available" value={String(!v.isAvailable)} />
-                <button className="secondary">
+                <Button type="submit" variant="outline">
                   {v.isAvailable ? "Mark unavailable" : "Make available"}
-                </button>
+                </Button>
               </form>
             </article>
           ))}
@@ -65,26 +68,26 @@ export default async function Products({
             <Field name="handle" label="URL handle" />
             <label>
               Description
-              <textarea name="description" />
+              <Textarea name="description" />
             </label>
             <Field name="zhTitle" label="Chinese title" required={false} />
             <label>
               Chinese description
-              <textarea name="zhDescription" />
+              <Textarea name="zhDescription" />
             </label>
             <Field name="imageKey" label="Image asset key" required={false} />
             <label>
               Categories
-              <select name="categoryIds" multiple>
+              <NativeSelect name="categoryIds" multiple>
                 {groups.map((g) => (
                   <option key={g.id} value={g.id}>
                     {g.name}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
             <VariantFields />
-            <button>Publish product</button>
+            <Button type="submit">Publish product</Button>
           </form>
           <h2>New category</h2>
           <form action={saveCategory}>
@@ -92,16 +95,16 @@ export default async function Products({
             <Field name="slug" label="Category handle" />
             <label>
               Parent category
-              <select name="parentId">
+              <NativeSelect name="parentId">
                 <option value="">None</option>
                 {groups.map((g) => (
                   <option key={g.id} value={g.id}>
                     {g.name}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
-            <button>Add category</button>
+            <Button type="submit">Add category</Button>
           </form>
         </section>
       </div>

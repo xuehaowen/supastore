@@ -10,6 +10,7 @@ import {
 } from "@/infrastructure/db/schema";
 import { notFound } from "next/navigation";
 import { money } from "@/infrastructure/web";
+import { Button } from "@/components/ui/button";
 
 interface PackingSlipPageProps {
   params: Promise<{ id: string }>;
@@ -84,12 +85,12 @@ export default async function PackingSlipPage({ params }: PackingSlipPageProps) 
           <span className="font-semibold text-neutral-800">Thermal Packing Slip</span>
           <p className="text-[10px] text-neutral-500">Optimized for 58mm / 80mm printers</p>
         </div>
-        <button
+        <Button
           onClick={() => window.print()}
-          className="rounded bg-black px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-800"
+          size="sm"
         >
           Print Slip
-        </button>
+        </Button>
       </div>
 
       {/* 80mm / 58mm Thermal Print Container */}

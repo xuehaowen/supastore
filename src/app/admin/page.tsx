@@ -18,6 +18,9 @@ import {
   confirmPayment,
 } from "@/app/actions";
 import { Field, Hidden, Notice, AdminNav } from "@/app/components";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { NativeSelect } from "@/components/ui/native-select";
 export default async function Admin({
   searchParams,
 }: {
@@ -101,9 +104,9 @@ export default async function Admin({
               name="message"
               value={store?.pauseMessage}
             />
-            <button>
+            <Button type="submit">
               {store?.isPaused ? "Resume new orders" : "Pause new orders"}
-            </button>
+            </Button>
           </form>
         </section>
       )}
@@ -126,13 +129,13 @@ export default async function Admin({
                 <Hidden name="orderId" value={order.id} />
                 <label>
                   Actual receiving account
-                  <select name="accountId">
+                  <NativeSelect name="accountId">
                     {accounts.map((a) => (
                       <option key={a.id} value={a.id}>
                         {a.accountName} — {a.accountIdentifier}
                       </option>
                     ))}
-                  </select>
+                  </NativeSelect>
                 </label>
                 <Field
                   name="amount"
@@ -141,15 +144,15 @@ export default async function Admin({
                 />
                 <Field name="reference" label="Actual bank / cash reference" />
                 <label className="check">
-                  <input type="checkbox" name="verified" required />I verified
+                  <Checkbox name="verified" required />I verified
                   this receiving account and amount against the actual
                   transaction.
                 </label>
-                <button>Record receipt</button>
+                <Button type="submit">Record receipt</Button>
               </form>
               <form action={confirmPayment}>
                 <Hidden name="orderId" value={order.id} />
-                <button className="secondary">Confirm exact payment</button>
+                <Button type="submit" variant="outline">Confirm exact payment</Button>
               </form>
               {member.role === "owner" && (
                 <form action={proposeChange}>
@@ -160,7 +163,7 @@ export default async function Admin({
                     type="number"
                   />
                   <Field label="Reason" name="reason" />
-                  <button className="secondary">Propose new terms</button>
+                  <Button type="submit" variant="outline">Propose new terms</Button>
                 </form>
               )}
             </details>

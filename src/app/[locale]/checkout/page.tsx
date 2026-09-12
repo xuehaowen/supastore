@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
 export default async function Checkout({
   params,
   searchParams,
@@ -152,14 +153,14 @@ export default async function Checkout({
           <div className="grid gap-2">
           <Label>
             {t("payment")}
-            <select className="h-8 w-full rounded-lg border bg-transparent px-2.5 text-sm" name="paymentAccountId">
+            <NativeSelect name="paymentAccountId">
               <option value="">{t("freeOrderNoPayment")}</option>
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </Label></div>
           <Button type="submit">{t("review")} →</Button>
         </form>

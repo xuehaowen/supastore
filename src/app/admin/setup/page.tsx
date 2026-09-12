@@ -16,6 +16,10 @@ import {
   savePayment,
 } from "@/app/actions";
 import { Field, Hidden, Notice, AdminNav } from "@/app/components";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Textarea } from "@/components/ui/textarea";
 export default async function Setup({
   searchParams,
 }: {
@@ -32,7 +36,7 @@ export default async function Setup({
         <form action={setupOwner}>
           <Field label="Store name" name="storeName" />
           <Field label="One-time setup secret" name="secret" type="password" />
-          <button>Create store</button>
+          <Button type="submit">Create store</Button>
         </form>
       </main>
     );
@@ -82,10 +86,10 @@ export default async function Setup({
             </div>
             <label>
               Default language
-              <select name="defaultLocale" defaultValue={store.defaultLocale}>
+              <NativeSelect name="defaultLocale" defaultValue={store.defaultLocale}>
                 <option value="en">English</option>
                 <option value="zh">中文</option>
-              </select>
+              </NativeSelect>
             </label>
             <Field label="Timezone" name="timezone" value={store.timezone} />
             <Field
@@ -95,14 +99,13 @@ export default async function Setup({
               value={store.taxRateBasisPoints}
             />
             <label className="check">
-              <input
-                type="checkbox"
+              <Checkbox
                 name="taxInclusive"
                 defaultChecked={store.isTaxInclusive}
               />
               Prices include tax
             </label>
-            <button>Save profile</button>
+            <Button type="submit">Save profile</Button>
           </form>
         </section>
         <section className="panel">
@@ -126,20 +129,20 @@ export default async function Setup({
               type="number"
               required={false}
             />
-            <button>Save shipping zone</button>
+            <Button type="submit">Save shipping zone</Button>
           </form>
           <h2>Local pickup</h2>
           <form action={savePickup}>
             <label>
               Pickup location to save
-              <select name="pickupLocationId">
+              <NativeSelect name="pickupLocationId">
                 <option value="">Add a new location</option>
                 {locations.map((location) => (
                   <option key={location.id} value={location.id}>
                     Replace details for {location.name}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
             <Field label="Location name" name="name" />
             <Field label="Pickup address" name="address" />
@@ -153,8 +156,7 @@ export default async function Setup({
               <legend>Pickup days</legend>
               {["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((day) => (
                 <label className="check" key={day}>
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     name="days"
                     value={day}
                     defaultChecked={!["sat", "sun"].includes(day)}
@@ -170,7 +172,7 @@ export default async function Setup({
               value="09:00"
             />
             <Field label="End time" name="endTime" type="time" value="17:00" />
-            <button>Save pickup</button>
+            <Button type="submit">Save pickup</Button>
           </form>
         </section>
         <section className="panel">
@@ -187,7 +189,7 @@ export default async function Setup({
               : "Verify that store email reaches your inbox."}
           </p>
           <form action={sendVerification}>
-            <button className="secondary">Send verification email</button>
+            <Button type="submit" variant="outline">Send verification email</Button>
           </form>
           {accounts.map((a) => (
             <div key={a.id}>
@@ -196,9 +198,9 @@ export default async function Setup({
               <form action={savePayment}>
                 <Hidden name="id" value={a.id} />
                 <Hidden name="active" value={String(!a.isActive)} />
-                <button className="secondary">
+                <Button type="submit" variant="outline">
                   {a.isActive ? "Disable" : "Enable"}
-                </button>
+                </Button>
               </form>
             </div>
           ))}
@@ -206,9 +208,9 @@ export default async function Setup({
             <Field label="Method name" name="name" />
             <label>
               Receiving account and instructions
-              <textarea name="instructions" required />
+              <Textarea name="instructions" required />
             </label>
-            <button>Add payment method</button>
+            <Button type="submit">Add payment method</Button>
           </form>
         </section>
       </div>

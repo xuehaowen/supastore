@@ -73,7 +73,10 @@ describe("frontend visual foundations", () => {
     const pages = await Promise.all([
       "src/app/admin/page.tsx",
       "src/app/admin/products/page.tsx",
+      "src/app/admin/products/import/page.tsx",
+      "src/app/admin/orders/[id]/packing-slip/page.tsx",
       "src/app/admin/setup/page.tsx",
+      "src/app/[locale]/checkout/page.tsx",
       "src/app/checkout-fields.tsx",
     ].map((file) => readFile(path.join(workspaceRoot, file), "utf8")));
 
