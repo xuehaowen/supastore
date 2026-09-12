@@ -113,6 +113,8 @@ export interface ClaimPayoutInput {
 }
 
 export async function claimPayout(input: ClaimPayoutInput) {
+  if (!Number.isSafeInteger(input.claimedAmountCents) || input.claimedAmountCents <= 0)
+    throw new InvariantViolationError('Claimed payout amount must be a positive integer.');
   return await db.transaction(async (tx) => {
     const owner = await verifyStaffInTransaction(tx, input.ownerUserId, 'owner');
 
@@ -179,6 +181,10 @@ export interface ReconcilePayoutInput {
 }
 
 export async function reconcilePayout(input: ReconcilePayoutInput) {
+  if (!Number.isSafeInteger(input.actualAmountCents) || input.actualAmountCents <= 0)
+    throw new InvariantViolationError('Actual payout amount must be a positive integer.');
+  if (!input.transferReference?.trim())
+    throw new InvariantViolationError('Transfer reference is required.');
   return await db.transaction(async (tx) => {
     const owner = await verifyStaffInTransaction(tx, input.ownerUserId, 'owner');
 
@@ -286,6 +292,10 @@ export interface ResolvePayoutDiscrepancyInput {
 export async function resolvePayoutDiscrepancy(
   input: ResolvePayoutDiscrepancyInput
 ) {
+  if (!Number.isSafeInteger(input.writeOffCents) || input.writeOffCents < 0)
+    throw new InvariantViolationError('Write-off amount must be a non-negative integer.');
+  if (!input.resolutionReason?.trim())
+    throw new InvariantViolationError('Resolution reason is required.');
   return await db.transaction(async (tx) => {
     const owner = await verifyStaffInTransaction(tx, input.ownerUserId, "owner");
 
@@ -355,6 +365,8 @@ export interface ClosePayoutAttemptInput {
  * remainder transfer is pending on the attempt.
  */
 export async function closePayoutAttempt(input: ClosePayoutAttemptInput) {
+  if (!input.reason?.trim())
+    throw new InvariantViolationError('Payout closure reason is required.');
   return await db.transaction(async (tx) => {
     const owner = await verifyStaffInTransaction(tx, input.ownerUserId, "owner");
 

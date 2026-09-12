@@ -3,6 +3,7 @@ import {
   parseActionBoolean,
   parseActionEnum,
   parseActionInteger,
+  parseActionDestination,
   parseActionRequiredText,
   parseActionUuid,
 } from "@/application/common/request-validation";
@@ -50,6 +51,19 @@ describe("request validation helpers", () => {
     );
     expect(() => parseActionUuid("not-an-id", "Order")).toThrow(
       "Order is invalid.",
+    );
+  });
+
+  it("requires a supported, non-empty payout destination", () => {
+    expect(parseActionDestination("bank_account", "acct-123")).toEqual({
+      type: "bank_account",
+      rawDestination: "acct-123",
+    });
+    expect(() => parseActionDestination("crypto", "wallet")).toThrow(
+      "Destination type is invalid.",
+    );
+    expect(() => parseActionDestination("cash", " ")).toThrow(
+      "Destination is required.",
     );
   });
 });

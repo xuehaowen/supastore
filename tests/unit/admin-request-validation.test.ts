@@ -3,6 +3,12 @@ import { fulfillOrder } from "@/application/use-cases/fulfill-order";
 import { completePickupHandoff } from "@/application/use-cases/fulfillment/fulfillment-operations";
 import { cancelOrder } from "@/application/use-cases/orders/cancel-order";
 import { authorizeRefund } from "@/application/use-cases/refund-payout";
+import {
+  claimPayout,
+  reconcilePayout,
+  resolvePayoutDiscrepancy,
+  closePayoutAttempt,
+} from "@/application/use-cases/refund-payout";
 
 describe("admin command validation", () => {
   it("requires an explicit carrier or manual delivery method", async () => {
@@ -43,5 +49,21 @@ describe("admin command validation", () => {
         ownerUserId: "owner",
       }),
     ).rejects.toThrow("Refund amount must be a positive integer.");
+  });
+
+  it("rejects unsafe payout commands before database access", async () => {
+    const destination = { type: "cash" as const, rawDestination: "drawer" };
+    await expect(
+      claimPayout({ allocationId: "allocation", claimedAmountCents: 0, destination, ownerUserId: "owner" }),
+    ).rejects.toThrow("Claimed payout amount must be a positive integer.");
+    await expect(
+      reconcilePayout({ attemptId: "attempt", actualAmountCents: 1, transferReference: " ", actualDestination: destination, ownerUserId: "owner" }),
+    ).rejects.toThrow("Transfer reference is required.");
+    await expect(
+      resolvePayoutDiscrepancy({ discrepancyId: "discrepancy", writeOffCents: 0, resolutionReason: " ", ownerUserId: "owner" }),
+    ).rejects.toThrow("Resolution reason is required.");
+    await expect(
+      closePayoutAttempt({ attemptId: "attempt", reason: " ", ownerUserId: "owner" }),
+    ).rejects.toThrow("Payout closure reason is required.");
   });
 });

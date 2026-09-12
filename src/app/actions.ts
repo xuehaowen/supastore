@@ -33,7 +33,13 @@ import {
   markReadyForPickup,
 } from "@/application/use-cases/fulfillment/fulfillment-operations";
 import { cancelOrder } from "@/application/use-cases/orders/cancel-order";
-import { authorizeRefund } from "@/application/use-cases/refund-payout";
+import {
+  authorizeRefund,
+  claimPayout,
+  reconcilePayout,
+  resolvePayoutDiscrepancy,
+  closePayoutAttempt,
+} from "@/application/use-cases/refund-payout";
 import { authorizeSurplusReturn } from "@/application/use-cases/orders/surplus-return";
 import { recordCashReceipt } from "@/application/use-cases/payments/record-cash-receipt";
 import { correctReceipt } from "@/application/use-cases/payments/correct-receipt";
@@ -49,6 +55,7 @@ import { DomainError } from "@/application/common/errors";
 import { ValiError } from "valibot";
 import {
   parseActionEnum,
+  parseActionDestination,
   parseActionInteger,
   parseActionUuid,
 } from "@/application/common/request-validation";
@@ -476,6 +483,50 @@ export async function correctOrderFulfillment(form: FormData) {
       orderId: parseActionUuid(field(form, "orderId"), "Order"),
       ...(field(form, "carrier") ? { carrier: field(form, "carrier") } : {}),
       ...(field(form, "trackingNumber") ? { trackingNumber: field(form, "trackingNumber") } : {}),
+      reason: field(form, "reason"),
+    });
+  });
+}
+
+export async function claimOrderPayout(form: FormData) {
+  return perform("/admin", async () => {
+    await claimPayout({
+      ownerUserId: await staffIdentity(),
+      allocationId: parseActionUuid(field(form, "allocationId"), "Payout allocation"),
+      claimedAmountCents: parseActionInteger(field(form, "amount"), "Claim amount", 1, 2_147_483_647),
+      destination: parseActionDestination(field(form, "destinationType"), field(form, "destination")),
+    });
+  });
+}
+
+export async function reconcileOrderPayout(form: FormData) {
+  return perform("/admin", async () => {
+    await reconcilePayout({
+      ownerUserId: await staffIdentity(),
+      attemptId: parseActionUuid(field(form, "attemptId"), "Payout attempt"),
+      actualAmountCents: parseActionInteger(field(form, "actualAmount"), "Actual payout amount", 1, 2_147_483_647),
+      transferReference: field(form, "transferReference"),
+      actualDestination: parseActionDestination(field(form, "destinationType"), field(form, "destination")),
+    });
+  });
+}
+
+export async function resolveOrderPayoutDiscrepancy(form: FormData) {
+  return perform("/admin", async () => {
+    await resolvePayoutDiscrepancy({
+      ownerUserId: await staffIdentity(),
+      discrepancyId: parseActionUuid(field(form, "discrepancyId"), "Payout discrepancy"),
+      writeOffCents: parseActionInteger(field(form, "writeOff"), "Write-off amount", 0, 2_147_483_647),
+      resolutionReason: field(form, "reason"),
+    });
+  });
+}
+
+export async function closeOrderPayoutAttempt(form: FormData) {
+  return perform("/admin", async () => {
+    await closePayoutAttempt({
+      ownerUserId: await staffIdentity(),
+      attemptId: parseActionUuid(field(form, "attemptId"), "Payout attempt"),
       reason: field(form, "reason"),
     });
   });

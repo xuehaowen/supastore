@@ -1,4 +1,5 @@
 import { DomainError } from "@/application/common/errors";
+import type { Destination } from "@/domain/financial-projection/discrepancies";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -54,4 +55,17 @@ export function parseActionUuid(value: unknown, label: string): string {
   const text = String(value ?? "").trim();
   if (!UUID.test(text)) throw new DomainError(`${label} is invalid.`);
   return text;
+}
+
+export function parseActionDestination(
+  typeValue: unknown,
+  rawValue: unknown,
+): Destination {
+  const type = parseActionEnum(typeValue, "Destination type", [
+    "bank_account",
+    "card",
+    "cash",
+  ] as const);
+  const rawDestination = parseActionRequiredText(rawValue, "Destination", 300);
+  return { type, rawDestination };
 }
