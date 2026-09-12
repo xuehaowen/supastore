@@ -1,0 +1,102 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DomainError } from "@/application/common/errors";
+const mocks = vi.hoisted(() => ({
+  commands: Object.fromEntries(["addToCart","updateCartItem","getQuote","createOrder","requestTrackingLink","verifyTrackingLink","acceptOrderChange","proposeOrderChange","createProduct","updateProductAvailability","updateStoreSettings","configureShipping","bootstrapOwner","recordReceipt","confirmOrder","fulfillOrder","completePickupHandoff","markReadyForPickup","cancelOrder","authorizeRefund","claimPayout","reconcilePayout","resolvePayoutDiscrepancy","closePayoutAttempt","authorizeSurplusReturn","recordCashReceipt","correctReceipt","correctFulfillment","updateStaffMembership","removeStaffMembership","requestEmailVerification","verifyEmailDelivery"].map(name => [name, vi.fn()])),
+  staff: vi.fn(), guest: vi.fn(), token: vi.fn(), setToken: vi.fn(), allow: vi.fn(),
+  verify: vi.fn(), write: vi.fn(), transaction: vi.fn(),
+}));
+vi.mock("next/navigation", () => ({ redirect: (path: string) => { throw new Error("REDIRECT:" + path); } }));
+vi.mock("next/cache", () => ({ revalidateTag: vi.fn(), revalidatePath: vi.fn() }));
+vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
+vi.mock("@/infrastructure/auth", () => ({ auth: { api: { getSession: async () => ({user:{email:"owner@example.test"}}) } } }));
+vi.mock("@/infrastructure/web", () => ({ staffIdentity:mocks.staff, guestIdentity:mocks.guest, orderToken:mocks.token, setOrderToken:mocks.setToken, localeOf:(value:string) => value === "zh" ? "zh" : "en" }));
+vi.mock("@/application/common/rate-limit", () => ({ allowRequest:mocks.allow }));
+vi.mock("@/infrastructure/auth/session", () => ({ verifyStaffInTransaction:mocks.verify }));
+vi.mock("@/infrastructure/db", () => ({db:{transaction:mocks.transaction}}));
+vi.mock("@/application/use-cases/cart/add-to-cart", () => ({addToCart:mocks.commands.addToCart}));
+vi.mock("@/application/use-cases/cart/update-cart-item", () => ({updateCartItem:mocks.commands.updateCartItem}));
+vi.mock("@/application/use-cases/get-quote", () => ({getQuote:mocks.commands.getQuote}));
+vi.mock("@/application/use-cases/create-order", () => ({createOrder:mocks.commands.createOrder}));
+vi.mock("@/application/use-cases/guest/request-tracking-link", () => ({requestTrackingLink:mocks.commands.requestTrackingLink}));
+vi.mock("@/application/use-cases/guest/verify-tracking-link", () => ({verifyTrackingLink:mocks.commands.verifyTrackingLink}));
+vi.mock("@/application/use-cases/order-proposals", () => ({acceptOrderChange:mocks.commands.acceptOrderChange,proposeOrderChange:mocks.commands.proposeOrderChange}));
+vi.mock("@/application/use-cases/catalog/create-product", () => ({createProduct:mocks.commands.createProduct}));
+vi.mock("@/application/use-cases/catalog/update-product-availability", () => ({updateProductAvailability:mocks.commands.updateProductAvailability}));
+vi.mock("@/application/use-cases/store/update-store-settings", () => ({updateStoreSettings:mocks.commands.updateStoreSettings}));
+vi.mock("@/application/use-cases/store/configure-shipping", () => ({configureShipping:mocks.commands.configureShipping}));
+vi.mock("@/application/use-cases/bootstrap-owner", () => ({bootstrapOwner:mocks.commands.bootstrapOwner}));
+vi.mock("@/application/use-cases/record-receipt", () => ({recordReceipt:mocks.commands.recordReceipt}));
+vi.mock("@/application/use-cases/confirm-order", () => ({confirmOrder:mocks.commands.confirmOrder}));
+vi.mock("@/application/use-cases/fulfill-order", () => ({fulfillOrder:mocks.commands.fulfillOrder}));
+vi.mock("@/application/use-cases/fulfillment/fulfillment-operations", () => ({completePickupHandoff:mocks.commands.completePickupHandoff,markReadyForPickup:mocks.commands.markReadyForPickup}));
+vi.mock("@/application/use-cases/orders/cancel-order", () => ({cancelOrder:mocks.commands.cancelOrder}));
+vi.mock("@/application/use-cases/refund-payout", () => ({authorizeRefund:mocks.commands.authorizeRefund,claimPayout:mocks.commands.claimPayout,reconcilePayout:mocks.commands.reconcilePayout,resolvePayoutDiscrepancy:mocks.commands.resolvePayoutDiscrepancy,closePayoutAttempt:mocks.commands.closePayoutAttempt}));
+vi.mock("@/application/use-cases/orders/surplus-return", () => ({authorizeSurplusReturn:mocks.commands.authorizeSurplusReturn}));
+vi.mock("@/application/use-cases/payments/record-cash-receipt", () => ({recordCashReceipt:mocks.commands.recordCashReceipt}));
+vi.mock("@/application/use-cases/payments/correct-receipt", () => ({correctReceipt:mocks.commands.correctReceipt}));
+vi.mock("@/application/use-cases/fulfillment/fulfillment-operations", () => ({correctFulfillment:mocks.commands.correctFulfillment,completePickupHandoff:mocks.commands.completePickupHandoff,markReadyForPickup:mocks.commands.markReadyForPickup}));
+vi.mock("@/application/use-cases/staff/manage-staff", () => ({updateStaffMembership:mocks.commands.updateStaffMembership,removeStaffMembership:mocks.commands.removeStaffMembership}));
+vi.mock("@/application/use-cases/store/verify-email", () => ({requestEmailVerification:mocks.commands.requestEmailVerification,verifyEmailDelivery:mocks.commands.verifyEmailDelivery}));
+import * as actions from "@/app/actions";
+const id = "00000000-0000-0000-0000-000000000001";
+const base: Record<string,string> = {locale:"en",variantId:id,itemId:id,cartId:id,orderId:id,quoteId:id,proposalId:id,receiptId:id,accountId:id,allocationId:id,attemptId:id,discrepancyId:id,quantity:"1",fulfillmentType:"shipping",country:"US",address:"1 Test St",paymentAccountId:id,accepted:"yes",name:"Customer",email:"customer@example.test",reference:"BANK-123",token:"recovery-token",secret:"setup-secret",storeName:"Test store",supportEmail:"support@example.test",currency:"USD",precision:"2",defaultLocale:"en",timezone:"UTC",taxRate:"0",zoneName:"Standard",countries:"US",rate:"500",prepMinutes:"60",days:"mon",startTime:"09:00",endTime:"17:00",instructions:"Bank instructions",paused:"true",handle:"test-product",title:"Test product",variantCount:"1","sku-0":"SKU-1","variantTitle-0":"Default","price-0":"1000",productId:id,published:"true",available:"true",total:"1000",reason:"Customer request",verified:"on",amount:"1000",carrier:"Manual delivery",trackingNumber:"TRACK-1",handoffActor:"Customer",verificationMethod:"scoped_order_page",tenderedAmount:"1000",delta:"-100",destinationType:"cash",destination:"Customer",actualAmount:"1000",transferReference:"TRANSFER-1",writeOff:"0",targetUserId:"staff-target",role:"staff",active:"true",slug:"category"};
+function form(overrides: Record<string,string | null> = {}) { const data = new FormData(); for(const [key,value] of Object.entries({...base,...overrides})) if(value !== null) data.set(key,value); return data; }
+const cases = [
+["addItem","addToCart","/en/cart"], ["changeItem","updateCartItem","/en/cart"], ["quoteCart","getQuote","/en/checkout?quote="+id], ["placeOrder","createOrder","/en/orders/"+id], ["recoverOrder","requestTrackingLink","/recover?sent=1"], ["exchangeLink","verifyTrackingLink","/en/orders/"+id], ["acceptProposal","acceptOrderChange","/en/orders/"+id],
+["setupOwner","bootstrapOwner","/admin/setup"], ["saveSettings","updateStoreSettings","/admin/setup"], ["saveShipping","configureShipping","/admin/setup"], ["savePickup","configureShipping","/admin/setup"], ["togglePause","updateStoreSettings","/admin"], ["saveProduct","createProduct","/admin/products"], ["toggleAvailability","updateProductAvailability","/admin/products"], ["proposeChange","proposeOrderChange","/admin"], ["receivePayment","recordReceipt","/admin"], ["confirmPayment","confirmOrder","/admin"], ["fulfillConfirmedOrder","fulfillOrder","/admin"], ["markOrderReady","markReadyForPickup","/admin"], ["completeOrderPickup","completePickupHandoff","/admin"], ["cancelAdminOrder","cancelOrder","/admin"], ["authorizeOrderRefund","authorizeRefund","/admin"], ["authorizeOrderSurplusReturn","authorizeSurplusReturn","/admin"], ["receiveCashPayment","recordCashReceipt","/admin"], ["correctRecordedReceipt","correctReceipt","/admin"], ["correctOrderFulfillment","correctFulfillment","/admin"], ["claimOrderPayout","claimPayout","/admin"], ["reconcileOrderPayout","reconcilePayout","/admin"], ["resolveOrderPayoutDiscrepancy","resolvePayoutDiscrepancy","/admin"], ["closeOrderPayoutAttempt","closePayoutAttempt","/admin"], ["updateStaffMember","updateStaffMembership","/admin/setup"], ["removeStaffMember","removeStaffMembership","/admin/setup"], ["sendVerification","requestEmailVerification","/admin/setup?sent=1"], ["verifyEmail","verifyEmailDelivery","/admin/setup"]
+] as const;
+beforeEach(() => {
+ vi.resetAllMocks(); mocks.staff.mockResolvedValue("staff-session"); mocks.guest.mockResolvedValue("guest-session"); mocks.token.mockResolvedValue("order-session"); mocks.allow.mockReturnValue(true);
+ for(const command of Object.values(mocks.commands)) command.mockResolvedValue(undefined);
+ mocks.commands.getQuote.mockResolvedValue({id}); mocks.commands.createOrder.mockResolvedValue({id,sessionToken:"new-token"}); mocks.commands.verifyTrackingLink.mockResolvedValue({orderId:id,sessionToken:"new-token"});
+ const tx = {select:()=>({from:()=>({for:async()=>[]})}), insert:()=>({values:mocks.write}),update:()=>({set:(value:unknown)=>({where:async()=>mocks.write(value)})})}; mocks.transaction.mockImplementation(async work=>work(tx));
+});
+describe("every server action request boundary", () => {
+ it("requires a contract case for every exported action",()=>{expect(Object.keys(actions).sort()).toEqual([...cases.map(c=>c[0]),"savePayment","saveCategory"].sort());});
+ it.each(cases)("%s dispatches and redirects",async(name,command,path)=>{
+  await expect(actions[name](form())).rejects.toThrow("REDIRECT:"+path);
+  expect(mocks.commands[command]).toHaveBeenCalledTimes(1);
+  if(!["sendVerification","verifyEmail"].includes(name)) expect(mocks.commands[command].mock.calls[0][0]).toEqual(expect.any(Object));
+ });
+ it.each(cases)("%s shows domain rejection",async(name,command)=>{
+  mocks.commands[command].mockRejectedValueOnce(new DomainError("Request rejected"));
+  await expect(actions[name](form())).rejects.toThrow("error=Request%20rejected");
+ });
+ it.each(cases)("%s hides unexpected failures",async(name,command)=>{
+  mocks.commands[command].mockRejectedValueOnce(new Error("private database credentials"));
+  await expect(actions[name](form())).rejects.toThrow("error=Unable%20to%20save");
+ });
+ it.each(cases.filter(c=>c[2].startsWith("/admin")))("%s cannot dispatch without staff identity",async(name,command)=>{
+  mocks.staff.mockRejectedValueOnce(new DomainError("Sign in required"));
+  await expect(actions[name](form())).rejects.toThrow("error=Sign%20in%20required"); expect(mocks.commands[command]).not.toHaveBeenCalled();
+ });
+ it.each(["savePayment","saveCategory"] as const)("%s checks owner before writing",async name=>{
+  await expect(actions[name](form())).rejects.toThrow("REDIRECT:/admin"); expect(mocks.verify).toHaveBeenCalledWith(expect.any(Object),"staff-session","owner"); expect(mocks.write).toHaveBeenCalledTimes(1);
+ });
+ it.each(["savePayment","saveCategory"] as const)("%s rejects a forbidden owner operation",async name=>{
+  mocks.verify.mockRejectedValueOnce(new DomainError("Owner required")); await expect(actions[name](form())).rejects.toThrow("error=Owner%20required");expect(mocks.write).not.toHaveBeenCalled();
+ });
+ it("preserves checkout consent and rate limits",async()=>{
+  await expect(actions.placeOrder(form({accepted:null}))).rejects.toThrow("error=Accept");expect(mocks.commands.createOrder).not.toHaveBeenCalled();
+  mocks.allow.mockReturnValue(false); await expect(actions.placeOrder(form())).rejects.toThrow("error=Please%20wait");expect(mocks.commands.createOrder).not.toHaveBeenCalled();
+ });
+ it("requires receipt verification",async()=>{await expect(actions.receivePayment(form({verified:null}))).rejects.toThrow("error=Verify");expect(mocks.commands.recordReceipt).not.toHaveBeenCalled();});
+ it("sets scoped access only after successful order creation",async()=>{await expect(actions.placeOrder(form())).rejects.toThrow("REDIRECT");expect(mocks.setToken).toHaveBeenCalledWith(id,"new-token");});
+});
+const invalidCases: [keyof typeof actions,string,string][] = [
+ ["saveSettings","precision",""],["saveSettings","taxRate",""],["saveSettings","defaultLocale","xx"],
+ ["saveShipping","rate",""],["savePickup","prepMinutes",""],
+ ["saveProduct","price-0",""],["saveProduct","variantCount","0"],["saveProduct","variantCount","51"],["saveProduct","variantCount","1.5"],
+ ["togglePause","paused","invalid"],["toggleAvailability","published","invalid"],["updateStaffMember","active","invalid"],
+ ["proposeChange","total",""],["receivePayment","amount",""],["confirmPayment","orderId","bad"],
+ ["savePayment","name",""],["saveCategory","parentId","bad"],
+ ["acceptProposal","orderId","bad"]
+];
+describe("malformed frontend requests",()=>{
+ it.each(invalidCases)("%s rejects malformed %s",async(name,field,value)=>{
+  await expect(actions[name](form({[field]:value}))).rejects.toThrow("error=");
+  for(const command of Object.values(mocks.commands)) expect(command).not.toHaveBeenCalled();
+  expect(mocks.write).not.toHaveBeenCalled();
+ });
+});
+
