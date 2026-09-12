@@ -50,4 +50,13 @@ describe("frontend visual foundations", () => {
     expect(catalog).toContain('aria-current={query.category ? undefined : "page"}');
     expect(catalog).toContain('aria-current={query.category === g.slug ? "page" : undefined}');
   });
+
+  it("provides responsive image sizing on product detail pages", async () => {
+    const productPage = await readFile(
+      path.join(workspaceRoot, "src/app/[locale]/products/[handle]/page.tsx"),
+      "utf8",
+    );
+
+    expect(productPage).toContain('sizes="(max-width: 767px) 88vw, 50vw"');
+  });
 });
