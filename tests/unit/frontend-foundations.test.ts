@@ -68,4 +68,17 @@ describe("frontend visual foundations", () => {
 
     expect(cartPage).toContain('aria-label="Order summary"');
   });
+
+  it("does not render raw buttons, selects, or textareas in application pages", async () => {
+    const pages = await Promise.all([
+      "src/app/admin/page.tsx",
+      "src/app/admin/products/page.tsx",
+      "src/app/admin/setup/page.tsx",
+      "src/app/checkout-fields.tsx",
+    ].map((file) => readFile(path.join(workspaceRoot, file), "utf8")));
+
+    for (const page of pages) {
+      expect(page).not.toMatch(/<(button|select|textarea)\b/);
+    }
+  });
 });
