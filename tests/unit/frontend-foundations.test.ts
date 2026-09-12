@@ -59,4 +59,13 @@ describe("frontend visual foundations", () => {
 
     expect(productPage).toContain('sizes="(max-width: 767px) 88vw, 50vw"');
   });
+
+  it("uses an order-summary landmark in the cart", async () => {
+    const cartPage = await readFile(
+      path.join(workspaceRoot, "src/app/[locale]/cart/page.tsx"),
+      "utf8",
+    );
+
+    expect(cartPage).toContain('aria-label="Order summary"');
+  });
 });
