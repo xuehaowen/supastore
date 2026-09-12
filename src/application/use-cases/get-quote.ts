@@ -24,6 +24,7 @@ export interface GetQuoteInput {
   fulfillmentType: "shipping" | "pickup";
   shippingAddress: { country: string; address: string };
   pickupDate?: string;
+  pickupLocationId?: string;
   pickupTime?: string;
   paymentAccountId?: string;
 }
@@ -99,7 +100,15 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
       subtotal,
     );
   } else {
-    const [location] = await tx.select().from(pickupLocation).limit(1);
+    const [location] = await tx
+      .select()
+      .from(pickupLocation)
+      .where(
+        eq(
+          pickupLocation.id,
+          input.pickupLocationId || "00000000-0000-0000-0000-000000000000",
+        ),
+      );
     if (!location)
       throw new InvariantViolationError("Pickup is not available.");
     pickup = {
@@ -155,6 +164,7 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
         fulfillmentType: input.fulfillmentType,
         shippingAddress: input.shippingAddress,
         pickupDate: input.pickupDate ?? "",
+        pickupLocationId: input.pickupLocationId ?? "",
         pickupTime: input.pickupTime ?? "",
         paymentAccountId: input.paymentAccountId ?? "",
       },

@@ -30,7 +30,7 @@ export const shippingZones = pgTable("shipping_zones", {
 });
 
 // ---------------------------------------------------------------------------
-// pickup_location — single physical location with a weekly schedule
+// pickup_location — physical locations, each with its own weekly schedule
 // ---------------------------------------------------------------------------
 export const pickupLocation = pgTable("pickup_location", {
   id: uuid("id").primaryKey().defaultRandom(),

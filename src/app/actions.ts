@@ -94,6 +94,7 @@ export async function quoteCart(form: FormData) {
         address: field(form, "address"),
       },
       pickupDate: field(form, "pickupDate"),
+      pickupLocationId: field(form, "pickupLocationId"),
       pickupTime: field(form, "pickupTime"),
       paymentAccountId: field(form, "paymentAccountId"),
     });
@@ -104,7 +105,7 @@ export async function placeOrder(form: FormData) {
   const locale = localeOf(field(form, "locale"));
   return perform("/" + locale + "/checkout", async () => {
     if (field(form, "accepted") !== "yes")
-      throw new DomainError("Accept the quoted total before placing an order.");
+      throw new DomainError("Accept the final total before placing an order.");
     if (!allowRequest("checkout:" + (await guestIdentity()), 20))
       throw new DomainError("Please wait a minute before retrying.");
     const order = await createOrder({
@@ -215,6 +216,9 @@ export async function savePickup(form: FormData) {
     await configureShipping({
       staffUserId: await staffIdentity(),
       pickup: {
+        ...(field(form, "pickupLocationId")
+          ? { id: field(form, "pickupLocationId") }
+          : {}),
         name: field(form, "name"),
         address: field(form, "address"),
         weeklySchedule: schedule,
@@ -236,12 +240,10 @@ export async function savePayment(form: FormData) {
           .set({ isActive: field(form, "active") === "true" })
           .where(eq(paymentAccounts.id, id));
       else if (field(form, "name") && field(form, "instructions"))
-        await tx
-          .insert(paymentAccounts)
-          .values({
-            accountName: field(form, "name"),
-            accountIdentifier: field(form, "instructions"),
-          });
+        await tx.insert(paymentAccounts).values({
+          accountName: field(form, "name"),
+          accountIdentifier: field(form, "instructions"),
+        });
     });
   });
 }
@@ -369,13 +371,11 @@ export async function saveCategory(form: FormData) {
       throw new DomainError("Enter a category name and valid URL handle.");
     await db.transaction(async (tx) => {
       await verifyStaffInTransaction(tx, staff, "owner");
-      await tx
-        .insert(categories)
-        .values({
-          name: field(form, "name"),
-          slug,
-          parentId: field(form, "parentId") || null,
-        });
+      await tx.insert(categories).values({
+        name: field(form, "name"),
+        slug,
+        parentId: field(form, "parentId") || null,
+      });
     });
     revalidateTag("catalog");
     revalidatePath("/[locale]", "layout");

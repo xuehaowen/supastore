@@ -42,7 +42,7 @@ export default function ProductImportExportPage() {
     setParsedRows([]);
 
     // Use Web Worker for off-main-thread parsing
-    const worker = new Worker(new URL("./csv-parser.worker.ts", import.meta.url));
+    const worker = new Worker(new URL("../csv-parser.worker.ts", import.meta.url));
     workerRef.current = worker;
 
     const reader = new FileReader();

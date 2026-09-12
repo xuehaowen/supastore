@@ -54,6 +54,12 @@ pnpm dev
 - Admin Portal: [http://localhost:3000/admin](http://localhost:3000/admin)
 - Health Check: [http://localhost:3000/api/health/ready](http://localhost:3000/api/health/ready)
 
+Customers check out as guests and access their orders through private links; customer account registration is not implemented. The admin login is sign-in only, and public registration requests are blocked. The demo seed provisions its owner through trusted server-side tooling.
+
+For verification emails, configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, and `SMTP_FROM` in `.env`. Port 465 automatically uses implicit TLS; port 587 uses STARTTLS. `SMTP_SECURE` can override this for local development. Verification goes to the signed-in owner’s email address. A successful send means the SMTP server accepted it; check that inbox and its spam folder. Docker Compose reads the SMTP credentials from the environment.
+
+Checkout shows a final total before placing the order. Pickup requires a location and an eligible pickup window, without a shipping address. Each location has its own schedule, preparation time, and blackout dates. The internal price snapshot is revalidated when placing an order so changed prices cannot be accepted silently.
+
 ---
 
 ## Docker & Deployment

@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 import { db } from "@/infrastructure/db";
-import { storeSettings, paymentAccounts } from "@/infrastructure/db/schema";
+import {
+  storeSettings,
+  paymentAccounts,
+  pickupLocation,
+} from "@/infrastructure/db/schema";
 import { staffIdentity } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import {
@@ -15,7 +19,7 @@ import { Field, Hidden, Notice, AdminNav } from "@/app/components";
 export default async function Setup({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; sent?: string }>;
 }) {
   const staff = await staffIdentity().catch(() => redirect("/admin/login"));
   const [store] = await db.select().from(storeSettings).limit(1);
@@ -36,6 +40,10 @@ export default async function Setup({
     .transaction((tx) => verifyStaffInTransaction(tx, staff, "owner"))
     .catch(() => redirect("/admin/login"));
   const accounts = await db.select().from(paymentAccounts);
+  const locations = await db
+    .select()
+    .from(pickupLocation)
+    .orderBy(pickupLocation.name);
   return (
     <main className="admin">
       <AdminNav />
@@ -122,6 +130,17 @@ export default async function Setup({
           </form>
           <h2>Local pickup</h2>
           <form action={savePickup}>
+            <label>
+              Pickup location to save
+              <select name="pickupLocationId">
+                <option value="">Add a new location</option>
+                {locations.map((location) => (
+                  <option key={location.id} value={location.id}>
+                    Replace details for {location.name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <Field label="Location name" name="name" />
             <Field label="Pickup address" name="address" />
             <Field
@@ -156,6 +175,12 @@ export default async function Setup({
         </section>
         <section className="panel">
           <h2>03 / Email & payment methods</h2>
+          {q.sent && (
+            <p role="status">
+              Verification email accepted by the mail server. Check the owner
+              account inbox and spam folder.
+            </p>
+          )}
           <p>
             {store.emailVerifiedAt
               ? "Email delivery verified"

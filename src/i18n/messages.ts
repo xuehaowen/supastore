@@ -30,6 +30,16 @@ export const messages = {
     status: "Order status",
     support: "Need help? Contact the store.",
     all: "All products",
+    freeOrderNoPayment: "No payment required for a free order",
+    merchandise: "Merchandise",
+    delivery: "Delivery",
+    tax: "Tax",
+    finalOrderTotal: "Final order total",
+    editFulfillment: "Edit fulfillment",
+    finalTotalNotice:
+      "This is your final total, including applicable tax and delivery. Payment instructions appear after you place your order.",
+    acceptTerms: "I accept this total and fulfillment terms.",
+    eyebrowCheckout: "ONE LAST LOOK",
   },
   zh: {
     shop: "商店",
@@ -61,6 +71,16 @@ export const messages = {
     status: "订单状态",
     support: "需要帮助？请联系商店。",
     all: "所有商品",
+    freeOrderNoPayment: "免费订单无需支付",
+    merchandise: "商品金额",
+    delivery: "配送",
+    tax: "税费",
+    finalOrderTotal: "最终订单总额",
+    editFulfillment: "修改履约方式",
+    finalTotalNotice:
+      "这是包含适用税费和运费的最终总额。付款说明将在您下单后显示。",
+    acceptTerms: "我接受此总额和履约条款。",
+    eyebrowCheckout: "最后核对",
   },
 };
 export function textFor(locale: string) {

@@ -87,7 +87,7 @@ export async function createOrder(input: CreateOrderInput) {
       );
     if (quote.expiresAt <= new Date() || quote.cartRevision !== cart.revision)
       throw new InvariantViolationError(
-        "Your quote changed or expired. Review a new quote before ordering.",
+        "Your checkout changed or expired. Review the final total again before ordering.",
       );
     const terms = quote.termsSnapshot as QuoteTerms;
     const current = await calculateQuote(tx, {
@@ -101,7 +101,7 @@ export async function createOrder(input: CreateOrderInput) {
       current.result.totalPayableCents !== quote.totalPayableCents
     )
       throw new InvariantViolationError(
-        "Prices or fulfillment terms changed. Review a new quote before ordering.",
+        "Prices or fulfillment terms changed. Review the final total again before ordering.",
       );
     let order: typeof orders.$inferSelect | undefined;
     for (let attempt = 0; attempt < 10 && !order; attempt++) {

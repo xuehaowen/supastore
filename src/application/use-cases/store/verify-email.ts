@@ -10,27 +10,32 @@ export async function requestEmailVerification(staffUserId: string) {
   const token = randomBytes(32).toString("hex");
   const recipient = await db.transaction(async (tx) => {
     const staff = await verifyStaffInTransaction(tx, staffUserId, "owner");
-    await tx
-      .insert(verification)
-      .values({
-        id: randomUUID(),
-        identifier: "store-email:" + staffUserId,
-        value: hashToken(token),
-        expiresAt: new Date(Date.now() + 86400000),
-      });
+    await tx.insert(verification).values({
+      id: randomUUID(),
+      identifier: "store-email:" + staffUserId,
+      value: hashToken(token),
+      expiresAt: new Date(Date.now() + 86400000),
+    });
     return staff.email;
   });
-  await smtpAdapter.sendEmail({
-    recipient,
-    subject: "Verify store email delivery",
-    template: "store.email_verification",
-    data: {
-      verificationUrl:
-        (process.env.BETTER_AUTH_URL ?? "http://localhost:3000") +
-        "/admin/setup/verify-email?token=" +
-        token,
-    },
-  });
+  try {
+    const result = await smtpAdapter.sendEmail({
+      recipient,
+      subject: "Verify store email delivery",
+      template: "store.email_verification",
+      data: {
+        verificationUrl:
+          (process.env.BETTER_AUTH_URL ?? "http://localhost:3000") +
+          "/admin/setup/verify-email?token=" +
+          token,
+      },
+    });
+    if (!result.success) throw new Error("Delivery rejected");
+  } catch {
+    throw new InvariantViolationError(
+      "Verification email could not be sent. Check the SMTP host, port, TLS setting, credentials, and sender address, then retry.",
+    );
+  }
 }
 export async function verifyEmailDelivery(staffUserId: string, token: string) {
   return db.transaction(async (tx) => {

@@ -4,6 +4,7 @@ import { storeSettings } from "@/infrastructure/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import { shippingZones, pickupLocation } from "@/infrastructure/db/schema";
+import { NotFoundError } from "@/application/common/errors";
 
 export interface ShippingZoneInput {
   id?: string;
@@ -15,6 +16,7 @@ export interface ShippingZoneInput {
 }
 
 export interface PickupLocationInput {
+  id?: string;
   name: string;
   address: string;
   weeklySchedule: Record<string, [string, string][]>;
@@ -93,7 +95,14 @@ export async function configureShipping(input: ConfigureShippingInput) {
 
     let savedPickup: typeof pickupLocation.$inferSelect | null = null;
     if (pickup !== undefined) {
-      const [existingPickup] = await tx.select().from(pickupLocation).limit(1);
+      const [existingPickup] = pickup.id
+        ? await tx
+            .select()
+            .from(pickupLocation)
+            .where(eq(pickupLocation.id, pickup.id))
+        : [];
+      if (pickup.id && !existingPickup)
+        throw new NotFoundError("Pickup location not found.");
       if (existingPickup) {
         const [updated] = await tx
           .update(pickupLocation)

@@ -19,7 +19,7 @@ test("C1-C6 storefront, persistent cart, order, refresh and direct upload", asyn
   await page
     .getByLabel("Payment method")
     .selectOption({ label: "Demo bank transfer" });
-  await page.getByRole("button", { name: "Get a quote" }).click();
+  await page.getByRole("button", { name: "Review your order" }).click();
   await expect(
     page.getByText("Payment instructions", { exact: true }),
   ).toHaveCount(0);
