@@ -22,7 +22,7 @@ const schema = v.object({
     v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(4)),
   ),
   defaultLocale: v.optional(v.picklist(["en", "zh"])),
-  timezone: v.optional(v.string()),
+  timezone: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(100))),
   isOrderingEnabled: v.optional(v.boolean()),
   isPaused: v.optional(v.boolean()),
   pauseMessage: v.optional(v.pipe(v.string(), v.maxLength(500))),

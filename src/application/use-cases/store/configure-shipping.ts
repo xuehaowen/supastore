@@ -4,6 +4,7 @@ import { storeSettings } from "@/infrastructure/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import { shippingZones, pickupLocation } from "@/infrastructure/db/schema";
+import { parseActionRequiredText } from "@/application/common/request-validation";
 import { NotFoundError } from "@/application/common/errors";
 
 export interface ShippingZoneInput {
@@ -39,6 +40,7 @@ export async function configureShipping(input: ConfigureShippingInput) {
     v.maxValue(2147483647),
   );
   for (const zone of zones ?? []) {
+    parseActionRequiredText(zone.name, "Shipping zone name", 120);
     v.parse(amount, zone.rateCents);
     if (zone.freeThresholdCents != null)
       v.parse(amount, zone.freeThresholdCents);
@@ -46,6 +48,8 @@ export async function configureShipping(input: ConfigureShippingInput) {
       v.parse(v.pipe(v.string(), v.regex(/^[A-Z]{2}$/)), country);
   }
   if (pickup) {
+    parseActionRequiredText(pickup.name, "Pickup location name", 120);
+    parseActionRequiredText(pickup.address, "Pickup address", 1000);
     v.parse(amount, pickup.prepMinutes ?? 60);
     for (const [day, slots] of Object.entries(pickup.weeklySchedule)) {
       if (!["mon", "tue", "wed", "thu", "fri", "sat", "sun"].includes(day))
