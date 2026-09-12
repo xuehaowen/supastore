@@ -82,6 +82,15 @@ jobs:
       - run: pnpm run db:migrate
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/supastore
+      - run: pnpm exec tsx scripts/seed-demo.ts
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/supastore
+          ADMIN_SETUP_SECRET: ci-browser-admin-secret
+          DEMO_OWNER_PASSWORD: ci-browser-owner-password
+          DISABLE_OUTBOUND_DELIVERY: "true"
+          APP_URL: http://127.0.0.1:3000
+          BETTER_AUTH_URL: http://127.0.0.1:3000
+          BETTER_AUTH_TRUSTED_ORIGINS: http://127.0.0.1:3000,http://localhost:3000
       - run: pnpm run build
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/supastore
@@ -89,10 +98,17 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/supastore
           PORT: 3000
+          ADMIN_SETUP_SECRET: ci-browser-admin-secret
+          DEMO_OWNER_PASSWORD: ci-browser-owner-password
+          DISABLE_OUTBOUND_DELIVERY: "true"
+          APP_URL: http://127.0.0.1:3000
+          BETTER_AUTH_URL: http://127.0.0.1:3000
+          BETTER_AUTH_TRUSTED_ORIGINS: http://127.0.0.1:3000,http://localhost:3000
       - run: pnpm exec playwright test
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/supastore
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          DEMO_OWNER_PASSWORD: ci-browser-owner-password
       - if: failure()
         uses: actions/upload-artifact@v4
         with:

@@ -166,6 +166,11 @@ if (!owner) {
 }
 
 await db
+  .update(user)
+  .set({ emailVerified: true, updatedAt: new Date() })
+  .where(eq(user.id, owner.id));
+
+await db
   .insert(staffMemberships)
   .values({ userId: owner.id, email: owner.email, role: "owner" })
   .onConflictDoUpdate({
