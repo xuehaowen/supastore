@@ -28,6 +28,12 @@ export interface AuthorizeRefundInput {
 }
 
 export async function authorizeRefund(input: AuthorizeRefundInput) {
+  if (!Number.isSafeInteger(input.amountCents) || input.amountCents <= 0) {
+    throw new InvariantViolationError('Refund amount must be a positive integer.');
+  }
+  if (!input.reason?.trim()) {
+    throw new InvariantViolationError('Refund reason is required.');
+  }
   return await db.transaction(async (tx) => {
     const owner = await verifyStaffInTransaction(tx, input.ownerUserId, 'owner');
 

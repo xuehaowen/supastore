@@ -5,6 +5,7 @@ import {
   orders,
   paymentAccounts,
   paymentUploadIntents,
+  paymentReceipts,
   eventDeliveries,
   storeSettings,
 } from "@/infrastructure/db/schema";
@@ -16,6 +17,15 @@ import {
   proposeChange,
   receivePayment,
   confirmPayment,
+  fulfillConfirmedOrder,
+  markOrderReady,
+  completeOrderPickup,
+  cancelAdminOrder,
+  authorizeOrderRefund,
+  authorizeOrderSurplusReturn,
+  receiveCashPayment,
+  correctRecordedReceipt,
+  correctOrderFulfillment,
 } from "@/app/actions";
 import { Field, Hidden, Notice, AdminNav } from "@/app/components";
 import { Button } from "@/components/ui/button";
@@ -38,6 +48,7 @@ export default async function Admin({
         .orderBy(desc(orders.createdAt))
         .limit(100);
       const accounts = await tx.select().from(paymentAccounts);
+      const receipts = await tx.select().from(paymentReceipts);
       const evidence = await tx
         .select()
         .from(paymentUploadIntents)
@@ -51,6 +62,7 @@ export default async function Admin({
         member,
         rows,
         accounts,
+        receipts,
         evidence,
         failures,
         store,
@@ -58,7 +70,7 @@ export default async function Admin({
       };
     })
     .catch(() => redirect("/admin/login?error=staff"));
-  const { member, rows, accounts, evidence, failures, store, readiness } = data;
+  const { member, rows, accounts, receipts, evidence, failures, store, readiness } = data;
   return (
     <main className="admin">
       <AdminNav />
@@ -168,6 +180,26 @@ export default async function Admin({
                   <Button type="submit" variant="outline">Propose new terms</Button>
                 </form>
               )}
+              <form action={cancelAdminOrder}>
+                <Hidden name="orderId" value={order.id} />
+                <Field label="Cancellation reason" name="reason" />
+                <Button type="submit" variant="outline">Cancel order</Button>
+              </form>
+              <form action={receiveCashPayment} className="mt-4">
+                <Hidden name="orderId" value={order.id} />
+                <label>
+                  Cash account
+                  <NativeSelect name="accountId">
+                    {accounts.map((a) => (
+                      <option key={a.id} value={a.id}>{a.accountName}</option>
+                    ))}
+                  </NativeSelect>
+                </label>
+                <Field name="amount" label="Cash amount (minor units)" type="number" />
+                <Field name="tenderedAmount" label="Tendered amount (minor units)" type="number" />
+                <Field name="payerName" label="Payer name" />
+                <Button type="submit" variant="outline">Record cash receipt</Button>
+              </form>
             </details>
           ))}
       </section>
@@ -185,9 +217,74 @@ export default async function Admin({
         {rows
           .filter((o) => o.lifecycleStatus === "confirmed")
           .map((o) => (
-            <p key={o.id}>
-              {o.referenceCode} · {o.guestName} · {o.fulfillmentType}
-            </p>
+            <details className="panel" key={o.id}>
+              <summary>{o.referenceCode} · {o.guestName} · {o.fulfillmentType}</summary>
+              <p>{o.guestEmail}</p>
+              {o.fulfillmentType === "pickup" ? (
+                <>
+                  <form action={markOrderReady} className="mt-2">
+                    <Hidden name="orderId" value={o.id} />
+                    <Button type="submit" variant="outline">Mark ready for pickup</Button>
+                  </form>
+                  <form action={completeOrderPickup} className="mt-2">
+                    <Hidden name="orderId" value={o.id} />
+                    <Field label="Recipient / authorized recipient" name="handoffActor" />
+                    <NativeSelect name="verificationMethod" defaultValue="scoped_order_page">
+                      <option value="scoped_order_page">Scoped order page</option>
+                      <option value="owner_assisted">Owner-assisted verification</option>
+                    </NativeSelect>
+                    <Button type="submit" variant="outline">Complete pickup handoff</Button>
+                  </form>
+                </>
+              ) : (
+                <form action={fulfillConfirmedOrder} className="mt-2">
+                  <Hidden name="orderId" value={o.id} />
+                  <Field label="Carrier" name="carrier" />
+                  <Field label="Tracking number" name="trackingNumber" />
+                  <Button type="submit" variant="outline">Mark shipped / delivered</Button>
+                </form>
+              )}
+              {member.role === "owner" && (
+                <form action={cancelAdminOrder} className="mt-2">
+                  <Hidden name="orderId" value={o.id} />
+                  <Field label="Cancellation reason" name="reason" />
+                  <Button type="submit" variant="outline">Cancel order</Button>
+                </form>
+              )}
+              {member.role === "owner" && receipts.filter((receipt) => receipt.orderId === o.id).map((receipt) => (
+                <div className="mt-4 border-t pt-4" key={receipt.id}>
+                  <p>Receipt: {receipt.normalizedReference} · {receipt.amountCents} minor units</p>
+                  <form action={authorizeOrderRefund} className="mt-2">
+                    <Hidden name="orderId" value={o.id} />
+                    <Hidden name="receiptId" value={receipt.id} />
+                    <Field label="Refund amount (minor units)" name="amount" type="number" />
+                    <Field label="Refund reason" name="reason" />
+                    <Button type="submit" variant="outline">Authorize refund</Button>
+                  </form>
+                  <form action={authorizeOrderSurplusReturn} className="mt-2">
+                    <Hidden name="orderId" value={o.id} />
+                    <Hidden name="receiptId" value={receipt.id} />
+                    <Field label="Surplus return amount (minor units)" name="amount" type="number" />
+                    <Field label="Return reason" name="reason" />
+                    <Button type="submit" variant="outline">Authorize surplus return</Button>
+                  </form>
+                  <form action={correctRecordedReceipt} className="mt-2">
+                    <Hidden name="receiptId" value={receipt.id} />
+                    <Field label="Correction delta (minor units)" name="delta" type="number" />
+                    <Field label="Correction reason" name="reason" />
+                    <Field label="Investigation notes" name="notes" />
+                    <Button type="submit" variant="outline">Open receipt correction</Button>
+                  </form>
+                </div>
+              ))}
+              <form action={correctOrderFulfillment} className="mt-2">
+                <Hidden name="orderId" value={o.id} />
+                <Field label="Corrected carrier / delivery method" name="carrier" />
+                <Field label="Corrected tracking number" name="trackingNumber" />
+                <Field label="Correction reason" name="reason" />
+                <Button type="submit" variant="outline">Correct fulfillment details</Button>
+              </form>
+            </details>
           ))}
       </section>
       <section>

@@ -22,6 +22,10 @@ export interface FulfillOrderInput {
 }
 
 export async function fulfillOrder(input: FulfillOrderInput) {
+  if (!input.carrier?.trim()) {
+    throw new InvariantViolationError("Carrier or manual delivery method is required.");
+  }
+  const carrier = input.carrier.trim();
   return await db.transaction(async (tx) => {
     // 1. Staff verification
     const staff = await verifyStaffInTransaction(tx, input.staffUserId);
@@ -49,8 +53,8 @@ export async function fulfillOrder(input: FulfillOrderInput) {
       .update(orderFulfillments)
       .set({
         status: "fulfilled",
-        carrier: input.carrier ?? "Standard",
-        trackingNumber: input.trackingNumber ?? "MOCK-TRACK-123",
+        carrier,
+        trackingNumber: input.trackingNumber?.trim() || null,
         fulfilledAt: new Date(),
         updatedAt: new Date(),
       })
@@ -86,8 +90,8 @@ export async function fulfillOrder(input: FulfillOrderInput) {
         payload: {
           orderId: order.id,
           referenceCode: order.referenceCode,
-          carrier: input.carrier ?? "Standard",
-          trackingNumber: input.trackingNumber ?? "MOCK-TRACK-123",
+          carrier,
+          trackingNumber: input.trackingNumber?.trim() || null,
           completedAt: new Date().toISOString(),
         },
       })

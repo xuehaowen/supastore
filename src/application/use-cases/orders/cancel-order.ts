@@ -47,7 +47,7 @@ export async function cancelOrder(
 
   return await db.transaction(async (tx) => {
     // 1. Staff verification
-    const staff = await verifyStaffInTransaction(tx, input.actorUserId);
+    const staff = await verifyStaffInTransaction(tx, input.actorUserId, "owner");
 
     // 2. Fetch and lock order
     await acquireTransactionLocks(tx, { orderIds: [input.orderId] });

@@ -237,6 +237,9 @@ export async function completePickupHandoff(input: CompletePickupHandoffInput) {
   if (!input.handoffActor?.trim()) {
     throw new InvariantViolationError("Handoff actor identity is required.");
   }
+  if (!['scoped_order_page', 'owner_assisted'].includes(input.verificationMethod)) {
+    throw new InvariantViolationError("A valid pickup verification method is required.");
+  }
 
   return await db.transaction(async (tx) => {
     const staff = await verifyStaffInTransaction(tx, input.staffUserId);
@@ -255,6 +258,15 @@ export async function completePickupHandoff(input: CompletePickupHandoffInput) {
       throw new InvariantViolationError(
         `Order must be in confirmed status for pickup handoff. Current: ${order.lifecycleStatus}`
       );
+    }
+
+    const [fulfillment] = await tx
+      .select()
+      .from(orderFulfillments)
+      .where(eq(orderFulfillments.orderId, order.id))
+      .limit(1);
+    if (fulfillment?.status !== "ready_for_pickup") {
+      throw new InvariantViolationError("Pickup must be marked ready before handoff.");
     }
 
     const handoffAt = new Date();

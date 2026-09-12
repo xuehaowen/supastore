@@ -28,6 +28,16 @@ import { bootstrapOwner } from "@/application/use-cases/bootstrap-owner";
 import { recordReceipt } from "@/application/use-cases/record-receipt";
 import { confirmOrder } from "@/application/use-cases/confirm-order";
 import { fulfillOrder } from "@/application/use-cases/fulfill-order";
+import {
+  completePickupHandoff,
+  markReadyForPickup,
+} from "@/application/use-cases/fulfillment/fulfillment-operations";
+import { cancelOrder } from "@/application/use-cases/orders/cancel-order";
+import { authorizeRefund } from "@/application/use-cases/refund-payout";
+import { authorizeSurplusReturn } from "@/application/use-cases/orders/surplus-return";
+import { recordCashReceipt } from "@/application/use-cases/payments/record-cash-receipt";
+import { correctReceipt } from "@/application/use-cases/payments/correct-receipt";
+import { correctFulfillment } from "@/application/use-cases/fulfillment/fulfillment-operations";
 import { db } from "@/infrastructure/db";
 import {
   paymentAccounts,
@@ -37,6 +47,11 @@ import {
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { DomainError } from "@/application/common/errors";
 import { ValiError } from "valibot";
+import {
+  parseActionEnum,
+  parseActionInteger,
+  parseActionUuid,
+} from "@/application/common/request-validation";
 const field = (form: FormData, name: string) =>
   String(form.get(name) ?? "").trim();
 async function perform(
@@ -64,8 +79,8 @@ export async function addItem(form: FormData) {
   return perform("/" + locale + "/cart", async () => {
     await addToCart({
       guestSessionId: await guestIdentity(true),
-      variantId: field(form, "variantId"),
-      quantity: Number(field(form, "quantity")),
+      variantId: parseActionUuid(field(form, "variantId"), "Product variant"),
+      quantity: parseActionInteger(field(form, "quantity"), "Quantity", 1, 999),
       locale,
     });
   });
@@ -75,8 +90,8 @@ export async function changeItem(form: FormData) {
   return perform("/" + locale + "/cart", async () => {
     await updateCartItem({
       guestSessionId: await guestIdentity(),
-      itemId: field(form, "itemId"),
-      quantity: Number(field(form, "quantity")),
+      itemId: parseActionUuid(field(form, "itemId"), "Cart item"),
+      quantity: parseActionInteger(field(form, "quantity"), "Quantity", 0, 999),
       locale,
     });
   });
@@ -85,16 +100,25 @@ export async function quoteCart(form: FormData) {
   const locale = localeOf(field(form, "locale"));
   return perform("/" + locale + "/checkout", async () => {
     const quote = await getQuote({
-      cartId: field(form, "cartId"),
+      cartId: parseActionUuid(field(form, "cartId"), "Cart"),
       guestSessionId: await guestIdentity(),
-      fulfillmentType:
-        field(form, "fulfillmentType") === "pickup" ? "pickup" : "shipping",
+      fulfillmentType: parseActionEnum(field(form, "fulfillmentType"), "Fulfillment", [
+        "shipping",
+        "pickup",
+      ] as const),
       shippingAddress: {
         country: field(form, "country").toUpperCase(),
         address: field(form, "address"),
       },
       pickupDate: field(form, "pickupDate"),
-      pickupLocationId: field(form, "pickupLocationId"),
+      ...(field(form, "pickupLocationId")
+        ? {
+            pickupLocationId: parseActionUuid(
+              field(form, "pickupLocationId"),
+              "Pickup location",
+            ),
+          }
+        : {}),
       pickupTime: field(form, "pickupTime"),
       paymentAccountId: field(form, "paymentAccountId"),
     });
@@ -109,7 +133,7 @@ export async function placeOrder(form: FormData) {
     if (!allowRequest("checkout:" + (await guestIdentity()), 20))
       throw new DomainError("Please wait a minute before retrying.");
     const order = await createOrder({
-      quoteId: field(form, "quoteId"),
+      quoteId: parseActionUuid(field(form, "quoteId"), "Quote"),
       guestSessionId: await guestIdentity(),
       guestName: field(form, "name"),
       guestEmail: field(form, "email"),
@@ -137,13 +161,13 @@ export async function exchangeLink(form: FormData) {
   });
 }
 export async function acceptProposal(form: FormData) {
-  const id = field(form, "orderId");
+  const id = parseActionUuid(field(form, "orderId"), "Order");
   return perform(
     "/" + localeOf(field(form, "locale")) + "/orders/" + id,
     async () => {
       await acceptOrderChange({
         orderId: id,
-        proposalId: field(form, "proposalId"),
+        proposalId: parseActionUuid(field(form, "proposalId"), "Proposal"),
         sessionToken: await orderToken(id),
       });
     },
@@ -343,6 +367,116 @@ export async function confirmPayment(form: FormData) {
     await confirmOrder({
       staffUserId: await staffIdentity(),
       orderId: field(form, "orderId"),
+    });
+  });
+}
+
+export async function fulfillConfirmedOrder(form: FormData) {
+  return perform("/admin", async () => {
+    await fulfillOrder({
+      staffUserId: await staffIdentity(),
+      orderId: parseActionUuid(field(form, "orderId"), "Order"),
+      ...(field(form, "carrier") ? { carrier: field(form, "carrier") } : {}),
+      ...(field(form, "trackingNumber")
+        ? { trackingNumber: field(form, "trackingNumber") }
+        : {}),
+    });
+  });
+}
+
+export async function markOrderReady(form: FormData) {
+  return perform("/admin", async () => {
+    await markReadyForPickup({
+      staffUserId: await staffIdentity(),
+      orderId: parseActionUuid(field(form, "orderId"), "Order"),
+    });
+  });
+}
+
+export async function completeOrderPickup(form: FormData) {
+  return perform("/admin", async () => {
+    const verificationMethod = parseActionEnum(
+      field(form, "verificationMethod"),
+      "Verification method",
+      ["scoped_order_page", "owner_assisted"] as const,
+    );
+    await completePickupHandoff({
+      staffUserId: await staffIdentity(),
+      orderId: parseActionUuid(field(form, "orderId"), "Order"),
+      handoffActor: field(form, "handoffActor"),
+      verificationMethod,
+    });
+  });
+}
+
+export async function cancelAdminOrder(form: FormData) {
+  return perform("/admin", async () => {
+    await cancelOrder({
+      actorUserId: await staffIdentity(),
+      orderId: parseActionUuid(field(form, "orderId"), "Order"),
+      reason: field(form, "reason"),
+      isCustomerRequest: form.has("customerRequest"),
+    });
+  });
+}
+
+export async function authorizeOrderRefund(form: FormData) {
+  return perform("/admin", async () => {
+    await authorizeRefund({
+      ownerUserId: await staffIdentity(),
+      orderId: parseActionUuid(field(form, "orderId"), "Order"),
+      receiptId: parseActionUuid(field(form, "receiptId"), "Receipt"),
+      amountCents: parseActionInteger(field(form, "amount"), "Refund amount", 1, 2_147_483_647),
+      reason: field(form, "reason"),
+    });
+  });
+}
+
+export async function authorizeOrderSurplusReturn(form: FormData) {
+  return perform("/admin", async () => {
+    await authorizeSurplusReturn({
+      ownerUserId: await staffIdentity(),
+      orderId: parseActionUuid(field(form, "orderId"), "Order"),
+      receiptId: parseActionUuid(field(form, "receiptId"), "Receipt"),
+      amountCents: parseActionInteger(field(form, "amount"), "Return amount", 1, 2_147_483_647),
+      ...(field(form, "reason") ? { reason: field(form, "reason") } : {}),
+    });
+  });
+}
+
+export async function receiveCashPayment(form: FormData) {
+  return perform("/admin", async () => {
+    await recordCashReceipt({
+      staffUserId: await staffIdentity(),
+      orderId: parseActionUuid(field(form, "orderId"), "Order"),
+      paymentAccountId: parseActionUuid(field(form, "accountId"), "Payment account"),
+      amountCents: parseActionInteger(field(form, "amount"), "Cash amount", 1, 2_147_483_647),
+      tenderedAmountCents: parseActionInteger(field(form, "tenderedAmount"), "Tendered amount", 1, 2_147_483_647),
+      ...(field(form, "payerName") ? { payerName: field(form, "payerName") } : {}),
+    });
+  });
+}
+
+export async function correctRecordedReceipt(form: FormData) {
+  return perform("/admin", async () => {
+    await correctReceipt({
+      ownerUserId: await staffIdentity(),
+      receiptId: parseActionUuid(field(form, "receiptId"), "Receipt"),
+      deltaAmountCents: parseActionInteger(field(form, "delta"), "Correction delta", -2_147_483_648, 2_147_483_647),
+      reason: field(form, "reason"),
+      ...(field(form, "notes") ? { investigationNotes: field(form, "notes") } : {}),
+    });
+  });
+}
+
+export async function correctOrderFulfillment(form: FormData) {
+  return perform("/admin", async () => {
+    await correctFulfillment({
+      staffUserId: await staffIdentity(),
+      orderId: parseActionUuid(field(form, "orderId"), "Order"),
+      ...(field(form, "carrier") ? { carrier: field(form, "carrier") } : {}),
+      ...(field(form, "trackingNumber") ? { trackingNumber: field(form, "trackingNumber") } : {}),
+      reason: field(form, "reason"),
     });
   });
 }
