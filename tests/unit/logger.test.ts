@@ -1,5 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
-import { sanitizePayload, logger } from '@/infrastructure/security/logger';
+import { describe, it, expect } from 'vitest';
+import {
+  createLogger,
+  createMemoryLogSink,
+  sanitizePayload,
+} from '@/infrastructure/security/logger';
 
 describe('Log Sanitizer', () => {
   it('redacts sensitive keys including passwords, secrets, tokens, and authorization', () => {
@@ -34,22 +38,65 @@ describe('Log Sanitizer', () => {
   });
 
   it('logs JSON to console with sanitized data', () => {
-    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const sink = createMemoryLogSink();
+    const testLogger = createLogger({ sinks: [sink] });
 
-    logger.info('Checkout initiated', {
+    testLogger.info('Checkout initiated', {
       orderId: 'ord_99',
       customerSecret: 'should_not_leak',
     });
 
-    expect(infoSpy).toHaveBeenCalledTimes(1);
-    const loggedString = infoSpy.mock.calls[0][0];
-    const parsed = JSON.parse(loggedString);
+    const parsed = sink.entries()[0];
 
     expect(parsed.level).toBe('info');
     expect(parsed.message).toBe('Checkout initiated');
-    expect(parsed.data.orderId).toBe('ord_99');
-    expect(parsed.data.customerSecret).toBe('[REDACTED]');
+    expect((parsed.data as Record<string, unknown>).orderId).toBe('ord_99');
+    expect((parsed.data as Record<string, unknown>).customerSecret).toBe('[REDACTED]');
+  });
+});
 
-    infoSpy.mockRestore();
+describe('Log infrastructure', () => {
+  it('supports a bounded in-memory sink for an enhanced log panel', () => {
+    const sink = createMemoryLogSink(2);
+    const panelLogger = createLogger({ sinks: [sink], level: 'debug' });
+
+    panelLogger.info('first', { orderId: 'ord_1' });
+    panelLogger.debug('second');
+    panelLogger.warn('third');
+
+    expect(sink.entries()).toHaveLength(2);
+    expect(sink.entries().map((entry) => entry.message)).toEqual(['second', 'third']);
+    expect(sink.entries()[0].data).toBeUndefined();
+  });
+
+  it('filters entries below the configured level', () => {
+    const sink = createMemoryLogSink();
+    const panelLogger = createLogger({ sinks: [sink], level: 'warn' });
+
+    panelLogger.info('ignored');
+    panelLogger.warn('visible');
+    panelLogger.error('also visible');
+
+    expect(sink.entries().map((entry) => entry.message)).toEqual([
+      'visible',
+      'also visible',
+    ]);
+  });
+
+  it('keeps context and redacts sink payloads', () => {
+    const sink = createMemoryLogSink();
+    const panelLogger = createLogger({
+      sinks: [sink],
+      level: 'debug',
+      context: { requestId: 'req_1', operation: 'checkout.create' },
+    });
+
+    panelLogger.info('failed', { password: 'secret', orderId: 'ord_2' });
+
+    expect(sink.entries()[0]).toMatchObject({
+      requestId: 'req_1',
+      operation: 'checkout.create',
+      data: { password: '[REDACTED]', orderId: 'ord_2' },
+    });
   });
 });

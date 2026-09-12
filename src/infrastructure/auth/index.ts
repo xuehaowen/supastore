@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db } from '@/infrastructure/db';
 import { smtpAdapter } from '@/infrastructure/notifications/smtp';
+import { logger } from '@/infrastructure/security/logger';
 
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
@@ -25,7 +26,7 @@ export const auth = betterAuth({
           },
         });
       } catch (error) {
-        console.error('Failed to send password reset email:', error);
+        logger.error('Failed to send password reset email.', error);
       }
     },
   },
@@ -44,7 +45,7 @@ export const auth = betterAuth({
           },
         });
       } catch (error) {
-        console.error('Failed to send verification email:', error);
+        logger.error('Failed to send verification email.', error);
       }
     },
   },

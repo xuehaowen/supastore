@@ -3,6 +3,8 @@
  * Ensures in-flight operations complete (up to 15s timeout) and worker leases are drained.
  */
 
+import { logger } from '@/infrastructure/security/logger';
+
 type ShutdownCallback = () => Promise<void> | void;
 
 interface ShutdownState {
@@ -68,23 +70,25 @@ export async function executeGracefulShutdown(signal: string, timeoutMs = 15_000
   if (state.isShuttingDown) return;
   state.isShuttingDown = true;
 
-  console.info(`Received ${signal}. Initiating graceful shutdown (timeout: ${timeoutMs}ms)...`);
+  logger.info(`Received ${signal}. Initiating graceful shutdown.`, { timeoutMs });
 
   // Wait for in-flight tasks
   const drained = await waitForInFlight(timeoutMs);
   if (!drained) {
-    console.warn(`Graceful shutdown: timed out waiting for ${state.inFlightCount} in-flight operations.`);
+    logger.warn('Graceful shutdown timed out waiting for in-flight operations.', {
+      inFlightCount: state.inFlightCount,
+    });
   } else {
-    console.info('Graceful shutdown: all in-flight operations drained successfully.');
+    logger.info('Graceful shutdown: all in-flight operations drained successfully.');
   }
 
   // Execute shutdown handlers
   for (const [name, handler] of state.handlers.entries()) {
     try {
       await handler();
-      console.info(`Graceful shutdown: handler '${name}' completed.`);
+      logger.info(`Graceful shutdown handler '${name}' completed.`);
     } catch (err) {
-      console.error(`Graceful shutdown: handler '${name}' failed:`, err);
+      logger.error(`Graceful shutdown handler '${name}' failed.`, err);
     }
   }
 }
@@ -104,7 +108,7 @@ export function initGracefulShutdown(timeoutMs = 15_000): void {
       await executeGracefulShutdown(signal, timeoutMs);
       process.exit(0);
     } catch (err) {
-      console.error(`Fatal error during graceful shutdown on ${signal}:`, err);
+      logger.error(`Fatal error during graceful shutdown on ${signal}.`, err);
       process.exit(1);
     }
   };

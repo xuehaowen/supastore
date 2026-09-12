@@ -7,6 +7,7 @@ import {
   guestOrderSessions,
 } from '@/infrastructure/db/schema';
 import { cleanupUploads } from '@/application/use-cases/uploads/cleanup-uploads';
+import { logger } from '@/infrastructure/security/logger';
 
 export interface HousekeepingReport {
   purgedCartsCount: number;
@@ -83,7 +84,7 @@ export async function runDailyHousekeeping(): Promise<HousekeepingReport> {
   try {
     await cleanupUploads();
   } catch (err) {
-    console.warn('Housekeeping: cleanupUploads encountered an error:', err);
+    logger.error('Housekeeping: cleanupUploads encountered an error.', err);
   }
 
   return {

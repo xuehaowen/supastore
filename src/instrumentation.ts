@@ -6,6 +6,7 @@ export async function register() {
     initGracefulShutdown();
 
     if (process.env.ENABLE_OUTBOX_WORKER === "true") {
+      const { logger } = await import("./infrastructure/security/logger");
       const { processOutboxBatch } = await import(
         "./infrastructure/worker/outbox"
       );
@@ -28,7 +29,7 @@ export async function register() {
           if (++batches % 12 === 0) await cleanupUploads();
           if (batches % 720 === 0) await runDailyHousekeeping(); // ~1 hour
         } catch {
-          console.error("Outbox batch failed; retrying on next tick.");
+          logger.error("Outbox batch failed; retrying on next tick.");
         } finally {
           busy = false;
         }
