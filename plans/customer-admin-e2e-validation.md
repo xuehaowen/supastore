@@ -8,13 +8,16 @@ Completed in this pass:
 - Rejected unknown fulfillment values instead of silently treating them as shipping.
 - Added direct validation tests for shared request helpers and admin commands.
 - Wired admin fulfillment, pickup-ready, pickup-handoff, cancellation, refund authorization, and surplus-return controls.
+- Wired payout claim, reconciliation, discrepancy resolution, and payout-attempt closure controls.
+- Wired owner-managed staff role/active-state changes and membership removal controls.
+- Added browser-level rejection scenarios for invalid customer quantities and premature pickup handoff.
 - Enforced owner-only cancellation/refund authorization.
 - Removed mock tracking defaults and require an explicit carrier/manual-delivery method.
 - Required pickup readiness and a supported verification method before handoff.
 
 Still required before the plan is complete:
 
-- Wire and test receipt corrections, cash receipts, payout claims/reconciliation/discrepancies, staff governance, and fulfillment corrections/rescheduling.
+- Add browser coverage for receipt corrections, cash receipts, payout claims/reconciliation/discrepancies, staff governance, and fulfillment corrections/rescheduling.
 - Add direct server-action tests for every exported action and browser coverage for all C/A journey rows.
 - Add database/storage race tests and make browser/integration suites mandatory CI gates.
 
