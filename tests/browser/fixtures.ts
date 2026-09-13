@@ -41,5 +41,8 @@ export async function confirm(admin:Page,reference:string){const row=await openO
 
 export async function clickAction(page:Page, button:Locator) {
  const response=page.waitForResponse(response=>response.request().method()==="POST" && new URL(response.url()).origin===new URL(page.url()).origin);
- await button.click();await (await response).finished();
+ const hasDetails = await button.locator("xpath=ancestor::details").count();
+ await button.click();await response;
+ if(hasDetails) await expect(page.locator("details[open]")).toHaveCount(0);
 }
+
