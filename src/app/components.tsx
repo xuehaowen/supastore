@@ -1,5 +1,5 @@
 import { useId } from "react";
-import Link from "next/link";
+export { AdminNav } from "@/app/admin/admin-nav";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,22 +45,4 @@ export function Field({
 
 export function Hidden({ name, value }: { name: string; value: string }) {
   return <input type="hidden" name={name} value={value} />;
-}
-
-export function AdminNav() {
-  return (
-    <nav className="admin-nav" aria-label="Admin">
-      <Link href="/admin" className="admin-brand">
-        SupaStore <span>ADMIN</span>
-      </Link>
-      <div className="admin-links">
-        <Link href="/admin">Daily queue</Link>
-        <Link href="/admin/products">Products</Link>
-        <Link href="/admin/setup">Store setup</Link>
-        <Link href="/" className="admin-shop-link">
-          View shop ↗
-        </Link>
-      </div>
-    </nav>
-  );
 }

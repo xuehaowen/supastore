@@ -55,8 +55,11 @@ export default async function Setup({
   return (
     <main className="admin">
       <AdminNav />
-      <p className="eyebrow">MAKE IT YOURS</p>
+      <p className="eyebrow">WORKSPACE SETTINGS</p>
       <h1>Store setup</h1>
+      <p className="admin-description">
+        Configure your store, payment methods, fulfillment, and team access.
+      </p>
       <Notice error={q.error} />
       <div className="admin-grid">
         <section className="panel">

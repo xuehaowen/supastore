@@ -81,7 +81,7 @@ test("M1/M2/M6 owner admin, pause and mobile accessibility", async ({
     .getByRole("button", { name: "Sign in securely", exact: true })
     .click();
   await expect(page).toHaveURL(/admin(?:\/setup)?$/);
-  await page.getByRole("link", { name: "Daily queue" }).click();
+  await page.getByRole("link", { name: "Overview", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Daily queue" }),
   ).toBeVisible();
