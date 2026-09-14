@@ -16,7 +16,13 @@ import { CheckoutFields } from "@/app/checkout-fields";
 import { pickupAvailability } from "@/domain/pickup-availability";
 import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -55,94 +61,131 @@ export default async function Checkout({
   const quote = ownedQuote?.quote;
   return (
     <section className="mx-auto my-12 min-h-[50vh] max-w-4xl">
-      <p className="mb-6 text-[10px] font-bold tracking-[0.2em]">{t("eyebrowCheckout")}</p>
-      <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">{t("review")}</h1>
+      <p className="mb-6 text-[10px] font-bold tracking-[0.2em]">
+        {t("eyebrowCheckout")}
+      </p>
+      <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">
+        {t("review")}
+      </h1>
       <Notice error={query.error} />
       {quote ? (
         <div className="grid gap-8 md:grid-cols-2">
-          <Card><CardHeader><CardTitle>{t("finalOrderTotal")}</CardTitle></CardHeader><CardContent>
-            <a href={"/" + locale + "/checkout"}>{t("editFulfillment")}</a>
-            <p>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("finalOrderTotal")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <a href={"/" + locale + "/checkout"}>{t("editFulfillment")}</a>
+              <p>
+                {(quote.termsSnapshot as QuoteTerms).fulfillmentType ===
+                "shipping"
+                  ? t("shipping")
+                  : t("pickup")}
+              </p>
+              {(quote.termsSnapshot as QuoteTerms).pickup && (
+                <p>
+                  {(quote.termsSnapshot as QuoteTerms).pickup!.address}
+                  <br />
+                  {(quote.termsSnapshot as QuoteTerms).pickup!.date} ·{" "}
+                  {(quote.termsSnapshot as QuoteTerms).pickup!.startTime} –{" "}
+                  {(quote.termsSnapshot as QuoteTerms).pickup!.endTime} (
+                  {store?.timezone})
+                </p>
+              )}
               {(quote.termsSnapshot as QuoteTerms).fulfillmentType ===
-              "shipping"
-                ? t("shipping")
-                : t("pickup")}
-            </p>
-            {(quote.termsSnapshot as QuoteTerms).pickup && (
-              <p>
-                {(quote.termsSnapshot as QuoteTerms).pickup!.address}
-                <br />
-                {(quote.termsSnapshot as QuoteTerms).pickup!.date} ·{" "}
-                {(quote.termsSnapshot as QuoteTerms).pickup!.startTime} –{" "}
-                {(quote.termsSnapshot as QuoteTerms).pickup!.endTime} (
-                {store?.timezone})
-              </p>
-            )}
-            {(quote.termsSnapshot as QuoteTerms).fulfillmentType ===
-              "shipping" && (
-              <p>
-                {(quote.termsSnapshot as QuoteTerms).shippingAddress.address},{" "}
-                {(quote.termsSnapshot as QuoteTerms).shippingAddress.country}
-              </p>
-            )}
-            <dl className="grid grid-cols-2 gap-4 border-t pt-5">
-              <dt>{t("merchandise")}</dt>
-              <dd className="m-0 text-right">
-                {money(
-                  quote.merchandiseSubtotalCents,
-                  store?.currency,
-                  store?.precision,
-                )}
-              </dd>
-              <dt>{t("delivery")}</dt>
-              <dd className="m-0 text-right">
-                {quote.shippingCents === 0
-                  ? money(0, store?.currency, store?.precision)
-                  : money(
-                      quote.shippingCents,
-                      store?.currency,
-                      store?.precision,
-                    )}
-              </dd>
-              <dt>{t("tax")}</dt>
-              <dd className="m-0 text-right">
-                {money(
-                  quote.exclusiveTaxCents + quote.inclusiveTaxCents,
-                  store?.currency,
-                  store?.precision,
-                )}
-              </dd>
-              <dt>{t("total")}</dt>
-              <dd className="m-0 text-right">
-                <strong>
+                "shipping" && (
+                <p>
+                  {(quote.termsSnapshot as QuoteTerms).shippingAddress.address},{" "}
+                  {(quote.termsSnapshot as QuoteTerms).shippingAddress.country}
+                </p>
+              )}
+              <dl className="grid grid-cols-2 gap-4 border-t pt-5">
+                <dt>{t("merchandise")}</dt>
+                <dd className="m-0 text-right">
                   {money(
-                    quote.totalPayableCents,
+                    quote.merchandiseSubtotalCents,
                     store?.currency,
                     store?.precision,
                   )}
-                </strong>
-              </dd>
-            </dl>
-            <p className="mt-5 text-sm text-muted-foreground">{t("finalTotalNotice")}</p>
-          </CardContent></Card>
-          <Card><CardContent><form className="grid gap-4" action={placeOrder}>
-            <Hidden name="locale" value={locale} />
-            <Hidden name="quoteId" value={quote.id} />
-            <Field label={t("name")} name="name" />
-            <Field label={t("email")} name="email" type="email" />
-            <Label className="flex items-start gap-3 font-normal">
-              <Input className="mt-0.5 size-4 shrink-0" type="checkbox" name="accepted" value="yes" required />
-              {t("acceptTerms")}
-            </Label>
-            <Button type="submit">{t("place")}</Button>
-          </form></CardContent></Card>
+                </dd>
+                <dt>{t("delivery")}</dt>
+                <dd className="m-0 text-right">
+                  {quote.shippingCents === 0
+                    ? money(0, store?.currency, store?.precision)
+                    : money(
+                        quote.shippingCents,
+                        store?.currency,
+                        store?.precision,
+                      )}
+                </dd>
+                <dt>{t("tax")}</dt>
+                <dd className="m-0 text-right">
+                  {money(
+                    quote.exclusiveTaxCents + quote.inclusiveTaxCents,
+                    store?.currency,
+                    store?.precision,
+                  )}
+                </dd>
+                {quote.discountCents > 0 && (
+                  <>
+                    <dt>Promotion</dt>
+                    <dd className="m-0 text-right">
+                      −
+                      {money(
+                        quote.discountCents,
+                        store?.currency,
+                        store?.precision,
+                      )}
+                    </dd>
+                  </>
+                )}
+                <dt>{t("total")}</dt>
+                <dd className="m-0 text-right">
+                  <strong>
+                    {money(
+                      quote.totalPayableCents,
+                      store?.currency,
+                      store?.precision,
+                    )}
+                  </strong>
+                </dd>
+              </dl>
+              <p className="mt-5 text-sm text-muted-foreground">
+                {t("finalTotalNotice")}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent>
+              <form className="grid gap-4" action={placeOrder}>
+                <Hidden name="locale" value={locale} />
+                <Hidden name="quoteId" value={quote.id} />
+                <Field label={t("name")} name="name" />
+                <Field label={t("email")} name="email" type="email" />
+                <Label className="flex items-start gap-3 font-normal">
+                  <Input
+                    className="mt-0.5 size-4 shrink-0"
+                    type="checkbox"
+                    name="accepted"
+                    value="yes"
+                    required
+                  />
+                  {t("acceptTerms")}
+                </Label>
+                <Button type="submit">{t("place")}</Button>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       ) : cart?.items.length ? (
         <div className="checkout-layout">
           <Card className="checkout-form-card">
             <CardHeader>
               <CardTitle>How should we get it to you?</CardTitle>
-              <CardDescription>Choose delivery or a local pickup window. We’ll confirm the final total next.</CardDescription>
+              <CardDescription>
+                Choose delivery or a local pickup window. We’ll confirm the
+                final total next.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <form className="grid gap-5" action={quoteCart}>
@@ -154,37 +197,63 @@ export default async function Checkout({
                     id: location.id,
                     name: location.name,
                     address: location.address,
-                    dates: pickupAvailability(location, store?.timezone ?? "UTC"),
+                    dates: pickupAvailability(
+                      location,
+                      store?.timezone ?? "UTC",
+                    ),
                   }))}
                 />
+                <Field
+                  label="Promotion code"
+                  name="promotionCode"
+                  required={false}
+                />
                 <div className="grid gap-2">
-                <Label>
-                  {t("payment")}
-                  <NativeSelect name="paymentAccountId">
-                    <option value="">{t("freeOrderNoPayment")}</option>
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                </Label></div>
-                <Button type="submit" size="lg">{t("review")} →</Button>
+                  <Label>
+                    {t("payment")}
+                    <NativeSelect name="paymentAccountId">
+                      <option value="">{t("freeOrderNoPayment")}</option>
+                      {accounts.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  </Label>
+                </div>
+                <Button type="submit" size="lg">
+                  {t("review")} →
+                </Button>
               </form>
             </CardContent>
           </Card>
           <Card className="checkout-summary-card">
-            <CardHeader><CardTitle>Your bag</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Your bag</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-3">
               {cart.items.map((item) => (
-                <div className="flex justify-between gap-4 text-sm" key={item.id}>
-                  <span>{item.quantity} × {item.productTitle}</span>
-                  <span className="shrink-0 tabular-nums">{money(item.lineTotalCents, store?.currency, store?.precision)}</span>
+                <div
+                  className="flex justify-between gap-4 text-sm"
+                  key={item.id}
+                >
+                  <span>
+                    {item.quantity} × {item.productTitle}
+                  </span>
+                  <span className="shrink-0 tabular-nums">
+                    {money(
+                      item.lineTotalCents,
+                      store?.currency,
+                      store?.precision,
+                    )}
+                  </span>
                 </div>
               ))}
               <div className="flex justify-between border-t pt-4 font-medium">
                 <span>Subtotal</span>
-                <span className="tabular-nums">{money(cart.subtotalCents, store?.currency, store?.precision)}</span>
+                <span className="tabular-nums">
+                  {money(cart.subtotalCents, store?.currency, store?.precision)}
+                </span>
               </div>
             </CardContent>
           </Card>

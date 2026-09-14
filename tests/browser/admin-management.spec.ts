@@ -27,13 +27,17 @@ test("product editor saves existing variants and translations without replacing 
   await admin
     .getByLabel("Description", { exact: true })
     .fill("Updated description");
-  await admin.getByLabel("Variant name").fill("Updated variant");
-  await admin.getByLabel("Price in minor units").fill("1750");
+  const variantEditor = admin.getByRole("group", { name: "Original variant" });
+  await variantEditor.getByLabel("Variant name").fill("Updated variant");
+  await variantEditor.getByLabel("Price in minor units").fill("1750");
   await admin.getByLabel("Chinese title", { exact: true }).fill("更新商品");
   await admin
     .getByLabel("Chinese description", { exact: true })
     .fill("更新描述");
-  await admin.getByLabel("Image asset key").fill("fixture/updated");
+  await admin
+    .getByRole("group", { name: "Image 1" })
+    .getByLabel("Image asset key")
+    .fill("fixture/updated");
   const [category] = await sql`select id,name from categories limit 1`;
   await admin
     .getByRole("group", { name: "Categories", exact: true })
@@ -103,10 +107,13 @@ test("management sidebar opens real sections and product editor fits mobile", as
     ["Orders", "/admin/orders", "Orders"],
     ["Payments", "/admin/payments", "Payments"],
     ["Products", "/admin/products", "Products"],
+    ["Categories", "/admin/categories", "Categories"],
     ["Fulfillment", "/admin/fulfillment", "Fulfillment"],
+    ["Promotions", "/admin/promotions", "Promotions"],
     ["Customers", "/admin/customers", "Customers"],
     ["Translations", "/admin/translations", "Translations"],
     ["Settings", "/admin/setup", "Store setup"],
+    ["Activity", "/admin/activity", "Activity"],
   ]) {
     await admin.goto(path);
     await expect(admin).toHaveURL(new RegExp(`${path}$`));
@@ -141,4 +148,47 @@ test("management sidebar opens real sections and product editor fits mobile", as
     path: "test-results/product-editor-mobile.png",
     fullPage: true,
   });
+});
+
+test("promotion codes apply to checkout and record one redemption", async ({
+  admin,
+  page,
+  sql,
+}) => {
+  const code = `SAVE-${randomUUID().slice(0, 8)}`.toUpperCase();
+  await admin.goto("/admin/promotions");
+  const create = admin.locator("form").filter({
+    has: admin.getByRole("button", { name: "Create promotion", exact: true }),
+  });
+  await create.getByLabel("Promotion name").fill("Checkout test");
+  await create.getByLabel("Customer code").fill(code);
+  await create.getByLabel("Discount value").fill("1000");
+  await create.getByLabel("Minimum subtotal").fill("0");
+  await create.getByRole("button", { name: "Create promotion" }).click();
+  await expect(admin.getByText(new RegExp(`${code}.*Active`))).toBeVisible();
+
+  await page.goto("/en/products/studio-cup");
+  await page.getByRole("button", { name: "Add to bag" }).click();
+  await page.getByRole("link", { name: "Continue to checkout" }).click();
+  await page.getByLabel("Street address").fill("1 Promotion Street");
+  await page.getByLabel("Promotion code").fill(code);
+  await page
+    .getByLabel("Payment method")
+    .selectOption({ label: "Demo bank transfer" });
+  await page.getByRole("button", { name: /Review your order/ }).click();
+  await expect(page.getByText("Promotion", { exact: true })).toBeVisible();
+  await page.getByLabel("Your name").fill("Promotion Customer");
+  await page.getByLabel("Email address").fill("promotion@example.test");
+  await page.getByRole("checkbox").check();
+  await page
+    .getByRole("button", { name: /Accept total & place order/ })
+    .click();
+  await expect(page).toHaveURL(/\/en\/orders\/[0-9a-f-]+$/);
+  const orderId = new URL(page.url()).pathname.split("/").pop()!;
+  const [order] =
+    await sql`select discount_cents from orders where id=${orderId}`;
+  expect(order!.discount_cents).toBeGreaterThan(0);
+  expect(
+    await sql`select id from promotion_redemptions where order_id=${orderId}`,
+  ).toHaveLength(1);
 });

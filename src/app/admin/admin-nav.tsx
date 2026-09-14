@@ -13,6 +13,8 @@ import {
   Users,
   Languages,
   Tag,
+  Shapes,
+  ScrollText,
   Settings2,
   Store,
 } from "lucide-react";
@@ -22,11 +24,14 @@ const links = [
   { href: "/admin/orders", label: "Orders", icon: ClipboardList },
   { href: "/admin/payments", label: "Payments", icon: CreditCard },
   { href: "/admin/products", label: "Products", icon: Box },
+  { href: "/admin/categories", label: "Categories", icon: Shapes },
   { href: "/admin/products/import", label: "Import products", icon: Download },
   { href: "/admin/fulfillment", label: "Fulfillment", icon: Truck },
   { href: "/admin/customers", label: "Customers", icon: Users },
   { href: "/admin/translations", label: "Translations", icon: Languages },
   { href: "/admin/setup", label: "Settings", icon: Settings2 },
+  { href: "/admin/activity", label: "Activity", icon: ScrollText },
+  { href: "/admin/promotions", label: "Promotions", icon: Tag },
 ];
 
 export function AdminNav() {
@@ -60,16 +65,6 @@ export function AdminNav() {
               <span>{label}</span>
             </Link>
           ))}
-          <span
-            className="workspace-unavailable"
-            aria-disabled="true"
-            title="Promotions are not available in this store yet"
-          >
-            <Tag size={18} aria-hidden="true" />
-            <span>
-              Promotions<small>Not available yet</small>
-            </span>
-          </span>
         </div>
         <div className="workspace-footer">
           <Link href="/">

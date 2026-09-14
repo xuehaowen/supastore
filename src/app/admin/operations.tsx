@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, or } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
   orders,
@@ -38,24 +38,66 @@ import { Field, Hidden, Notice, AdminNav } from "@/app/components";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Input } from "@/components/ui/input";
 export default async function Admin({
   searchParams,
   view = "overview",
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    q?: string;
+    status?: string;
+    page?: string;
+  }>;
   view?: "overview" | "orders" | "payments" | "fulfillment";
 }) {
+  const query = await searchParams;
+  const search = query.q?.trim().slice(0, 120) ?? "";
+  const status = ["unpaid", "confirmed", "completed", "cancelled"].includes(
+    query.status ?? "",
+  )
+    ? query.status!
+    : "";
+  const page = Math.max(
+    1,
+    Math.min(1000, Number.parseInt(query.page ?? "1", 10) || 1),
+  );
   const staff = await staffIdentity().catch(() =>
     redirect("/admin/login?error=sign-in"),
   );
   const data = await db
     .transaction(async (tx) => {
       const member = await verifyStaffInTransaction(tx, staff);
+      const orderFilters =
+        view === "orders"
+          ? [
+              ...(status
+                ? [
+                    eq(
+                      orders.lifecycleStatus,
+                      status as
+                        "unpaid" | "confirmed" | "completed" | "cancelled",
+                    ),
+                  ]
+                : []),
+              ...(search
+                ? [
+                    or(
+                      ilike(orders.referenceCode, `%${search}%`),
+                      ilike(orders.guestName, `%${search}%`),
+                      ilike(orders.guestEmail, `%${search}%`),
+                    )!,
+                  ]
+                : []),
+            ]
+          : [];
       const rows = await tx
         .select()
         .from(orders)
+        .where(orderFilters.length ? and(...orderFilters) : undefined)
         .orderBy(desc(orders.createdAt))
-        .limit(100);
+        .limit(view === "orders" ? 51 : 100)
+        .offset(view === "orders" ? (page - 1) * 50 : 0);
       const accounts = await tx.select().from(paymentAccounts);
       const receipts = await tx.select().from(paymentReceipts);
       const allocations = await tx.select().from(payoutAllocations);
@@ -115,7 +157,30 @@ export default async function Admin({
         Track payments, review orders, and keep fulfillment moving. Order counts
         reflect the latest 100 orders.
       </p>
-      <Notice error={(await searchParams).error} />
+      <Notice error={query.error} />
+      {view === "orders" && (
+        <form method="get" className="admin-filter-bar">
+          <label>
+            Search orders
+            <Input
+              name="q"
+              defaultValue={search}
+              placeholder="Reference, customer, or email"
+            />
+          </label>
+          <label>
+            Status
+            <NativeSelect name="status" defaultValue={status}>
+              <option value="">All statuses</option>
+              <option value="unpaid">Unpaid</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </NativeSelect>
+          </label>
+          <Button type="submit">Filter</Button>
+        </form>
+      )}
       <div className="metrics">
         <a href="/admin/orders#unpaid">
           <strong>
@@ -136,6 +201,80 @@ export default async function Admin({
           <strong>{failures.length}</strong>Failed emails
         </a>
       </div>
+      {view === "orders" && (
+        <section className="panel">
+          <h2>Order index</h2>
+          {rows.slice(0, 50).map((order) => (
+            <article className="admin-index-row" key={order.id}>
+              <span>
+                <strong>{order.referenceCode}</strong>
+                <small>
+                  {order.guestName} · {order.guestEmail}
+                </small>
+              </span>
+              <span>{order.lifecycleStatus}</span>
+              <span>
+                {money(
+                  order.purchaseTotalCents,
+                  store?.currency,
+                  store?.precision,
+                )}
+              </span>
+              <time dateTime={order.createdAt.toISOString()}>
+                {order.createdAt.toLocaleDateString("en-US", {
+                  timeZone: "UTC",
+                })}
+              </time>
+            </article>
+          ))}
+          {rows.length === 0 && (
+            <p className="admin-empty">No orders match these filters.</p>
+          )}
+          <nav className="admin-pagination" aria-label="Order pages">
+            {page > 1 && (
+              <a
+                href={`/admin/orders?q=${encodeURIComponent(search)}&status=${status}&page=${page - 1}`}
+              >
+                ← Previous
+              </a>
+            )}
+            {rows.length > 50 && (
+              <a
+                href={`/admin/orders?q=${encodeURIComponent(search)}&status=${status}&page=${page + 1}`}
+              >
+                Next →
+              </a>
+            )}
+          </nav>
+        </section>
+      )}
+      {view === "payments" && (
+        <section className="panel">
+          <h2>Receipt ledger</h2>
+          {receipts.map((receipt) => (
+            <article className="admin-index-row" key={receipt.id}>
+              <span>
+                <strong>{receipt.normalizedReference}</strong>
+                <small>
+                  {rows.find((order) => order.id === receipt.orderId)
+                    ?.referenceCode ?? receipt.orderId}
+                </small>
+              </span>
+              <span>
+                {money(receipt.amountCents, store?.currency, store?.precision)}
+              </span>
+              <time dateTime={receipt.createdAt.toISOString()}>
+                {receipt.createdAt.toLocaleDateString("en-US", {
+                  timeZone: "UTC",
+                })}
+              </time>
+            </article>
+          ))}
+          {receipts.length === 0 && (
+            <p className="admin-empty">No receipts recorded.</p>
+          )}
+        </section>
+      )}
       {view === "overview" && member.role === "owner" && (
         <section className="panel">
           <h2>Launch checklist</h2>
