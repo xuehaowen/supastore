@@ -21,23 +21,11 @@ jobs:
       - run: pnpm run typecheck
       - run: pnpm test
       - run: pnpm run test:coverage
+      - run: pnpm run test:frontend:coverage
       - run: pnpm run build
 
   integration:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: supastore_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres -d supastore_test"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -48,26 +36,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm run db:migrate
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/supastore_test
       - run: pnpm run test:integration
 
   browser:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: supastore
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres -d supastore"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -79,36 +51,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm run db:migrate
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/supastore
-      - run: pnpm exec tsx scripts/seed-demo.ts
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/supastore
-          ADMIN_SETUP_SECRET: ci-browser-admin-secret
-          DEMO_OWNER_PASSWORD: ci-browser-owner-password
-          DISABLE_OUTBOUND_DELIVERY: "true"
-          APP_URL: http://127.0.0.1:3000
-          BETTER_AUTH_URL: http://127.0.0.1:3000
-          BETTER_AUTH_TRUSTED_ORIGINS: http://127.0.0.1:3000,http://localhost:3000
-      - run: pnpm run build
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/supastore
-      - run: pnpm start > .playwright-server.log 2>&1 &
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/supastore
-          PORT: 3000
-          ADMIN_SETUP_SECRET: ci-browser-admin-secret
-          DEMO_OWNER_PASSWORD: ci-browser-owner-password
-          DISABLE_OUTBOUND_DELIVERY: "true"
-          APP_URL: http://127.0.0.1:3000
-          BETTER_AUTH_URL: http://127.0.0.1:3000
-          BETTER_AUTH_TRUSTED_ORIGINS: http://127.0.0.1:3000,http://localhost:3000
-      - run: pnpm exec playwright test
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/supastore
-          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
-          DEMO_OWNER_PASSWORD: ci-browser-owner-password
+      - run: pnpm run test:browser
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -116,4 +59,3 @@ jobs:
           path: |
             test-results
             playwright-report
-            .playwright-server.log

@@ -1,3 +1,4 @@
+import { useId } from "react";
 import Link from "next/link";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
@@ -27,11 +28,17 @@ export function Field({
   value?: string | number | undefined;
   required?: boolean;
 }) {
-  const id = `field-${name}`;
+  const id = useId();
   return (
     <div className="grid gap-2">
       <Label htmlFor={id}>{label}</Label>
-      <Input id={id} name={name} type={type} defaultValue={value} required={required} />
+      <Input
+        id={id}
+        name={name}
+        type={type}
+        defaultValue={value}
+        required={required}
+      />
     </div>
   );
 }
@@ -43,12 +50,16 @@ export function Hidden({ name, value }: { name: string; value: string }) {
 export function AdminNav() {
   return (
     <nav className="admin-nav" aria-label="Admin">
-      <Link href="/admin" className="admin-brand">SupaStore <span>ADMIN</span></Link>
+      <Link href="/admin" className="admin-brand">
+        SupaStore <span>ADMIN</span>
+      </Link>
       <div className="admin-links">
         <Link href="/admin">Daily queue</Link>
         <Link href="/admin/products">Products</Link>
         <Link href="/admin/setup">Store setup</Link>
-        <Link href="/" className="admin-shop-link">View shop ↗</Link>
+        <Link href="/" className="admin-shop-link">
+          View shop ↗
+        </Link>
       </div>
     </nav>
   );

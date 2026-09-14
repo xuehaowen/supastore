@@ -6,6 +6,8 @@ const isStandalone =
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
+  typescript: { tsconfigPath: process.env.NEXT_TSCONFIG ?? "tsconfig.json" },
   ...(isStandalone ? { output: "standalone" } : {}),
 };
 

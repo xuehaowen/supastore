@@ -1,12 +1,15 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
   orders,
   paymentReceipts,
+  paymentReceiptCorrections,
+  confirmationFunding,
   paymentReturns,
   payoutAllocations,
   auditRecords,
 } from "@/infrastructure/db/schema";
+import { computeOrderFinancialProjection } from "@/domain/financial-projection/projection";
 import { acquireTransactionLocks } from "@/domain/locking/lock-order";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import {
@@ -35,17 +38,21 @@ export interface AuthorizeSurplusReturnOutput {
  * Caps authorized amount by receipt capacity and unassigned/surplus funds.
  */
 export async function authorizeSurplusReturn(
-  input: AuthorizeSurplusReturnInput
+  input: AuthorizeSurplusReturnInput,
 ): Promise<AuthorizeSurplusReturnOutput> {
   if (!Number.isSafeInteger(input.amountCents) || input.amountCents <= 0) {
     throw new InvariantViolationError(
-      `Surplus return amount must be > 0. Received: ${input.amountCents}`
+      `Surplus return amount must be > 0. Received: ${input.amountCents}`,
     );
   }
 
   return await db.transaction(async (tx) => {
     // 1. Owner verification
-    const owner = await verifyStaffInTransaction(tx, input.ownerUserId, "owner");
+    const owner = await verifyStaffInTransaction(
+      tx,
+      input.ownerUserId,
+      "owner",
+    );
 
     // 2. Lock order and receipt
     await acquireTransactionLocks(tx, {
@@ -60,38 +67,94 @@ export async function authorizeSurplusReturn(
       .limit(1);
     if (!order) throw new NotFoundError(`Order '${input.orderId}' not found.`);
 
-    const [receipt] = await tx
+    const receipts = await tx
       .select()
       .from(paymentReceipts)
-      .where(eq(paymentReceipts.id, input.receiptId))
-      .limit(1);
-    if (!receipt) throw new NotFoundError(`Receipt '${input.receiptId}' not found.`);
-
-    // Check receipt allocation capacity
-    const existingAllocations = await tx
+      .where(eq(paymentReceipts.orderId, order.id));
+    const receipt = receipts.find(
+      (item) => item.id === input.receiptId && item.orderId === order.id,
+    );
+    if (!receipt)
+      throw new NotFoundError("Receipt does not belong to this order.");
+    const receiptIds = receipts.map((item) => item.id);
+    await acquireTransactionLocks(tx, { receiptIds });
+    const corrections = await tx
+      .select()
+      .from(paymentReceiptCorrections)
+      .where(inArray(paymentReceiptCorrections.receiptId, receiptIds));
+    const allocations = await tx
       .select()
       .from(payoutAllocations)
-      .where(eq(payoutAllocations.receiptId, receipt.id));
-
-    const totalAuthorized = existingAllocations.reduce(
-      (sum, a) => sum + a.authorizedAmountCents,
-      0
-    );
-    const availableReceiptCapacity = Math.max(
-      0,
-      receipt.amountCents - totalAuthorized
-    );
-
-    if (input.amountCents > availableReceiptCapacity) {
+      .where(inArray(payoutAllocations.receiptId, receiptIds));
+    const funding = await tx
+      .select()
+      .from(confirmationFunding)
+      .where(eq(confirmationFunding.orderId, order.id));
+    const isConfirmed =
+      order.lifecycleStatus === "confirmed" ||
+      order.lifecycleStatus === "completed";
+    const projection = computeOrderFinancialProjection({
+      purchaseTotalCents: order.purchaseTotalCents,
+      isConfirmed,
+      isCancelled: order.lifecycleStatus === "cancelled",
+      receipts: receipts.map((item) => {
+        const dispositions = allocations.filter(
+          (allocation) => allocation.receiptId === item.id,
+        );
+        return {
+          id: item.id,
+          originalAmountCents: item.amountCents,
+          appliedCorrectionsCents: corrections
+            .filter((correction) => correction.receiptId === item.id)
+            .reduce((sum, correction) => sum + correction.deltaAmountCents, 0),
+          frozenPurchaseFundingCents: funding
+            .filter((entry) => entry.receiptId === item.id)
+            .reduce((sum, entry) => sum + entry.fundedAmountCents, 0),
+          effectivePurchaseRefundAuthorizationsCents: dispositions
+            .filter((allocation) => allocation.refundAuthorizationId)
+            .reduce(
+              (sum, allocation) => sum + allocation.authorizedAmountCents,
+              0,
+            ),
+          effectiveNonPurchaseReturnAuthorizationsCents: dispositions
+            .filter((allocation) => allocation.paymentReturnId)
+            .reduce(
+              (sum, allocation) => sum + allocation.authorizedAmountCents,
+              0,
+            ),
+          settledPurchaseRefundsCents: dispositions
+            .filter((allocation) => allocation.refundAuthorizationId)
+            .reduce(
+              (sum, allocation) => sum + allocation.settledAmountCents,
+              0,
+            ),
+          settledNonPurchaseReturnsCents: dispositions
+            .filter((allocation) => allocation.paymentReturnId)
+            .reduce(
+              (sum, allocation) => sum + allocation.settledAmountCents,
+              0,
+            ),
+        };
+      }),
+    });
+    const projectedReceipt = projection.receipts.find(
+      (item) => item.id === receipt.id,
+    )!;
+    const availableCapacity =
+      order.lifecycleStatus === "cancelled"
+        ? projectedReceipt.availablePayoutCapacityCents
+        : Math.min(
+            projectedReceipt.newExcessReturnCapacityCents,
+            projection.orderWideExcessCapacityCents,
+          );
+    if (input.amountCents > availableCapacity) {
       throw new InvariantViolationError(
-        `Surplus return amount (${input.amountCents} cents) exceeds available receipt capacity (${availableReceiptCapacity} cents).`
+        "Surplus return exceeds the available excess payment capacity.",
       );
     }
 
     const kind: "excess_return" | "late_return" =
-      order.lifecycleStatus === "cancelled"
-        ? "late_return"
-        : "excess_return";
+      order.lifecycleStatus === "cancelled" ? "late_return" : "excess_return";
 
     const [paymentReturn] = await tx
       .insert(paymentReturns)

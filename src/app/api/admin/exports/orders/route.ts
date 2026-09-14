@@ -12,12 +12,20 @@ export async function GET(_request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   try {
-    await db.transaction((tx) => verifyStaffInTransaction(tx, session.user.id));
+    await db.transaction((tx) =>
+      verifyStaffInTransaction(tx, session.user.id, "owner"),
+    );
   } catch (error) {
     if (error instanceof ForbiddenError) {
-      return NextResponse.json({ error: "Staff access required" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Staff access required" },
+        { status: 403 },
+      );
     }
-    return NextResponse.json({ error: "Unable to verify access" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Unable to verify access" },
+      { status: 500 },
+    );
   }
 
   const filename = `orders-${new Date().toISOString().slice(0, 10)}.csv`;

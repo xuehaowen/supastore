@@ -60,8 +60,10 @@ const server = http.createServer(async (req, res) => {
   res.writeHead(req.headers.range ? 206 : 200);
   res.end(req.method === "HEAD" ? undefined : bytes);
 });
-server.listen(9000, "127.0.0.1", () =>
-  console.log("Synthetic S3 fixture on localhost:9000"),
+server.listen(Number(process.env.TEST_STORAGE_PORT ?? 9000), "127.0.0.1", () =>
+  console.log(
+    `Synthetic S3 fixture on localhost:${process.env.TEST_STORAGE_PORT ?? 9000}`,
+  ),
 );
 for (const signal of ["SIGINT", "SIGTERM"])
   process.on(signal, () => server.close(() => process.exit()));

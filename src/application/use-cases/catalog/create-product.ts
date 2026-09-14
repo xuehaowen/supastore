@@ -58,7 +58,10 @@ export async function createProduct(input: CreateProductInput) {
   for (const variant of input.variants) {
     parseActionRequiredText(variant.sku, "SKU", 200);
     parseActionRequiredText(variant.title, "Variant title", 200);
-    v.parse(v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(2147483647)), variant.priceCents);
+    v.parse(
+      v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(2147483647)),
+      variant.priceCents,
+    );
   }
   const {
     handle,

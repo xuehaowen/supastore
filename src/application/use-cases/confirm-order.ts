@@ -1,8 +1,12 @@
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
   orders,
   paymentReceipts,
+  paymentReceiptCorrections,
+  payoutAllocations,
+  payoutAttempts,
+  payoutDiscrepancies,
   confirmationFunding,
   outboxEvents,
   eventDeliveries,
@@ -54,19 +58,95 @@ export async function confirmOrder(input: ConfirmOrderInput) {
       receiptIds: receipts.map((r) => r.id),
     });
 
+    const receiptIds = receipts.map((receipt) => receipt.id);
+    const corrections = receiptIds.length
+      ? await tx
+          .select()
+          .from(paymentReceiptCorrections)
+          .where(inArray(paymentReceiptCorrections.receiptId, receiptIds))
+      : [];
+    const allocations = receiptIds.length
+      ? await tx
+          .select()
+          .from(payoutAllocations)
+          .where(inArray(payoutAllocations.receiptId, receiptIds))
+      : [];
+    const attempts = allocations.length
+      ? await tx
+          .select()
+          .from(payoutAttempts)
+          .where(
+            inArray(
+              payoutAttempts.allocationId,
+              allocations.map((allocation) => allocation.id),
+            ),
+          )
+      : [];
+    const discrepancies = attempts.length
+      ? await tx
+          .select()
+          .from(payoutDiscrepancies)
+          .where(
+            inArray(
+              payoutDiscrepancies.payoutAttemptId,
+              attempts.map((attempt) => attempt.id),
+            ),
+          )
+      : [];
+    if (
+      attempts.some(
+        (attempt) =>
+          attempt.status === "sending" ||
+          attempt.status === "reconciliation_required",
+      ) ||
+      discrepancies.some((discrepancy) => discrepancy.status === "open")
+    ) {
+      throw new InvariantViolationError(
+        "Cannot confirm order while a payout hold remains unresolved.",
+      );
+    }
+    const financialReceipts = receipts.map((receipt) => {
+      const dispositions = allocations.filter(
+        (allocation) => allocation.receiptId === receipt.id,
+      );
+      return {
+        id: receipt.id,
+        originalAmountCents: receipt.amountCents,
+        appliedCorrectionsCents: corrections
+          .filter((correction) => correction.receiptId === receipt.id)
+          .reduce((sum, correction) => sum + correction.deltaAmountCents, 0),
+        effectivePurchaseRefundAuthorizationsCents: dispositions
+          .filter((allocation) => allocation.refundAuthorizationId)
+          .reduce(
+            (sum, allocation) => sum + allocation.authorizedAmountCents,
+            0,
+          ),
+        effectiveNonPurchaseReturnAuthorizationsCents: dispositions
+          .filter((allocation) => allocation.paymentReturnId)
+          .reduce(
+            (sum, allocation) => sum + allocation.authorizedAmountCents,
+            0,
+          ),
+        settledPurchaseRefundsCents: dispositions
+          .filter((allocation) => allocation.refundAuthorizationId)
+          .reduce((sum, allocation) => sum + allocation.settledAmountCents, 0),
+        settledNonPurchaseReturnsCents: dispositions
+          .filter((allocation) => allocation.paymentReturnId)
+          .reduce((sum, allocation) => sum + allocation.settledAmountCents, 0),
+      };
+    });
     const projection = computeOrderFinancialProjection({
       purchaseTotalCents: order.purchaseTotalCents,
       isConfirmed: false,
       isCancelled: false,
-      receipts: receipts.map((r) => ({
-        id: r.id,
-        originalAmountCents: r.amountCents,
-      })),
+      receipts: financialReceipts,
     });
 
     if (projection.netReceivedCents !== order.purchaseTotalCents) {
       throw new InvariantViolationError(
-        `Order is underfunded. Required: ${order.purchaseTotalCents} cents, Net Received: ${projection.netReceivedCents} cents.`,
+        projection.netReceivedCents > order.purchaseTotalCents
+          ? "Order is overfunded. Return the surplus before confirmation."
+          : `Order is underfunded. Required: ${order.purchaseTotalCents} cents, Net Received: ${projection.netReceivedCents} cents.`,
       );
     }
 
@@ -78,8 +158,16 @@ export async function confirmOrder(input: ConfirmOrderInput) {
 
     // Freeze confirmation funding (Fi)
     let remainingToFund = order.purchaseTotalCents;
-    for (const r of receipts) {
-      const fundAmount = Math.min(r.amountCents, remainingToFund);
+    for (const r of financialReceipts) {
+      const fundAmount = Math.min(
+        Math.max(
+          0,
+          r.originalAmountCents +
+            r.appliedCorrectionsCents -
+            r.settledNonPurchaseReturnsCents,
+        ),
+        remainingToFund,
+      );
       if (fundAmount > 0) {
         await tx.insert(confirmationFunding).values({
           orderId: order.id,

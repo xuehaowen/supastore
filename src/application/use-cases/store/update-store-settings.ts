@@ -22,7 +22,9 @@ const schema = v.object({
     v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(4)),
   ),
   defaultLocale: v.optional(v.picklist(["en", "zh"])),
-  timezone: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(100))),
+  timezone: v.optional(
+    v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(100)),
+  ),
   isOrderingEnabled: v.optional(v.boolean()),
   isPaused: v.optional(v.boolean()),
   pauseMessage: v.optional(v.pipe(v.string(), v.maxLength(500))),
@@ -74,15 +76,13 @@ export async function updateStoreSettings(input: UpdateStoreSettingsInput) {
       })
       .where(eq(storeSettings.id, settings.id))
       .returning();
-    await tx
-      .insert(auditRecords)
-      .values({
-        entityType: "store",
-        entityId: settings.id,
-        actorId: input.staffUserId,
-        action: "store.settings_updated",
-        details: parsed,
-      });
+    await tx.insert(auditRecords).values({
+      entityType: "store",
+      entityId: settings.id,
+      actorId: input.staffUserId,
+      action: "store.settings_updated",
+      details: parsed,
+    });
     return updated!;
   });
 }

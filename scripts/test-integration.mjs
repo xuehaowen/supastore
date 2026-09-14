@@ -1,59 +1,140 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
+import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
+import postgres from "postgres";
 import EmbeddedPostgres from "embedded-postgres";
 
-const databaseDir = "./.test-postgres";
-const port = 55432;
-const database = "supastore_test";
+// Dedicated to integration tests; never attach to the developer's database.
+const databaseDir = "./.test-integration-postgres";
+const port = 55438;
+const databaseUrl = `postgresql://postgres:postgres@127.0.0.1:${port}/supastore_test`;
 const pg = new EmbeddedPostgres({
   databaseDir,
+  port,
   user: "postgres",
   password: "postgres",
-  port,
   persistent: true,
   onLog: () => {},
   onError: console.error,
 });
-
-if (!existsSync(`${databaseDir}/PG_VERSION`)) await pg.initialise();
-await pg.start();
-try {
-  await pg.createDatabase(database);
-} catch (error) {
-  if (!String(error).includes("already exists")) throw error;
+const completed = (child) =>
+  new Promise((resolve, reject) => {
+    child.once("error", reject);
+    child.once("exit", (code) =>
+      code === 0
+        ? resolve()
+        : reject(new Error(`Test process exited with ${code}`)),
+    );
+  });
+let pgCtl, databaseProcess, child;
+let started = false;
+let exitCode = 0;
+async function stop() {
+  if (child && child.exitCode === null) child.kill();
+  if (!started) return;
+  started = false;
+  if (pgCtl)
+    await completed(
+      spawn(pgCtl, ["-D", databaseDir, "-m", "fast", "-w", "stop"], {
+        stdio: "inherit",
+        windowsHide: true,
+      }),
+    );
+  else await pg.stop();
 }
-
-const databaseUrl = `postgresql://postgres:postgres@127.0.0.1:${port}/${database}`;
-const command = process.platform === "win32" ? "node.exe" : "node";
-const child = spawn(
-  command,
-  ["node_modules/vitest/vitest.mjs", "run", "tests/integration", "--no-file-parallelism"],
-  {
-    stdio: "inherit",
-    env: {
-      ...process.env,
-      DATABASE_URL: databaseUrl,
-      TRANSLATION_TEST_DATABASE_URL: databaseUrl,
+process.once("SIGINT", () => void stop().finally(() => process.exit(130)));
+process.once("SIGTERM", () => void stop().finally(() => process.exit(143)));
+try {
+  if (!existsSync(`${databaseDir}/PG_VERSION`)) await pg.initialise();
+  if (process.platform === "win32") {
+    const require = createRequire(import.meta.url);
+    const embeddedRequire = createRequire(require.resolve("embedded-postgres"));
+    const binaries = await import(
+      pathToFileURL(embeddedRequire.resolve("@embedded-postgres/windows-x64"))
+        .href
+    );
+    pgCtl = binaries.pg_ctl;
+    databaseProcess = spawn(
+      binaries.postgres,
+      ["-D", databaseDir, "-p", String(port)],
+      { stdio: ["ignore", "ignore", "pipe"], windowsHide: true },
+    );
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error("Integration database startup timed out")),
+        30000,
+      );
+      databaseProcess.once("error", (error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+      databaseProcess.once("exit", (code) => {
+        clearTimeout(timer);
+        reject(new Error(`Integration database exited with ${code}`));
+      });
+      databaseProcess.stderr.on("data", (data) => {
+        if (
+          String(data).includes(
+            "database system is ready to accept connections",
+          )
+        ) {
+          clearTimeout(timer);
+          resolve();
+        }
+      });
+    });
+  } else await pg.start();
+  started = true;
+  const admin = postgres(
+    `postgresql://postgres:postgres@127.0.0.1:${port}/postgres`,
+  );
+  try {
+    if (
+      !(await admin`select 1 from pg_database where datname='supastore_test'`)
+        .length
+    )
+      await admin.unsafe(
+        "CREATE DATABASE supastore_test WITH TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C'",
+      );
+  } finally {
+    await admin.end();
+  }
+  child = spawn(
+    process.execPath,
+    [
+      "node_modules/vitest/vitest.mjs",
+      "run",
+      "tests/integration",
+      "--no-file-parallelism",
+    ],
+    {
+      stdio: "inherit",
+      windowsHide: true,
+      env: {
+        ...process.env,
+        DATABASE_URL: databaseUrl,
+        TRANSLATION_TEST_DATABASE_URL: databaseUrl,
+        DISABLE_OUTBOUND_DELIVERY: "false",
+        SMTP_HOST: "127.0.0.1",
+        SMTP_PORT: "1",
+        SMTP_USER: "",
+        SMTP_PASSWORD: "",
+      },
     },
-  },
-);
-
-const stopPostgres = async () => {
-  await Promise.race([
-    pg.stop(),
-    new Promise((resolve) => setTimeout(resolve, 5000)),
-  ]);
-};
-
-const stop = async (code = 1) => {
-  if (!child.killed) child.kill();
-  await stopPostgres();
-  process.exit(code);
-};
-
-process.once("SIGINT", () => void stop(130));
-process.once("SIGTERM", () => void stop(143));
-child.once("exit", async (code, signal) => {
-  await stopPostgres();
-  process.exit(signal ? 1 : code ?? 1);
-});
+  );
+  await completed(child);
+} catch (error) {
+  console.error(error);
+  exitCode = 1;
+} finally {
+  try {
+    await stop();
+  } catch (error) {
+    console.error(error);
+    exitCode = 1;
+  }
+  if (databaseProcess && databaseProcess.exitCode === null)
+    databaseProcess.kill();
+}
+process.exit(exitCode);

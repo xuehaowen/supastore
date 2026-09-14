@@ -38,3 +38,9 @@ coverage/
 .test-postgres/
 playwright-report/
 test-results/
+
+.test-cuj-postgres/
+.tmp-cuj/
+.next-cuj/
+.tsconfig-cuj.json
+.test-integration-postgres/

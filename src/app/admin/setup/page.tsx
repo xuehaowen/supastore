@@ -90,7 +90,10 @@ export default async function Setup({
             </div>
             <label>
               Default language
-              <NativeSelect name="defaultLocale" defaultValue={store.defaultLocale}>
+              <NativeSelect
+                name="defaultLocale"
+                defaultValue={store.defaultLocale}
+              >
                 <option value="en">English</option>
                 <option value="zh">中文</option>
               </NativeSelect>
@@ -193,7 +196,9 @@ export default async function Setup({
               : "Verify that store email reaches your inbox."}
           </p>
           <form action={sendVerification}>
-            <Button type="submit" variant="outline">Send verification email</Button>
+            <Button type="submit" variant="outline">
+              Send verification email
+            </Button>
           </form>
           {accounts.map((a) => (
             <div key={a.id}>
@@ -219,25 +224,43 @@ export default async function Setup({
         </section>
         <section className="panel">
           <h2>04 / Staff access</h2>
-          <p>Only owners can change staff access. The last active owner cannot be removed or demoted.</p>
+          <p>
+            Only owners can change staff access. The last active owner cannot be
+            removed or demoted.
+          </p>
           {staffMembers.map((member) => (
             <div key={member.id} className="border-t py-3">
-              <p>{member.email} · {member.role} · {member.isActive ? "active" : "inactive"}</p>
+              <p>
+                {member.email} · {member.role} ·{" "}
+                {member.isActive ? "active" : "inactive"}
+              </p>
               <form action={updateStaffMember} className="mt-2">
                 <Hidden name="targetUserId" value={member.userId} />
-                <NativeSelect name="role" defaultValue={member.role}>
+                <NativeSelect
+                  name="role"
+                  aria-label={`Role for ${member.email}`}
+                  defaultValue={member.role}
+                >
                   <option value="staff">Staff</option>
                   <option value="owner">Owner</option>
                 </NativeSelect>
-                <NativeSelect name="active" defaultValue={String(member.isActive)}>
+                <NativeSelect
+                  name="active"
+                  aria-label={`Access for ${member.email}`}
+                  defaultValue={String(member.isActive)}
+                >
                   <option value="true">Active</option>
                   <option value="false">Inactive</option>
                 </NativeSelect>
-                <Button type="submit" variant="outline">Save access</Button>
+                <Button type="submit" variant="outline">
+                  Save access
+                </Button>
               </form>
               <form action={removeStaffMember} className="mt-2">
                 <Hidden name="targetUserId" value={member.userId} />
-                <Button type="submit" variant="outline">Remove membership</Button>
+                <Button type="submit" variant="outline">
+                  Remove membership
+                </Button>
               </form>
             </div>
           ))}
