@@ -75,6 +75,26 @@ describe("admin CSV routes", () => {
     await expect(response.json()).resolves.toEqual({ error: "Unable to verify access" });
   });
 
+  it("streams an authenticated order export as a dated CSV download", async () => {
+    mocks.streamOrdersCsv.mockImplementation(async function* () {
+      yield "reference_code,discount_cents\n";
+      yield "SP-100,250\n";
+    });
+    const response = await getOrderExport(
+      new Request("http://localhost/api/admin/exports/orders") as never,
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe(
+      "text/csv; charset=utf-8",
+    );
+    expect(response.headers.get("content-disposition")).toMatch(
+      /^attachment; filename="orders-\d{4}-\d{2}-\d{2}\.csv"$/,
+    );
+    await expect(response.text()).resolves.toBe(
+      "reference_code,discount_cents\nSP-100,250\n",
+    );
+  });
+
   it("returns 401 for an unauthenticated product import", async () => {
     mocks.getSession.mockResolvedValueOnce(null);
     const response = await importProducts(new Request("http://localhost/api/admin/imports/products", { method: "POST", body: new FormData() }) as never);

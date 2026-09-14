@@ -7,7 +7,7 @@ import {
   orderFulfillments,
   paymentReceipts,
 } from "@/infrastructure/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, inArray } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
 // CSV serialization helpers
@@ -102,6 +102,7 @@ export async function* streamOrdersCsv(): AsyncGenerator<string> {
     "guest_name",
     "fulfillment_type",
     "fulfillment_status",
+    "discount_cents",
     "purchase_total_cents",
     "sku",
     "variant_title",
@@ -125,6 +126,7 @@ export async function* streamOrdersCsv(): AsyncGenerator<string> {
         guestEmail: orders.guestEmail,
         guestName: orders.guestName,
         fulfillmentType: orders.fulfillmentType,
+        discountCents: orders.discountCents,
         purchaseTotalCents: orders.purchaseTotalCents,
         createdAt: orders.createdAt,
         fulfillmentStatus: orderFulfillments.status,
@@ -137,27 +139,34 @@ export async function* streamOrdersCsv(): AsyncGenerator<string> {
 
     if (orderRows.length === 0) break;
 
+    const orderIds = orderRows.map((order) => order.id);
+    const itemRows = await db
+      .select({
+        orderId: orderItems.orderId,
+        sku: productVariants.sku,
+        variantTitle: productVariants.title,
+        quantity: orderItems.quantity,
+        unitPriceCents: orderItems.unitPriceCents,
+        lineTotalCents: orderItems.lineTotalCents,
+      })
+      .from(orderItems)
+      .innerJoin(productVariants, eq(productVariants.id, orderItems.variantId))
+      .where(inArray(orderItems.orderId, orderIds));
+
+    const receiptRows = await db
+      .select({
+        orderId: paymentReceipts.orderId,
+        rawReference: paymentReceipts.rawReference,
+      })
+      .from(paymentReceipts)
+      .where(inArray(paymentReceipts.orderId, orderIds));
+
     for (const order of orderRows) {
-      // Fetch line items for this order
-      const items = await db
-        .select({
-          sku: productVariants.sku,
-          variantTitle: productVariants.title,
-          quantity: orderItems.quantity,
-          unitPriceCents: orderItems.unitPriceCents,
-          lineTotalCents: orderItems.lineTotalCents,
-        })
-        .from(orderItems)
-        .innerJoin(productVariants, eq(productVariants.id, orderItems.variantId))
-        .where(eq(orderItems.orderId, order.id));
-
-      // Fetch payment receipt references
-      const receipts = await db
-        .select({ rawReference: paymentReceipts.rawReference })
-        .from(paymentReceipts)
-        .where(eq(paymentReceipts.orderId, order.id));
-
-      const receiptRefs = receipts.map((r) => r.rawReference).join("; ");
+      const items = itemRows.filter((item) => item.orderId === order.id);
+      const receiptRefs = receiptRows
+        .filter((receipt) => receipt.orderId === order.id)
+        .map((receipt) => receipt.rawReference)
+        .join("; ");
 
       if (items.length === 0) {
         // Order with no items (edge case — emit one row)
@@ -168,6 +177,7 @@ export async function* streamOrdersCsv(): AsyncGenerator<string> {
           order.guestName,
           order.fulfillmentType,
           order.fulfillmentStatus ?? "",
+          order.discountCents,
           order.purchaseTotalCents,
           "",
           "",
@@ -186,6 +196,7 @@ export async function* streamOrdersCsv(): AsyncGenerator<string> {
             order.guestName,
             order.fulfillmentType,
             order.fulfillmentStatus ?? "",
+            order.discountCents,
             order.purchaseTotalCents,
             item.sku,
             item.variantTitle,

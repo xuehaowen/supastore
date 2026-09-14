@@ -69,6 +69,15 @@ describe("frontend visual foundations", () => {
     expect(cartPage).toContain('aria-label="Order summary"');
   });
 
+  it("offers the order CSV export from the order management page", async () => {
+    const operations = await readFile(
+      path.join(workspaceRoot, "src/app/admin/operations.tsx"),
+      "utf8",
+    );
+    expect(operations).toContain('href="/api/admin/exports/orders"');
+    expect(operations).toContain("Export orders CSV");
+  });
+
   it("does not render raw buttons, selects, or textareas in application pages", async () => {
     const pages = await Promise.all([
       "src/app/admin/page.tsx",

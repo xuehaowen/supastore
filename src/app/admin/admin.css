@@ -362,6 +362,19 @@
   margin-bottom: 1.75rem;
   max-width: 45rem;
 }
+
+.admin-page-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: -2.8rem 0 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .admin-page-actions {
+    justify-content: flex-start;
+    margin: 0 0 1.25rem;
+  }
+}
 .admin-empty {
   color: var(--muted-foreground);
   font-size: 0.8125rem;

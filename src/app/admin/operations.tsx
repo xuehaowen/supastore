@@ -35,10 +35,11 @@ import {
   closeOrderPayoutAttempt,
 } from "@/app/actions";
 import { Field, Hidden, Notice, AdminNav } from "@/app/components";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Input } from "@/components/ui/input";
+import { Download } from "lucide-react";
 export default async function Admin({
   searchParams,
   view = "overview",
@@ -157,6 +158,18 @@ export default async function Admin({
         Track payments, review orders, and keep fulfillment moving. Order counts
         reflect the latest 100 orders.
       </p>
+      {view === "orders" && member.role === "owner" && (
+        <div className="admin-page-actions">
+          <a
+            href="/api/admin/exports/orders"
+            download
+            className={buttonVariants({ variant: "outline" })}
+          >
+            <Download aria-hidden="true" />
+            Export orders CSV
+          </a>
+        </div>
+      )}
       <Notice error={query.error} />
       {view === "orders" && (
         <form method="get" className="admin-filter-bar">
