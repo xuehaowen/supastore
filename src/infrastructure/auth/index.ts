@@ -1,6 +1,9 @@
 import { betterAuth } from 'better-auth';
+import { APIError } from 'better-auth/api';
+import { and, eq } from 'drizzle-orm';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db } from '@/infrastructure/db';
+import { staffMemberships, user } from '@/infrastructure/db/schema';
 import { smtpAdapter } from '@/infrastructure/notifications/smtp';
 import { logger } from '@/infrastructure/security/logger';
 
@@ -18,7 +21,8 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: true,
+    requireEmailVerification: false,
+    autoSignIn: false,
     sendResetPassword: async ({ user, url, token }) => {
       if (process.env.DISABLE_OUTBOUND_DELIVERY === "true") return;
       try {
@@ -55,6 +59,29 @@ export const auth = betterAuth({
       } catch (error) {
         logger.error('Failed to send verification email.', error);
       }
+    },
+  },
+  databaseHooks: {
+    session: {
+      create: {
+        before: async (session) => {
+          const [identity] = await db.select({ emailVerified: user.emailVerified })
+            .from(user).where(eq(user.id, session.userId)).limit(1);
+          if (identity?.emailVerified) return;
+
+          // Only an active, server-managed staff membership exempts verification.
+          const [staff] = await db.select({ id: staffMemberships.id })
+            .from(staffMemberships)
+            .where(and(eq(staffMemberships.userId, session.userId), eq(staffMemberships.isActive, true)))
+            .limit(1);
+          if (identity && staff) return;
+
+          throw new APIError('FORBIDDEN', {
+            code: 'EMAIL_NOT_VERIFIED',
+            message: 'Email not verified',
+          });
+        },
+      },
     },
   },
   session: {
