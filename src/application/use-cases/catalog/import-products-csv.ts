@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import { products, productVariants } from "@/infrastructure/db/schema";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
@@ -91,13 +91,21 @@ export function parseProductCsv(csvText: string): {
     const isPublishedRaw = cell(cols, "is_published");
 
     if (!handle) {
-      errors.push({ line: lineNum, field: "handle", message: "handle is required" });
+      errors.push({
+        line: lineNum,
+        field: "handle",
+        message: "handle is required",
+      });
     }
     if (!sku) {
       errors.push({ line: lineNum, field: "sku", message: "sku is required" });
     }
     if (!productTitle) {
-      errors.push({ line: lineNum, field: "title", message: "title is required" });
+      errors.push({
+        line: lineNum,
+        field: "title",
+        message: "title is required",
+      });
     }
 
     const priceCents = parseInt(priceRaw, 10);
@@ -110,7 +118,11 @@ export function parseProductCsv(csvText: string): {
     }
 
     if (sku && seenSkus.has(sku)) {
-      errors.push({ line: lineNum, field: "sku", message: `Duplicate SKU '${sku}' in this file` });
+      errors.push({
+        line: lineNum,
+        field: "sku",
+        message: `Duplicate SKU '${sku}' in this file`,
+      });
     } else if (sku) {
       seenSkus.add(sku);
     }
@@ -178,7 +190,9 @@ export interface ImportResult {
   updated: number;
 }
 
-export async function importProductsCsv(input: ImportProductsCsvInput): Promise<ImportResult> {
+export async function importProductsCsv(
+  input: ImportProductsCsvInput,
+): Promise<ImportResult> {
   if (input.rows.length === 0) {
     throw new InvariantViolationError("No rows to import.");
   }
@@ -201,7 +215,11 @@ export async function importProductsCsv(input: ImportProductsCsvInput): Promise<
     // Fetch existing variants by sku in one query
     const skus = input.rows.map((r) => r.sku);
     const existingVariants = await tx
-      .select({ id: productVariants.id, sku: productVariants.sku })
+      .select({
+        id: productVariants.id,
+        sku: productVariants.sku,
+        productId: productVariants.productId,
+      })
       .from(productVariants)
       .where(inArray(productVariants.sku, skus));
 
@@ -219,6 +237,7 @@ export async function importProductsCsv(input: ImportProductsCsvInput): Promise<
             title: row.productTitle,
             description: row.description,
             isPublished: row.isPublished,
+            quoteVersion: sql`${products.quoteVersion} + 1`,
             updatedAt: new Date(),
           })
           .where(eq(products.id, existing.id));
@@ -240,6 +259,10 @@ export async function importProductsCsv(input: ImportProductsCsvInput): Promise<
       // Upsert variant
       const existingVariant = variantBySku.get(row.sku);
       if (existingVariant) {
+        if (existingVariant.productId !== productId)
+          throw new InvariantViolationError(
+            `SKU ${row.sku} already belongs to another product.`,
+          );
         await tx
           .update(productVariants)
           .set({
@@ -249,6 +272,13 @@ export async function importProductsCsv(input: ImportProductsCsvInput): Promise<
             updatedAt: new Date(),
           })
           .where(eq(productVariants.id, existingVariant.id));
+        await tx
+          .update(products)
+          .set({
+            quoteVersion: sql`${products.quoteVersion} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(eq(products.id, productId));
         updated++;
       } else {
         await tx.insert(productVariants).values({

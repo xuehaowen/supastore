@@ -29,6 +29,7 @@ export const orders = pgTable("orders", {
     .notNull()
     .default("unpaid"),
   purchaseTotalCents: integer("purchase_total_cents").notNull(),
+  discountCents: integer("discount_cents").notNull().default(0),
   guestEmail: text("guest_email").notNull(),
   guestName: text("guest_name").notNull(),
   // 'shipping' | 'pickup' — determines which fulfillment fields are relevant

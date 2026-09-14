@@ -13,6 +13,15 @@ const mocks = vi.hoisted(() => ({
       "proposeOrderChange",
       "createProduct",
       "updateProduct",
+      "addProductVariant",
+      "removeProductVariant",
+      "addProductImage",
+      "removeProductImage",
+      "updateCategory",
+      "removeCategory",
+      "saveCatalogTranslation",
+      "savePromotion",
+      "setPromotionActive",
       "updateProductAvailability",
       "updateStoreSettings",
       "configureShipping",
@@ -108,8 +117,21 @@ vi.mock("@/application/use-cases/catalog/create-product", () => ({
 vi.mock("@/application/use-cases/catalog/update-product", () => ({
   updateProduct: mocks.commands.updateProduct,
 }));
+vi.mock("@/application/use-cases/catalog/manage-catalog", () => ({
+  addProductVariant: mocks.commands.addProductVariant,
+  removeProductVariant: mocks.commands.removeProductVariant,
+  addProductImage: mocks.commands.addProductImage,
+  removeProductImage: mocks.commands.removeProductImage,
+  updateCategory: mocks.commands.updateCategory,
+  removeCategory: mocks.commands.removeCategory,
+  saveCatalogTranslation: mocks.commands.saveCatalogTranslation,
+}));
 vi.mock("@/application/use-cases/catalog/update-product-availability", () => ({
   updateProductAvailability: mocks.commands.updateProductAvailability,
+}));
+vi.mock("@/application/use-cases/promotions/manage-promotions", () => ({
+  savePromotion: mocks.commands.savePromotion,
+  setPromotionActive: mocks.commands.setPromotionActive,
 }));
 vi.mock("@/application/use-cases/store/update-store-settings", () => ({
   updateStoreSettings: mocks.commands.updateStoreSettings,
@@ -211,12 +233,26 @@ const base: Record<string, string> = {
   title: "Test product",
   variantCount: "1",
   "sku-0": "SKU-1",
+  sku: "SKU-NEW",
   "variantTitle-0": "Default",
   "price-0": "1000",
   productId: id,
   quoteVersion: "1",
   "variantId-0": id,
   imageCount: "0",
+  imageId: id,
+  s3Key: "products/image.jpg",
+  altText: "Product image",
+  price: "1000",
+  categoryId: id,
+  entityId: id,
+  entityType: "product",
+  translationLocale: "zh",
+  promotionId: id,
+  code: "SAVE10",
+  discountType: "percentage",
+  discountValue: "1000",
+  minimumSubtotal: "0",
   published: "true",
   available: "true",
   total: "1000",
@@ -265,6 +301,31 @@ const cases = [
     "/admin/products/" + id + "/edit?saved=true",
   ],
   ["toggleAvailability", "updateProductAvailability", "/admin/products"],
+  [
+    "createProductVariant",
+    "addProductVariant",
+    `/admin/products/${id}/edit?added=variant`,
+  ],
+  [
+    "deleteProductVariant",
+    "removeProductVariant",
+    `/admin/products/${id}/edit?removed=archived`,
+  ],
+  [
+    "createProductImage",
+    "addProductImage",
+    `/admin/products/${id}/edit?added=image`,
+  ],
+  [
+    "deleteProductImage",
+    "removeProductImage",
+    `/admin/products/${id}/edit?removed=image`,
+  ],
+  ["editCategory", "updateCategory", "/admin/categories"],
+  ["deleteCategory", "removeCategory", "/admin/categories"],
+  ["saveCatalogTranslation", "saveCatalogTranslation", "/admin/translations"],
+  ["upsertPromotion", "savePromotion", "/admin/promotions"],
+  ["togglePromotion", "setPromotionActive", "/admin/promotions"],
   ["proposeChange", "proposeOrderChange", "/admin"],
   ["receivePayment", "recordReceipt", "/admin"],
   ["confirmPayment", "confirmOrder", "/admin"],
@@ -287,6 +348,42 @@ const cases = [
   ["verifyEmail", "verifyEmailDelivery", "/admin/setup"],
 ] as const;
 const expectedPayloads: Record<string, unknown> = {
+  createProductVariant: {
+    staffUserId: "staff-session",
+    productId: id,
+    sku: "SKU-NEW",
+    priceCents: 1000,
+  },
+  deleteProductVariant: {
+    staffUserId: "staff-session",
+    productId: id,
+    variantId: id,
+  },
+  createProductImage: {
+    staffUserId: "staff-session",
+    productId: id,
+    s3Key: "products/image.jpg",
+  },
+  deleteProductImage: {
+    staffUserId: "staff-session",
+    productId: id,
+    imageId: id,
+  },
+  editCategory: { staffUserId: "staff-session", categoryId: id },
+  deleteCategory: { staffUserId: "staff-session", categoryId: id },
+  saveCatalogTranslation: {
+    staffUserId: "staff-session",
+    entityType: "product",
+    entityId: id,
+    locale: "zh",
+  },
+  upsertPromotion: {
+    staffUserId: "staff-session",
+    code: "SAVE10",
+    discountType: "percentage",
+    discountValue: 1000,
+  },
+  togglePromotion: { staffUserId: "staff-session", id, isActive: true },
   editProduct: {
     staffUserId: "staff-session",
     productId: id,
@@ -491,6 +588,7 @@ beforeEach(() => {
     command.mockResolvedValue(undefined);
   mocks.commands.getQuote.mockResolvedValue({ id });
   mocks.commands.updateProduct.mockResolvedValue(id);
+  mocks.commands.removeProductVariant.mockResolvedValue("archived");
   mocks.commands.createOrder.mockResolvedValue({
     id,
     sessionToken: "new-token",

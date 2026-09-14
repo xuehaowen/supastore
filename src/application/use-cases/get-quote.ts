@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
   carts,
@@ -10,6 +10,8 @@ import {
   shippingZones,
   pickupLocation,
   paymentAccounts,
+  promotions,
+  promotionRedemptions,
 } from "@/infrastructure/db/schema";
 import type { Transaction } from "@/application/common/transaction";
 import { calculatePurchaseTotal } from "@/domain/money/calculations";
@@ -18,6 +20,7 @@ import {
   InvariantViolationError,
   UnauthorizedError,
 } from "@/application/common/errors";
+import { calculateDiscountCents } from "@/domain/promotions";
 export interface GetQuoteInput {
   cartId: string;
   guestSessionId: string;
@@ -27,6 +30,7 @@ export interface GetQuoteInput {
   pickupLocationId?: string;
   pickupTime?: string;
   paymentAccountId?: string;
+  promotionCode?: string;
 }
 export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
   const [cart] = await tx
@@ -127,8 +131,58 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
     taxRateBasisPoints: settings.taxRateBasisPoints,
     isTaxInclusive: settings.isTaxInclusive,
   });
+  const promotionCode = input.promotionCode?.trim().toUpperCase() ?? "";
+  let promotion: {
+    id: string;
+    code: string;
+    name: string;
+    discountCents: number;
+  } | null = null;
+  if (promotionCode) {
+    const [candidate] = await tx
+      .select()
+      .from(promotions)
+      .where(eq(promotions.code, promotionCode))
+      .for("update");
+    const now = new Date();
+    if (
+      !candidate?.isActive ||
+      (candidate.startsAt && candidate.startsAt > now) ||
+      (candidate.endsAt && candidate.endsAt <= now)
+    )
+      throw new InvariantViolationError("This promotion code is not active.");
+    if (subtotal < candidate.minimumSubtotalCents)
+      throw new InvariantViolationError(
+        "Your order does not meet this promotion's minimum subtotal.",
+      );
+    if (candidate.usageLimit !== null) {
+      const [usage] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(promotionRedemptions)
+        .where(eq(promotionRedemptions.promotionId, candidate.id));
+      if ((usage?.count ?? 0) >= candidate.usageLimit)
+        throw new InvariantViolationError(
+          "This promotion has reached its usage limit.",
+        );
+    }
+    promotion = {
+      id: candidate.id,
+      code: candidate.code,
+      name: candidate.name,
+      discountCents: calculateDiscountCents(
+        candidate.discountType,
+        candidate.discountValue,
+        subtotal,
+      ),
+    };
+  }
+  const discountedResult = {
+    ...result,
+    totalPayableCents:
+      result.totalPayableCents - (promotion?.discountCents ?? 0),
+  };
   let payment: { id: string; name: string; instructions: string } | null = null;
-  if (result.totalPayableCents > 0) {
+  if (discountedResult.totalPayableCents > 0) {
     const [account] = await tx
       .select()
       .from(paymentAccounts)
@@ -151,7 +205,7 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
     cart,
     settings,
     calculationItems,
-    result,
+    result: discountedResult,
     terms: {
       settingsVersion: settings.quoteVersion,
       currency: settings.currency,
@@ -160,6 +214,7 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
       shippingAddress: input.shippingAddress,
       pickup,
       payment,
+      promotion,
       input: {
         fulfillmentType: input.fulfillmentType,
         shippingAddress: input.shippingAddress,
@@ -167,6 +222,7 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
         pickupLocationId: input.pickupLocationId ?? "",
         pickupTime: input.pickupTime ?? "",
         paymentAccountId: input.paymentAccountId ?? "",
+        promotionCode,
       },
     },
   };
@@ -194,6 +250,7 @@ export async function getQuote(input: GetQuoteInput) {
         exclusiveTaxCents: result.exclusiveTaxCents,
         inclusiveTaxCents: result.inclusiveTaxCents,
         totalPayableCents: result.totalPayableCents,
+        discountCents: terms.promotion?.discountCents ?? 0,
         itemsSnapshot: calculationItems,
         shippingSnapshot: result.shipping,
         termsSnapshot: terms,

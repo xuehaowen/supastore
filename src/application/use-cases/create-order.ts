@@ -10,6 +10,7 @@ import {
   orderFulfillments,
   storeSettings,
   pickupTimeSlots,
+  promotionRedemptions,
 } from "@/infrastructure/db/schema";
 import { generateOrderReferenceCode } from "@/domain/money/reference-code";
 import {
@@ -114,6 +115,7 @@ export async function createOrder(input: CreateOrderInput) {
           lifecycleStatus:
             quote.totalPayableCents === 0 ? "confirmed" : "unpaid",
           purchaseTotalCents: quote.totalPayableCents,
+          discountCents: quote.discountCents,
           guestEmail: email,
           guestName: name,
           fulfillmentType: terms.fulfillmentType,
@@ -127,17 +129,21 @@ export async function createOrder(input: CreateOrderInput) {
       throw new InvariantViolationError(
         "Unable to allocate an order reference. Please retry.",
       );
-    await tx
-      .insert(orderItems)
-      .values(
-        current.calculationItems.map((i) => ({
-          orderId: order!.id,
-          variantId: i.variantId,
-          quantity: i.quantity,
-          unitPriceCents: i.unitPriceCents,
-          lineTotalCents: i.unitPriceCents * i.quantity,
-        })),
-      );
+    await tx.insert(orderItems).values(
+      current.calculationItems.map((i) => ({
+        orderId: order!.id,
+        variantId: i.variantId,
+        quantity: i.quantity,
+        unitPriceCents: i.unitPriceCents,
+        lineTotalCents: i.unitPriceCents * i.quantity,
+      })),
+    );
+    if (terms.promotion)
+      await tx.insert(promotionRedemptions).values({
+        promotionId: terms.promotion.id,
+        orderId: order.id,
+        discountCents: terms.promotion.discountCents,
+      });
     let pickupSlotId: string | null = null;
     if (terms.pickup) {
       const { locationId, date, startTime, endTime } = terms.pickup;

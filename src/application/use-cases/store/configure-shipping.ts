@@ -3,7 +3,11 @@ import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { storeSettings } from "@/infrastructure/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
-import { shippingZones, pickupLocation } from "@/infrastructure/db/schema";
+import {
+  auditRecords,
+  shippingZones,
+  pickupLocation,
+} from "@/infrastructure/db/schema";
 import { parseActionRequiredText } from "@/application/common/request-validation";
 import { NotFoundError } from "@/application/common/errors";
 
@@ -74,22 +78,45 @@ export async function configureShipping(input: ConfigureShippingInput) {
       .set({ quoteVersion: sql`${storeSettings.quoteVersion} + 1` });
     let savedZones: Array<typeof shippingZones.$inferSelect> = [];
     if (zones !== undefined) {
-      // Replace or update zones
-      await tx.delete(shippingZones);
-      if (zones.length > 0) {
-        savedZones = await tx
-          .insert(shippingZones)
-          .values(
-            zones.map((z, idx) => ({
-              name: z.name,
-              countryCodes: z.countryCodes ?? null,
-              rateCents: z.rateCents,
-              freeThresholdCents: z.freeThresholdCents ?? null,
-              sortOrder: z.sortOrder ?? idx,
-            })),
-          )
-          .returning();
+      for (const [idx, zone] of zones.entries()) {
+        if (zone.id) {
+          const [updated] = await tx
+            .update(shippingZones)
+            .set({
+              name: zone.name,
+              countryCodes: zone.countryCodes ?? null,
+              rateCents: zone.rateCents,
+              freeThresholdCents: zone.freeThresholdCents ?? null,
+              sortOrder: zone.sortOrder ?? idx,
+              updatedAt: new Date(),
+            })
+            .where(eq(shippingZones.id, zone.id))
+            .returning();
+          if (!updated) throw new NotFoundError("Shipping zone not found.");
+          savedZones.push(updated);
+        } else {
+          const [created] = await tx
+            .insert(shippingZones)
+            .values({
+              name: zone.name,
+              countryCodes: zone.countryCodes ?? null,
+              rateCents: zone.rateCents,
+              freeThresholdCents: zone.freeThresholdCents ?? null,
+              sortOrder: zone.sortOrder ?? idx,
+            })
+            .returning();
+          savedZones.push(created!);
+        }
       }
+      await tx.insert(auditRecords).values({
+        entityType: "store",
+        entityId: (
+          await tx.select({ id: storeSettings.id }).from(storeSettings).limit(1)
+        )[0]!.id,
+        actorId: input.staffUserId,
+        action: "shipping.zones_saved",
+        details: { zoneIds: savedZones.map((zone) => zone.id) },
+      });
     } else {
       savedZones = await tx
         .select()
@@ -134,6 +161,13 @@ export async function configureShipping(input: ConfigureShippingInput) {
           .returning();
         savedPickup = created;
       }
+      await tx.insert(auditRecords).values({
+        entityType: "pickup_location",
+        entityId: savedPickup!.id,
+        actorId: input.staffUserId,
+        action: existingPickup ? "updated" : "created",
+        details: { name: savedPickup!.name },
+      });
     } else {
       const [loc] = await tx.select().from(pickupLocation).limit(1);
       savedPickup = loc ?? null;

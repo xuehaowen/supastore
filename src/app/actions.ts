@@ -22,7 +22,20 @@ import {
 } from "@/application/use-cases/order-proposals";
 import { createProduct } from "@/application/use-cases/catalog/create-product";
 import { updateProduct } from "@/application/use-cases/catalog/update-product";
+import {
+  addProductImage,
+  addProductVariant,
+  removeCategory,
+  removeProductImage,
+  removeProductVariant,
+  saveCatalogTranslation as saveCatalogTranslationUseCase,
+  updateCategory,
+} from "@/application/use-cases/catalog/manage-catalog";
 import { updateProductAvailability } from "@/application/use-cases/catalog/update-product-availability";
+import {
+  savePromotion,
+  setPromotionActive,
+} from "@/application/use-cases/promotions/manage-promotions";
 import { updateStoreSettings } from "@/application/use-cases/store/update-store-settings";
 import { configureShipping } from "@/application/use-cases/store/configure-shipping";
 import { bootstrapOwner } from "@/application/use-cases/bootstrap-owner";
@@ -143,6 +156,7 @@ export async function quoteCart(form: FormData) {
           }
         : {}),
       pickupTime: field(form, "pickupTime"),
+      promotionCode: field(form, "promotionCode"),
       ...(field(form, "paymentAccountId")
         ? {
             paymentAccountId: parseActionUuid(
@@ -259,6 +273,9 @@ export async function saveShipping(form: FormData) {
       staffUserId: await staffIdentity(),
       zones: [
         {
+          ...(field(form, "zoneId")
+            ? { id: parseActionUuid(field(form, "zoneId"), "Shipping zone") }
+            : {}),
           name: field(form, "zoneName"),
           countryCodes: field(form, "countries")
             ? field(form, "countries")
@@ -327,7 +344,29 @@ export async function savePayment(form: FormData) {
       const id = field(form, "id")
         ? parseActionUuid(field(form, "id"), "Payment account")
         : "";
-      if (id)
+      if (id && field(form, "mode") === "edit")
+        await tx
+          .update(paymentAccounts)
+          .set({
+            accountName: parseActionRequiredText(
+              field(form, "name"),
+              "Payment method name",
+              120,
+            ),
+            accountIdentifier: parseActionRequiredText(
+              field(form, "instructions"),
+              "Payment instructions",
+              2000,
+            ),
+            accountType: parseActionEnum(
+              field(form, "accountType"),
+              "Payment method type",
+              ["cash", "zelle", "venmo", "other"] as const,
+            ),
+            updatedAt: new Date(),
+          })
+          .where(eq(paymentAccounts.id, id));
+      else if (id)
         await tx
           .update(paymentAccounts)
           .set({
@@ -345,6 +384,11 @@ export async function savePayment(form: FormData) {
             field(form, "instructions"),
             "Payment instructions",
             2000,
+          ),
+          accountType: parseActionEnum(
+            field(form, "accountType") || "other",
+            "Payment method type",
+            ["cash", "zelle", "venmo", "other"] as const,
           ),
         });
     });
@@ -473,6 +517,188 @@ export async function editProduct(form: FormData) {
     revalidatePath("/admin/products", "layout");
     revalidatePath("/admin/translations");
     return `/admin/products/${productId}/edit?saved=true`;
+  });
+}
+export async function createProductVariant(form: FormData) {
+  const productId = parseActionUuid(field(form, "productId"), "Product");
+  return perform(`/admin/products/${productId}/edit`, async () => {
+    await addProductVariant({
+      staffUserId: await staffIdentity(),
+      productId,
+      title: field(form, "title"),
+      sku: field(form, "sku"),
+      priceCents: parseActionInteger(
+        field(form, "price"),
+        "Variant price",
+        0,
+        2147483647,
+      ),
+      color: field(form, "color"),
+      size: field(form, "size"),
+    });
+    revalidateTag("catalog");
+    revalidatePath("/[locale]", "layout");
+    return `/admin/products/${productId}/edit?added=variant`;
+  });
+}
+export async function deleteProductVariant(form: FormData) {
+  const productId = parseActionUuid(field(form, "productId"), "Product");
+  return perform(`/admin/products/${productId}/edit`, async () => {
+    const result = await removeProductVariant({
+      staffUserId: await staffIdentity(),
+      productId,
+      variantId: parseActionUuid(field(form, "variantId"), "Variant"),
+      reason: field(form, "reason"),
+    });
+    revalidateTag("catalog");
+    revalidatePath("/[locale]", "layout");
+    return `/admin/products/${productId}/edit?removed=${result}`;
+  });
+}
+export async function createProductImage(form: FormData) {
+  const productId = parseActionUuid(field(form, "productId"), "Product");
+  return perform(`/admin/products/${productId}/edit`, async () => {
+    await addProductImage({
+      staffUserId: await staffIdentity(),
+      productId,
+      s3Key: field(form, "s3Key"),
+      altText: field(form, "altText"),
+    });
+    revalidateTag("catalog");
+    revalidatePath("/[locale]", "layout");
+    return `/admin/products/${productId}/edit?added=image`;
+  });
+}
+export async function deleteProductImage(form: FormData) {
+  const productId = parseActionUuid(field(form, "productId"), "Product");
+  return perform(`/admin/products/${productId}/edit`, async () => {
+    await removeProductImage({
+      staffUserId: await staffIdentity(),
+      productId,
+      imageId: parseActionUuid(field(form, "imageId"), "Image"),
+      reason: field(form, "reason"),
+    });
+    revalidateTag("catalog");
+    revalidatePath("/[locale]", "layout");
+    return `/admin/products/${productId}/edit?removed=image`;
+  });
+}
+export async function editCategory(form: FormData) {
+  return perform("/admin/categories", async () => {
+    const parentId = field(form, "parentId");
+    await updateCategory({
+      staffUserId: await staffIdentity(),
+      categoryId: parseActionUuid(field(form, "categoryId"), "Category"),
+      name: field(form, "name"),
+      slug: field(form, "slug"),
+      ...(parentId ? { parentId } : {}),
+    });
+    revalidateTag("catalog");
+    revalidatePath("/[locale]", "layout");
+  });
+}
+export async function deleteCategory(form: FormData) {
+  return perform("/admin/categories", async () => {
+    await removeCategory({
+      staffUserId: await staffIdentity(),
+      categoryId: parseActionUuid(field(form, "categoryId"), "Category"),
+      reason: field(form, "reason"),
+    });
+    revalidateTag("catalog");
+    revalidatePath("/[locale]", "layout");
+  });
+}
+export async function saveCatalogTranslation(form: FormData) {
+  return perform("/admin/translations", async () => {
+    const staff = await staffIdentity();
+    const entityType = parseActionEnum(
+      field(form, "entityType"),
+      "Translation entity",
+      ["product", "category", "variant"] as const,
+    );
+    const entityId = parseActionUuid(
+      field(form, "entityId"),
+      "Translation entity",
+    );
+    const locale = parseActionEnum(field(form, "translationLocale"), "Locale", [
+      "zh",
+    ] as const);
+    const title = parseActionRequiredText(
+      field(form, "title"),
+      "Translated text",
+      200,
+    );
+    const description = field(form, "description");
+    await saveCatalogTranslationUseCase({
+      staffUserId: staff,
+      entityType,
+      entityId,
+      locale,
+      title,
+      ...(description ? { description } : {}),
+    });
+    revalidateTag("catalog");
+    revalidatePath("/[locale]", "layout");
+  });
+}
+export async function upsertPromotion(form: FormData) {
+  return perform("/admin/promotions", async () => {
+    const startsAt = field(form, "startsAt");
+    const endsAt = field(form, "endsAt");
+    const parseDate = (value: string, label: string) => {
+      if (!value) return undefined;
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime()))
+        throw new DomainError(`${label} is invalid.`);
+      return date;
+    };
+    const usageLimit = field(form, "usageLimit");
+    const id = field(form, "id");
+    await savePromotion({
+      staffUserId: await staffIdentity(),
+      ...(id ? { id: parseActionUuid(id, "Promotion") } : {}),
+      code: field(form, "code"),
+      name: field(form, "name"),
+      discountType: parseActionEnum(
+        field(form, "discountType"),
+        "Discount type",
+        ["percentage", "fixed"] as const,
+      ),
+      discountValue: parseActionInteger(
+        field(form, "discountValue"),
+        "Discount value",
+        1,
+        2147483647,
+      ),
+      minimumSubtotalCents: parseActionInteger(
+        field(form, "minimumSubtotal"),
+        "Minimum subtotal",
+        0,
+        2147483647,
+      ),
+      ...(usageLimit
+        ? {
+            usageLimit: parseActionInteger(
+              usageLimit,
+              "Usage limit",
+              1,
+              2147483647,
+            ),
+          }
+        : {}),
+      isActive: form.has("active"),
+      ...(startsAt ? { startsAt: parseDate(startsAt, "Start date")! } : {}),
+      ...(endsAt ? { endsAt: parseDate(endsAt, "End date")! } : {}),
+    });
+  });
+}
+export async function togglePromotion(form: FormData) {
+  return perform("/admin/promotions", async () => {
+    await setPromotionActive({
+      staffUserId: await staffIdentity(),
+      id: parseActionUuid(field(form, "promotionId"), "Promotion"),
+      isActive: parseActionBoolean(field(form, "active"), "Active"),
+    });
   });
 }
 export async function toggleAvailability(form: FormData) {
