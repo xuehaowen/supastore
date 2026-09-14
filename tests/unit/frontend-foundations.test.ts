@@ -47,8 +47,12 @@ describe("frontend visual foundations", () => {
       "utf8",
     );
 
-    expect(catalog).toContain('aria-current={query.category ? undefined : "page"}');
-    expect(catalog).toContain('aria-current={query.category === g.slug ? "page" : undefined}');
+    expect(catalog).toContain(
+      'aria-current={query.category ? undefined : "page"}',
+    );
+    expect(catalog).toContain(
+      'aria-current={query.category === g.slug ? "page" : undefined}',
+    );
   });
 
   it("provides responsive image sizing on product detail pages", async () => {
@@ -76,20 +80,26 @@ describe("frontend visual foundations", () => {
     );
     expect(operations).toContain('href="/api/admin/exports/orders"');
     expect(operations).toContain("Export orders CSV");
+    expect(operations).toContain(
+      'href="/api/admin/exports/orders?format=xlsx"',
+    );
+    expect(operations).toContain("Export orders XLSX");
   });
 
   it("does not render raw buttons, selects, or textareas in application pages", async () => {
-    const pages = await Promise.all([
-      "src/app/admin/page.tsx",
-      "src/app/admin/operations.tsx",
-      "src/app/admin/products/[id]/edit/page.tsx",
-      "src/app/admin/products/page.tsx",
-      "src/app/admin/products/import/page.tsx",
-      "src/app/admin/orders/[id]/packing-slip/page.tsx",
-      "src/app/admin/setup/page.tsx",
-      "src/app/[locale]/checkout/page.tsx",
-      "src/app/checkout-fields.tsx",
-    ].map((file) => readFile(path.join(workspaceRoot, file), "utf8")));
+    const pages = await Promise.all(
+      [
+        "src/app/admin/page.tsx",
+        "src/app/admin/operations.tsx",
+        "src/app/admin/products/[id]/edit/page.tsx",
+        "src/app/admin/products/page.tsx",
+        "src/app/admin/products/import/page.tsx",
+        "src/app/admin/orders/[id]/packing-slip/page.tsx",
+        "src/app/admin/setup/page.tsx",
+        "src/app/[locale]/checkout/page.tsx",
+        "src/app/checkout-fields.tsx",
+      ].map((file) => readFile(path.join(workspaceRoot, file), "utf8")),
+    );
 
     for (const page of pages) {
       expect(page).not.toMatch(/<(button|select|textarea)\b/);

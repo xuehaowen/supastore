@@ -87,33 +87,30 @@ export async function* streamProductsCsv(): AsyncGenerator<string> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Orders CSV export
-// Columns: reference_code, lifecycle_status, guest_email, guest_name,
-//          fulfillment_type, fulfillment_status, purchase_total_cents,
-//          sku, variant_title, quantity, unit_price_cents, line_total_cents,
-//          receipt_references, created_at
-// ---------------------------------------------------------------------------
-export async function* streamOrdersCsv(): AsyncGenerator<string> {
-  const HEADER = csvRow([
-    "reference_code",
-    "lifecycle_status",
-    "guest_email",
-    "guest_name",
-    "fulfillment_type",
-    "fulfillment_status",
-    "discount_cents",
-    "purchase_total_cents",
-    "sku",
-    "variant_title",
-    "quantity",
-    "unit_price_cents",
-    "line_total_cents",
-    "receipt_references",
-    "created_at",
-  ]);
-  yield HEADER + "\n";
+export const ORDER_EXPORT_COLUMNS = [
+  "reference_code",
+  "lifecycle_status",
+  "guest_email",
+  "guest_name",
+  "fulfillment_type",
+  "fulfillment_status",
+  "discount_cents",
+  "purchase_total_cents",
+  "sku",
+  "variant_title",
+  "quantity",
+  "unit_price_cents",
+  "line_total_cents",
+  "receipt_references",
+  "created_at",
+] as const;
 
+export type OrderExportRow = Record<
+  (typeof ORDER_EXPORT_COLUMNS)[number],
+  string | number | Date
+>;
+
+export async function* streamOrderExportRows(): AsyncGenerator<OrderExportRow> {
   const BATCH = 100;
   let offset = 0;
 
@@ -169,43 +166,42 @@ export async function* streamOrdersCsv(): AsyncGenerator<string> {
         .join("; ");
 
       if (items.length === 0) {
-        // Order with no items (edge case — emit one row)
-        yield csvRow([
-          order.referenceCode,
-          order.lifecycleStatus,
-          order.guestEmail,
-          order.guestName,
-          order.fulfillmentType,
-          order.fulfillmentStatus ?? "",
-          order.discountCents,
-          order.purchaseTotalCents,
-          "",
-          "",
-          "",
-          "",
-          "",
-          receiptRefs,
-          order.createdAt.toISOString(),
-        ]) + "\n";
+        yield {
+          reference_code: order.referenceCode,
+          lifecycle_status: order.lifecycleStatus,
+          guest_email: order.guestEmail,
+          guest_name: order.guestName,
+          fulfillment_type: order.fulfillmentType,
+          fulfillment_status: order.fulfillmentStatus ?? "",
+          discount_cents: order.discountCents,
+          purchase_total_cents: order.purchaseTotalCents,
+          sku: "",
+          variant_title: "",
+          quantity: "",
+          unit_price_cents: "",
+          line_total_cents: "",
+          receipt_references: receiptRefs,
+          created_at: order.createdAt,
+        };
       } else {
         for (const item of items) {
-          yield csvRow([
-            order.referenceCode,
-            order.lifecycleStatus,
-            order.guestEmail,
-            order.guestName,
-            order.fulfillmentType,
-            order.fulfillmentStatus ?? "",
-            order.discountCents,
-            order.purchaseTotalCents,
-            item.sku,
-            item.variantTitle,
-            item.quantity,
-            item.unitPriceCents,
-            item.lineTotalCents,
-            receiptRefs,
-            order.createdAt.toISOString(),
-          ]) + "\n";
+          yield {
+            reference_code: order.referenceCode,
+            lifecycle_status: order.lifecycleStatus,
+            guest_email: order.guestEmail,
+            guest_name: order.guestName,
+            fulfillment_type: order.fulfillmentType,
+            fulfillment_status: order.fulfillmentStatus ?? "",
+            discount_cents: order.discountCents,
+            purchase_total_cents: order.purchaseTotalCents,
+            sku: item.sku,
+            variant_title: item.variantTitle,
+            quantity: item.quantity,
+            unit_price_cents: item.unitPriceCents,
+            line_total_cents: item.lineTotalCents,
+            receipt_references: receiptRefs,
+            created_at: order.createdAt,
+          };
         }
       }
     }
@@ -213,4 +209,14 @@ export async function* streamOrdersCsv(): AsyncGenerator<string> {
     if (orderRows.length < BATCH) break;
     offset += BATCH;
   }
+}
+
+export async function* streamOrdersCsv(): AsyncGenerator<string> {
+  yield csvRow([...ORDER_EXPORT_COLUMNS]) + "\n";
+  for await (const row of streamOrderExportRows())
+    yield csvRow(
+      ORDER_EXPORT_COLUMNS.map((column) =>
+        row[column] instanceof Date ? row[column].toISOString() : row[column],
+      ),
+    ) + "\n";
 }

@@ -168,6 +168,14 @@ export default async function Admin({
             <Download aria-hidden="true" />
             Export orders CSV
           </a>
+          <a
+            href="/api/admin/exports/orders?format=xlsx"
+            download
+            className={buttonVariants({ variant: "outline" })}
+          >
+            <Download aria-hidden="true" />
+            Export orders XLSX
+          </a>
         </div>
       )}
       <Notice error={query.error} />

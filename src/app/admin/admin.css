@@ -365,6 +365,7 @@
 
 .admin-page-actions {
   display: flex;
+  gap: 0.65rem;
   justify-content: flex-end;
   margin: -2.8rem 0 1.5rem;
 }
