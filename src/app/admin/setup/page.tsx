@@ -4,6 +4,7 @@ import {
   storeSettings,
   paymentAccounts,
   pickupLocation,
+  shippingZones,
   staffMemberships,
 } from "@/infrastructure/db/schema";
 import { staffIdentity } from "@/infrastructure/web";
@@ -47,6 +48,10 @@ export default async function Setup({
     .transaction((tx) => verifyStaffInTransaction(tx, staff, "owner"))
     .catch(() => redirect("/admin/login"));
   const accounts = await db.select().from(paymentAccounts);
+  const zones = await db
+    .select()
+    .from(shippingZones)
+    .orderBy(shippingZones.sortOrder);
   const locations = await db
     .select()
     .from(pickupLocation)
@@ -120,8 +125,41 @@ export default async function Setup({
         </section>
         <section className="panel">
           <h2>02 / Shipping</h2>
+          {zones.map((zone) => (
+            <form
+              action={saveShipping}
+              className="category-admin-row grid gap-3"
+              key={zone.id}
+            >
+              <Hidden name="zoneId" value={zone.id} />
+              <Field label="Zone name" name="zoneName" value={zone.name} />
+              <Field
+                label="Country codes, comma separated; blank for all"
+                name="countries"
+                value={zone.countryCodes?.join(", ") ?? ""}
+                required={false}
+              />
+              <Field
+                label="Flat rate (minor units)"
+                name="rate"
+                type="number"
+                value={zone.rateCents}
+              />
+              <Field
+                label="Free shipping threshold (minor units)"
+                name="freeThreshold"
+                type="number"
+                value={zone.freeThresholdCents ?? ""}
+                required={false}
+              />
+              <Button type="submit" variant="outline">
+                Save shipping zone
+              </Button>
+            </form>
+          ))}
+          <h3>Add shipping zone</h3>
           <form action={saveShipping}>
-            <Field label="Zone name" name="zoneName" value="Standard" />
+            <Field label="Zone name" name="zoneName" />
             <Field
               label="Country codes, comma separated; blank for all"
               name="countries"
@@ -204,9 +242,34 @@ export default async function Setup({
             </Button>
           </form>
           {accounts.map((a) => (
-            <div key={a.id}>
+            <div className="category-admin-row" key={a.id}>
               <h3>{a.accountName}</h3>
               <p>{a.accountIdentifier}</p>
+              <form action={savePayment} className="mt-3 grid gap-3">
+                <Hidden name="id" value={a.id} />
+                <Hidden name="mode" value="edit" />
+                <Field label="Method name" name="name" value={a.accountName} />
+                <label>
+                  Payment type
+                  <NativeSelect name="accountType" defaultValue={a.accountType}>
+                    <option value="other">Other</option>
+                    <option value="cash">Cash</option>
+                    <option value="zelle">Zelle</option>
+                    <option value="venmo">Venmo</option>
+                  </NativeSelect>
+                </label>
+                <label>
+                  Receiving account and instructions
+                  <Textarea
+                    name="instructions"
+                    defaultValue={a.accountIdentifier}
+                    required
+                  />
+                </label>
+                <Button type="submit" variant="outline">
+                  Save method details
+                </Button>
+              </form>
               <form action={savePayment}>
                 <Hidden name="id" value={a.id} />
                 <Hidden name="active" value={String(!a.isActive)} />
@@ -218,6 +281,15 @@ export default async function Setup({
           ))}
           <form action={savePayment}>
             <Field label="Method name" name="name" />
+            <label>
+              Payment type
+              <NativeSelect name="accountType" defaultValue="other">
+                <option value="other">Other</option>
+                <option value="cash">Cash</option>
+                <option value="zelle">Zelle</option>
+                <option value="venmo">Venmo</option>
+              </NativeSelect>
+            </label>
             <label>
               Receiving account and instructions
               <Textarea name="instructions" required />

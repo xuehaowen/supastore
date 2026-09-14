@@ -37,6 +37,11 @@ export default async function Products({
       <p className="admin-description">
         Manage your catalog, pricing, and product availability.
       </p>
+      <p>
+        <Link href="/admin/categories" className="admin-edit-link">
+          Manage categories →
+        </Link>
+      </p>
       <Notice error={(await searchParams).error} />
       <div className="admin-grid">
         <section>

@@ -13,7 +13,13 @@ import {
 import { staffIdentity } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { AdminNav, Field, Hidden, Notice } from "@/app/components";
-import { editProduct } from "@/app/actions";
+import {
+  createProductImage,
+  createProductVariant,
+  deleteProductImage,
+  deleteProductVariant,
+  editProduct,
+} from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,7 +29,12 @@ export default async function EditProductPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; saved?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    saved?: string;
+    added?: string;
+    removed?: string;
+  }>;
 }) {
   const staff = await staffIdentity().catch(() => redirect("/admin/login"));
   const { id } = await params;
@@ -79,6 +90,12 @@ export default async function EditProductPage({
       {q.saved === "true" && !q.error && (
         <p role="status" className="admin-save-notice">
           Product changes saved.
+        </p>
+      )}
+      {(q.added || q.removed) && !q.error && (
+        <p role="status" className="admin-save-notice">
+          Catalog structure updated (
+          {q.added ? `${q.added} added` : `${q.removed} removed`}).
         </p>
       )}
       <form action={editProduct} className="product-editor">
@@ -182,6 +199,83 @@ export default async function EditProductPage({
           <Button type="submit">Save changes</Button>
         </div>
       </form>
+      <div className="product-editor catalog-structure-editor">
+        <section className="panel">
+          <h2>Add variant</h2>
+          <form action={createProductVariant} className="grid gap-4">
+            <Hidden name="productId" value={product.id} />
+            <Field name="title" label="Variant name" />
+            <Field name="sku" label="SKU" />
+            <Field name="price" label="Price in minor units" type="number" />
+            <div className="two-col">
+              <Field name="color" label="Color" required={false} />
+              <Field name="size" label="Size" required={false} />
+            </div>
+            <Button type="submit">Add variant</Button>
+          </form>
+        </section>
+        <section className="panel">
+          <h2>Add image</h2>
+          <form action={createProductImage} className="grid gap-4">
+            <Hidden name="productId" value={product.id} />
+            <Field name="s3Key" label="Image asset key" />
+            <Field name="altText" label="Image description" required={false} />
+            <Button type="submit">Add image</Button>
+          </form>
+        </section>
+        <section className="panel product-editor-wide">
+          <h2>Remove catalog items</h2>
+          <p className="admin-empty">
+            Ordered variants are retained for history and made unavailable.
+            Unused variants and images are deleted.
+          </p>
+          {variants.map((variant) => (
+            <form
+              action={deleteProductVariant}
+              className="catalog-remove-row"
+              key={variant.id}
+            >
+              <Hidden name="productId" value={product.id} />
+              <Hidden name="variantId" value={variant.id} />
+              <span>
+                <strong>{variant.title}</strong>
+                <small>
+                  {variant.sku} ·{" "}
+                  {variant.isAvailable ? "Available" : "Unavailable"}
+                </small>
+              </span>
+              <Field
+                name="reason"
+                label={`Reason to remove ${variant.title}`}
+              />
+              <Button type="submit" variant="outline">
+                Remove variant
+              </Button>
+            </form>
+          ))}
+          {images.map((image) => (
+            <form
+              action={deleteProductImage}
+              className="catalog-remove-row"
+              key={image.id}
+            >
+              <Hidden name="productId" value={product.id} />
+              <Hidden name="imageId" value={image.id} />
+              <span>
+                <strong>{image.altText || "Product image"}</strong>
+                <small>{image.s3Key}</small>
+              </span>
+              <Field
+                name="reason"
+                label={`Reason to remove image ${image.altText || image.s3Key}`}
+              />
+              <Button type="submit" variant="outline">
+                Remove image
+              </Button>
+            </form>
+          ))}
+        </section>
+      </div>
     </main>
   );
 }

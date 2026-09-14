@@ -1,60 +1,140 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
+import { redirect } from "next/navigation";
 import { db } from "@/infrastructure/db";
-import { products, productTranslations } from "@/infrastructure/db/schema";
+import {
+  categories,
+  categoryTranslations,
+  products,
+  productTranslations,
+  productVariants,
+  variantTranslations,
+} from "@/infrastructure/db/schema";
 import { staffIdentity } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
-import { AdminNav } from "@/app/components";
+import { AdminNav, Field, Hidden, Notice } from "@/app/components";
+import { saveCatalogTranslation } from "@/app/actions";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
-export default async function TranslationsPage() {
+type TranslationItem = {
+  id: string;
+  name: string;
+  translated: string | null;
+  description?: string | null;
+  sku?: string;
+};
+
+export default async function TranslationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const staff = await staffIdentity().catch(() => redirect("/admin/login"));
-  const rows = await db.transaction(async (tx) => {
+  const data = await db.transaction(async (tx) => {
     await verifyStaffInTransaction(tx, staff, "owner");
-    return tx
-      .select({
-        id: products.id,
-        title: products.title,
-        zhTitle: productTranslations.title,
-      })
-      .from(products)
-      .leftJoin(
-        productTranslations,
-        and(
-          eq(productTranslations.productId, products.id),
-          eq(productTranslations.locale, "zh"),
-        ),
-      )
-      .orderBy(asc(products.title));
+    return {
+      products: await tx
+        .select({
+          id: products.id,
+          name: products.title,
+          translated: productTranslations.title,
+          description: productTranslations.description,
+        })
+        .from(products)
+        .leftJoin(
+          productTranslations,
+          and(
+            eq(productTranslations.productId, products.id),
+            eq(productTranslations.locale, "zh"),
+          ),
+        )
+        .orderBy(asc(products.title)),
+      categories: await tx
+        .select({
+          id: categories.id,
+          name: categories.name,
+          translated: categoryTranslations.name,
+        })
+        .from(categories)
+        .leftJoin(
+          categoryTranslations,
+          and(
+            eq(categoryTranslations.categoryId, categories.id),
+            eq(categoryTranslations.locale, "zh"),
+          ),
+        )
+        .orderBy(asc(categories.name)),
+      variants: await tx
+        .select({
+          id: productVariants.id,
+          name: productVariants.title,
+          sku: productVariants.sku,
+          translated: variantTranslations.title,
+        })
+        .from(productVariants)
+        .leftJoin(
+          variantTranslations,
+          and(
+            eq(variantTranslations.variantId, productVariants.id),
+            eq(variantTranslations.locale, "zh"),
+          ),
+        )
+        .orderBy(asc(productVariants.sku)),
+    };
   });
+  const q = await searchParams;
+  const editor = (
+    entityType: "product" | "category" | "variant",
+    item: TranslationItem,
+  ) => (
+    <form
+      action={saveCatalogTranslation}
+      className="translation-editor"
+      key={item.id}
+    >
+      <Hidden name="entityType" value={entityType} />
+      <Hidden name="entityId" value={item.id} />
+      <Hidden name="translationLocale" value="zh" />
+      <span>
+        <strong>{item.name}</strong>
+        <small>
+          {item.sku ?? (item.translated ? "Translated" : "Translation missing")}
+        </small>
+      </span>
+      <Field name="title" label="Chinese text" value={item.translated ?? ""} />
+      {entityType === "product" ? (
+        <label>
+          Chinese description
+          <Textarea name="description" defaultValue={item.description ?? ""} />
+        </label>
+      ) : (
+        <span />
+      )}
+      <Button type="submit" variant="outline">
+        Save translation
+      </Button>
+    </form>
+  );
   return (
     <main className="admin">
       <AdminNav />
       <p className="eyebrow">CATALOG LANGUAGES</p>
       <h1>Translations</h1>
       <p className="admin-description">
-        Review Chinese product translations. Products without a translation use
-        their default text.
+        Manage Chinese storefront text for products, categories, and variants.
       </p>
+      <Notice error={q.error} />
       <section className="panel">
-        <h2>Product translations</h2>
-        {rows.length === 0 ? (
-          <p className="admin-empty">
-            Add a product to start translating your catalog.
-          </p>
-        ) : (
-          rows.map((row) => (
-            <article className="translation-row" key={row.id}>
-              <div>
-                <h3>{row.title}</h3>
-                <p>{row.zhTitle || "Chinese translation missing"}</p>
-              </div>
-              <Link href={`/admin/products/${row.id}/edit#translations`}>
-                Edit translation
-              </Link>
-            </article>
-          ))
-        )}
+        <h2>Products</h2>
+        {data.products.map((item) => editor("product", item))}
+      </section>
+      <section className="panel">
+        <h2>Categories</h2>
+        {data.categories.map((item) => editor("category", item))}
+      </section>
+      <section className="panel">
+        <h2>Variants</h2>
+        {data.variants.map((item) => editor("variant", item))}
       </section>
     </main>
   );
