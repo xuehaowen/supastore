@@ -21,6 +21,7 @@ import {
   proposeOrderChange,
 } from "@/application/use-cases/order-proposals";
 import { createProduct } from "@/application/use-cases/catalog/create-product";
+import { updateProduct } from "@/application/use-cases/catalog/update-product";
 import { updateProductAvailability } from "@/application/use-cases/catalog/update-product-availability";
 import { updateStoreSettings } from "@/application/use-cases/store/update-store-settings";
 import { configureShipping } from "@/application/use-cases/store/configure-shipping";
@@ -67,6 +68,14 @@ import {
 } from "@/application/common/request-validation";
 const field = (form: FormData, name: string) =>
   String(form.get(name) ?? "").trim();
+function adminReturnPath(form: FormData) {
+  const requested = field(form, "returnTo");
+  return ["/admin/orders", "/admin/payments", "/admin/fulfillment"].includes(
+    requested,
+  )
+    ? requested
+    : "/admin";
+}
 async function perform(
   path: string,
   work: () => Promise<string | void>,
@@ -342,7 +351,7 @@ export async function savePayment(form: FormData) {
   });
 }
 export async function togglePause(form: FormData) {
-  return perform("/admin", async () => {
+  return perform(adminReturnPath(form), async () => {
     await updateStoreSettings({
       staffUserId: await staffIdentity(),
       isPaused: parseActionBoolean(field(form, "paused"), "Paused"),
@@ -401,6 +410,71 @@ export async function saveProduct(form: FormData) {
     revalidatePath("/[locale]", "layout");
   });
 }
+export async function editProduct(form: FormData) {
+  const rawId = field(form, "productId");
+  const path = /^[0-9a-f-]{36}$/i.test(rawId)
+    ? `/admin/products/${rawId}/edit`
+    : "/admin/products";
+  return perform(path, async () => {
+    const productId = await updateProduct({
+      staffUserId: await staffIdentity(),
+      productId: parseActionUuid(rawId, "Product"),
+      quoteVersion: parseActionInteger(
+        field(form, "quoteVersion"),
+        "Product version",
+        1,
+        2147483647,
+      ),
+      title: field(form, "title"),
+      handle: field(form, "handle"),
+      description: field(form, "description"),
+      categoryIds: form.getAll("categoryIds").map(String),
+      zhTitle: field(form, "zhTitle"),
+      zhDescription: field(form, "zhDescription"),
+      variants: Array.from(
+        {
+          length: parseActionInteger(
+            field(form, "variantCount"),
+            "Variant count",
+            1,
+            50,
+          ),
+        },
+        (_, i) => ({
+          id: parseActionUuid(field(form, `variantId-${i}`), "Variant"),
+          title: field(form, `variantTitle-${i}`),
+          sku: field(form, `sku-${i}`),
+          priceCents: parseActionInteger(
+            field(form, `price-${i}`),
+            "Variant price",
+            0,
+            2147483647,
+          ),
+        }),
+      ),
+      images: Array.from(
+        {
+          length: parseActionInteger(
+            field(form, "imageCount"),
+            "Image count",
+            0,
+            100,
+          ),
+        },
+        (_, i) => ({
+          id: parseActionUuid(field(form, `imageId-${i}`), "Image"),
+          s3Key: field(form, `imageKey-${i}`),
+          altText: field(form, `imageAlt-${i}`),
+        }),
+      ),
+    });
+    revalidateTag("catalog");
+    revalidatePath("/[locale]", "layout");
+    revalidatePath("/admin/products", "layout");
+    revalidatePath("/admin/translations");
+    return `/admin/products/${productId}/edit?saved=true`;
+  });
+}
 export async function toggleAvailability(form: FormData) {
   return perform("/admin/products", async () => {
     await updateProductAvailability({
@@ -426,7 +500,7 @@ export async function toggleAvailability(form: FormData) {
   });
 }
 export async function proposeChange(form: FormData) {
-  return perform("/admin", async () => {
+  return perform(adminReturnPath(form), async () => {
     await proposeOrderChange({
       staffUserId: await staffIdentity(),
       orderId: parseActionUuid(field(form, "orderId"), "Order"),
@@ -441,7 +515,7 @@ export async function proposeChange(form: FormData) {
   });
 }
 export async function receivePayment(form: FormData) {
-  return perform("/admin", async () => {
+  return perform(adminReturnPath(form), async () => {
     if (!form.has("verified"))
       throw new DomainError(
         "Verify the receiving account against the actual payment.",
@@ -464,7 +538,7 @@ export async function receivePayment(form: FormData) {
   });
 }
 export async function confirmPayment(form: FormData) {
-  return perform("/admin", async () => {
+  return perform(adminReturnPath(form), async () => {
     await confirmOrder({
       staffUserId: await staffIdentity(),
       orderId: parseActionUuid(field(form, "orderId"), "Order"),
@@ -473,7 +547,7 @@ export async function confirmPayment(form: FormData) {
 }
 
 export async function fulfillConfirmedOrder(form: FormData) {
-  return perform("/admin", async () => {
+  return perform(adminReturnPath(form), async () => {
     await fulfillOrder({
       staffUserId: await staffIdentity(),
       orderId: parseActionUuid(field(form, "orderId"), "Order"),
@@ -486,7 +560,7 @@ export async function fulfillConfirmedOrder(form: FormData) {
 }
 
 export async function markOrderReady(form: FormData) {
-  return perform("/admin", async () => {
+  return perform(adminReturnPath(form), async () => {
     await markReadyForPickup({
       staffUserId: await staffIdentity(),
       orderId: parseActionUuid(field(form, "orderId"), "Order"),
@@ -495,7 +569,7 @@ export async function markOrderReady(form: FormData) {
 }
 
 export async function completeOrderPickup(form: FormData) {
-  return perform("/admin", async () => {
+  return perform(adminReturnPath(form), async () => {
     const verificationMethod = parseActionEnum(
       field(form, "verificationMethod"),
       "Verification method",
@@ -511,7 +585,7 @@ export async function completeOrderPickup(form: FormData) {
 }
 
 export async function cancelAdminOrder(form: FormData) {
-  return perform("/admin", async () => {
+  return perform(adminReturnPath(form), async () => {
     await cancelOrder({
       actorUserId: await staffIdentity(),
       orderId: parseActionUuid(field(form, "orderId"), "Order"),
@@ -522,7 +596,7 @@ export async function cancelAdminOrder(form: FormData) {
 }
 
 export async function authorizeOrderRefund(form: FormData) {
-  return perform("/admin", async () => {
+  return perform(adminReturnPath(form), async () => {
     await authorizeRefund({
       ownerUserId: await staffIdentity(),
       orderId: parseActionUuid(field(form, "orderId"), "Order"),
@@ -539,7 +613,7 @@ export async function authorizeOrderRefund(form: FormData) {
 }
 
 export async function authorizeOrderSurplusReturn(form: FormData) {
-  return perform("/admin", async () => {
+  return perform(adminReturnPath(form), async () => {
     await authorizeSurplusReturn({
       ownerUserId: await staffIdentity(),
       orderId: parseActionUuid(field(form, "orderId"), "Order"),
@@ -556,7 +630,7 @@ export async function authorizeOrderSurplusReturn(form: FormData) {
 }
 
 export async function receiveCashPayment(form: FormData) {
-  return perform("/admin", async () => {
+  return perform(adminReturnPath(form), async () => {
     await recordCashReceipt({
       staffUserId: await staffIdentity(),
       orderId: parseActionUuid(field(form, "orderId"), "Order"),
@@ -584,7 +658,7 @@ export async function receiveCashPayment(form: FormData) {
 }
 
 export async function correctRecordedReceipt(form: FormData) {
-  return perform("/admin", async () => {
+  return perform(adminReturnPath(form), async () => {
     await correctReceipt({
       ownerUserId: await staffIdentity(),
       receiptId: parseActionUuid(field(form, "receiptId"), "Receipt"),
@@ -603,7 +677,7 @@ export async function correctRecordedReceipt(form: FormData) {
 }
 
 export async function correctOrderFulfillment(form: FormData) {
-  return perform("/admin", async () => {
+  return perform(adminReturnPath(form), async () => {
     await correctFulfillment({
       staffUserId: await staffIdentity(),
       orderId: parseActionUuid(field(form, "orderId"), "Order"),
@@ -617,7 +691,7 @@ export async function correctOrderFulfillment(form: FormData) {
 }
 
 export async function claimOrderPayout(form: FormData) {
-  return perform("/admin", async () => {
+  return perform(adminReturnPath(form), async () => {
     await claimPayout({
       ownerUserId: await staffIdentity(),
       allocationId: parseActionUuid(
@@ -639,7 +713,7 @@ export async function claimOrderPayout(form: FormData) {
 }
 
 export async function reconcileOrderPayout(form: FormData) {
-  return perform("/admin", async () => {
+  return perform(adminReturnPath(form), async () => {
     await reconcilePayout({
       ownerUserId: await staffIdentity(),
       attemptId: parseActionUuid(field(form, "attemptId"), "Payout attempt"),
@@ -659,7 +733,7 @@ export async function reconcileOrderPayout(form: FormData) {
 }
 
 export async function resolveOrderPayoutDiscrepancy(form: FormData) {
-  return perform("/admin", async () => {
+  return perform(adminReturnPath(form), async () => {
     await resolvePayoutDiscrepancy({
       ownerUserId: await staffIdentity(),
       discrepancyId: parseActionUuid(
@@ -678,7 +752,7 @@ export async function resolveOrderPayoutDiscrepancy(form: FormData) {
 }
 
 export async function closeOrderPayoutAttempt(form: FormData) {
-  return perform("/admin", async () => {
+  return perform(adminReturnPath(form), async () => {
     await closePayoutAttempt({
       ownerUserId: await staffIdentity(),
       attemptId: parseActionUuid(field(form, "attemptId"), "Payout attempt"),

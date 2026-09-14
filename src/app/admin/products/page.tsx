@@ -1,4 +1,5 @@
 import { VariantFields } from "@/app/interactive";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
@@ -31,7 +32,11 @@ export default async function Products({
   return (
     <main className="admin">
       <AdminNav />
-      <h1>Your collection</h1>
+      <p className="eyebrow">CATALOG MANAGEMENT</p>
+      <h1>Products</h1>
+      <p className="admin-description">
+        Manage your catalog, pricing, and product availability.
+      </p>
       <Notice error={(await searchParams).error} />
       <div className="admin-grid">
         <section>
@@ -43,6 +48,12 @@ export default async function Products({
                 <p>
                   {v.title} · {money(v.priceCents)} · {v.sku}
                 </p>
+                <Link
+                  href={`/admin/products/${p.id}/edit`}
+                  className="admin-edit-link"
+                >
+                  Edit product
+                </Link>
               </div>
               <form action={toggleAvailability}>
                 <Hidden name="productId" value={p.id} />

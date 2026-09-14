@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
       "acceptOrderChange",
       "proposeOrderChange",
       "createProduct",
+      "updateProduct",
       "updateProductAvailability",
       "updateStoreSettings",
       "configureShipping",
@@ -103,6 +104,9 @@ vi.mock("@/application/use-cases/order-proposals", () => ({
 }));
 vi.mock("@/application/use-cases/catalog/create-product", () => ({
   createProduct: mocks.commands.createProduct,
+}));
+vi.mock("@/application/use-cases/catalog/update-product", () => ({
+  updateProduct: mocks.commands.updateProduct,
 }));
 vi.mock("@/application/use-cases/catalog/update-product-availability", () => ({
   updateProductAvailability: mocks.commands.updateProductAvailability,
@@ -210,6 +214,9 @@ const base: Record<string, string> = {
   "variantTitle-0": "Default",
   "price-0": "1000",
   productId: id,
+  quoteVersion: "1",
+  "variantId-0": id,
+  imageCount: "0",
   published: "true",
   available: "true",
   total: "1000",
@@ -252,6 +259,11 @@ const cases = [
   ["savePickup", "configureShipping", "/admin/setup"],
   ["togglePause", "updateStoreSettings", "/admin"],
   ["saveProduct", "createProduct", "/admin/products"],
+  [
+    "editProduct",
+    "updateProduct",
+    "/admin/products/" + id + "/edit?saved=true",
+  ],
   ["toggleAvailability", "updateProductAvailability", "/admin/products"],
   ["proposeChange", "proposeOrderChange", "/admin"],
   ["receivePayment", "recordReceipt", "/admin"],
@@ -275,6 +287,13 @@ const cases = [
   ["verifyEmail", "verifyEmailDelivery", "/admin/setup"],
 ] as const;
 const expectedPayloads: Record<string, unknown> = {
+  editProduct: {
+    staffUserId: "staff-session",
+    productId: id,
+    quoteVersion: 1,
+    images: [],
+    variants: [{ id, priceCents: 1000 }],
+  },
   addItem: {
     guestSessionId: "guest-session",
     variantId: id,
@@ -471,6 +490,7 @@ beforeEach(() => {
   for (const command of Object.values(mocks.commands))
     command.mockResolvedValue(undefined);
   mocks.commands.getQuote.mockResolvedValue({ id });
+  mocks.commands.updateProduct.mockResolvedValue(id);
   mocks.commands.createOrder.mockResolvedValue({
     id,
     sessionToken: "new-token",

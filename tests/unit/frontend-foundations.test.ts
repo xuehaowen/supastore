@@ -72,6 +72,8 @@ describe("frontend visual foundations", () => {
   it("does not render raw buttons, selects, or textareas in application pages", async () => {
     const pages = await Promise.all([
       "src/app/admin/page.tsx",
+      "src/app/admin/operations.tsx",
+      "src/app/admin/products/[id]/edit/page.tsx",
       "src/app/admin/products/page.tsx",
       "src/app/admin/products/import/page.tsx",
       "src/app/admin/orders/[id]/packing-slip/page.tsx",
