@@ -75,6 +75,7 @@ test("product editor saves existing variants and translations without replacing 
   ).toBeVisible();
 
   // A second writer must not be silently overwritten by this open editor.
+  await admin.goto(`/admin/products/${product!.id}/edit`);
   await sql`update products set quote_version=quote_version+1,title='Concurrent change' where id=${product!.id}`;
   await admin.getByLabel("Title", { exact: true }).fill("Stale overwrite");
   await admin.getByRole("button", { name: "Save changes" }).click();
