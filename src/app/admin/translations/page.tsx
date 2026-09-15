@@ -14,6 +14,7 @@ import { staffIdentity } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { Field, Hidden, Notice } from "@/app/components";
 import { AdminNav } from "@/app/admin/admin-nav";
+import { AdminDialog } from "@/app/admin/admin-dialog";
 import { saveCatalogTranslation } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -102,37 +103,40 @@ export default async function TranslationsPage({
     entityType: "product" | "category" | "variant",
     item: TranslationItem,
   ) => (
-    <form
-      action={saveCatalogTranslation}
-      className="translation-editor"
-      key={item.id}
-    >
-      <Hidden name="entityType" value={entityType} />
-      <Hidden name="entityId" value={item.id} />
-      <Hidden name="translationLocale" value={data.targetLocale} />
+    <div className="translation-row" key={item.id}>
       <span>
         <strong>{item.name}</strong>
         <small>
           {item.sku ?? (item.translated ? "Translated" : "Translation missing")}
         </small>
       </span>
-      <Field
-        name="title"
-        label={`${languageName(data.targetLocale)} text`}
-        value={item.translated ?? ""}
-      />
-      {entityType === "product" ? (
-        <label>
-          {languageName(data.targetLocale)} description
-          <Textarea name="description" defaultValue={item.description ?? ""} />
-        </label>
-      ) : (
-        <span />
-      )}
-      <Button type="submit" variant="outline">
-        Save translation
-      </Button>
-    </form>
+      <AdminDialog
+        trigger={item.translated ? "Edit translation" : "Add translation"}
+        title={`${languageName(data.targetLocale)} translation · ${item.name}`}
+        description={`The source text remains in ${languageName(data.defaultLocale)}.`}
+      >
+        <form action={saveCatalogTranslation} className="grid gap-4">
+          <Hidden name="entityType" value={entityType} />
+          <Hidden name="entityId" value={item.id} />
+          <Hidden name="translationLocale" value={data.targetLocale} />
+          <Field
+            name="title"
+            label={`${languageName(data.targetLocale)} text`}
+            value={item.translated ?? ""}
+          />
+          {entityType === "product" && (
+            <label>
+              {languageName(data.targetLocale)} description
+              <Textarea
+                name="description"
+                defaultValue={item.description ?? ""}
+              />
+            </label>
+          )}
+          <Button type="submit">Save translation</Button>
+        </form>
+      </AdminDialog>
+    </div>
   );
   return (
     <main className="admin">
