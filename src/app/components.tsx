@@ -1,5 +1,4 @@
 import { useId } from "react";
-export { AdminNav } from "@/app/admin/admin-nav";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

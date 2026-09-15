@@ -8,7 +8,7 @@ import {
 } from "@/infrastructure/db/schema";
 import { staffIdentity } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
-import { AdminNav } from "@/app/components";
+import { AdminNav } from "@/app/admin/admin-nav";
 
 export default async function ActivityPage() {
   const staff = await staffIdentity().catch(() => redirect("/admin/login"));

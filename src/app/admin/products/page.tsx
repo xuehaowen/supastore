@@ -11,7 +11,8 @@ import {
 import { staffIdentity, money } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { saveCategory, saveProduct, toggleAvailability } from "@/app/actions";
-import { Field, Hidden, Notice, AdminNav } from "@/app/components";
+import { Field, Hidden, Notice } from "@/app/components";
+import { AdminNav } from "@/app/admin/admin-nav";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";

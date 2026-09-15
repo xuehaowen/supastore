@@ -19,7 +19,8 @@ import {
   updateStaffMember,
   removeStaffMember,
 } from "@/app/actions";
-import { Field, Hidden, Notice, AdminNav } from "@/app/components";
+import { Field, Hidden, Notice } from "@/app/components";
+import { AdminNav } from "@/app/admin/admin-nav";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NativeSelect } from "@/components/ui/native-select";

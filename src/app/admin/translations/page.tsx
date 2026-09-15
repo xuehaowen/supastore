@@ -11,7 +11,8 @@ import {
 } from "@/infrastructure/db/schema";
 import { staffIdentity } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
-import { AdminNav, Field, Hidden, Notice } from "@/app/components";
+import { Field, Hidden, Notice } from "@/app/components";
+import { AdminNav } from "@/app/admin/admin-nav";
 import { saveCatalogTranslation } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";

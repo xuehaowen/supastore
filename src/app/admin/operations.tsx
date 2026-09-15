@@ -16,6 +16,10 @@ import { staffIdentity, money } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { getLaunchReadiness } from "@/application/use-cases/store/get-launch-readiness";
 import {
+  ForbiddenError,
+  UnauthorizedError,
+} from "@/application/common/errors";
+import {
   togglePause,
   proposeChange,
   receivePayment,
@@ -34,7 +38,8 @@ import {
   resolveOrderPayoutDiscrepancy,
   closeOrderPayoutAttempt,
 } from "@/app/actions";
-import { Field, Hidden, Notice, AdminNav } from "@/app/components";
+import { Field, Hidden, Notice } from "@/app/components";
+import { AdminNav } from "@/app/admin/admin-nav";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -127,7 +132,11 @@ export default async function Admin({
         readiness: await getLaunchReadiness(tx),
       };
     })
-    .catch(() => redirect("/admin/login?error=staff"));
+    .catch((error: unknown) => {
+      if (error instanceof ForbiddenError || error instanceof UnauthorizedError)
+        redirect("/admin/login?error=staff");
+      throw error;
+    });
   const {
     member,
     rows,
