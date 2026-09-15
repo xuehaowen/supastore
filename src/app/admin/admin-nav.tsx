@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import {
   ArrowUpRight,
   Box,
@@ -15,6 +17,8 @@ import {
   ScrollText,
   Settings2,
   Store,
+  Menu,
+  X,
 } from "lucide-react";
 
 const links = [
@@ -22,16 +26,18 @@ const links = [
   { href: "/admin/orders", label: "Orders", icon: ClipboardList },
   { href: "/admin/payments", label: "Payments", icon: CreditCard },
   { href: "/admin/products", label: "Products", icon: Box },
+  { href: "/admin/promotions", label: "Promotions", icon: Tag },
   { href: "/admin/fulfillment", label: "Fulfillment", icon: Truck },
   { href: "/admin/customers", label: "Customers", icon: Users },
   { href: "/admin/translations", label: "Translations", icon: Languages },
   { href: "/admin/setup", label: "Settings", icon: Settings2 },
   { href: "/admin/activity", label: "Activity", icon: ScrollText },
-  { href: "/admin/promotions", label: "Promotions", icon: Tag },
 ];
 
 export function AdminNav() {
   const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => setMenuOpen(false), [pathname]);
   const current = links.findLast(
     (link) =>
       pathname === link.href ||
@@ -40,15 +46,31 @@ export function AdminNav() {
 
   return (
     <>
-      <nav className="admin-sidebar" aria-label="Admin">
-        <Link href="/admin" className="workspace-brand">
-          <span className="workspace-mark">
-            <Store size={20} aria-hidden="true" />
-          </span>
-          <span>
-            SupaStore<small>Management console</small>
-          </span>
-        </Link>
+      <nav
+        className={`admin-sidebar${menuOpen ? " mobile-open" : ""}`}
+        aria-label="Admin"
+      >
+        <div className="workspace-mobile-header">
+          <Link href="/admin" className="workspace-brand">
+            <span className="workspace-mark">
+              <Store size={20} aria-hidden="true" />
+            </span>
+            <span>
+              SupaStore<small>Management console</small>
+            </span>
+          </Link>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="workspace-menu-toggle"
+            aria-label={menuOpen ? "Close admin menu" : "Open admin menu"}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((current) => !current)}
+          >
+            {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+          </Button>
+        </div>
         <p className="nav-caption">WORKSPACE</p>
         <div className="workspace-links">
           {links.map(({ href, label, icon: Icon }) => (

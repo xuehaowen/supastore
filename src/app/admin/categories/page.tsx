@@ -7,6 +7,7 @@ import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { Field, Hidden, Notice } from "@/app/components";
 import { AdminNav } from "@/app/admin/admin-nav";
 import { CatalogTabs } from "@/app/admin/catalog-tabs";
+import { AdminDialog } from "@/app/admin/admin-dialog";
 import { deleteCategory, editCategory, saveCategory } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -32,6 +33,30 @@ export default async function CategoriesPage({
       <p className="admin-description">
         Organize products and maintain category handles and hierarchy.
       </p>
+      <div className="admin-page-actions">
+        <AdminDialog
+          trigger="Add category"
+          title="Add category"
+          description="Create a catalog category and optionally place it under a parent."
+        >
+          <form action={saveCategory} className="grid gap-4">
+            <Field name="name" label="Category name" />
+            <Field name="slug" label="Category handle" />
+            <label>
+              Parent category
+              <NativeSelect name="parentId">
+                <option value="">None</option>
+                {rows.map((item) => (
+                  <option value={item.id} key={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </NativeSelect>
+            </label>
+            <Button type="submit">Add category</Button>
+          </form>
+        </AdminDialog>
+      </div>
       <CatalogTabs />
       <Notice error={(await searchParams).error} />
       <div className="admin-grid">
@@ -86,25 +111,6 @@ export default async function CategoriesPage({
               </form>
             </article>
           ))}
-        </section>
-        <section className="panel">
-          <h2>Add category</h2>
-          <form action={saveCategory} className="grid gap-4">
-            <Field name="name" label="Category name" />
-            <Field name="slug" label="Category handle" />
-            <label>
-              Parent category
-              <NativeSelect name="parentId">
-                <option value="">None</option>
-                {rows.map((item) => (
-                  <option value={item.id} key={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            </label>
-            <Button type="submit">Add category</Button>
-          </form>
         </section>
       </div>
     </main>

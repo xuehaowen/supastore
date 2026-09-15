@@ -1058,7 +1058,7 @@ export async function verifyEmail(form: FormData) {
 }
 
 export async function saveCategory(form: FormData) {
-  return perform("/admin/products", async () => {
+  return perform("/admin/categories", async () => {
     const staff = await staffIdentity();
     const slug = field(form, "slug");
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || !field(form, "name"))

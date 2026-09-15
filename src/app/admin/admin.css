@@ -247,6 +247,12 @@
   font-weight: 700;
   letter-spacing: -0.03em;
 }
+.workspace-mobile-header {
+  display: contents;
+}
+.workspace-menu-toggle {
+  display: none;
+}
 .workspace-brand small {
   display: block;
   color: var(--muted-foreground);
@@ -539,7 +545,7 @@
 
 .trend-day {
   display: grid;
-  grid-template-rows: 8rem auto auto;
+  grid-template-rows: 8rem auto auto auto;
   align-items: end;
   justify-items: center;
   flex: 1;
@@ -550,13 +556,14 @@
 .trend-day > span {
   width: min(2.5rem, 80%);
   max-height: 8rem;
-  min-height: 0.5rem;
+  min-height: 0;
   border-radius: 0.4rem 0.4rem 0.15rem 0.15rem;
   background: var(--primary);
 }
 
 .trend-day b {
   font-size: 0.7rem;
+  white-space: nowrap;
 }
 
 @media (max-width: 800px) {
@@ -720,8 +727,16 @@
     border-right: 0;
     border-bottom: 1px solid var(--border);
   }
+  .workspace-mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
   .workspace-brand {
-    margin-bottom: 1rem;
+    margin-bottom: 0;
+  }
+  .workspace-menu-toggle {
+    display: inline-flex;
   }
   .nav-caption,
   .workspace-footer small,
@@ -735,6 +750,13 @@
   .workspace-links {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.25rem;
+  }
+  .admin-sidebar:not(.mobile-open) .workspace-links,
+  .admin-sidebar:not(.mobile-open) .workspace-footer {
+    display: none;
+  }
+  .admin-sidebar.mobile-open .workspace-links {
+    margin-top: 1rem;
   }
   .workspace-links a {
     font-size: 0.75rem;

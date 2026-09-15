@@ -583,18 +583,25 @@ test("M1/M2 setup profile, shipping, pickup, payment toggles and categories pers
     admin.getByRole("button", { name: "Confirm email delivery", exact: true }),
   );
   await expect(admin.locator('[data-slot="alert"]')).toBeVisible();
-  await admin.goto("/admin/products");
-  await admin.getByLabel("Category name", { exact: true }).fill("CUJ category");
+  await admin.goto("/admin/categories");
   await admin
+    .getByRole("button", { name: "Add category", exact: true })
+    .click();
+  const categoryDialog = admin.getByRole("dialog", { name: "Add category" });
+  await categoryDialog
+    .getByLabel("Category name", { exact: true })
+    .fill("CUJ category");
+  await categoryDialog
     .getByLabel("Category handle", { exact: true })
     .fill("cuj-category");
   await clickAction(
     admin,
-    admin.getByRole("button", { name: "Add category", exact: true }),
+    categoryDialog.getByRole("button", { name: "Add category", exact: true }),
   );
   expect(
     (await sql`select id from categories where slug='cuj-category'`).length,
   ).toBe(1);
+  await admin.goto("/admin/products");
   await admin.getByRole("button", { name: "Add product", exact: true }).click();
   await admin.getByRole("button", { name: "Add variant", exact: true }).click();
   const handle = "cuj-multi-" + randomUUID();

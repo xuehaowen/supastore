@@ -6,6 +6,7 @@ import { staffIdentity } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { Field, Hidden, Notice } from "@/app/components";
 import { AdminNav } from "@/app/admin/admin-nav";
+import { AdminDialog } from "@/app/admin/admin-dialog";
 import { togglePromotion, upsertPromotion } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -104,6 +105,15 @@ export default async function PromotionsPage({
         Create limited coupon codes. Percentage values use basis points: 1000
         equals 10%.
       </p>
+      <div className="admin-page-actions">
+        <AdminDialog
+          trigger="Create promotion"
+          title="Create promotion"
+          description="Configure a coupon code, eligibility window, and usage limit."
+        >
+          {form()}
+        </AdminDialog>
+      </div>
       <Notice error={(await searchParams).error} />
       <div className="admin-grid">
         <section className="panel">
@@ -126,10 +136,6 @@ export default async function PromotionsPage({
             </details>
           ))}
           {!rows.length && <p className="admin-empty">No promotions yet.</p>}
-        </section>
-        <section className="panel">
-          <h2>Create promotion</h2>
-          {form()}
         </section>
       </div>
     </main>

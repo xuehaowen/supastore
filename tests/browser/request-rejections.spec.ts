@@ -147,14 +147,18 @@ test.describe("request rejection flows", () => {
   });
 
   test("category create rejects an invalid handle", async ({ admin }) => {
-    await admin.goto("/admin/products");
-    await admin.getByLabel("Category name").fill("Bad category");
-    const slug = admin.getByLabel("Category handle");
+    await admin.goto("/admin/categories");
+    await admin.getByRole("button", { name: "Add category" }).click();
+    const dialog = admin.getByRole("dialog", { name: "Add category" });
+    await dialog.getByLabel("Category name").fill("Bad category");
+    const slug = dialog.getByLabel("Category handle");
     await slug.evaluate((input) => {
       input.closest("form")!.noValidate = true;
     });
     await slug.fill("Invalid Slug");
-    await admin.getByRole("button", { name: "Add category" }).click();
+    await dialog
+      .getByRole("button", { name: "Add category", exact: true })
+      .click();
     await expect(admin.locator('[data-slot="alert"]')).toContainText(
       "Enter a category name and valid URL handle.",
     );
