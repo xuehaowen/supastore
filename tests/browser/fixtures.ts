@@ -94,18 +94,17 @@ export async function checkout(
   };
 }
 export async function openOrder(admin: Page, reference: string) {
-  await admin.goto("/admin");
-  const unpaid = admin
-    .locator("#unpaid details")
-    .filter({ has: admin.locator("summary", { hasText: reference }) });
-  const row = (await unpaid.count())
-    ? unpaid
-    : admin
-        .locator("#ready details")
-        .filter({ has: admin.locator("summary", { hasText: reference }) });
+  await admin.goto(`/admin/orders?q=${encodeURIComponent(reference)}`);
+  const row = admin.getByRole("row").filter({ hasText: reference });
   await expect(row).toHaveCount(1);
-  await row.locator("summary").click();
-  return row;
+  await row.getByRole("link", { name: "Manage" }).click();
+  const dialog = admin.getByRole("dialog", { name: "Manage order payment" });
+  if (await dialog.count()) return dialog;
+  const details = admin.locator("#ready details[open]").filter({
+    has: admin.locator("summary", { hasText: reference }),
+  });
+  await expect(details).toHaveCount(1);
+  return details;
 }
 export async function submit(form: Locator, name: string) {
   await clickAction(
@@ -127,12 +126,12 @@ export async function record(
   await form.getByLabel("Actual bank / cash reference").fill(bankReference);
   await form.getByRole("checkbox").check();
   await submit(form, "Record receipt");
-  await expect(admin).toHaveURL(/\/admin$/);
+  await expect(admin).toHaveURL(/\/admin(?:\/orders)?$/);
 }
 export async function confirm(admin: Page, reference: string) {
   const row = await openOrder(admin, reference);
   await submit(row, "Confirm exact payment");
-  await expect(admin).toHaveURL(/\/admin$/);
+  await expect(admin).toHaveURL(/\/admin(?:\/orders)?$/);
 }
 
 export async function clickAction(page: Page, button: Locator) {

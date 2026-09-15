@@ -288,8 +288,12 @@ test("M2/C1 multiple variants and Chinese product text persist into customer sel
     admin.getByRole("button", { name: "Publish product", exact: true }),
   );
   await admin.goto("/admin/translations?locale=zh");
-  const translation = admin.locator("form.translation-editor").filter({
+  const translationRow = admin.locator(".translation-row").filter({
     hasText: "Variant CUJ",
+  });
+  await translationRow.getByRole("button", { name: "Add translation" }).click();
+  const translation = admin.getByRole("dialog", {
+    name: /Chinese translation · Variant CUJ/,
   });
   await translation.getByLabel("Chinese text").fill("测试商品");
   await clickAction(

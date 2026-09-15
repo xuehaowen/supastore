@@ -63,8 +63,12 @@ test("product editor saves existing variants and translations without replacing 
     page.getByRole("heading", { name: "Updated fixture", exact: true }),
   ).toBeVisible();
   await admin.goto("/admin/translations?locale=zh");
-  const translation = admin.locator("form.translation-editor").filter({
+  const translationRow = admin.locator(".translation-row").filter({
     hasText: "Updated fixture",
+  });
+  await translationRow.getByRole("button", { name: "Add translation" }).click();
+  const translation = admin.getByRole("dialog", {
+    name: /Chinese translation · Updated fixture/,
   });
   await translation.getByLabel("Chinese text").fill("更新商品");
   await translation.getByLabel("Chinese description").fill("更新描述");
@@ -131,6 +135,12 @@ test("management sidebar opens real sections and product editor fits mobile", as
     if (path === "/admin") {
       await expect(admin.locator(".trend-day")).toHaveCount(7);
       await expect(admin.getByText("0 orders").first()).toBeVisible();
+      await expect(
+        admin.getByRole("heading", { name: "Payment evidence review" }),
+      ).toHaveCount(0);
+      await expect(admin.getByText("Unpaid orders and late receipts")).toHaveCount(
+        0,
+      );
     }
   }
   await admin.goto("/admin/categories");
@@ -288,10 +298,13 @@ test("staff can see submitted payment evidence in the review grid", async ({
       image.evaluate((element: HTMLImageElement) => element.naturalWidth),
     )
     .toBeGreaterThan(0);
+  await admin.getByRole("button", { name: "Review evidence" }).click();
+  const review = admin.getByRole("dialog", {
+    name: `Payment evidence · ${order.reference_code}`,
+  });
+  await expect(review.getByRole("img")).toBeVisible();
   await expect(
-    admin.getByRole("link", {
-      name: `Open payment evidence for order ${order.reference_code}`,
-    }),
+    review.getByRole("link", { name: /Open original/ }),
   ).toHaveAttribute("target", "_blank");
 });
 
