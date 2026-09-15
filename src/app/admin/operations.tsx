@@ -327,6 +327,12 @@ export default async function Admin({
     ...salesTrend.map((point) => point.revenueCents),
     1,
   );
+  const hasSalesRevenue = salesTrend.some((point) => point.revenueCents > 0);
+  const overdueOrders = rows.filter(
+    (order) =>
+      order.lifecycleStatus === "unpaid" &&
+      order.createdAt.getTime() < Date.now() - 86400000,
+  );
   const returnTo = view === "overview" ? "/admin" : `/admin/${view}`;
   return (
     <main className="admin">
@@ -444,7 +450,17 @@ export default async function Admin({
               <p className="eyebrow">LAST 7 DAYS</p>
               <h2>Sales trend</h2>
             </div>
-            <div className="trend-bars">
+            {!hasSalesRevenue && (
+              <p className="admin-empty">
+                No sales revenue in the last 7 days.
+              </p>
+            )}
+            <div
+              className={`trend-bars${hasSalesRevenue ? "" : " trend-bars-empty"}`}
+              role="region"
+              aria-label="Daily sales for the last 7 days"
+              tabIndex={0}
+            >
               {salesTrend.map((point) => {
                 const revenue = money(
                   point.revenueCents,
@@ -1088,17 +1104,14 @@ export default async function Admin({
       {(view === "overview" || view === "orders") && (
         <section>
           <h2>Overdue / abandoned review</h2>
-          {rows
-            .filter(
-              (o) =>
-                o.lifecycleStatus === "unpaid" &&
-                o.createdAt.getTime() < Date.now() - 86400000,
-            )
-            .map((o) => (
-              <p key={o.id}>
-                {o.referenceCode} · Contact customer before resolving.
-              </p>
-            ))}
+          {overdueOrders.length === 0 && (
+            <p className="admin-empty">No overdue orders in this view.</p>
+          )}
+          {overdueOrders.map((o) => (
+            <p key={o.id}>
+              {o.referenceCode} · Contact customer before resolving.
+            </p>
+          ))}
         </section>
       )}
       {view === "overview" && (
@@ -1120,6 +1133,11 @@ export default async function Admin({
         member.role === "owner" && (
           <section id="payouts">
             <h2>Payouts and discrepancies</h2>
+            {allocations.length === 0 && (
+              <p className="admin-empty">
+                No payouts or discrepancies to review.
+              </p>
+            )}
             {allocations.map((allocation) => {
               const attempt = attempts.find(
                 (item) => item.allocationId === allocation.id,

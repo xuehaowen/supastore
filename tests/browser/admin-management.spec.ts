@@ -136,11 +136,33 @@ test("management sidebar opens real sections and product editor fits mobile", as
       await expect(admin.locator(".trend-day")).toHaveCount(7);
       await expect(admin.getByText("0 orders").first()).toBeVisible();
       await expect(
+        admin.getByText("No sales revenue in the last 7 days."),
+      ).toBeVisible();
+      await expect(
+        admin.getByText("No overdue orders in this view."),
+      ).toBeVisible();
+      await expect(
+        admin.getByText("No payouts or discrepancies to review."),
+      ).toBeVisible();
+      for (const width of [375, 768, 1440]) {
+        await admin.setViewportSize({ width, height: 900 });
+        expect(
+          await admin.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        ).toBe(true);
+        expect(
+          await admin
+            .locator(".sales-trend")
+            .evaluate((element) => element.getBoundingClientRect().height),
+        ).toBeLessThan(240);
+      }
+      await expect(
         admin.getByRole("heading", { name: "Payment evidence review" }),
       ).toHaveCount(0);
-      await expect(admin.getByText("Unpaid orders and late receipts")).toHaveCount(
-        0,
-      );
+      await expect(
+        admin.getByText("Unpaid orders and late receipts"),
+      ).toHaveCount(0);
     }
   }
   await admin.goto("/admin/categories");
@@ -232,6 +254,41 @@ test("promotion codes apply to checkout and record one redemption", async ({
   expect(
     await sql`select id from promotion_redemptions where order_id=${orderId}`,
   ).toHaveLength(1);
+});
+
+test("long manual order dialogs keep the header and submit button reachable", async ({
+  admin,
+}) => {
+  await admin.goto("/admin/orders");
+  await admin
+    .getByRole("button", { name: "Add manual order", exact: true })
+    .click();
+  const dialog = admin.getByRole("dialog", { name: "Add manual order" });
+  for (let index = 0; index < 7; index++) {
+    await dialog.getByRole("button", { name: "Add item", exact: true }).click();
+  }
+  for (const viewport of [
+    { width: 1440, height: 1080 },
+    { width: 375, height: 812 },
+  ]) {
+    await admin.setViewportSize(viewport);
+    await dialog.locator(".admin-dialog-body").evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    const bounds = await dialog.boundingBox();
+    const submit = dialog.getByRole("button", {
+      name: "Create order",
+      exact: true,
+    });
+    const button = await submit.boundingBox();
+    expect(button!.y + button!.height).toBeLessThanOrEqual(
+      bounds!.y + bounds!.height,
+    );
+    await submit.click({ trial: true });
+    await dialog
+      .getByRole("button", { name: "Close Add manual order" })
+      .click({ trial: true });
+  }
 });
 
 test("owner creates a manual order from the orders dialog", async ({
