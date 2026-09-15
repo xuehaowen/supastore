@@ -16,9 +16,9 @@ test("product editor saves existing variants and translations without replacing 
     await sql`insert into product_images(product_id,s3_key,alt_text) values(${product!.id},'fixture/old','Original image') returning *`;
   await admin.goto("/admin/products");
   await admin
-    .locator("article")
+    .getByRole("row")
     .filter({ hasText: "Editor fixture" })
-    .getByRole("link", { name: "Edit product" })
+    .getByRole("link", { name: "Edit" })
     .click();
   await expect(admin.getByLabel("Title", { exact: true })).toHaveValue(
     "Editor fixture",
@@ -30,10 +30,6 @@ test("product editor saves existing variants and translations without replacing 
   const variantEditor = admin.getByRole("group", { name: "Original variant" });
   await variantEditor.getByLabel("Variant name").fill("Updated variant");
   await variantEditor.getByLabel("Price in minor units").fill("1750");
-  await admin.getByLabel("Chinese title", { exact: true }).fill("更新商品");
-  await admin
-    .getByLabel("Chinese description", { exact: true })
-    .fill("更新描述");
   await admin
     .getByRole("group", { name: "Image 1" })
     .getByLabel("Image asset key")
@@ -66,6 +62,13 @@ test("product editor saves existing variants and translations without replacing 
   await expect(
     page.getByRole("heading", { name: "Updated fixture", exact: true }),
   ).toBeVisible();
+  await admin.goto("/admin/translations?locale=zh");
+  const translation = admin.locator("form.translation-editor").filter({
+    hasText: "Updated fixture",
+  });
+  await translation.getByLabel("Chinese text").fill("更新商品");
+  await translation.getByLabel("Chinese description").fill("更新描述");
+  await translation.getByRole("button", { name: "Save translation" }).click();
   await page.goto(`/zh/products/${handle}`);
   await expect(
     page.getByRole("heading", { name: "更新商品", exact: true }),
@@ -107,7 +110,6 @@ test("management sidebar opens real sections and product editor fits mobile", as
     ["Orders", "/admin/orders", "Orders"],
     ["Payments", "/admin/payments", "Payments"],
     ["Products", "/admin/products", "Products"],
-    ["Categories", "/admin/categories", "Categories"],
     ["Fulfillment", "/admin/fulfillment", "Fulfillment"],
     ["Promotions", "/admin/promotions", "Promotions"],
     ["Customers", "/admin/customers", "Customers"],
@@ -126,6 +128,19 @@ test("management sidebar opens real sections and product editor fits mobile", as
     await expect(link).toHaveAttribute("href", path);
     await expect(link).toHaveAttribute("aria-current", "page");
   }
+  await admin.goto("/admin/categories");
+  await expect(
+    admin
+      .getByRole("navigation", { name: "Catalog sections" })
+      .getByRole("link", { name: "Categories" }),
+  ).toHaveAttribute("aria-current", "page");
+  await admin.goto("/admin/products/import");
+  await expect(admin.getByRole("navigation", { name: "Admin" })).toBeVisible();
+  await expect(
+    admin
+      .getByRole("navigation", { name: "Catalog sections" })
+      .getByRole("link", { name: "Import & export" }),
+  ).toHaveAttribute("aria-current", "page");
   const [product] =
     await sql`select id from products where handle='studio-cup'`;
   await admin.goto(`/admin/products/${product!.id}/edit`);

@@ -8,6 +8,7 @@ import {
   productTranslations,
   productVariants,
   variantTranslations,
+  storeSettings,
 } from "@/infrastructure/db/schema";
 import { staffIdentity } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
@@ -16,6 +17,8 @@ import { AdminNav } from "@/app/admin/admin-nav";
 import { saveCatalogTranslation } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { NativeSelect } from "@/components/ui/native-select";
+import { translationLocales } from "@/domain/catalog-locales";
 
 type TranslationItem = {
   id: string;
@@ -28,12 +31,22 @@ type TranslationItem = {
 export default async function TranslationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; locale?: string }>;
 }) {
   const staff = await staffIdentity().catch(() => redirect("/admin/login"));
+  const q = await searchParams;
   const data = await db.transaction(async (tx) => {
     await verifyStaffInTransaction(tx, staff, "owner");
+    const [settings] = await tx.select().from(storeSettings).limit(1);
+    const defaultLocale = settings?.defaultLocale === "zh" ? "zh" : "en";
+    const availableLocales = translationLocales(defaultLocale);
+    const targetLocale =
+      availableLocales.find((locale) => locale === q.locale) ??
+      availableLocales[0]!;
     return {
+      defaultLocale,
+      targetLocale,
+      availableLocales,
       products: await tx
         .select({
           id: products.id,
@@ -46,7 +59,7 @@ export default async function TranslationsPage({
           productTranslations,
           and(
             eq(productTranslations.productId, products.id),
-            eq(productTranslations.locale, "zh"),
+            eq(productTranslations.locale, targetLocale),
           ),
         )
         .orderBy(asc(products.title)),
@@ -61,7 +74,7 @@ export default async function TranslationsPage({
           categoryTranslations,
           and(
             eq(categoryTranslations.categoryId, categories.id),
-            eq(categoryTranslations.locale, "zh"),
+            eq(categoryTranslations.locale, targetLocale),
           ),
         )
         .orderBy(asc(categories.name)),
@@ -77,13 +90,14 @@ export default async function TranslationsPage({
           variantTranslations,
           and(
             eq(variantTranslations.variantId, productVariants.id),
-            eq(variantTranslations.locale, "zh"),
+            eq(variantTranslations.locale, targetLocale),
           ),
         )
         .orderBy(asc(productVariants.sku)),
     };
   });
-  const q = await searchParams;
+  const languageName = (locale: string) =>
+    locale === "zh" ? "Chinese" : locale === "en" ? "English" : locale;
   const editor = (
     entityType: "product" | "category" | "variant",
     item: TranslationItem,
@@ -95,17 +109,21 @@ export default async function TranslationsPage({
     >
       <Hidden name="entityType" value={entityType} />
       <Hidden name="entityId" value={item.id} />
-      <Hidden name="translationLocale" value="zh" />
+      <Hidden name="translationLocale" value={data.targetLocale} />
       <span>
         <strong>{item.name}</strong>
         <small>
           {item.sku ?? (item.translated ? "Translated" : "Translation missing")}
         </small>
       </span>
-      <Field name="title" label="Chinese text" value={item.translated ?? ""} />
+      <Field
+        name="title"
+        label={`${languageName(data.targetLocale)} text`}
+        value={item.translated ?? ""}
+      />
       {entityType === "product" ? (
         <label>
-          Chinese description
+          {languageName(data.targetLocale)} description
           <Textarea name="description" defaultValue={item.description ?? ""} />
         </label>
       ) : (
@@ -122,9 +140,23 @@ export default async function TranslationsPage({
       <p className="eyebrow">CATALOG LANGUAGES</p>
       <h1>Translations</h1>
       <p className="admin-description">
-        Manage Chinese storefront text for products, categories, and variants.
+        Base catalog content is {languageName(data.defaultLocale)}. Add and
+        maintain translations for each other storefront locale.
       </p>
       <Notice error={q.error} />
+      <form method="get" className="admin-filter-bar">
+        <label>
+          Translation locale
+          <NativeSelect name="locale" defaultValue={data.targetLocale}>
+            {data.availableLocales.map((locale) => (
+              <option value={locale} key={locale}>
+                {languageName(locale)} ({locale})
+              </option>
+            ))}
+          </NativeSelect>
+        </label>
+        <Button type="submit">Open locale</Button>
+      </form>
       <section className="panel">
         <h2>Products</h2>
         {data.products.map((item) => editor("product", item))}

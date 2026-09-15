@@ -6,7 +6,6 @@ import {
   products,
   productVariants,
   productCategories,
-  productTranslations,
   productImages,
   categories,
 } from "@/infrastructure/db/schema";
@@ -62,10 +61,6 @@ export default async function EditProductPage({
         .select()
         .from(productCategories)
         .where(eq(productCategories.productId, id)),
-      translations: await tx
-        .select()
-        .from(productTranslations)
-        .where(eq(productTranslations.productId, id)),
       images: await tx
         .select()
         .from(productImages)
@@ -75,8 +70,7 @@ export default async function EditProductPage({
   });
   if (!data) notFound();
   const q = await searchParams;
-  const { product, variants, groups, selected, translations, images } = data;
-  const zh = translations.find((t) => t.locale === "zh");
+  const { product, variants, groups, selected, images } = data;
   return (
     <main className="admin">
       <AdminNav />
@@ -132,25 +126,6 @@ export default async function EditProductPage({
               </p>
             )}
           </fieldset>
-        </section>
-        <section className="panel" id="translations">
-          <h2>Chinese translation</h2>
-          <Field
-            name="zhTitle"
-            label="Chinese title"
-            value={zh?.title}
-            required={false}
-          />
-          <label>
-            Chinese description
-            <Textarea
-              name="zhDescription"
-              defaultValue={zh?.description ?? ""}
-            />
-          </label>
-          <p className="text-sm text-muted-foreground">
-            Leave both fields empty to use the default product text.
-          </p>
         </section>
         <section className="panel product-editor-wide">
           <h2>Variants & pricing</h2>

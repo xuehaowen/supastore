@@ -274,7 +274,6 @@ test("M2/C1 multiple variants and Chinese product text persist into customer sel
   await admin.goto("/admin/products");
   await admin.getByLabel("Title", { exact: true }).fill("Variant CUJ");
   await admin.getByLabel("URL handle", { exact: true }).fill(handle);
-  await admin.getByLabel("Chinese title", { exact: true }).fill("测试商品");
   await admin.getByLabel("SKU", { exact: true }).fill(handle + "-a");
   await admin.getByLabel("Variant name", { exact: true }).fill("Small");
   await admin.getByLabel("Price in minor units", { exact: true }).fill("100");
@@ -286,6 +285,15 @@ test("M2/C1 multiple variants and Chinese product text persist into customer sel
   await clickAction(
     admin,
     admin.getByRole("button", { name: "Publish product", exact: true }),
+  );
+  await admin.goto("/admin/translations?locale=zh");
+  const translation = admin.locator("form.translation-editor").filter({
+    hasText: "Variant CUJ",
+  });
+  await translation.getByLabel("Chinese text").fill("测试商品");
+  await clickAction(
+    admin,
+    translation.getByRole("button", { name: "Save translation" }),
   );
   await page.goto("/zh/products/" + handle);
   await expect(

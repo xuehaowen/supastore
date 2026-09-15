@@ -29,8 +29,6 @@ export interface UpdateProductInput {
   handle: string;
   description: string;
   categoryIds: string[];
-  zhTitle: string;
-  zhDescription: string;
   variants: { id: string; title: string; sku: string; priceCents: number }[];
   images: { id: string; s3Key: string; altText: string }[];
 }
@@ -59,19 +57,13 @@ export async function updateProduct(input: UpdateProductInput) {
   const categoryIds = [
     ...new Set(input.categoryIds.map((id) => parseActionUuid(id, "Category"))),
   ];
-  if (input.zhDescription && !input.zhTitle.trim())
-    throw new DomainError(
-      "Enter a Chinese title with the Chinese description.",
-    );
-  if (input.zhTitle)
-    parseActionRequiredText(input.zhTitle, "Chinese title", 200);
   for (const image of input.images) {
     parseActionUuid(image.id, "Image");
     parseActionRequiredText(image.s3Key, "Image asset key", 2000);
   }
   return db.transaction(async (tx) => {
     await verifyStaffInTransaction(tx, input.staffUserId, "owner");
-    await tx.select().from(storeSettings).for("update");
+    const [settings] = await tx.select().from(storeSettings).for("update");
     const [product] = await tx
       .select()
       .from(products)
@@ -167,50 +159,21 @@ export async function updateProduct(input: UpdateProductInput) {
       .delete(productCategories)
       .where(eq(productCategories.productId, product.id));
     if (categoryIds.length)
-      await tx
-        .insert(productCategories)
-        .values(
-          categoryIds.map((categoryId) => ({
-            productId: product.id,
-            categoryId,
-          })),
-        );
+      await tx.insert(productCategories).values(
+        categoryIds.map((categoryId) => ({
+          productId: product.id,
+          categoryId,
+        })),
+      );
     await tx
       .update(productTranslations)
       .set({ title, description: input.description, updatedAt: new Date() })
       .where(
         and(
           eq(productTranslations.productId, product.id),
-          eq(productTranslations.locale, "en"),
+          eq(productTranslations.locale, settings?.defaultLocale ?? "en"),
         ),
       );
-    if (input.zhTitle.trim()) {
-      await tx
-        .insert(productTranslations)
-        .values({
-          productId: product.id,
-          locale: "zh",
-          title: input.zhTitle,
-          description: input.zhDescription,
-        })
-        .onConflictDoUpdate({
-          target: [productTranslations.productId, productTranslations.locale],
-          set: {
-            title: input.zhTitle,
-            description: input.zhDescription,
-            updatedAt: new Date(),
-          },
-        });
-    } else {
-      await tx
-        .delete(productTranslations)
-        .where(
-          and(
-            eq(productTranslations.productId, product.id),
-            eq(productTranslations.locale, "zh"),
-          ),
-        );
-    }
     for (const image of input.images)
       await tx
         .update(productImages)

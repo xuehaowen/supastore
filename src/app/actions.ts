@@ -437,15 +437,7 @@ export async function saveProduct(form: FormData) {
           },
         }),
       ),
-      translations: field(form, "zhTitle")
-        ? [
-            {
-              locale: "zh",
-              title: field(form, "zhTitle"),
-              description: field(form, "zhDescription"),
-            },
-          ]
-        : [],
+      translations: [],
       images: field(form, "imageKey")
         ? [{ s3Key: field(form, "imageKey"), altText: field(form, "title") }]
         : [],
@@ -473,8 +465,6 @@ export async function editProduct(form: FormData) {
       handle: field(form, "handle"),
       description: field(form, "description"),
       categoryIds: form.getAll("categoryIds").map(String),
-      zhTitle: field(form, "zhTitle"),
-      zhDescription: field(form, "zhDescription"),
       variants: Array.from(
         {
           length: parseActionInteger(
@@ -621,6 +611,7 @@ export async function saveCatalogTranslation(form: FormData) {
       "Translation entity",
     );
     const locale = parseActionEnum(field(form, "translationLocale"), "Locale", [
+      "en",
       "zh",
     ] as const);
     const title = parseActionRequiredText(
@@ -639,6 +630,7 @@ export async function saveCatalogTranslation(form: FormData) {
     });
     revalidateTag("catalog");
     revalidatePath("/[locale]", "layout");
+    return `/admin/translations?locale=${locale}`;
   });
 }
 export async function upsertPromotion(form: FormData) {

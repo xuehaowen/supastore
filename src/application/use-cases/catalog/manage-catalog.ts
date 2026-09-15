@@ -39,7 +39,7 @@ export async function saveCatalogTranslation(input: {
   staffUserId: string;
   entityType: "product" | "category" | "variant";
   entityId: string;
-  locale: "zh";
+  locale: "en" | "zh";
   title: string;
   description?: string;
 }) {
