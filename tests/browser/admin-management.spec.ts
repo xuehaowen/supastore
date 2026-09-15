@@ -107,7 +107,7 @@ test("management sidebar opens real sections and product editor fits mobile", as
   sql,
 }) => {
   for (const [label, path, heading] of [
-    ["Overview", "/admin", "Daily queue"],
+    ["Overview", "/admin", "Commerce overview"],
     ["Orders", "/admin/orders", "Orders"],
     ["Payments", "/admin/payments", "Payments"],
     ["Products", "/admin/products", "Products"],
@@ -206,5 +206,27 @@ test("promotion codes apply to checkout and record one redemption", async ({
   expect(order!.discount_cents).toBeGreaterThan(0);
   expect(
     await sql`select id from promotion_redemptions where order_id=${orderId}`,
+  ).toHaveLength(1);
+});
+
+test("owner creates a manual order from the orders dialog", async ({
+  admin,
+  sql,
+}) => {
+  await admin.goto("/admin/orders");
+  await admin.getByRole("button", { name: "Add manual order" }).click();
+  const dialog = admin.getByRole("dialog", { name: "Add manual order" });
+  await dialog.getByLabel("Customer name").fill("Manual Customer");
+  await dialog.getByLabel("Customer email").fill("manual@example.test");
+  await dialog.getByLabel("Shipping address").fill("1 Manual Street");
+  await dialog
+    .getByLabel("Payment method")
+    .selectOption({ label: "Demo bank transfer" });
+  await dialog.getByLabel("Product variant").selectOption({ index: 1 });
+  await dialog.getByRole("button", { name: "Create order" }).click();
+  await expect(admin).toHaveURL(/\/admin\/orders\?created=SP-/);
+  await expect(admin.getByRole("status")).toContainText("Manual order SP-");
+  expect(
+    await sql`select id from orders where guest_email='manual@example.test'`,
   ).toHaveLength(1);
 });

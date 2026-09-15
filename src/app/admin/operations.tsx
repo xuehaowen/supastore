@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
-import { and, desc, eq, ilike, inArray, or } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
   orders,
+  orderItems,
   paymentAccounts,
   paymentUploadIntents,
   paymentReceipts,
@@ -11,6 +12,8 @@ import {
   payoutDiscrepancies,
   eventDeliveries,
   storeSettings,
+  products,
+  productVariants,
 } from "@/infrastructure/db/schema";
 import { staffIdentity, money } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
@@ -43,6 +46,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Input } from "@/components/ui/input";
 import { Download } from "lucide-react";
 import { OperationsSummary } from "@/app/admin/operations-summary";
+import { ManualOrderDialog } from "@/app/admin/manual-order-dialog";
 import {
   Table,
   TableBody,
@@ -60,6 +64,7 @@ export default async function Admin({
     q?: string;
     status?: string;
     page?: string;
+    created?: string;
   }>;
   view?: "overview" | "orders" | "payments" | "fulfillment";
 }) {
@@ -124,6 +129,74 @@ export default async function Admin({
         .from(eventDeliveries)
         .where(inArray(eventDeliveries.status, ["retrying", "exhausted"]));
       const [store] = await tx.select().from(storeSettings).limit(1);
+      const manualOrderVariants =
+        view === "orders"
+          ? await tx
+              .select({
+                id: productVariants.id,
+                productTitle: products.title,
+                variantTitle: productVariants.title,
+                sku: productVariants.sku,
+              })
+              .from(productVariants)
+              .innerJoin(products, eq(products.id, productVariants.productId))
+              .where(
+                and(
+                  eq(products.isPublished, true),
+                  eq(productVariants.isAvailable, true),
+                ),
+              )
+              .orderBy(products.title, productVariants.title)
+          : [];
+      const [commerceSummary] =
+        view === "overview"
+          ? await tx
+              .select({
+                revenueCents: sql<number>`coalesce(sum(${orders.purchaseTotalCents}), 0)::int`,
+                orderCount: sql<number>`count(*)::int`,
+                averageOrderCents: sql<number>`coalesce(avg(${orders.purchaseTotalCents}), 0)::int`,
+              })
+              .from(orders)
+              .where(
+                and(
+                  sql`${orders.createdAt} >= now() - interval '30 days'`,
+                  inArray(orders.lifecycleStatus, ["confirmed", "completed"]),
+                ),
+              )
+          : [{ revenueCents: 0, orderCount: 0, averageOrderCents: 0 }];
+      const [unitSummary] =
+        view === "overview"
+          ? await tx
+              .select({
+                units: sql<number>`coalesce(sum(${orderItems.quantity}), 0)::int`,
+              })
+              .from(orderItems)
+              .innerJoin(orders, eq(orders.id, orderItems.orderId))
+              .where(
+                and(
+                  sql`${orders.createdAt} >= now() - interval '30 days'`,
+                  inArray(orders.lifecycleStatus, ["confirmed", "completed"]),
+                ),
+              )
+          : [{ units: 0 }];
+      const salesTrend =
+        view === "overview"
+          ? await tx
+              .select({
+                day: sql<string>`to_char(date_trunc('day', ${orders.createdAt}), 'YYYY-MM-DD')`,
+                revenueCents: sql<number>`coalesce(sum(${orders.purchaseTotalCents}), 0)::int`,
+                orders: sql<number>`count(*)::int`,
+              })
+              .from(orders)
+              .where(
+                and(
+                  sql`${orders.createdAt} >= current_date - interval '6 days'`,
+                  inArray(orders.lifecycleStatus, ["confirmed", "completed"]),
+                ),
+              )
+              .groupBy(sql`date_trunc('day', ${orders.createdAt})`)
+              .orderBy(asc(sql`date_trunc('day', ${orders.createdAt})`))
+          : [];
       return {
         member,
         rows,
@@ -135,6 +208,10 @@ export default async function Admin({
         evidence,
         failures,
         store,
+        manualOrderVariants,
+        commerceSummary,
+        units: unitSummary?.units ?? 0,
+        salesTrend,
         readiness: await getLaunchReadiness(tx),
       };
     })
@@ -154,6 +231,10 @@ export default async function Admin({
     evidence,
     failures,
     store,
+    manualOrderVariants,
+    commerceSummary,
+    units,
+    salesTrend,
     readiness,
   } = data;
   return (
@@ -162,7 +243,7 @@ export default async function Admin({
       <p className="eyebrow">OPERATIONS OVERVIEW</p>
       <h1>
         {view === "overview"
-          ? "Daily queue"
+          ? "Commerce overview"
           : view === "orders"
             ? "Orders"
             : view === "payments"
@@ -175,6 +256,18 @@ export default async function Admin({
       </p>
       {view === "orders" && member.role === "owner" && (
         <div className="admin-page-actions">
+          <ManualOrderDialog
+            variants={manualOrderVariants.map((variant) => ({
+              id: variant.id,
+              label: `${variant.productTitle} · ${variant.variantTitle} · ${variant.sku}`,
+            }))}
+            paymentAccounts={accounts
+              .filter((account) => account.isActive)
+              .map((account) => ({
+                id: account.id,
+                label: account.accountName,
+              }))}
+          />
           <a
             href="/api/admin/exports/orders"
             download
@@ -194,6 +287,11 @@ export default async function Admin({
         </div>
       )}
       <Notice error={query.error} />
+      {query.created && view === "orders" && (
+        <p className="admin-save-notice" role="status">
+          Manual order {query.created} created.
+        </p>
+      )}
       {view === "orders" && (
         <form method="get" className="admin-filter-bar">
           <label>
@@ -218,16 +316,84 @@ export default async function Admin({
         </form>
       )}
       {view === "overview" && (
-        <OperationsSummary
-          unpaidOrders={
-            rows.filter((o) => o.lifecycleStatus === "unpaid").length
-          }
-          evidenceReviews={evidence.length}
-          readyForFulfillment={
-            rows.filter((o) => o.lifecycleStatus === "confirmed").length
-          }
-          failedEmails={failures.length}
-        />
+        <>
+          <section className="commerce-kpis" aria-label="Commerce performance">
+            <article>
+              <span>Revenue · 30 days</span>
+              <strong>
+                {money(
+                  commerceSummary?.revenueCents ?? 0,
+                  store?.currency,
+                  store?.precision,
+                )}
+              </strong>
+            </article>
+            <article>
+              <span>Orders · 30 days</span>
+              <strong>{commerceSummary?.orderCount ?? 0}</strong>
+            </article>
+            <article>
+              <span>Average order</span>
+              <strong>
+                {money(
+                  commerceSummary?.averageOrderCents ?? 0,
+                  store?.currency,
+                  store?.precision,
+                )}
+              </strong>
+            </article>
+            <article>
+              <span>Units sold · 30 days</span>
+              <strong>{units}</strong>
+            </article>
+          </section>
+          <section className="panel sales-trend">
+            <div>
+              <p className="eyebrow">LAST 7 DAYS</p>
+              <h2>Sales trend</h2>
+            </div>
+            <div className="trend-bars">
+              {salesTrend.length ? (
+                salesTrend.map((point) => {
+                  const maximum = Math.max(
+                    ...salesTrend.map((item) => item.revenueCents),
+                    1,
+                  );
+                  return (
+                    <div className="trend-day" key={point.day}>
+                      <span
+                        title={money(
+                          point.revenueCents,
+                          store?.currency,
+                          store?.precision,
+                        )}
+                        style={{
+                          height: `${Math.max(8, (point.revenueCents / maximum) * 100)}%`,
+                        }}
+                      />
+                      <small>{point.day.slice(5)}</small>
+                      <b>{point.orders}</b>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="admin-empty">
+                  Sales activity will appear here after orders are confirmed.
+                </p>
+              )}
+            </div>
+          </section>
+          <OperationsSummary
+            unpaidOrders={
+              rows.filter((o) => o.lifecycleStatus === "unpaid").length
+            }
+            evidenceReviews={evidence.length}
+            readyForFulfillment={
+              rows.filter((o) => o.lifecycleStatus === "confirmed").length
+            }
+            failedEmails={failures.length}
+          />
+        </>
       )}
       {view === "orders" && (
         <section className="panel">
