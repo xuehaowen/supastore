@@ -706,12 +706,38 @@ export default async function Admin({
           {evidence.length === 0 && (
             <p className="admin-empty">No payment evidence awaiting review.</p>
           )}
-          {evidence.map((e) => (
-            <p key={e.id}>
-              <a href={"/api/evidence/" + e.id}>Review image ↗</a> ·{" "}
-              {rows.find((o) => o.id === e.orderId)?.referenceCode}
-            </p>
-          ))}
+          <div className="evidence-grid">
+            {evidence.map((item) => {
+              const order = rows.find((row) => row.id === item.orderId);
+              const label = order?.referenceCode ?? item.orderId;
+              return (
+                <article className="evidence-card" key={item.id}>
+                  <a
+                    href={`/api/evidence/${item.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`Open payment evidence for order ${label}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- authenticated evidence redirects cannot use the image optimizer */}
+                    <img
+                      src={`/api/evidence/${item.id}`}
+                      alt={`Payment evidence submitted for order ${label}`}
+                    />
+                  </a>
+                  <div>
+                    <strong>{label}</strong>
+                    <a
+                      href={`/api/evidence/${item.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open full size ↗
+                    </a>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         </section>
       )}
       {view !== "orders" && (

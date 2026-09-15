@@ -78,9 +78,10 @@ export async function checkout(
   await page.getByLabel("Your name").fill("CUJ Customer");
   await page.getByLabel("Email address").fill("cuj@example.test");
   await page.getByRole("checkbox").check();
-  await page
-    .getByRole("button", { name: /Accept total & place order/ })
-    .click();
+  await clickAction(
+    page,
+    page.getByRole("button", { name: /Accept total & place order/ }),
+  );
   await expect(page).toHaveURL(/\/en\/orders\/[0-9a-f-]+$/);
   const id = new URL(page.url()).pathname.split("/").pop()!;
   const [order] =

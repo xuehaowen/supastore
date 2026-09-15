@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { randomUUID } from "node:crypto";
-import { test, expect } from "./fixtures";
+import { checkout, test, expect } from "./fixtures";
 
 test("product editor saves existing variants and translations without replacing records", async ({
   admin,
@@ -254,4 +254,40 @@ test("owner creates a manual order from the orders dialog", async ({
   expect(
     await sql`select id from orders where guest_email='manual@example.test'`,
   ).toHaveLength(1);
+});
+
+test("staff can see submitted payment evidence in the review grid", async ({
+  page,
+  admin,
+  sql,
+}) => {
+  const order = await checkout(page, sql);
+  await page.getByLabel("Payment image", { exact: false }).setInputFiles({
+    name: "payment-proof.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=",
+      "base64",
+    ),
+  });
+  await page
+    .getByRole("button", { name: "Upload evidence", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toHaveText(
+    "Evidence received. This is not a payment receipt.",
+  );
+
+  await admin.goto("/admin/payments#evidence");
+  const image = admin.getByRole("img", {
+    name: `Payment evidence submitted for order ${order.reference_code}`,
+  });
+  await expect(image).toBeVisible();
+  await expect
+    .poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth))
+    .toBeGreaterThan(0);
+  await expect(
+    admin.getByRole("link", {
+      name: `Open payment evidence for order ${order.reference_code}`,
+    }),
+  ).toHaveAttribute("target", "_blank");
 });

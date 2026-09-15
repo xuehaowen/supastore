@@ -585,6 +585,38 @@
   color: var(--muted-foreground);
   font-size: 0.8125rem;
 }
+.evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 1rem;
+}
+.evidence-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--card);
+}
+.evidence-card > a {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  background: var(--muted);
+}
+.evidence-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.evidence-card > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.8rem 1rem;
+}
+.evidence-card > div a {
+  color: var(--primary);
+  white-space: nowrap;
+}
 .admin-workspace section[id] {
   scroll-margin-top: 5rem;
 }

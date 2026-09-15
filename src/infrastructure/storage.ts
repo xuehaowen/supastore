@@ -91,7 +91,7 @@ export async function presignDownload(key: string) {
     new GetObjectCommand({
       Bucket: bucket(),
       Key: key,
-      ResponseContentDisposition: "attachment",
+      ResponseContentDisposition: "inline",
     }),
     { expiresIn: 60 },
   );
