@@ -65,6 +65,7 @@ export default async function Admin({
     status?: string;
     page?: string;
     created?: string;
+    manage?: string;
   }>;
   view?: "overview" | "orders" | "payments" | "fulfillment";
 }) {
@@ -234,9 +235,21 @@ export default async function Admin({
     manualOrderVariants,
     commerceSummary,
     units,
-    salesTrend,
+    salesTrend: rawSalesTrend,
     readiness,
   } = data;
+  const salesByDay = new Map(rawSalesTrend.map((point) => [point.day, point]));
+  const salesTrend = Array.from({ length: 7 }, (_, index) => {
+    const day = new Date();
+    day.setUTCHours(0, 0, 0, 0);
+    day.setUTCDate(day.getUTCDate() - (6 - index));
+    const key = day.toISOString().slice(0, 10);
+    return salesByDay.get(key) ?? { day: key, revenueCents: 0, orders: 0 };
+  });
+  const maximumTrendRevenue = Math.max(
+    ...salesTrend.map((point) => point.revenueCents),
+    1,
+  );
   return (
     <main className="admin">
       <AdminNav />
@@ -251,8 +264,9 @@ export default async function Admin({
               : "Fulfillment"}
       </h1>
       <p className="admin-description">
-        Track payments, review orders, and keep fulfillment moving. Order counts
-        reflect the latest 100 orders.
+        {view === "overview"
+          ? "Review confirmed sales from the last 30 days and operational queues from the latest 100 orders."
+          : "Track payments, review orders, and keep fulfillment moving."}
       </p>
       {view === "orders" && member.role === "owner" && (
         <div className="admin-page-actions">
@@ -353,34 +367,28 @@ export default async function Admin({
               <h2>Sales trend</h2>
             </div>
             <div className="trend-bars">
-              {salesTrend.length ? (
-                salesTrend.map((point) => {
-                  const maximum = Math.max(
-                    ...salesTrend.map((item) => item.revenueCents),
-                    1,
-                  );
-                  return (
-                    <div className="trend-day" key={point.day}>
-                      <span
-                        title={money(
-                          point.revenueCents,
-                          store?.currency,
-                          store?.precision,
-                        )}
-                        style={{
-                          height: `${Math.max(8, (point.revenueCents / maximum) * 100)}%`,
-                        }}
-                      />
-                      <small>{point.day.slice(5)}</small>
-                      <b>{point.orders}</b>
-                    </div>
-                  );
-                })
-              ) : (
-                <p className="admin-empty">
-                  Sales activity will appear here after orders are confirmed.
-                </p>
-              )}
+              {salesTrend.map((point) => {
+                const revenue = money(
+                  point.revenueCents,
+                  store?.currency,
+                  store?.precision,
+                );
+                return (
+                  <div className="trend-day" key={point.day}>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        height: `${(point.revenueCents / maximumTrendRevenue) * 100}%`,
+                      }}
+                    />
+                    <small>{point.day.slice(5)}</small>
+                    <b>{revenue}</b>
+                    <small>
+                      {point.orders} {point.orders === 1 ? "order" : "orders"}
+                    </small>
+                  </div>
+                );
+              })}
             </div>
           </section>
           <OperationsSummary
@@ -408,6 +416,7 @@ export default async function Admin({
                 <TableHead>Fulfillment</TableHead>
                 <TableHead>Total</TableHead>
                 <TableHead>Date</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -439,6 +448,19 @@ export default async function Admin({
                         timeZone: "UTC",
                       })}
                     </time>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <a
+                      className="admin-edit-link"
+                      href={
+                        order.lifecycleStatus === "unpaid" ||
+                        order.lifecycleStatus === "cancelled"
+                          ? `/admin/orders?manage=${order.id}#order-${order.id}`
+                          : `/admin/fulfillment?manage=${order.id}#order-${order.id}`
+                      }
+                    >
+                      Manage
+                    </a>
                   </TableCell>
                 </TableRow>
               ))}
@@ -542,7 +564,12 @@ export default async function Admin({
                 o.lifecycleStatus === "cancelled",
             )
             .map((order) => (
-              <details className="panel" key={order.id}>
+              <details
+                className="panel"
+                id={`order-${order.id}`}
+                key={order.id}
+                open={query.manage === order.id}
+              >
                 <summary>
                   {order.referenceCode} · {order.guestName} ·{" "}
                   {money(
@@ -693,6 +720,7 @@ export default async function Admin({
           {!rows.some(
             (order) =>
               order.lifecycleStatus === "confirmed" ||
+              order.lifecycleStatus === "completed" ||
               (member.role === "owner" &&
                 receipts.some((receipt) => receipt.orderId === order.id)),
           ) && (
@@ -704,11 +732,17 @@ export default async function Admin({
             .filter(
               (o) =>
                 o.lifecycleStatus === "confirmed" ||
+                o.lifecycleStatus === "completed" ||
                 (member.role === "owner" &&
                   receipts.some((receipt) => receipt.orderId === o.id)),
             )
             .map((o) => (
-              <details className="panel" key={o.id}>
+              <details
+                className="panel"
+                id={`order-${o.id}`}
+                key={o.id}
+                open={query.manage === o.id}
+              >
                 <summary>
                   {o.referenceCode} · {o.guestName} · {o.fulfillmentType}
                 </summary>

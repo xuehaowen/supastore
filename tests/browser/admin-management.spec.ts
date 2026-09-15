@@ -128,6 +128,10 @@ test("management sidebar opens real sections and product editor fits mobile", as
       .getByRole("link", { name: label, exact: true });
     await expect(link).toHaveAttribute("href", path);
     await expect(link).toHaveAttribute("aria-current", "page");
+    if (path === "/admin") {
+      await expect(admin.locator(".trend-day")).toHaveCount(7);
+      await expect(admin.getByText("0 orders").first()).toBeVisible();
+    }
   }
   await admin.goto("/admin/categories");
   await expect(
@@ -154,6 +158,14 @@ test("management sidebar opens real sections and product editor fits mobile", as
     ).toBe(true);
   }
   await admin.setViewportSize({ width: 375, height: 900 });
+  await expect(
+    admin.getByRole("link", { name: "Overview", exact: true }),
+  ).toBeHidden();
+  await admin.getByRole("button", { name: "Open admin menu" }).click();
+  await expect(
+    admin.getByRole("link", { name: "Overview", exact: true }),
+  ).toBeVisible();
+  await admin.getByRole("button", { name: "Close admin menu" }).click();
   const scan = await new AxeBuilder({ page: admin }).analyze();
   expect(
     scan.violations.filter((v) =>
@@ -173,14 +185,17 @@ test("promotion codes apply to checkout and record one redemption", async ({
 }) => {
   const code = `SAVE-${randomUUID().slice(0, 8)}`.toUpperCase();
   await admin.goto("/admin/promotions");
-  const create = admin.locator("form").filter({
-    has: admin.getByRole("button", { name: "Create promotion", exact: true }),
-  });
+  await admin
+    .getByRole("button", { name: "Create promotion", exact: true })
+    .click();
+  const create = admin.getByRole("dialog", { name: "Create promotion" });
   await create.getByLabel("Promotion name").fill("Checkout test");
   await create.getByLabel("Customer code").fill(code);
   await create.getByLabel("Discount value").fill("1000");
   await create.getByLabel("Minimum subtotal").fill("0");
-  await create.getByRole("button", { name: "Create promotion" }).click();
+  await create
+    .getByRole("button", { name: "Create promotion", exact: true })
+    .click();
   await expect(admin.getByText(new RegExp(`${code}.*Active`))).toBeVisible();
 
   await page.goto("/en/products/studio-cup");
@@ -226,6 +241,16 @@ test("owner creates a manual order from the orders dialog", async ({
   await dialog.getByRole("button", { name: "Create order" }).click();
   await expect(admin).toHaveURL(/\/admin\/orders\?created=SP-/);
   await expect(admin.getByRole("status")).toContainText("Manual order SP-");
+  const orderRow = admin.getByRole("row").filter({
+    hasText: "manual@example.test",
+  });
+  await orderRow.getByRole("link", { name: "Manage" }).click();
+  await expect(admin).toHaveURL(/manage=[0-9a-f-]+#order-/);
+  await expect(
+    admin.locator(
+      "details[open]#order-" + new URL(admin.url()).searchParams.get("manage"),
+    ),
+  ).toBeVisible();
   expect(
     await sql`select id from orders where guest_email='manual@example.test'`,
   ).toHaveLength(1);
