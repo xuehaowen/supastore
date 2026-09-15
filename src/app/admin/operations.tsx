@@ -15,10 +15,7 @@ import {
 import { staffIdentity, money } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { getLaunchReadiness } from "@/application/use-cases/store/get-launch-readiness";
-import {
-  ForbiddenError,
-  UnauthorizedError,
-} from "@/application/common/errors";
+import { ForbiddenError, UnauthorizedError } from "@/application/common/errors";
 import {
   togglePause,
   proposeChange,
@@ -45,6 +42,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Input } from "@/components/ui/input";
 import { Download } from "lucide-react";
+import { OperationsSummary } from "@/app/admin/operations-summary";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 export default async function Admin({
   searchParams,
   view = "overview",
@@ -211,52 +217,70 @@ export default async function Admin({
           <Button type="submit">Filter</Button>
         </form>
       )}
-      <div className="metrics">
-        <a href="/admin/orders#unpaid">
-          <strong>
-            {rows.filter((o) => o.lifecycleStatus === "unpaid").length}
-          </strong>
-          Unpaid orders
-        </a>
-        <a href="/admin/payments#evidence">
-          <strong>{evidence.length}</strong>Evidence review
-        </a>
-        <a href="/admin/fulfillment#ready">
-          <strong>
-            {rows.filter((o) => o.lifecycleStatus === "confirmed").length}
-          </strong>
-          Ready for fulfillment
-        </a>
-        <a href="/admin#emails">
-          <strong>{failures.length}</strong>Failed emails
-        </a>
-      </div>
+      {view === "overview" && (
+        <OperationsSummary
+          unpaidOrders={
+            rows.filter((o) => o.lifecycleStatus === "unpaid").length
+          }
+          evidenceReviews={evidence.length}
+          readyForFulfillment={
+            rows.filter((o) => o.lifecycleStatus === "confirmed").length
+          }
+          failedEmails={failures.length}
+        />
+      )}
       {view === "orders" && (
         <section className="panel">
           <h2>Order index</h2>
-          {rows.slice(0, 50).map((order) => (
-            <article className="admin-index-row" key={order.id}>
-              <span>
-                <strong>{order.referenceCode}</strong>
-                <small>
-                  {order.guestName} · {order.guestEmail}
-                </small>
-              </span>
-              <span>{order.lifecycleStatus}</span>
-              <span>
-                {money(
-                  order.purchaseTotalCents,
-                  store?.currency,
-                  store?.precision,
-                )}
-              </span>
-              <time dateTime={order.createdAt.toISOString()}>
-                {order.createdAt.toLocaleDateString("en-US", {
-                  timeZone: "UTC",
-                })}
-              </time>
-            </article>
-          ))}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Order</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Fulfillment</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.slice(0, 50).map((order) => (
+                <TableRow key={order.id}>
+                  <TableCell>
+                    <strong>{order.referenceCode}</strong>
+                  </TableCell>
+                  <TableCell>
+                    {order.guestName}
+                    <small className="table-secondary">
+                      {order.guestEmail}
+                    </small>
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={`status-badge status-${order.lifecycleStatus}`}
+                    >
+                      {order.lifecycleStatus}
+                    </span>
+                  </TableCell>
+                  <TableCell>{order.fulfillmentType}</TableCell>
+                  <TableCell>
+                    {money(
+                      order.purchaseTotalCents,
+                      store?.currency,
+                      store?.precision,
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <time dateTime={order.createdAt.toISOString()}>
+                      {order.createdAt.toLocaleDateString("en-US", {
+                        timeZone: "UTC",
+                      })}
+                    </time>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
           {rows.length === 0 && (
             <p className="admin-empty">No orders match these filters.</p>
           )}

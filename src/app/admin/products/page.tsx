@@ -10,12 +10,21 @@ import {
 } from "@/infrastructure/db/schema";
 import { staffIdentity, money } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
-import { saveCategory, saveProduct, toggleAvailability } from "@/app/actions";
+import { saveProduct, toggleAvailability } from "@/app/actions";
 import { Field, Hidden, Notice } from "@/app/components";
 import { AdminNav } from "@/app/admin/admin-nav";
+import { CatalogTabs } from "@/app/admin/catalog-tabs";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 export default async function Products({
   searchParams,
 }: {
@@ -30,6 +39,9 @@ export default async function Products({
       .innerJoin(productVariants, eq(productVariants.productId, products.id));
   });
   const groups = await db.select().from(categories);
+  const productRows = [
+    ...new Map(rows.map((row) => [row.products.id, row.products])).values(),
+  ];
   return (
     <main className="admin">
       <AdminNav />
@@ -38,45 +50,72 @@ export default async function Products({
       <p className="admin-description">
         Manage your catalog, pricing, and product availability.
       </p>
-      <p>
-        <Link href="/admin/categories" className="admin-edit-link">
-          Manage categories →
-        </Link>
-      </p>
+      <CatalogTabs />
       <Notice error={(await searchParams).error} />
       <div className="admin-grid">
         <section>
           <h2>Products & availability</h2>
-          {rows.map(({ products: p, product_variants: v }) => (
-            <article className="queue-row" key={v.id}>
-              <div>
-                <h3>{p.title}</h3>
-                <p>
-                  {v.title} · {money(v.priceCents)} · {v.sku}
-                </p>
-                <Link
-                  href={`/admin/products/${p.id}/edit`}
-                  className="admin-edit-link"
-                >
-                  Edit product
-                </Link>
-              </div>
-              <form action={toggleAvailability}>
-                <Hidden name="productId" value={p.id} />
-                <Hidden name="published" value={String(!p.isPublished)} />
-                <Button type="submit" variant="outline">
-                  {p.isPublished ? "Unpublish product" : "Publish product"}
-                </Button>
-              </form>
-              <form action={toggleAvailability}>
-                <Hidden name="variantId" value={v.id} />
-                <Hidden name="available" value={String(!v.isAvailable)} />
-                <Button type="submit" variant="outline">
-                  {v.isAvailable ? "Mark unavailable" : "Make available"}
-                </Button>
-              </form>
-            </article>
-          ))}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Product</TableHead>
+                <TableHead>Variants</TableHead>
+                <TableHead>Price range</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {productRows.map((product) => {
+                const variants = rows
+                  .filter((row) => row.products.id === product.id)
+                  .map((row) => row.product_variants);
+                const prices = variants.map((variant) => variant.priceCents);
+                return (
+                  <TableRow key={product.id}>
+                    <TableCell>
+                      <strong>{product.title}</strong>
+                      <small className="table-secondary">
+                        /{product.handle}
+                      </small>
+                    </TableCell>
+                    <TableCell>{variants.length}</TableCell>
+                    <TableCell>
+                      {money(Math.min(...prices))}
+                      {prices.length > 1 && ` – ${money(Math.max(...prices))}`}
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={`status-badge ${product.isPublished ? "status-active" : "status-muted"}`}
+                      >
+                        {product.isPublished ? "Published" : "Draft"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="table-actions">
+                        <Link
+                          href={`/admin/products/${product.id}/edit`}
+                          className="admin-edit-link"
+                        >
+                          Edit
+                        </Link>
+                        <form action={toggleAvailability}>
+                          <Hidden name="productId" value={product.id} />
+                          <Hidden
+                            name="published"
+                            value={String(!product.isPublished)}
+                          />
+                          <Button type="submit" size="sm" variant="outline">
+                            {product.isPublished ? "Unpublish" : "Publish"}
+                          </Button>
+                        </form>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </section>
         <section className="panel">
           <h2>Add a product</h2>
@@ -86,11 +125,6 @@ export default async function Products({
             <label>
               Description
               <Textarea name="description" />
-            </label>
-            <Field name="zhTitle" label="Chinese title" required={false} />
-            <label>
-              Chinese description
-              <Textarea name="zhDescription" />
             </label>
             <Field name="imageKey" label="Image asset key" required={false} />
             <label>
@@ -105,23 +139,6 @@ export default async function Products({
             </label>
             <VariantFields />
             <Button type="submit">Publish product</Button>
-          </form>
-          <h2>New category</h2>
-          <form action={saveCategory}>
-            <Field name="name" label="Category name" />
-            <Field name="slug" label="Category handle" />
-            <label>
-              Parent category
-              <NativeSelect name="parentId">
-                <option value="">None</option>
-                {groups.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            </label>
-            <Button type="submit">Add category</Button>
           </form>
         </section>
       </div>

@@ -370,6 +370,76 @@
   margin: -2.8rem 0 1.5rem;
 }
 
+.admin-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin: 1.25rem 0 1.75rem;
+  padding: 0.25rem;
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--card);
+}
+
+.admin-tabs a {
+  padding: 0.5rem 0.8rem;
+  border-radius: 0.55rem;
+  color: var(--muted-foreground);
+  font-size: 0.82rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.admin-tabs a:hover,
+.admin-tabs a[aria-current="page"] {
+  color: var(--foreground);
+  background: var(--muted);
+}
+
+.table-secondary {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--muted-foreground);
+  font-weight: 400;
+}
+
+.table-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.status-badge {
+  display: inline-flex;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.status-active,
+.status-confirmed,
+.status-completed {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.status-unpaid {
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.status-cancelled {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
 @media (max-width: 640px) {
   .admin-page-actions {
     justify-content: flex-start;

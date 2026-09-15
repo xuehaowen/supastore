@@ -6,6 +6,7 @@ import { staffIdentity } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { Field, Hidden, Notice } from "@/app/components";
 import { AdminNav } from "@/app/admin/admin-nav";
+import { CatalogTabs } from "@/app/admin/catalog-tabs";
 import { deleteCategory, editCategory, saveCategory } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -31,6 +32,7 @@ export default async function CategoriesPage({
       <p className="admin-description">
         Organize products and maintain category handles and hierarchy.
       </p>
+      <CatalogTabs />
       <Notice error={(await searchParams).error} />
       <div className="admin-grid">
         <section className="panel">
