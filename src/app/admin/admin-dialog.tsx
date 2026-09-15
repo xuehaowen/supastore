@@ -6,21 +6,25 @@ import { Button } from "@/components/ui/button";
 
 export function AdminDialog({
   trigger,
+  defaultOpen = false,
+  inline = false,
   title,
   description,
   children,
 }: {
-  trigger: string;
+  trigger?: string;
+  defaultOpen?: boolean;
+  inline?: boolean;
   title: string;
   description?: string;
   children: ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const titleId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
   useEffect(() => {
-    if (!open) return;
+    if (!open || inline) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const focusable = () =>
@@ -54,12 +58,15 @@ export function AdminDialog({
       document.body.style.overflow = previousOverflow;
       triggerRef.current?.focus();
     };
-  }, [open]);
+  }, [inline, open]);
+  if (inline) return children;
   return (
     <>
-      <Button ref={triggerRef} type="button" onClick={() => setOpen(true)}>
-        {trigger}
-      </Button>
+      {trigger && (
+        <Button ref={triggerRef} type="button" onClick={() => setOpen(true)}>
+          {trigger}
+        </Button>
+      )}
       {open && (
         <div
           className="admin-dialog-backdrop"

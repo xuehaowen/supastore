@@ -47,6 +47,7 @@ import { Input } from "@/components/ui/input";
 import { Download } from "lucide-react";
 import { OperationsSummary } from "@/app/admin/operations-summary";
 import { ManualOrderDialog } from "@/app/admin/manual-order-dialog";
+import { AdminDialog } from "@/app/admin/admin-dialog";
 import {
   Table,
   TableBody,
@@ -326,6 +327,7 @@ export default async function Admin({
     ...salesTrend.map((point) => point.revenueCents),
     1,
   );
+  const returnTo = view === "overview" ? "/admin" : `/admin/${view}`;
   return (
     <main className="admin">
       <AdminNav />
@@ -696,10 +698,7 @@ export default async function Admin({
             verification.
           </p>
           <form action={togglePause}>
-            <Hidden
-              name="returnTo"
-              value={view === "overview" ? "/admin" : `/admin/${view}`}
-            />
+            <Hidden name="returnTo" value={returnTo} />
             <Hidden name="paused" value={String(!store?.isPaused)} />
             <Field
               label="Pause message"
@@ -712,162 +711,141 @@ export default async function Admin({
           </form>
         </section>
       )}
-      {view !== "fulfillment" && (
-        <section id="unpaid">
-          <h2>Unpaid orders and late receipts</h2>
-          {!rows.some(
-            (order) =>
-              order.lifecycleStatus === "unpaid" ||
-              order.lifecycleStatus === "cancelled",
-          ) && (
-            <p className="admin-empty">
-              No unpaid orders or late receipts to review.
-            </p>
-          )}
-          {rows
-            .filter(
-              (o) =>
-                o.lifecycleStatus === "unpaid" ||
-                o.lifecycleStatus === "cancelled",
-            )
-            .map((order) => (
-              <details
-                className="panel"
-                id={`order-payment-${order.id}`}
-                key={order.id}
-                open={query.manage === order.id}
-              >
-                <summary>
-                  {order.referenceCode} · {order.guestName} ·{" "}
-                  {money(
-                    order.purchaseTotalCents,
-                    store?.currency,
-                    store?.precision,
+      {view === "orders" && query.manage && (
+        <AdminDialog
+          defaultOpen
+          title="Manage order payment"
+          description="Record or confirm payment and update this order's financial terms."
+        >
+          <section className="admin-operation-dialog">
+            {rows
+              .filter(
+                (o) =>
+                  o.id === query.manage &&
+                  (o.lifecycleStatus === "unpaid" ||
+                    o.lifecycleStatus === "cancelled"),
+              )
+              .map((order) => (
+                <details
+                  className="panel"
+                  id={`order-payment-${order.id}`}
+                  key={order.id}
+                  open={query.manage === order.id}
+                >
+                  <summary>
+                    {order.referenceCode} · {order.guestName} ·{" "}
+                    {money(
+                      order.purchaseTotalCents,
+                      store?.currency,
+                      store?.precision,
+                    )}
+                  </summary>
+                  <p>{order.guestEmail}</p>
+                  {order.lifecycleStatus === "cancelled" && (
+                    <p>
+                      Cancelled — record late payments for return. Recording a
+                      receipt does not reopen the order.
+                    </p>
                   )}
-                </summary>
-                <p>{order.guestEmail}</p>
-                {order.lifecycleStatus === "cancelled" && (
-                  <p>
-                    Cancelled — record late payments for return. Recording a
-                    receipt does not reopen the order.
-                  </p>
-                )}
-                <form action={receivePayment}>
-                  <Hidden
-                    name="returnTo"
-                    value={view === "overview" ? "/admin" : `/admin/${view}`}
-                  />
-                  <Hidden name="orderId" value={order.id} />
-                  <label>
-                    Actual receiving account
-                    <NativeSelect name="accountId">
-                      {accounts.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.accountName} — {a.accountIdentifier}
-                        </option>
-                      ))}
-                    </NativeSelect>
-                  </label>
-                  <Field
-                    name="amount"
-                    label="Received amount (minor units)"
-                    type="number"
-                  />
-                  <Field
-                    name="reference"
-                    label="Actual bank / cash reference"
-                  />
-                  <label className="check">
-                    <Checkbox name="verified" required />I verified this
-                    receiving account and amount against the actual transaction.
-                  </label>
-                  <Button type="submit">Record receipt</Button>
-                </form>
-                {order.lifecycleStatus === "unpaid" && (
-                  <form action={confirmPayment}>
-                    <Hidden
-                      name="returnTo"
-                      value={view === "overview" ? "/admin" : `/admin/${view}`}
-                    />
+                  <form action={receivePayment}>
+                    <Hidden name="returnTo" value={returnTo} />
                     <Hidden name="orderId" value={order.id} />
+                    <label>
+                      Actual receiving account
+                      <NativeSelect name="accountId">
+                        {accounts.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.accountName} — {a.accountIdentifier}
+                          </option>
+                        ))}
+                      </NativeSelect>
+                    </label>
+                    <Field
+                      name="amount"
+                      label="Received amount (minor units)"
+                      type="number"
+                    />
+                    <Field
+                      name="reference"
+                      label="Actual bank / cash reference"
+                    />
+                    <label className="check">
+                      <Checkbox name="verified" required />I verified this
+                      receiving account and amount against the actual
+                      transaction.
+                    </label>
+                    <Button type="submit">Record receipt</Button>
+                  </form>
+                  {order.lifecycleStatus === "unpaid" && (
+                    <form action={confirmPayment}>
+                      <Hidden name="returnTo" value={returnTo} />
+                      <Hidden name="orderId" value={order.id} />
+                      <Button type="submit" variant="outline">
+                        Confirm exact payment
+                      </Button>
+                    </form>
+                  )}
+                  {member.role === "owner" &&
+                    order.lifecycleStatus === "unpaid" && (
+                      <form action={proposeChange}>
+                        <Hidden name="returnTo" value={returnTo} />
+                        <Hidden name="orderId" value={order.id} />
+                        <Field
+                          label="Proposed total (minor units)"
+                          name="total"
+                          type="number"
+                        />
+                        <Field label="Reason" name="reason" />
+                        <Button type="submit" variant="outline">
+                          Propose new terms
+                        </Button>
+                      </form>
+                    )}
+                  {member.role === "owner" &&
+                    order.lifecycleStatus === "unpaid" && (
+                      <form action={cancelAdminOrder}>
+                        <Hidden name="returnTo" value={returnTo} />
+                        <Hidden name="orderId" value={order.id} />
+                        <Field label="Cancellation reason" name="reason" />
+                        <Button type="submit" variant="outline">
+                          Cancel order
+                        </Button>
+                      </form>
+                    )}
+                  <form action={receiveCashPayment} className="mt-4">
+                    <Hidden name="returnTo" value={returnTo} />
+                    <Hidden name="orderId" value={order.id} />
+                    <label>
+                      Cash account
+                      <NativeSelect name="accountId">
+                        {accounts.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.accountName}
+                          </option>
+                        ))}
+                      </NativeSelect>
+                    </label>
+                    <Field
+                      name="amount"
+                      label="Cash amount (minor units)"
+                      type="number"
+                    />
+                    <Field
+                      name="tenderedAmount"
+                      label="Tendered amount (minor units)"
+                      type="number"
+                    />
+                    <Field name="payerName" label="Payer name" />
                     <Button type="submit" variant="outline">
-                      Confirm exact payment
+                      Record cash receipt
                     </Button>
                   </form>
-                )}
-                {member.role === "owner" &&
-                  order.lifecycleStatus === "unpaid" && (
-                    <form action={proposeChange}>
-                      <Hidden
-                        name="returnTo"
-                        value={
-                          view === "overview" ? "/admin" : `/admin/${view}`
-                        }
-                      />
-                      <Hidden name="orderId" value={order.id} />
-                      <Field
-                        label="Proposed total (minor units)"
-                        name="total"
-                        type="number"
-                      />
-                      <Field label="Reason" name="reason" />
-                      <Button type="submit" variant="outline">
-                        Propose new terms
-                      </Button>
-                    </form>
-                  )}
-                {member.role === "owner" &&
-                  order.lifecycleStatus === "unpaid" && (
-                    <form action={cancelAdminOrder}>
-                      <Hidden
-                        name="returnTo"
-                        value={
-                          view === "overview" ? "/admin" : `/admin/${view}`
-                        }
-                      />
-                      <Hidden name="orderId" value={order.id} />
-                      <Field label="Cancellation reason" name="reason" />
-                      <Button type="submit" variant="outline">
-                        Cancel order
-                      </Button>
-                    </form>
-                  )}
-                <form action={receiveCashPayment} className="mt-4">
-                  <Hidden
-                    name="returnTo"
-                    value={view === "overview" ? "/admin" : `/admin/${view}`}
-                  />
-                  <Hidden name="orderId" value={order.id} />
-                  <label>
-                    Cash account
-                    <NativeSelect name="accountId">
-                      {accounts.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.accountName}
-                        </option>
-                      ))}
-                    </NativeSelect>
-                  </label>
-                  <Field
-                    name="amount"
-                    label="Cash amount (minor units)"
-                    type="number"
-                  />
-                  <Field
-                    name="tenderedAmount"
-                    label="Tendered amount (minor units)"
-                    type="number"
-                  />
-                  <Field name="payerName" label="Payer name" />
-                  <Button type="submit" variant="outline">
-                    Record cash receipt
-                  </Button>
-                </form>
-              </details>
-            ))}
-        </section>
+                </details>
+              ))}
+          </section>
+        </AdminDialog>
       )}
-      {(view === "overview" || view === "payments") && (
+      {view === "payments" && (
         <section id="evidence">
           <h2>Payment evidence review</h2>
           {evidence.length === 0 && (
@@ -879,27 +857,33 @@ export default async function Admin({
               const label = order?.referenceCode ?? item.orderId;
               return (
                 <article className="evidence-card" key={item.id}>
-                  <a
-                    href={`/api/evidence/${item.id}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={`Open payment evidence for order ${label}`}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element -- authenticated evidence redirects cannot use the image optimizer */}
-                    <img
-                      src={`/api/evidence/${item.id}`}
-                      alt={`Payment evidence submitted for order ${label}`}
-                    />
-                  </a>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- authenticated evidence redirects cannot use the image optimizer */}
+                  <img
+                    src={`/api/evidence/${item.id}`}
+                    alt={`Payment evidence submitted for order ${label}`}
+                  />
                   <div>
                     <strong>{label}</strong>
-                    <a
-                      href={`/api/evidence/${item.id}`}
-                      target="_blank"
-                      rel="noreferrer"
+                    <AdminDialog
+                      trigger="Review evidence"
+                      title={`Payment evidence · ${label}`}
+                      description="Compare this image with the receiving account and recorded amount before confirming payment."
                     >
-                      Open full size ↗
-                    </a>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- authenticated evidence redirects cannot use the image optimizer */}
+                      <img
+                        className="evidence-review-image"
+                        src={`/api/evidence/${item.id}`}
+                        alt={`Full-size payment evidence submitted for order ${label}`}
+                      />
+                      <a
+                        className="admin-edit-link"
+                        href={`/api/evidence/${item.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open original in a new tab ↗
+                      </a>
+                    </AdminDialog>
                   </div>
                 </article>
               );
@@ -907,216 +891,199 @@ export default async function Admin({
           </div>
         </section>
       )}
-      {view !== "orders" && (
-        <section id="ready">
-          <h2>Fulfillment and payment operations</h2>
-          {!rows.some(
-            (order) =>
-              order.lifecycleStatus === "confirmed" ||
-              order.lifecycleStatus === "completed" ||
-              (member.role === "owner" &&
-                receipts.some((receipt) => receipt.orderId === order.id)),
-          ) && (
-            <p className="admin-empty">
-              No fulfillment or payment operations to review.
-            </p>
-          )}
-          {rows
-            .filter(
-              (o) =>
-                o.lifecycleStatus === "confirmed" ||
-                o.lifecycleStatus === "completed" ||
+      {(view === "fulfillment" ||
+        (view === "payments" && query.managePayment)) && (
+        <AdminDialog
+          inline={view === "fulfillment"}
+          defaultOpen={view === "payments"}
+          title="Manage payment"
+          description="Review the receipt and perform authorized payment corrections or returns."
+        >
+          <section id="ready" className="admin-operation-dialog">
+            <h2>
+              {view === "payments"
+                ? "Receipt and adjustments"
+                : "Fulfillment operations"}
+            </h2>
+            {!rows.some(
+              (order) =>
+                order.lifecycleStatus === "confirmed" ||
+                order.lifecycleStatus === "completed" ||
                 (member.role === "owner" &&
-                  receipts.some((receipt) => receipt.orderId === o.id)),
-            )
-            .map((o) => (
-              <details
-                className="panel"
-                id={
-                  view === "payments"
-                    ? `payment-${o.id}`
-                    : `order-fulfillment-${o.id}`
-                }
-                key={o.id}
-                open={query.manage === o.id || query.managePayment === o.id}
-              >
-                <summary>
-                  {o.referenceCode} · {o.guestName} · {o.fulfillmentType}
-                </summary>
-                <p>{o.guestEmail}</p>
-                {o.lifecycleStatus === "confirmed" &&
-                  (o.fulfillmentType === "pickup" ? (
-                    <>
-                      <form action={markOrderReady} className="mt-2">
-                        <Hidden
-                          name="returnTo"
-                          value={
-                            view === "overview" ? "/admin" : `/admin/${view}`
-                          }
-                        />
+                  receipts.some((receipt) => receipt.orderId === order.id)),
+            ) && (
+              <p className="admin-empty">
+                No fulfillment or payment operations to review.
+              </p>
+            )}
+            {rows
+              .filter(
+                (o) =>
+                  (view !== "payments" || o.id === query.managePayment) &&
+                  (o.lifecycleStatus === "confirmed" ||
+                    o.lifecycleStatus === "completed" ||
+                    (member.role === "owner" &&
+                      receipts.some((receipt) => receipt.orderId === o.id))),
+              )
+              .map((o) => (
+                <details
+                  className="panel"
+                  id={
+                    view === "payments"
+                      ? `payment-${o.id}`
+                      : `order-fulfillment-${o.id}`
+                  }
+                  key={o.id}
+                  open={query.manage === o.id || query.managePayment === o.id}
+                >
+                  <summary>
+                    {o.referenceCode} · {o.guestName} · {o.fulfillmentType}
+                  </summary>
+                  <p>{o.guestEmail}</p>
+                  {view === "fulfillment" &&
+                    o.lifecycleStatus === "confirmed" &&
+                    (o.fulfillmentType === "pickup" ? (
+                      <>
+                        <form action={markOrderReady} className="mt-2">
+                          <Hidden name="returnTo" value={returnTo} />
+                          <Hidden name="orderId" value={o.id} />
+                          <Button type="submit" variant="outline">
+                            Mark ready for pickup
+                          </Button>
+                        </form>
+                        <form action={completeOrderPickup} className="mt-2">
+                          <Hidden name="returnTo" value={returnTo} />
+                          <Hidden name="orderId" value={o.id} />
+                          <Field
+                            label="Recipient / authorized recipient"
+                            name="handoffActor"
+                          />
+                          <NativeSelect
+                            name="verificationMethod"
+                            defaultValue="scoped_order_page"
+                          >
+                            <option value="scoped_order_page">
+                              Scoped order page
+                            </option>
+                            <option value="owner_assisted">
+                              Owner-assisted verification
+                            </option>
+                          </NativeSelect>
+                          <Button type="submit" variant="outline">
+                            Complete pickup handoff
+                          </Button>
+                        </form>
+                      </>
+                    ) : (
+                      <form action={fulfillConfirmedOrder} className="mt-2">
+                        <Hidden name="returnTo" value={returnTo} />
                         <Hidden name="orderId" value={o.id} />
+                        <Field label="Carrier" name="carrier" />
+                        <Field label="Tracking number" name="trackingNumber" />
                         <Button type="submit" variant="outline">
-                          Mark ready for pickup
+                          Mark shipped / delivered
                         </Button>
                       </form>
-                      <form action={completeOrderPickup} className="mt-2">
-                        <Hidden
-                          name="returnTo"
-                          value={
-                            view === "overview" ? "/admin" : `/admin/${view}`
-                          }
-                        />
+                    ))}
+                  {view === "fulfillment" &&
+                    member.role === "owner" &&
+                    o.lifecycleStatus === "confirmed" && (
+                      <form action={cancelAdminOrder} className="mt-2">
+                        <Hidden name="returnTo" value={returnTo} />
                         <Hidden name="orderId" value={o.id} />
-                        <Field
-                          label="Recipient / authorized recipient"
-                          name="handoffActor"
-                        />
-                        <NativeSelect
-                          name="verificationMethod"
-                          defaultValue="scoped_order_page"
-                        >
-                          <option value="scoped_order_page">
-                            Scoped order page
-                          </option>
-                          <option value="owner_assisted">
-                            Owner-assisted verification
-                          </option>
-                        </NativeSelect>
+                        <Field label="Cancellation reason" name="reason" />
                         <Button type="submit" variant="outline">
-                          Complete pickup handoff
+                          Cancel order
                         </Button>
                       </form>
-                    </>
-                  ) : (
-                    <form action={fulfillConfirmedOrder} className="mt-2">
-                      <Hidden
-                        name="returnTo"
-                        value={
-                          view === "overview" ? "/admin" : `/admin/${view}`
-                        }
-                      />
-                      <Hidden name="orderId" value={o.id} />
-                      <Field label="Carrier" name="carrier" />
-                      <Field label="Tracking number" name="trackingNumber" />
-                      <Button type="submit" variant="outline">
-                        Mark shipped / delivered
-                      </Button>
-                    </form>
-                  ))}
-                {member.role === "owner" &&
-                  o.lifecycleStatus === "confirmed" && (
-                    <form action={cancelAdminOrder} className="mt-2">
-                      <Hidden
-                        name="returnTo"
-                        value={
-                          view === "overview" ? "/admin" : `/admin/${view}`
-                        }
-                      />
-                      <Hidden name="orderId" value={o.id} />
-                      <Field label="Cancellation reason" name="reason" />
-                      <Button type="submit" variant="outline">
-                        Cancel order
-                      </Button>
-                    </form>
-                  )}
-                {member.role === "owner" &&
-                  receipts
-                    .filter((receipt) => receipt.orderId === o.id)
-                    .map((receipt) => (
-                      <div className="mt-4 border-t pt-4" key={receipt.id}>
-                        <p>
-                          Receipt: {receipt.normalizedReference} ·{" "}
-                          {receipt.amountCents} minor units
-                        </p>
-                        {(o.lifecycleStatus === "confirmed" ||
-                          o.lifecycleStatus === "completed") && (
-                          <form action={authorizeOrderRefund} className="mt-2">
-                            <Hidden
-                              name="returnTo"
-                              value={
-                                view === "overview"
-                                  ? "/admin"
-                                  : `/admin/${view}`
-                              }
-                            />
+                    )}
+                  {member.role === "owner" &&
+                    receipts
+                      .filter((receipt) => receipt.orderId === o.id)
+                      .map((receipt) => (
+                        <div className="mt-4 border-t pt-4" key={receipt.id}>
+                          <p>
+                            Receipt: {receipt.normalizedReference} ·{" "}
+                            {receipt.amountCents} minor units
+                          </p>
+                          {(o.lifecycleStatus === "confirmed" ||
+                            o.lifecycleStatus === "completed") && (
+                            <form
+                              action={authorizeOrderRefund}
+                              className="mt-2"
+                            >
+                              <Hidden name="returnTo" value={returnTo} />
+                              <Hidden name="orderId" value={o.id} />
+                              <Hidden name="receiptId" value={receipt.id} />
+                              <Field
+                                label="Refund amount (minor units)"
+                                name="amount"
+                                type="number"
+                              />
+                              <Field label="Refund reason" name="reason" />
+                              <Button type="submit" variant="outline">
+                                Authorize refund
+                              </Button>
+                            </form>
+                          )}
+                          <form
+                            action={authorizeOrderSurplusReturn}
+                            className="mt-2"
+                          >
+                            <Hidden name="returnTo" value={returnTo} />
                             <Hidden name="orderId" value={o.id} />
                             <Hidden name="receiptId" value={receipt.id} />
                             <Field
-                              label="Refund amount (minor units)"
+                              label="Surplus return amount (minor units)"
                               name="amount"
                               type="number"
                             />
-                            <Field label="Refund reason" name="reason" />
+                            <Field label="Return reason" name="reason" />
                             <Button type="submit" variant="outline">
-                              Authorize refund
+                              Authorize surplus return
                             </Button>
                           </form>
-                        )}
-                        <form
-                          action={authorizeOrderSurplusReturn}
-                          className="mt-2"
-                        >
-                          <Hidden
-                            name="returnTo"
-                            value={
-                              view === "overview" ? "/admin" : `/admin/${view}`
-                            }
-                          />
-                          <Hidden name="orderId" value={o.id} />
-                          <Hidden name="receiptId" value={receipt.id} />
-                          <Field
-                            label="Surplus return amount (minor units)"
-                            name="amount"
-                            type="number"
-                          />
-                          <Field label="Return reason" name="reason" />
-                          <Button type="submit" variant="outline">
-                            Authorize surplus return
-                          </Button>
-                        </form>
-                        <form action={correctRecordedReceipt} className="mt-2">
-                          <Hidden
-                            name="returnTo"
-                            value={
-                              view === "overview" ? "/admin" : `/admin/${view}`
-                            }
-                          />
-                          <Hidden name="receiptId" value={receipt.id} />
-                          <Field
-                            label="Correction delta (minor units)"
-                            name="delta"
-                            type="number"
-                          />
-                          <Field label="Correction reason" name="reason" />
-                          <Field label="Investigation notes" name="notes" />
-                          <Button type="submit" variant="outline">
-                            Open receipt correction
-                          </Button>
-                        </form>
-                      </div>
-                    ))}
-                <form action={correctOrderFulfillment} className="mt-2">
-                  <Hidden
-                    name="returnTo"
-                    value={view === "overview" ? "/admin" : `/admin/${view}`}
-                  />
-                  <Hidden name="orderId" value={o.id} />
-                  <Field
-                    label="Corrected carrier / delivery method"
-                    name="carrier"
-                  />
-                  <Field
-                    label="Corrected tracking number"
-                    name="trackingNumber"
-                  />
-                  <Field label="Correction reason" name="reason" />
-                  <Button type="submit" variant="outline">
-                    Correct fulfillment details
-                  </Button>
-                </form>
-              </details>
-            ))}
-        </section>
+                          <form
+                            action={correctRecordedReceipt}
+                            className="mt-2"
+                          >
+                            <Hidden name="returnTo" value={returnTo} />
+                            <Hidden name="receiptId" value={receipt.id} />
+                            <Field
+                              label="Correction delta (minor units)"
+                              name="delta"
+                              type="number"
+                            />
+                            <Field label="Correction reason" name="reason" />
+                            <Field label="Investigation notes" name="notes" />
+                            <Button type="submit" variant="outline">
+                              Open receipt correction
+                            </Button>
+                          </form>
+                        </div>
+                      ))}
+                  {view === "fulfillment" && (
+                    <form action={correctOrderFulfillment} className="mt-2">
+                      <Hidden name="returnTo" value={`/admin/${view}`} />
+                      <Hidden name="orderId" value={o.id} />
+                      <Field
+                        label="Corrected carrier / delivery method"
+                        name="carrier"
+                      />
+                      <Field
+                        label="Corrected tracking number"
+                        name="trackingNumber"
+                      />
+                      <Field label="Correction reason" name="reason" />
+                      <Button type="submit" variant="outline">
+                        Correct fulfillment details
+                      </Button>
+                    </form>
+                  )}
+                </details>
+              ))}
+          </section>
+        </AdminDialog>
       )}
       {(view === "overview" || view === "orders") && (
         <section>
@@ -1172,12 +1139,7 @@ export default async function Admin({
                   </summary>
                   {!attempt ? (
                     <form action={claimOrderPayout} className="mt-2">
-                      <Hidden
-                        name="returnTo"
-                        value={
-                          view === "overview" ? "/admin" : `/admin/${view}`
-                        }
-                      />
+                      <Hidden name="returnTo" value={returnTo} />
                       <Hidden name="allocationId" value={allocation.id} />
                       <Field
                         label="Claim amount (minor units)"
@@ -1207,12 +1169,7 @@ export default async function Admin({
                       </p>
                       {attempt.status === "sending" && (
                         <form action={reconcileOrderPayout} className="mt-2">
-                          <Hidden
-                            name="returnTo"
-                            value={
-                              view === "overview" ? "/admin" : `/admin/${view}`
-                            }
-                          />
+                          <Hidden name="returnTo" value={returnTo} />
                           <Hidden name="attemptId" value={attempt.id} />
                           <Field
                             label="Actual payout amount (minor units)"
@@ -1245,12 +1202,7 @@ export default async function Admin({
                           action={resolveOrderPayoutDiscrepancy}
                           className="mt-2"
                         >
-                          <Hidden
-                            name="returnTo"
-                            value={
-                              view === "overview" ? "/admin" : `/admin/${view}`
-                            }
-                          />
+                          <Hidden name="returnTo" value={returnTo} />
                           <Hidden name="discrepancyId" value={discrepancy.id} />
                           <Field
                             label="Write-off amount (minor units)"
@@ -1265,12 +1217,7 @@ export default async function Admin({
                       )}
                       {!discrepancy && attempt.status !== "reconciled" && (
                         <form action={closeOrderPayoutAttempt} className="mt-2">
-                          <Hidden
-                            name="returnTo"
-                            value={
-                              view === "overview" ? "/admin" : `/admin/${view}`
-                            }
-                          />
+                          <Hidden name="returnTo" value={returnTo} />
                           <Hidden name="attemptId" value={attempt.id} />
                           <Field label="Closure reason" name="reason" />
                           <Button type="submit" variant="outline">

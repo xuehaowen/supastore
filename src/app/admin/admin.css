@@ -599,10 +599,12 @@
   border-radius: 0.75rem;
   background: var(--card);
 }
-.evidence-card > a {
+.evidence-card > img {
   display: grid;
   place-items: center;
+  width: 100%;
   aspect-ratio: 4 / 3;
+  object-fit: contain;
   background: var(--muted);
 }
 .evidence-card img {
@@ -619,6 +621,19 @@
 .evidence-card > div a {
   color: var(--primary);
   white-space: nowrap;
+}
+.evidence-review-image {
+  display: block;
+  width: 100%;
+  max-height: 65vh;
+  margin-bottom: 1rem;
+  object-fit: contain;
+  border-radius: 0.6rem;
+  background: var(--muted);
+}
+.admin-operation-dialog {
+  display: grid;
+  gap: 1rem;
 }
 .admin-workspace section[id] {
   scroll-margin-top: 5rem;
