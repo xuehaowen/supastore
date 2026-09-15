@@ -14,6 +14,7 @@ import { addToCart } from "@/application/use-cases/cart/add-to-cart";
 import { updateCartItem } from "@/application/use-cases/cart/update-cart-item";
 import { getQuote } from "@/application/use-cases/get-quote";
 import { createOrder } from "@/application/use-cases/create-order";
+import { createManualOrder } from "@/application/use-cases/create-manual-order";
 import { requestTrackingLink } from "@/application/use-cases/guest/request-tracking-link";
 import { verifyTrackingLink } from "@/application/use-cases/guest/verify-tracking-link";
 import {
@@ -184,6 +185,36 @@ export async function placeOrder(form: FormData) {
     });
     await setOrderToken(order.id, order.sessionToken);
     return "/" + locale + "/orders/" + order.id;
+  });
+}
+
+export async function createManualOrderAction(form: FormData) {
+  return perform("/admin/orders", async () => {
+    const itemCount = parseActionInteger(
+      field(form, "itemCount"),
+      "Item count",
+      1,
+      25,
+    );
+    const order = await createManualOrder({
+      staffUserId: await staffIdentity(),
+      customerName: field(form, "customerName"),
+      customerEmail: field(form, "customerEmail"),
+      country: field(form, "country"),
+      address: field(form, "address"),
+      paymentAccountId: field(form, "paymentAccountId"),
+      items: Array.from({ length: itemCount }, (_, index) => ({
+        variantId: field(form, `variantId-${index}`),
+        quantity: parseActionInteger(
+          field(form, `quantity-${index}`),
+          "Quantity",
+          1,
+          999,
+        ),
+      })),
+    });
+    revalidatePath("/admin", "layout");
+    return `/admin/orders?created=${order.referenceCode}`;
   });
 }
 export async function recoverOrder(form: FormData) {

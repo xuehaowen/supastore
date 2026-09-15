@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
       "updateCartItem",
       "getQuote",
       "createOrder",
+      "createManualOrder",
       "requestTrackingLink",
       "verifyTrackingLink",
       "acceptOrderChange",
@@ -100,6 +101,9 @@ vi.mock("@/application/use-cases/get-quote", () => ({
 }));
 vi.mock("@/application/use-cases/create-order", () => ({
   createOrder: mocks.commands.createOrder,
+}));
+vi.mock("@/application/use-cases/create-manual-order", () => ({
+  createManualOrder: mocks.commands.createManualOrder,
 }));
 vi.mock("@/application/use-cases/guest/request-tracking-link", () => ({
   requestTrackingLink: mocks.commands.requestTrackingLink,
@@ -203,6 +207,10 @@ const base: Record<string, string> = {
   attemptId: id,
   discrepancyId: id,
   quantity: "1",
+  itemCount: "1",
+  "quantity-0": "1",
+  customerName: "Manual Customer",
+  customerEmail: "manual@example.test",
   fulfillmentType: "shipping",
   country: "US",
   address: "1 Test St",
@@ -286,6 +294,11 @@ const cases = [
   ["changeItem", "updateCartItem", "/en/cart"],
   ["quoteCart", "getQuote", "/en/checkout?quote=" + id],
   ["placeOrder", "createOrder", "/en/orders/" + id],
+  [
+    "createManualOrderAction",
+    "createManualOrder",
+    "/admin/orders?created=SP-MANUAL",
+  ],
   ["recoverOrder", "requestTrackingLink", "/recover?sent=1"],
   ["exchangeLink", "verifyTrackingLink", "/en/orders/" + id],
   ["acceptProposal", "acceptOrderChange", "/en/orders/" + id],
@@ -415,6 +428,15 @@ const expectedPayloads: Record<string, unknown> = {
     quoteId: id,
     guestName: "Customer",
     guestEmail: "customer@example.test",
+  },
+  createManualOrderAction: {
+    staffUserId: "staff-session",
+    customerName: "Manual Customer",
+    customerEmail: "manual@example.test",
+    country: "US",
+    address: "1 Test St",
+    paymentAccountId: id,
+    items: [{ variantId: id, quantity: 1 }],
   },
   recoverOrder: { email: "customer@example.test", referenceCode: "BANK-123" },
   exchangeLink: { recoveryToken: "recovery-token" },
@@ -592,6 +614,9 @@ beforeEach(() => {
   mocks.commands.createOrder.mockResolvedValue({
     id,
     sessionToken: "new-token",
+  });
+  mocks.commands.createManualOrder.mockResolvedValue({
+    referenceCode: "SP-MANUAL",
   });
   mocks.commands.verifyTrackingLink.mockResolvedValue({
     orderId: id,

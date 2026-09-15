@@ -11,7 +11,9 @@ import {
   storeSettings,
   pickupTimeSlots,
   promotionRedemptions,
+  auditRecords,
 } from "@/infrastructure/db/schema";
+import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { generateOrderReferenceCode } from "@/domain/money/reference-code";
 import {
   InvariantViolationError,
@@ -27,6 +29,8 @@ export interface CreateOrderInput {
   guestEmail: string;
   guestName: string;
   requestKey?: string;
+  staffUserId?: string;
+  manualItemCount?: number;
 }
 export async function createOrder(input: CreateOrderInput) {
   const email = v.parse(
@@ -38,6 +42,8 @@ export async function createOrder(input: CreateOrderInput) {
     input.guestName,
   );
   return db.transaction(async (tx) => {
+    if (input.staffUserId)
+      await verifyStaffInTransaction(tx, input.staffUserId, "owner");
     const [settings] = await tx
       .select()
       .from(storeSettings)
@@ -178,6 +184,14 @@ export async function createOrder(input: CreateOrderInput) {
       await emitOrderEvent(tx, order.id, "order.confirmed", email, {
         orderId: order.id,
         purchaseTotalCents: 0,
+      });
+    if (input.staffUserId)
+      await tx.insert(auditRecords).values({
+        entityType: "order",
+        entityId: order.id,
+        actorId: input.staffUserId,
+        action: "manual_order.created",
+        details: { itemCount: input.manualItemCount ?? 0 },
       });
     const session = await issueOrderSession(tx, order.id);
     return {
