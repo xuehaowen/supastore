@@ -272,6 +272,7 @@ test("M2/C1 multiple variants and Chinese product text persist into customer sel
 }) => {
   const handle = "variants-" + Date.now();
   await admin.goto("/admin/products");
+  await admin.getByRole("button", { name: "Add product", exact: true }).click();
   await admin.getByLabel("Title", { exact: true }).fill("Variant CUJ");
   await admin.getByLabel("URL handle", { exact: true }).fill(handle);
   await admin.getByLabel("SKU", { exact: true }).fill(handle + "-a");
@@ -308,9 +309,8 @@ test("M2/C1 multiple variants and Chinese product text persist into customer sel
   await expect(largeRadio).toBeChecked();
   await expect
     .poll(() =>
-      largeRadio.evaluate(
-        (radio: HTMLInputElement) =>
-          new FormData(radio.form!).get("variantId"),
+      largeRadio.evaluate((radio: HTMLInputElement) =>
+        new FormData(radio.form!).get("variantId"),
       ),
     )
     .toBe(large!.id);

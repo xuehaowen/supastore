@@ -14,6 +14,7 @@ import { saveProduct, toggleAvailability } from "@/app/actions";
 import { Field, Hidden, Notice } from "@/app/components";
 import { AdminNav } from "@/app/admin/admin-nav";
 import { CatalogTabs } from "@/app/admin/catalog-tabs";
+import { AdminDialog } from "@/app/admin/admin-dialog";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
@@ -50,10 +51,39 @@ export default async function Products({
       <p className="admin-description">
         Manage your catalog, pricing, and product availability.
       </p>
+      <div className="admin-page-actions">
+        <AdminDialog
+          trigger="Add product"
+          title="Add product"
+          description="Create the product and its first sellable variants."
+        >
+          <form action={saveProduct} className="grid gap-4">
+            <Field name="title" label="Title" />
+            <Field name="handle" label="URL handle" />
+            <label>
+              Description
+              <Textarea name="description" />
+            </label>
+            <Field name="imageKey" label="Image asset key" required={false} />
+            <label>
+              Categories
+              <NativeSelect name="categoryIds" multiple>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </NativeSelect>
+            </label>
+            <VariantFields />
+            <Button type="submit">Publish product</Button>
+          </form>
+        </AdminDialog>
+      </div>
       <CatalogTabs />
       <Notice error={(await searchParams).error} />
-      <div className="admin-grid">
-        <section>
+      <div>
+        <section className="panel">
           <h2>Products & availability</h2>
           <Table>
             <TableHeader>
@@ -115,30 +145,6 @@ export default async function Products({
               })}
             </TableBody>
           </Table>
-        </section>
-        <section className="panel">
-          <h2>Add a product</h2>
-          <form action={saveProduct}>
-            <Field name="title" label="Title" />
-            <Field name="handle" label="URL handle" />
-            <label>
-              Description
-              <Textarea name="description" />
-            </label>
-            <Field name="imageKey" label="Image asset key" required={false} />
-            <label>
-              Categories
-              <NativeSelect name="categoryIds" multiple>
-                {groups.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            </label>
-            <VariantFields />
-            <Button type="submit">Publish product</Button>
-          </form>
         </section>
       </div>
     </main>

@@ -595,6 +595,7 @@ test("M1/M2 setup profile, shipping, pickup, payment toggles and categories pers
   expect(
     (await sql`select id from categories where slug='cuj-category'`).length,
   ).toBe(1);
+  await admin.getByRole("button", { name: "Add product", exact: true }).click();
   await admin.getByRole("button", { name: "Add variant", exact: true }).click();
   const handle = "cuj-multi-" + randomUUID();
   await admin.getByLabel("Title", { exact: true }).fill("CUJ multi variant");
