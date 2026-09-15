@@ -236,7 +236,8 @@ export default async function Admin({
             <TableHeader>
               <TableRow>
                 <TableHead>Order</TableHead>
-                <TableHead>Customer</TableHead>
+                <TableHead>Customer name</TableHead>
+                <TableHead>Email</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Fulfillment</TableHead>
                 <TableHead>Total</TableHead>
@@ -249,12 +250,8 @@ export default async function Admin({
                   <TableCell>
                     <strong>{order.referenceCode}</strong>
                   </TableCell>
-                  <TableCell>
-                    {order.guestName}
-                    <small className="table-secondary">
-                      {order.guestEmail}
-                    </small>
-                  </TableCell>
+                  <TableCell>{order.guestName}</TableCell>
+                  <TableCell>{order.guestEmail}</TableCell>
                   <TableCell>
                     <span
                       className={`status-badge status-${order.lifecycleStatus}`}

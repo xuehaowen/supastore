@@ -398,13 +398,6 @@
   background: var(--muted);
 }
 
-.table-secondary {
-  display: block;
-  margin-top: 0.2rem;
-  color: var(--muted-foreground);
-  font-weight: 400;
-}
-
 .table-actions {
   display: flex;
   justify-content: flex-end;

@@ -59,6 +59,7 @@ export default async function Products({
             <TableHeader>
               <TableRow>
                 <TableHead>Product</TableHead>
+                <TableHead>Handle</TableHead>
                 <TableHead>Variants</TableHead>
                 <TableHead>Price range</TableHead>
                 <TableHead>Status</TableHead>
@@ -75,10 +76,8 @@ export default async function Products({
                   <TableRow key={product.id}>
                     <TableCell>
                       <strong>{product.title}</strong>
-                      <small className="table-secondary">
-                        /{product.handle}
-                      </small>
                     </TableCell>
+                    <TableCell>/{product.handle}</TableCell>
                     <TableCell>{variants.length}</TableCell>
                     <TableCell>
                       {money(Math.min(...prices))}
