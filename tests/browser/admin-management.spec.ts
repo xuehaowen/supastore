@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { randomUUID } from "node:crypto";
-import { checkout, test, expect } from "./fixtures";
+import { checkout, record, test, expect } from "./fixtures";
 
 test("product editor saves existing variants and translations without replacing records", async ({
   admin,
@@ -248,7 +248,8 @@ test("owner creates a manual order from the orders dialog", async ({
   await expect(admin).toHaveURL(/manage=[0-9a-f-]+#order-/);
   await expect(
     admin.locator(
-      "details[open]#order-" + new URL(admin.url()).searchParams.get("manage"),
+      "details[open]#order-payment-" +
+        new URL(admin.url()).searchParams.get("manage"),
     ),
   ).toBeVisible();
   expect(
@@ -283,11 +284,50 @@ test("staff can see submitted payment evidence in the review grid", async ({
   });
   await expect(image).toBeVisible();
   await expect
-    .poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth))
+    .poll(() =>
+      image.evaluate((element: HTMLImageElement) => element.naturalWidth),
+    )
     .toBeGreaterThan(0);
   await expect(
     admin.getByRole("link", {
       name: `Open payment evidence for order ${order.reference_code}`,
     }),
   ).toHaveAttribute("target", "_blank");
+});
+
+test("staff filters the payment ledger and opens payment management", async ({
+  page,
+  admin,
+  sql,
+}) => {
+  const order = await checkout(page, sql);
+  const paymentReference = `PAY-${randomUUID().slice(0, 8)}`;
+  await record(
+    admin,
+    order.reference_code,
+    order.purchase_total_cents,
+    paymentReference,
+  );
+
+  await admin.goto("/admin/payments");
+  await admin.getByLabel("Search payments").fill("CUJ Customer");
+  await admin.getByLabel("Order status").selectOption("unpaid");
+  await admin.getByLabel("Payment type").selectOption("other");
+  await admin.getByRole("button", { name: "Filter", exact: true }).click();
+  await expect(admin).toHaveURL(
+    /paymentQ=CUJ\+Customer.*paymentStatus=unpaid.*paymentType=other/,
+  );
+
+  const row = admin.getByRole("row").filter({ hasText: order.reference_code });
+  await expect(row).toContainText(
+    paymentReference.replace(/[^a-z0-9]/gi, "").toUpperCase(),
+  );
+  await expect(row).toContainText(order.reference_code);
+  await expect(row).toContainText("CUJ Customer");
+  await expect(row).toContainText("other");
+  await row.getByRole("link", { name: "Manage" }).click();
+  await expect(admin).toHaveURL(/managePayment=[0-9a-f-]+#payment-/);
+  await expect(
+    admin.locator(`details#payment-${order.id}[open]`),
+  ).toBeVisible();
 });

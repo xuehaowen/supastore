@@ -117,14 +117,12 @@ export async function record(
   admin: Page,
   reference: string,
   amount: number,
-  bankReference = randomUUID(),
+  bankReference: string = randomUUID(),
 ) {
   const row = await openOrder(admin, reference);
-  const form = row
-    .locator("form")
-    .filter({
-      has: admin.getByRole("button", { name: "Record receipt", exact: true }),
-    });
+  const form = row.locator("form").filter({
+    has: admin.getByRole("button", { name: "Record receipt", exact: true }),
+  });
   await form.getByLabel("Received amount (minor units)").fill(String(amount));
   await form.getByLabel("Actual bank / cash reference").fill(bankReference);
   await form.getByRole("checkbox").check();

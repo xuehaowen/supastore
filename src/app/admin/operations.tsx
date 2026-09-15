@@ -66,6 +66,11 @@ export default async function Admin({
     page?: string;
     created?: string;
     manage?: string;
+    managePayment?: string;
+    paymentQ?: string;
+    paymentStatus?: string;
+    paymentType?: string;
+    paymentPage?: string;
   }>;
   view?: "overview" | "orders" | "payments" | "fulfillment";
 }) {
@@ -79,6 +84,24 @@ export default async function Admin({
   const page = Math.max(
     1,
     Math.min(1000, Number.parseInt(query.page ?? "1", 10) || 1),
+  );
+  const paymentSearch = query.paymentQ?.trim().slice(0, 120) ?? "";
+  const paymentStatus = [
+    "unpaid",
+    "confirmed",
+    "completed",
+    "cancelled",
+  ].includes(query.paymentStatus ?? "")
+    ? query.paymentStatus!
+    : "";
+  const paymentType = ["cash", "zelle", "venmo", "other"].includes(
+    query.paymentType ?? "",
+  )
+    ? query.paymentType!
+    : "";
+  const paymentPage = Math.max(
+    1,
+    Math.min(1000, Number.parseInt(query.paymentPage ?? "1", 10) || 1),
   );
   const staff = await staffIdentity().catch(() =>
     redirect("/admin/login?error=sign-in"),
@@ -118,6 +141,57 @@ export default async function Admin({
         .offset(view === "orders" ? (page - 1) * 50 : 0);
       const accounts = await tx.select().from(paymentAccounts);
       const receipts = await tx.select().from(paymentReceipts);
+      const paymentFilters = [
+        ...(paymentStatus
+          ? [
+              eq(
+                orders.lifecycleStatus,
+                paymentStatus as
+                  "unpaid" | "confirmed" | "completed" | "cancelled",
+              ),
+            ]
+          : []),
+        ...(paymentType
+          ? [
+              eq(
+                paymentAccounts.accountType,
+                paymentType as "cash" | "zelle" | "venmo" | "other",
+              ),
+            ]
+          : []),
+        ...(paymentSearch
+          ? [
+              or(
+                ilike(orders.guestName, `%${paymentSearch}%`),
+                ilike(orders.guestEmail, `%${paymentSearch}%`),
+                ilike(orders.referenceCode, `%${paymentSearch}%`),
+                ilike(
+                  paymentReceipts.normalizedReference,
+                  `%${paymentSearch}%`,
+                ),
+              )!,
+            ]
+          : []),
+      ];
+      const paymentRows =
+        view === "payments"
+          ? await tx
+              .select({
+                receipt: paymentReceipts,
+                order: orders,
+                account: paymentAccounts,
+              })
+              .from(paymentReceipts)
+              .innerJoin(orders, eq(orders.id, paymentReceipts.orderId))
+              .innerJoin(
+                paymentAccounts,
+                eq(paymentAccounts.id, paymentReceipts.paymentAccountId),
+              )
+              .where(paymentFilters.length ? and(...paymentFilters) : undefined)
+              .orderBy(desc(paymentReceipts.createdAt))
+              .limit(51)
+              .offset((paymentPage - 1) * 50)
+          : [];
       const allocations = await tx.select().from(payoutAllocations);
       const attempts = await tx.select().from(payoutAttempts);
       const discrepancies = await tx.select().from(payoutDiscrepancies);
@@ -203,6 +277,7 @@ export default async function Admin({
         rows,
         accounts,
         receipts,
+        paymentRows,
         allocations,
         attempts,
         discrepancies,
@@ -226,6 +301,7 @@ export default async function Admin({
     rows,
     accounts,
     receipts,
+    paymentRows,
     allocations,
     attempts,
     discrepancies,
@@ -455,8 +531,8 @@ export default async function Admin({
                       href={
                         order.lifecycleStatus === "unpaid" ||
                         order.lifecycleStatus === "cancelled"
-                          ? `/admin/orders?manage=${order.id}#order-${order.id}`
-                          : `/admin/fulfillment?manage=${order.id}#order-${order.id}`
+                          ? `/admin/orders?manage=${order.id}#order-payment-${order.id}`
+                          : `/admin/fulfillment?manage=${order.id}#order-fulfillment-${order.id}`
                       }
                     >
                       Manage
@@ -488,31 +564,122 @@ export default async function Admin({
         </section>
       )}
       {view === "payments" && (
-        <section className="panel">
-          <h2>Receipt ledger</h2>
-          {receipts.map((receipt) => (
-            <article className="admin-index-row" key={receipt.id}>
-              <span>
-                <strong>{receipt.normalizedReference}</strong>
-                <small>
-                  {rows.find((order) => order.id === receipt.orderId)
-                    ?.referenceCode ?? receipt.orderId}
-                </small>
-              </span>
-              <span>
-                {money(receipt.amountCents, store?.currency, store?.precision)}
-              </span>
-              <time dateTime={receipt.createdAt.toISOString()}>
-                {receipt.createdAt.toLocaleDateString("en-US", {
-                  timeZone: "UTC",
-                })}
-              </time>
-            </article>
-          ))}
-          {receipts.length === 0 && (
-            <p className="admin-empty">No receipts recorded.</p>
-          )}
-        </section>
+        <>
+          <form method="get" className="admin-filter-bar payment-filter-bar">
+            <label>
+              Search payments
+              <Input
+                name="paymentQ"
+                defaultValue={paymentSearch}
+                placeholder="Customer, order, or reference"
+              />
+            </label>
+            <label>
+              Order status
+              <NativeSelect name="paymentStatus" defaultValue={paymentStatus}>
+                <option value="">All statuses</option>
+                <option value="unpaid">Unpaid</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </NativeSelect>
+            </label>
+            <label>
+              Payment type
+              <NativeSelect name="paymentType" defaultValue={paymentType}>
+                <option value="">All types</option>
+                <option value="cash">Cash</option>
+                <option value="zelle">Zelle</option>
+                <option value="venmo">Venmo</option>
+                <option value="other">Other</option>
+              </NativeSelect>
+            </label>
+            <Button type="submit">Filter</Button>
+          </form>
+          <section className="panel">
+            <h2>Payment ledger</h2>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Payment reference</TableHead>
+                  <TableHead>Order</TableHead>
+                  <TableHead>Customer name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Order status</TableHead>
+                  <TableHead>Payment type</TableHead>
+                  <TableHead>Account</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paymentRows.slice(0, 50).map(({ receipt, order, account }) => (
+                  <TableRow key={receipt.id}>
+                    <TableCell>
+                      <strong>{receipt.normalizedReference}</strong>
+                    </TableCell>
+                    <TableCell>{order.referenceCode}</TableCell>
+                    <TableCell>{order.guestName}</TableCell>
+                    <TableCell>{order.guestEmail}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`status-badge status-${order.lifecycleStatus}`}
+                      >
+                        {order.lifecycleStatus}
+                      </span>
+                    </TableCell>
+                    <TableCell className="capitalize">
+                      {account.accountType}
+                    </TableCell>
+                    <TableCell>{account.accountName}</TableCell>
+                    <TableCell>
+                      {money(
+                        receipt.amountCents,
+                        store?.currency,
+                        store?.precision,
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <time dateTime={receipt.createdAt.toISOString()}>
+                        {receipt.createdAt.toLocaleDateString("en-US", {
+                          timeZone: "UTC",
+                        })}
+                      </time>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <a
+                        className="admin-edit-link"
+                        href={`/admin/payments?paymentQ=${encodeURIComponent(paymentSearch)}&paymentStatus=${paymentStatus}&paymentType=${paymentType}&managePayment=${order.id}#payment-${order.id}`}
+                      >
+                        Manage
+                      </a>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            {paymentRows.length === 0 && (
+              <p className="admin-empty">No payments match these filters.</p>
+            )}
+            <nav className="admin-pagination" aria-label="Payment pages">
+              {paymentPage > 1 && (
+                <a
+                  href={`/admin/payments?paymentQ=${encodeURIComponent(paymentSearch)}&paymentStatus=${paymentStatus}&paymentType=${paymentType}&paymentPage=${paymentPage - 1}`}
+                >
+                  ← Previous
+                </a>
+              )}
+              {paymentRows.length > 50 && (
+                <a
+                  href={`/admin/payments?paymentQ=${encodeURIComponent(paymentSearch)}&paymentStatus=${paymentStatus}&paymentType=${paymentType}&paymentPage=${paymentPage + 1}`}
+                >
+                  Next →
+                </a>
+              )}
+            </nav>
+          </section>
+        </>
       )}
       {view === "overview" && member.role === "owner" && (
         <section className="panel">
@@ -566,7 +733,7 @@ export default async function Admin({
             .map((order) => (
               <details
                 className="panel"
-                id={`order-${order.id}`}
+                id={`order-payment-${order.id}`}
                 key={order.id}
                 open={query.manage === order.id}
               >
@@ -765,9 +932,13 @@ export default async function Admin({
             .map((o) => (
               <details
                 className="panel"
-                id={`order-${o.id}`}
+                id={
+                  view === "payments"
+                    ? `payment-${o.id}`
+                    : `order-fulfillment-${o.id}`
+                }
                 key={o.id}
-                open={query.manage === o.id}
+                open={query.manage === o.id || query.managePayment === o.id}
               >
                 <summary>
                   {o.referenceCode} · {o.guestName} · {o.fulfillmentType}

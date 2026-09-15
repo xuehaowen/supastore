@@ -166,6 +166,9 @@
   border-radius: 0.75rem;
   background: white;
 }
+.payment-filter-bar {
+  grid-template-columns: minmax(15rem, 1fr) repeat(2, minmax(9rem, 0.3fr)) auto;
+}
 .admin-filter-bar label {
   display: grid;
   gap: 0.35rem;
