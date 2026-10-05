@@ -95,6 +95,7 @@ export async function authorizeSurplusReturn(
       order.lifecycleStatus === "completed";
     const projection = computeOrderFinancialProjection({
       purchaseTotalCents: order.purchaseTotalCents,
+      committedCreditCents: order.creditAppliedCents ?? 0,
       isConfirmed,
       isCancelled: order.lifecycleStatus === "cancelled",
       receipts: receipts.map((item) => {

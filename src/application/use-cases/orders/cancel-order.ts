@@ -1,5 +1,9 @@
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
+import { settleOrderStock } from "../inventory/stock-operations";
+import { settleOrderCredit } from "../store-credit/credit-operations";
+import { refundPurchaseInTransaction } from "../store-credit/purchase-refund";
+import { randomUUID } from "node:crypto";
 import {
   orders,
   orderFulfillments,
@@ -9,6 +13,7 @@ import {
   outboxEvents,
   eventDeliveries,
   auditRecords,
+  paymentReceiptCorrections,
 } from "@/infrastructure/db/schema";
 import { acquireTransactionLocks } from "@/domain/locking/lock-order";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
@@ -39,7 +44,7 @@ export interface CancelOrderOutput {
  *   for all received funds across original receipts.
  */
 export async function cancelOrder(
-  input: CancelOrderInput
+  input: CancelOrderInput,
 ): Promise<CancelOrderOutput> {
   if (!input.reason?.trim()) {
     throw new InvariantViolationError("Cancellation reason is required.");
@@ -47,7 +52,11 @@ export async function cancelOrder(
 
   return await db.transaction(async (tx) => {
     // 1. Staff verification
-    const staff = await verifyStaffInTransaction(tx, input.actorUserId, "owner");
+    const staff = await verifyStaffInTransaction(
+      tx,
+      input.actorUserId,
+      "owner",
+    );
 
     // 2. Fetch and lock order
     await acquireTransactionLocks(tx, { orderIds: [input.orderId] });
@@ -64,7 +73,7 @@ export async function cancelOrder(
 
     if (order.lifecycleStatus === "cancelled") {
       throw new InvariantViolationError(
-        `Order '${order.referenceCode}' is already cancelled.`
+        `Order '${order.referenceCode}' is already cancelled.`,
       );
     }
 
@@ -76,14 +85,40 @@ export async function cancelOrder(
 
     if (
       order.lifecycleStatus === "completed" ||
-      (fulfillment && fulfillment.status === "fulfilled")
+      (fulfillment && ["fulfilled", "shipped"].includes(fulfillment.status))
     ) {
       throw new InvariantViolationError(
-        `Cannot cancel order '${order.referenceCode}' because fulfillment has already completed.`
+        `Cannot cancel order '${order.referenceCode}' because fulfillment has already completed.`,
       );
     }
 
     const previousLifecycleStatus = order.lifecycleStatus;
+    await settleOrderStock(tx, order.id, "released", staff.userId);
+    let creditRefundAuthorization: string | undefined;
+    let mixedRefundAmount = 0;
+    if (order.creditAppliedCents) {
+      if (previousLifecycleStatus === "unpaid")
+        await settleOrderCredit(tx, order.id, "released", staff.userId);
+      else {
+        const previousRefunds = await tx
+          .select()
+          .from(refundAuthorizations)
+          .where(eq(refundAuthorizations.orderId, order.id));
+        mixedRefundAmount =
+          order.purchaseTotalCents -
+          previousRefunds
+            .filter((a) => a.kind === "purchase_refund")
+            .reduce((sum, a) => sum + a.amountCents, 0);
+        if (mixedRefundAmount > 0)
+          creditRefundAuthorization = await refundPurchaseInTransaction(tx, {
+            orderId: order.id,
+            amountCents: mixedRefundAmount,
+            reason: input.reason,
+            ownerUserId: staff.userId,
+            requestKey: randomUUID(),
+          });
+      }
+    }
 
     // Fetch and lock all receipts for this order
     const receipts = await tx
@@ -106,8 +141,10 @@ export async function cancelOrder(
       })
       .where(eq(orders.id, order.id));
 
-    let refundAuthorizedCents = 0;
-    const authorizationIds: string[] = [];
+    let refundAuthorizedCents = mixedRefundAmount;
+    const authorizationIds: string[] = creditRefundAuthorization
+      ? [creditRefundAuthorization]
+      : [];
 
     // 4. If funds were previously received on this order, authorize refund
     if (receipts.length > 0) {
@@ -120,11 +157,19 @@ export async function cancelOrder(
 
         const totalAlreadyAuthorized = existingAllocations.reduce(
           (sum, a) => sum + a.authorizedAmountCents,
-          0
+          0,
         );
+        const corrections = order.creditAppliedCents
+          ? await tx
+              .select()
+              .from(paymentReceiptCorrections)
+              .where(eq(paymentReceiptCorrections.receiptId, receipt.id))
+          : [];
         const availableCapacity = Math.max(
           0,
-          receipt.amountCents - totalAlreadyAuthorized
+          receipt.amountCents +
+            corrections.reduce((sum, c) => sum + c.deltaAmountCents, 0) -
+            totalAlreadyAuthorized,
         );
 
         if (availableCapacity > 0) {
@@ -166,7 +211,7 @@ export async function cancelOrder(
               })
               .from(outboxEvents)
               .where(eq(outboxEvents.aggregateId, order.id))
-          )[0]!.value
+          )[0]!.value,
         ),
         payload: {
           orderId: order.id,
