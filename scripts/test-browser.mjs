@@ -17,6 +17,8 @@ const pg = new EmbeddedPostgres({
   onError: console.error,
 });
 const database = "supastore_cuj_" + Date.now();
+const production = process.argv.includes("--production");
+const testArguments = process.argv.slice(2).filter((argument) => argument !== "--production");
 const env = {
   ...process.env,
   NEXT_DIST_DIR: ".next-cuj/" + database,
@@ -42,7 +44,7 @@ const env = {
   SMTP_FROM: "synthetic@example.test",
   SMTP_USER: "",
   SMTP_PASSWORD: "",
-  NODE_ENV: "development",
+  NODE_ENV: production ? "production" : "development",
 };
 const children = [];
 function completed(child) {
@@ -191,9 +193,11 @@ try {
     start(["node_modules/tsx/dist/cli.mjs", "scripts/seed-demo.ts"]),
   );
   start(["scripts/test-storage.mjs"]);
+  if (production)
+    await completed(start(["node_modules/next/dist/bin/next", "build"]));
   const server = start([
     "node_modules/next/dist/bin/next",
-    "dev",
+    production ? "start" : "dev",
     "--port",
     "3100",
   ]);
@@ -202,7 +206,7 @@ try {
     start([
       "node_modules/@playwright/test/cli.js",
       "test",
-      ...process.argv.slice(2),
+      ...testArguments,
     ]),
   );
 } catch (error) {

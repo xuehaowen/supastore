@@ -1,6 +1,6 @@
 # SupaStore
 
-A self-hosted, full-stack commerce engine for independent merchants who manage availability manually and collect bank/manual payments before preparing orders. Storefront, merchant admin, outbox worker, and APIs run in a unified, lean deployment.
+A self-hosted commerce application for independent merchants, with catalog options, collections, stock tracking, customer accounts, store credit, manual payments, refunds, and physical returns. Storefront, merchant admin, outbox worker, and APIs share one deployment.
 
 Licensed under MIT.
 
@@ -8,7 +8,7 @@ Licensed under MIT.
 
 ## Key Highlights
 
-- **Lean Production Runtime:** Node.js 22 Alpine multi-stage Docker container (<80MB image, <256MB–512MB RAM ceiling).
+- **Lean Production Runtime:** One Next.js application with PostgreSQL, S3-compatible storage, and SMTP. Container size and memory budgets require representative load measurement; they are not guaranteed limits. See [commerce release evidence](docs/commerce-release-evidence.md).
 - **Zero-External-Cache Architecture:** Redis-free architecture using PostgreSQL session management, row-level locks (`SELECT ... FOR UPDATE SKIP LOCKED`), and in-memory LRU token buckets.
 - **Transactional Outbox Worker:** Reliable asynchronous email notification worker with durable delivery leases and bounded exponential backoff (1m, 5m, 15m, 1h, 6h $\to$ exhausted).
 - **Exact Financial Invariants:** Integer minor-unit arithmetic, canonical financial projections, audited receipt corrections, and component-level payout discrepancies.
@@ -54,7 +54,7 @@ pnpm dev
 - Admin Portal: [http://localhost:3000/admin](http://localhost:3000/admin)
 - Health Check: [http://localhost:3000/api/health/ready](http://localhost:3000/api/health/ready)
 
-Customers check out as guests and access their orders through private links; customer account registration is not implemented. The admin login is sign-in only, and public registration requests are blocked. The demo seed provisions its owner through trusted server-side tooling.
+Customers can check out as guests using private order links or register and verify an account. Verified accounts have an address book, owned order history, and store credit. Claiming a guest order requires its private access proof; matching an email address does not transfer ownership. The admin login is sign-in only; trusted server-side tooling provisions the owner.
 
 For verification emails, configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, and `SMTP_FROM` in `.env`. Port 465 automatically uses implicit TLS; port 587 uses STARTTLS. `SMTP_SECURE` can override this for local development. Verification goes to the signed-in owner’s email address. A successful send means the SMTP server accepted it; check that inbox and its spam folder. Docker Compose reads the SMTP credentials from the environment.
 

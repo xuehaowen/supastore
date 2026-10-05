@@ -89,6 +89,16 @@ Cross-attempt examples: (1) A $50 authorization with a $30 claim actually paid a
 
 ## Required executable examples
 
+### Lightweight commerce extensions
+
+Customer ownership is a stable customer UUID linked uniquely to a verified Better Auth user. New authenticated orders attach that UUID from the server session. Historical guest orders can only be claimed under the order lock with both a verified customer session and the existing unexpired, unrevoked tracking proof. Matching an email never conveys ownership. Address-book records are customer-scoped; checkout stores a separate immutable address snapshot.
+
+Stock uses one pool per variant. Existing variants remain untracked until an owner records a counted balance. Placement locks sorted variants and reserves all tracked quantities atomically. Confirmation keeps reservations; physical handoff consumes them once. Cancellation releases only active reservations. Manual payment deadlines create a review queue and never release stock merely because time elapsed. Downward counts below reserved quantities create a visible shortage and block handoff.
+
+Lock ranks for the extensions: store gate → cart → order → catalog products and variant stock → customer/credit accounts → case/upload records → payment accounts and receipts → refund allocations and payout attempts. Promotion locks remain inside quote calculation while the placement store gate serializes ordering and catalog/promotion mutations. Helpers called after receipt locks must not acquire stock/credit locks.
+
+Credit is typed funding, not a discount or a synthetic receipt. Purchase totals and immutable quote terms remain unchanged. An active credit hold reduces only external due; confirmation captures it exactly once and freezes funding sources. Cancellation of unpaid orders releases holds; captured credit refunds use capped source allocations and compensating ledger entries. External surplus and late transfers retain original-source return rules. Currency and precision changes share the first-credit/first-order store gate. Provider and notification network calls occur outside these transactions.
+
 | Scenario | Expected result |
 | --- | --- |
 | $40 order submission response lost | Retry recovers one unpaid order; no second payment request |
