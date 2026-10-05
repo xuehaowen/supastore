@@ -1,13 +1,14 @@
-import { and, eq, isNull, lt, sql } from 'drizzle-orm';
-import { db } from '@/infrastructure/db';
+import { and, eq, isNull, lt, sql } from "drizzle-orm";
+import { db } from "@/infrastructure/db";
 import {
   carts,
   cartItems,
   eventDeliveries,
   guestOrderSessions,
-} from '@/infrastructure/db/schema';
-import { cleanupUploads } from '@/application/use-cases/uploads/cleanup-uploads';
-import { logger } from '@/infrastructure/security/logger';
+} from "@/infrastructure/db/schema";
+import { cleanupUploads } from "@/application/use-cases/uploads/cleanup-uploads";
+import { logger } from "@/infrastructure/security/logger";
+import { cleanupCatalogMedia } from "@/application/use-cases/catalog/cleanup-catalog-media";
 
 export interface HousekeepingReport {
   purgedCartsCount: number;
@@ -20,7 +21,9 @@ export interface HousekeepingReport {
  * Purges unconverted carts older than retentionDays (default 30 days) and cascades cart items.
  * Strictly preserves converted carts (where convertedOrderId IS NOT NULL).
  */
-export async function purgeUnconvertedCarts(retentionDays = 30): Promise<number> {
+export async function purgeUnconvertedCarts(
+  retentionDays = 30,
+): Promise<number> {
   const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
 
   // Find candidate unconverted cart IDs older than cutoff
@@ -45,7 +48,9 @@ export async function purgeUnconvertedCarts(retentionDays = 30): Promise<number>
 /**
  * Revokes/cleans up expired guest order tracking sessions older than retentionDays (default 30 days).
  */
-export async function purgeExpiredGuestSessions(retentionDays = 30): Promise<number> {
+export async function purgeExpiredGuestSessions(
+  retentionDays = 30,
+): Promise<number> {
   const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
 
   const result = await db
@@ -65,7 +70,12 @@ export async function pruneOldDeliveries(retentionDays = 30): Promise<number> {
 
   const result = await db
     .delete(eventDeliveries)
-    .where(and(eq(eventDeliveries.status, 'delivered'), lt(eventDeliveries.updatedAt, cutoff)))
+    .where(
+      and(
+        eq(eventDeliveries.status, "delivered"),
+        lt(eventDeliveries.updatedAt, cutoff),
+      ),
+    )
     .returning({ id: eventDeliveries.id });
 
   return result.length;
@@ -83,8 +93,9 @@ export async function runDailyHousekeeping(): Promise<HousekeepingReport> {
   // Clean up expired upload intents (>24h) and orphan candidate files
   try {
     await cleanupUploads();
+    await cleanupCatalogMedia();
   } catch (err) {
-    logger.error('Housekeeping: cleanupUploads encountered an error.', err);
+    logger.error("Housekeeping: cleanupUploads encountered an error.", err);
   }
 
   return {

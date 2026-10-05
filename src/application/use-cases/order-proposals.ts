@@ -33,6 +33,10 @@ export async function proposeOrderChange(input: {
       .for("update");
     if (!order || order.lifecycleStatus !== "unpaid")
       throw new InvariantViolationError("Only unpaid orders can be changed.");
+    if (order.creditAppliedCents)
+      throw new InvariantViolationError(
+        "An order with reserved store credit cannot be repriced. Cancel and review a new checkout instead.",
+      );
     const receipts = await tx
       .select()
       .from(paymentReceipts)
@@ -74,16 +78,14 @@ export async function proposeOrderChange(input: {
         actorId: input.staffUserId,
       })
       .returning();
-    await tx
-      .insert(auditRecords)
-      .values({
-        entityType: "order",
-        entityId: order.id,
-        actorId: input.staffUserId,
-        action: "order.change_proposed",
-        reason: input.reason,
-        details: { proposalId: proposal!.id },
-      });
+    await tx.insert(auditRecords).values({
+      entityType: "order",
+      entityId: order.id,
+      actorId: input.staffUserId,
+      action: "order.change_proposed",
+      reason: input.reason,
+      details: { proposalId: proposal!.id },
+    });
     await emitOrderEvent(
       tx,
       order.id,
@@ -124,6 +126,10 @@ export async function acceptOrderChange(input: {
       proposal.baseRevision !== order.financialRevision
     )
       throw new InvariantViolationError("These terms are no longer available.");
+    if (order.creditAppliedCents)
+      throw new InvariantViolationError(
+        "Reserved store credit blocks changed terms.",
+      );
     if (
       (
         await tx
@@ -168,19 +174,17 @@ export async function acceptOrderChange(input: {
       .set({ status: "accepted", resolvedAt: new Date() })
       .where(eq(orderProposals.id, proposal.id))
       .returning();
-    await tx
-      .insert(auditRecords)
-      .values({
-        entityType: "order",
-        entityId: order.id,
-        actorId: "guest:" + order.id,
-        action: "order.change_accepted",
-        details: {
-          proposalId: proposal.id,
-          previousTotalCents: proposal.previousTotalCents,
-          totalCents: proposal.proposedTotalCents,
-        },
-      });
+    await tx.insert(auditRecords).values({
+      entityType: "order",
+      entityId: order.id,
+      actorId: "guest:" + order.id,
+      action: "order.change_accepted",
+      details: {
+        proposalId: proposal.id,
+        previousTotalCents: proposal.previousTotalCents,
+        totalCents: proposal.proposedTotalCents,
+      },
+    });
     await emitOrderEvent(
       tx,
       order.id,

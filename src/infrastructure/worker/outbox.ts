@@ -1,9 +1,9 @@
-import crypto from 'node:crypto';
-import { sql, eq } from 'drizzle-orm';
-import { db } from '@/infrastructure/db';
-import { eventDeliveries, outboxEvents } from '@/infrastructure/db/schema';
-import type { NotificationAdapter } from '@/infrastructure/notifications/adapter';
-import { mockEmailAdapter } from '@/infrastructure/notifications/mock';
+import crypto from "node:crypto";
+import { sql, eq } from "drizzle-orm";
+import { db } from "@/infrastructure/db";
+import { eventDeliveries, outboxEvents } from "@/infrastructure/db/schema";
+import type { NotificationAdapter } from "@/infrastructure/notifications/adapter";
+import { mockEmailAdapter } from "@/infrastructure/notifications/mock";
 
 export interface ProcessOutboxOptions {
   batchSize?: number;
@@ -16,24 +16,27 @@ export interface ProcessOutboxOptions {
  * then terminal 'exhausted' status.
  */
 export const RETRY_DELAYS_MS = [
-  60_000,      // 1m (after 1st failed attempt)
-  300_000,     // 5m (after 2nd failed attempt)
-  900_000,     // 15m (after 3rd failed attempt)
-  3_600_000,   // 1h (after 4th failed attempt)
-  21_600_000,  // 6h (after 5th failed attempt)
+  60_000, // 1m (after 1st failed attempt)
+  300_000, // 5m (after 2nd failed attempt)
+  900_000, // 15m (after 3rd failed attempt)
+  3_600_000, // 1h (after 4th failed attempt)
+  21_600_000, // 6h (after 5th failed attempt)
 ];
 
 export const MAX_DELIVERY_ATTEMPTS = 6; // 1 initial attempt + 5 retries
 
-export function getNextRetryInfo(currentAttempts: number, now = Date.now()): {
-  status: 'retrying' | 'exhausted';
+export function getNextRetryInfo(
+  currentAttempts: number,
+  now = Date.now(),
+): {
+  status: "retrying" | "exhausted";
   attempts: number;
   retryAfter: Date;
 } {
   const nextAttempts = currentAttempts + 1;
   if (nextAttempts >= MAX_DELIVERY_ATTEMPTS) {
     return {
-      status: 'exhausted',
+      status: "exhausted",
       attempts: nextAttempts,
       retryAfter: new Date(now),
     };
@@ -41,7 +44,7 @@ export function getNextRetryInfo(currentAttempts: number, now = Date.now()): {
 
   const delayMs = RETRY_DELAYS_MS[nextAttempts - 1] ?? 21_600_000;
   return {
-    status: 'retrying',
+    status: "retrying",
     attempts: nextAttempts,
     retryAfter: new Date(now + delayMs),
   };
@@ -50,9 +53,11 @@ export function getNextRetryInfo(currentAttempts: number, now = Date.now()): {
 /**
  * Process a single batch of pending/retrying event deliveries using SELECT ... FOR UPDATE SKIP LOCKED.
  */
-export async function processOutboxBatch(options: ProcessOutboxOptions = {}): Promise<number> {
+export async function processOutboxBatch(
+  options: ProcessOutboxOptions = {},
+): Promise<number> {
   // Check if outbound delivery is disabled (e.g. during disaster recovery cold restore)
-  if (process.env.DISABLE_OUTBOUND_DELIVERY === 'true') {
+  if (process.env.DISABLE_OUTBOUND_DELIVERY === "true") {
     return 0;
   }
 
@@ -104,7 +109,9 @@ export async function processOutboxBatch(options: ProcessOutboxOptions = {}): Pr
     try {
       const result = await adapter.sendEmail({
         recipient: item.recipient,
-        subject: `Notification: ${item.event_type}`,
+        subject: item.event_type.startsWith("return.")
+          ? `Product return update · ${item.payload.referenceCode || "your order"}`
+          : `Notification: ${item.event_type}`,
         template: item.event_type,
         data: item.payload,
       });
@@ -114,7 +121,7 @@ export async function processOutboxBatch(options: ProcessOutboxOptions = {}): Pr
         await db
           .update(eventDeliveries)
           .set({
-            status: 'delivered',
+            status: "delivered",
             leaseToken: null,
             leaseExpiresAt: null,
             attempts: item.attempts + 1,

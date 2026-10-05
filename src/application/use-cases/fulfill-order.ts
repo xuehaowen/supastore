@@ -1,5 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
+import { settleOrderStock } from "./inventory/stock-operations";
 import {
   orders,
   orderFulfillments,
@@ -23,7 +24,9 @@ export interface FulfillOrderInput {
 
 export async function fulfillOrder(input: FulfillOrderInput) {
   if (!input.carrier?.trim()) {
-    throw new InvariantViolationError("Carrier or manual delivery method is required.");
+    throw new InvariantViolationError(
+      "Carrier or manual delivery method is required.",
+    );
   }
   const carrier = input.carrier.trim();
   return await db.transaction(async (tx) => {
@@ -49,6 +52,7 @@ export async function fulfillOrder(input: FulfillOrderInput) {
     }
 
     // Update fulfillment record
+    await settleOrderStock(tx, order.id, "consumed", staff.userId);
     await tx
       .update(orderFulfillments)
       .set({

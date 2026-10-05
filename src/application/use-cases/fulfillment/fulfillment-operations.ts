@@ -1,5 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
+import { settleOrderStock } from "../inventory/stock-operations";
 import {
   orders,
   orderFulfillments,
@@ -60,7 +61,9 @@ export async function correctFulfillment(input: CorrectFulfillmentInput) {
     }
 
     if (order.lifecycleStatus === "cancelled") {
-      throw new InvariantViolationError("Cannot correct fulfillment on a cancelled order.");
+      throw new InvariantViolationError(
+        "Cannot correct fulfillment on a cancelled order.",
+      );
     }
 
     const [fulfillment] = await tx
@@ -70,7 +73,9 @@ export async function correctFulfillment(input: CorrectFulfillmentInput) {
       .limit(1);
 
     if (!fulfillment) {
-      throw new NotFoundError(`Fulfillment record not found for order '${order.id}'.`);
+      throw new NotFoundError(
+        `Fulfillment record not found for order '${order.id}'.`,
+      );
     }
 
     // Update shipping address if provided
@@ -113,7 +118,7 @@ export async function correctFulfillment(input: CorrectFulfillmentInput) {
               })
               .from(outboxEvents)
               .where(eq(outboxEvents.aggregateId, order.id))
-          )[0]!.value
+          )[0]!.value,
         ),
         payload: {
           orderId: order.id,
@@ -170,7 +175,7 @@ export async function markReadyForPickup(input: MarkReadyForPickupInput) {
 
     if (order.lifecycleStatus !== "confirmed") {
       throw new InvariantViolationError(
-        `Order must be confirmed before marking ready for pickup. Status: ${order.lifecycleStatus}`
+        `Order must be confirmed before marking ready for pickup. Status: ${order.lifecycleStatus}`,
       );
     }
 
@@ -198,7 +203,7 @@ export async function markReadyForPickup(input: MarkReadyForPickupInput) {
               })
               .from(outboxEvents)
               .where(eq(outboxEvents.aggregateId, order.id))
-          )[0]!.value
+          )[0]!.value,
         ),
         payload: {
           orderId: order.id,
@@ -237,8 +242,12 @@ export async function completePickupHandoff(input: CompletePickupHandoffInput) {
   if (!input.handoffActor?.trim()) {
     throw new InvariantViolationError("Handoff actor identity is required.");
   }
-  if (!['scoped_order_page', 'owner_assisted'].includes(input.verificationMethod)) {
-    throw new InvariantViolationError("A valid pickup verification method is required.");
+  if (
+    !["scoped_order_page", "owner_assisted"].includes(input.verificationMethod)
+  ) {
+    throw new InvariantViolationError(
+      "A valid pickup verification method is required.",
+    );
   }
 
   return await db.transaction(async (tx) => {
@@ -256,7 +265,7 @@ export async function completePickupHandoff(input: CompletePickupHandoffInput) {
 
     if (order.lifecycleStatus !== "confirmed") {
       throw new InvariantViolationError(
-        `Order must be in confirmed status for pickup handoff. Current: ${order.lifecycleStatus}`
+        `Order must be in confirmed status for pickup handoff. Current: ${order.lifecycleStatus}`,
       );
     }
 
@@ -266,10 +275,13 @@ export async function completePickupHandoff(input: CompletePickupHandoffInput) {
       .where(eq(orderFulfillments.orderId, order.id))
       .limit(1);
     if (fulfillment?.status !== "ready_for_pickup") {
-      throw new InvariantViolationError("Pickup must be marked ready before handoff.");
+      throw new InvariantViolationError(
+        "Pickup must be marked ready before handoff.",
+      );
     }
 
     const handoffAt = new Date();
+    await settleOrderStock(tx, order.id, "consumed", staff.userId);
 
     const [updatedFulfillment] = await tx
       .update(orderFulfillments)
@@ -306,7 +318,7 @@ export async function completePickupHandoff(input: CompletePickupHandoffInput) {
               })
               .from(outboxEvents)
               .where(eq(outboxEvents.aggregateId, order.id))
-          )[0]!.value
+          )[0]!.value,
         ),
         payload: {
           orderId: order.id,

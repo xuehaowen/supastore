@@ -20,6 +20,7 @@ export const smtpAdapter: NotificationAdapter = {
     });
     const data = payload.data;
     const lines = [payload.subject];
+    if (typeof data.message === "string") lines.push(data.message);
     for (const key of [
       "referenceCode",
       "purchaseTotalCents",

@@ -70,6 +70,7 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
     return {
       variantId: variant.id,
       sku: variant.sku,
+      options: variant.attributes,
       title: row.products.title + " — " + variant.title,
       catalogVersion: row.products.quoteVersion,
       quantity: item.quantity,
@@ -182,7 +183,7 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
       result.totalPayableCents - (promotion?.discountCents ?? 0),
   };
   let payment: { id: string; name: string; instructions: string } | null = null;
-  if (discountedResult.totalPayableCents > 0) {
+  if (discountedResult.totalPayableCents > 0 && input.paymentAccountId) {
     const [account] = await tx
       .select()
       .from(paymentAccounts)

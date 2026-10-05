@@ -1,5 +1,6 @@
 import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
+import { settleOrderCredit } from "./store-credit/credit-operations";
 import {
   orders,
   paymentReceipts,
@@ -48,6 +49,10 @@ export async function confirmOrder(input: ConfirmOrderInput) {
       );
     }
 
+    // Capture under the credit lock before acquiring later-ranked receipt locks.
+    // Any failed funding check rolls this transaction back, including the debit.
+    if (order.creditAppliedCents)
+      await settleOrderCredit(tx, order.id, "captured", staff.userId);
     // Fetch receipts and lock them
     const receipts = await tx
       .select()
@@ -137,16 +142,19 @@ export async function confirmOrder(input: ConfirmOrderInput) {
     });
     const projection = computeOrderFinancialProjection({
       purchaseTotalCents: order.purchaseTotalCents,
+      committedCreditCents: order.creditAppliedCents ?? 0,
       isConfirmed: false,
       isCancelled: false,
       receipts: financialReceipts,
     });
 
-    if (projection.netReceivedCents !== order.purchaseTotalCents) {
+    const externalDue =
+      order.purchaseTotalCents - (order.creditAppliedCents ?? 0);
+    if (projection.netReceivedCents !== externalDue) {
       throw new InvariantViolationError(
-        projection.netReceivedCents > order.purchaseTotalCents
+        projection.netReceivedCents > externalDue
           ? "Order is overfunded. Return the surplus before confirmation."
-          : `Order is underfunded. Required: ${order.purchaseTotalCents} cents, Net Received: ${projection.netReceivedCents} cents.`,
+          : `Order is underfunded. External required: ${externalDue} cents, Net Received: ${projection.netReceivedCents} cents.`,
       );
     }
 
@@ -157,7 +165,7 @@ export async function confirmOrder(input: ConfirmOrderInput) {
     }
 
     // Freeze confirmation funding (Fi)
-    let remainingToFund = order.purchaseTotalCents;
+    let remainingToFund = externalDue;
     for (const r of financialReceipts) {
       const fundAmount = Math.min(
         Math.max(

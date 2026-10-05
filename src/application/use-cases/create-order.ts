@@ -23,6 +23,13 @@ import { emitOrderEvent } from "@/application/common/events";
 import { issueOrderSession } from "./guest/create-guest-session";
 import { calculateQuote, type QuoteTerms } from "./get-quote";
 import { getLaunchReadiness } from "./store/get-launch-readiness";
+import { verifiedCustomer } from "./customers/customer-ownership";
+import { reserveOrderStock } from "./inventory/stock-operations";
+import {
+  reserveOrderCredit,
+  settleOrderCredit,
+} from "./store-credit/credit-operations";
+import { parseActionInteger } from "@/application/common/request-validation";
 export interface CreateOrderInput {
   quoteId: string;
   guestSessionId: string;
@@ -31,6 +38,8 @@ export interface CreateOrderInput {
   requestKey?: string;
   staffUserId?: string;
   manualItemCount?: number;
+  customerUserId?: string;
+  creditAppliedCents?: number;
 }
 export async function createOrder(input: CreateOrderInput) {
   const email = v.parse(
@@ -77,6 +86,16 @@ export async function createOrder(input: CreateOrderInput) {
         isExisting: true,
       };
     }
+    const creditAppliedCents = parseActionInteger(
+      input.creditAppliedCents ?? 0,
+      "Store credit",
+      0,
+      quote.totalPayableCents,
+    );
+    if (creditAppliedCents && (!input.customerUserId || input.staffUserId))
+      throw new UnauthorizedError(
+        "Store credit requires a verified customer checkout.",
+      );
     if (!settings || settings.isPaused || !settings.isOrderingEnabled)
       throw new InvariantViolationError(
         settings?.pauseMessage ?? "Store is currently paused.",
@@ -86,7 +105,11 @@ export async function createOrder(input: CreateOrderInput) {
     if (
       readiness.checklist.some(
         (c) =>
-          !c.isReady && !(c.key === "payment" && quote.totalPayableCents === 0),
+          !c.isReady &&
+          !(
+            c.key === "payment" &&
+            quote.totalPayableCents === creditAppliedCents
+          ),
       )
     )
       throw new InvariantViolationError(
@@ -97,6 +120,10 @@ export async function createOrder(input: CreateOrderInput) {
         "Your checkout changed or expired. Review the final total again before ordering.",
       );
     const terms = quote.termsSnapshot as QuoteTerms;
+    if (quote.totalPayableCents > creditAppliedCents && !terms.payment)
+      throw new InvariantViolationError(
+        "Choose a payment method for the amount remaining after store credit. Edit checkout and review again.",
+      );
     const current = await calculateQuote(tx, {
       cartId: cart.id,
       guestSessionId: input.guestSessionId,
@@ -111,6 +138,9 @@ export async function createOrder(input: CreateOrderInput) {
         "Prices or fulfillment terms changed. Review the final total again before ordering.",
       );
     let order: typeof orders.$inferSelect | undefined;
+    const customer = input.customerUserId
+      ? await verifiedCustomer(tx, input.customerUserId)
+      : undefined;
     for (let attempt = 0; attempt < 10 && !order; attempt++) {
       [order] = await tx
         .insert(orders)
@@ -119,11 +149,15 @@ export async function createOrder(input: CreateOrderInput) {
           referenceCode: generateOrderReferenceCode("SP"),
           quoteId: quote.id,
           lifecycleStatus:
-            quote.totalPayableCents === 0 ? "confirmed" : "unpaid",
+            quote.totalPayableCents === creditAppliedCents
+              ? "confirmed"
+              : "unpaid",
+          creditAppliedCents,
           purchaseTotalCents: quote.totalPayableCents,
           discountCents: quote.discountCents,
           guestEmail: email,
           guestName: name,
+          customerId: customer?.id ?? null,
           fulfillmentType: terms.fulfillmentType,
           shippingAddressSnapshot: terms.shippingAddress,
           termsSnapshot: terms,
@@ -142,8 +176,28 @@ export async function createOrder(input: CreateOrderInput) {
         quantity: i.quantity,
         unitPriceCents: i.unitPriceCents,
         lineTotalCents: i.unitPriceCents * i.quantity,
+        catalogSnapshot: { title: i.title, sku: i.sku, options: i.options },
       })),
     );
+    // All tracked items reserve atomically with the order. Quote/cart never hold stock.
+    await reserveOrderStock(tx, order.id);
+    if (creditAppliedCents) {
+      await reserveOrderCredit(
+        tx,
+        order.id,
+        customer!.id,
+        creditAppliedCents,
+        terms.currency,
+        terms.precision,
+      );
+      if (quote.totalPayableCents === creditAppliedCents)
+        await settleOrderCredit(
+          tx,
+          order.id,
+          "captured",
+          input.customerUserId!,
+        );
+    }
     if (terms.promotion)
       await tx.insert(promotionRedemptions).values({
         promotionId: terms.promotion.id,
@@ -180,10 +234,10 @@ export async function createOrder(input: CreateOrderInput) {
       referenceCode: order.referenceCode,
       purchaseTotalCents: order.purchaseTotalCents,
     });
-    if (quote.totalPayableCents === 0)
+    if (quote.totalPayableCents === creditAppliedCents)
       await emitOrderEvent(tx, order.id, "order.confirmed", email, {
         orderId: order.id,
-        purchaseTotalCents: 0,
+        purchaseTotalCents: quote.totalPayableCents,
       });
     if (input.staffUserId)
       await tx.insert(auditRecords).values({
