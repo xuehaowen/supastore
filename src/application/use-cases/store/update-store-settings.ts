@@ -4,6 +4,7 @@ import { db } from "@/infrastructure/db";
 import {
   storeSettings,
   orders,
+  storeCreditEntries,
   auditRecords,
 } from "@/infrastructure/db/schema";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
@@ -54,6 +55,17 @@ export async function updateStoreSettings(input: UpdateStoreSettingsInput) {
       (parsed.precision !== undefined &&
         parsed.precision !== settings.precision)
     ) {
+      if (
+        (
+          await tx
+            .select({ id: storeCreditEntries.id })
+            .from(storeCreditEntries)
+            .limit(1)
+        ).length
+      )
+        throw new InvariantViolationError(
+          "Currency and precision cannot change after the first store credit entry.",
+        );
       if ((await tx.select({ id: orders.id }).from(orders).limit(1)).length)
         throw new InvariantViolationError(
           "Currency cannot change after the first order.",

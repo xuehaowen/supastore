@@ -757,6 +757,25 @@ export default async function Admin({
                     )}
                   </summary>
                   <p>{order.guestEmail}</p>
+                  <p>
+                    <a href={`/admin/orders/${order.id}`}>Full order details</a>
+                  </p>
+                  {order.creditAppliedCents > 0 && (
+                    <p>
+                      Credit applied:{" "}
+                      {money(
+                        order.creditAppliedCents,
+                        store?.currency,
+                        store?.precision,
+                      )}{" "}
+                      · External total:{" "}
+                      {money(
+                        order.purchaseTotalCents - order.creditAppliedCents,
+                        store?.currency,
+                        store?.precision,
+                      )}
+                    </p>
+                  )}
                   {order.lifecycleStatus === "cancelled" && (
                     <p>
                       Cancelled — record late payments for return. Recording a

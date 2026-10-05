@@ -106,6 +106,22 @@ export async function uploadEvidence(orderId: string, file: Blob): Promise<Uploa
 }
 
 export async function importProductsCsv(file: File): Promise<ProductImportResult> {
+  const { parseProductCsv, serializeProductCsv } = await import("@/domain/catalog/product-csv");
+  const parsed = await file.text().then(parseProductCsv);
+  if (!parsed.errors.length && parsed.rows.length > 100) {
+    const groups = new Map<string, typeof parsed.rows>();
+    for (const row of parsed.rows) { const group = groups.get(row.handle) || []; group.push(row); groups.set(row.handle, group); }
+    const batches: (typeof parsed.rows)[] = [];
+    let batch: typeof parsed.rows = [];
+    for (const group of groups.values()) { if (group.length > 50) throw new Error("A product supports up to 50 variant rows. Split the file by product and correct its options."); if (batch.length + group.length > 100) { batches.push(batch); batch = []; } batch.push(...group); }
+    if (batch.length) batches.push(batch);
+    let created = 0, updated = 0;
+    for (const [index, rows] of batches.entries()) {
+      try { const result = await importProductsCsv(new File([serializeProductCsv(rows)], `batch-${index + 1}.csv`, { type: "text/csv" })); created += result.created || 0; updated += result.updated || 0; }
+      catch(error) { throw new Error(`Batch ${index + 1} failed after ${created} created and ${updated} updated variants. Earlier batches are saved. Retry the same file to resume by SKU. ${error instanceof Error ? error.message : "Import failed."}`); }
+    }
+    return { success: true, created, updated };
+  }
   const formData = new FormData();
   formData.append("file", file);
   const response = await fetch("/api/admin/imports/products", {

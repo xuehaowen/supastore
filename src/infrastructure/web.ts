@@ -29,6 +29,10 @@ export async function staffIdentity() {
   if (!session) throw new UnauthorizedError("Sign in to continue.");
   return session.user.id;
 }
+export async function customerIdentity() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  return session?.user.emailVerified ? session.user.id : "";
+}
 export async function orderToken(id: string) {
   return (await cookies()).get("shop-order-" + id)?.value ?? "";
 }

@@ -25,9 +25,12 @@ const links = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
   { href: "/admin/orders", label: "Orders", icon: ClipboardList },
   { href: "/admin/payments", label: "Payments", icon: CreditCard },
+  { href: "/admin/store-credit", label: "Store credit", icon: CreditCard },
   { href: "/admin/products", label: "Products", icon: Box },
+  { href: "/admin/inventory", label: "Inventory", icon: Box },
   { href: "/admin/promotions", label: "Promotions", icon: Tag },
   { href: "/admin/fulfillment", label: "Fulfillment", icon: Truck },
+  { href: "/admin/returns", label: "Returns", icon: Box },
   { href: "/admin/customers", label: "Customers", icon: Users },
   { href: "/admin/translations", label: "Translations", icon: Languages },
   { href: "/admin/setup", label: "Settings", icon: Settings2 },
@@ -41,7 +44,13 @@ export function AdminNav() {
   const current = links.findLast(
     (link) =>
       pathname === link.href ||
-      (link.href !== "/admin" && pathname.startsWith(`${link.href}/`)),
+      (link.href !== "/admin" && pathname.startsWith(`${link.href}/`)) ||
+      (link.href === "/admin/setup" &&
+        pathname.startsWith("/admin/settings/")) ||
+      (link.href === "/admin/products" &&
+        ["/admin/categories", "/admin/collections", "/admin/attributes"].some(
+          (path) => pathname === path || pathname.startsWith(`${path}/`),
+        )),
   );
 
   return (

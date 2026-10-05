@@ -5,6 +5,7 @@ import { revalidateTag, revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import {
   guestIdentity,
+  customerIdentity,
   staffIdentity,
   orderToken,
   setOrderToken,
@@ -84,6 +85,12 @@ const field = (form: FormData, name: string) =>
   String(form.get(name) ?? "").trim();
 function adminReturnPath(form: FormData) {
   const requested = field(form, "returnTo");
+  if (
+    /^\/admin\/orders\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      requested,
+    )
+  )
+    return requested;
   return ["/admin/orders", "/admin/payments", "/admin/fulfillment"].includes(
     requested,
   )
@@ -177,11 +184,19 @@ export async function placeOrder(form: FormData) {
       throw new DomainError("Accept the final total before placing an order.");
     if (!allowRequest("checkout:" + (await guestIdentity()), 20))
       throw new DomainError("Please wait a minute before retrying.");
+    const customerUserId = await customerIdentity();
     const order = await createOrder({
       quoteId: parseActionUuid(field(form, "quoteId"), "Quote"),
       guestSessionId: await guestIdentity(),
       guestName: field(form, "name"),
       guestEmail: field(form, "email"),
+      ...(customerUserId ? { customerUserId } : {}),
+      creditAppliedCents: parseActionInteger(
+        field(form, "creditAppliedCents") || "0",
+        "Store credit",
+        0,
+        2147483647,
+      ),
     });
     await setOrderToken(order.id, order.sessionToken);
     return "/" + locale + "/orders/" + order.id;
@@ -530,6 +545,7 @@ export async function editProduct(form: FormData) {
           id: parseActionUuid(field(form, `imageId-${i}`), "Image"),
           s3Key: field(form, `imageKey-${i}`),
           altText: field(form, `imageAlt-${i}`),
+          ...(field(form, `imageSortOrder-${i}`) ? { sortOrder: parseActionInteger(field(form, `imageSortOrder-${i}`), "Image position", 0, 1000000) } : {}),
         }),
       ),
     });

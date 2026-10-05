@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { db } from "@/infrastructure/db";
 import {
   storeSettings,
@@ -63,6 +64,9 @@ export default async function Setup({
       <AdminNav />
       <p className="eyebrow">WORKSPACE SETTINGS</p>
       <h1>Store setup</h1>
+      <Link href="/admin/settings/content">
+        Store information & customer policies
+      </Link>
       <p className="admin-description">
         Configure your store, payment methods, fulfillment, and team access.
       </p>
