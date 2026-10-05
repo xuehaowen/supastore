@@ -1,5 +1,6 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 import AxeBuilder from "@axe-core/playwright";
+import { openOrder, clickAction } from "./fixtures";
 test("C1-C6 storefront, persistent cart, order, refresh and direct upload", async ({
   page,
 }) => {
@@ -83,7 +84,7 @@ test("M1/M2/M6 owner admin, pause and mobile accessibility", async ({
   await expect(page).toHaveURL(/admin(?:\/setup)?$/);
   await page.getByRole("link", { name: "Overview", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Daily queue" }),
+    page.getByRole("heading", { name: "Launch checklist" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Pause new orders" }).click();
   await expect(
@@ -181,17 +182,16 @@ test("C8-C10 recovery, proposal acceptance and failed email visibility", async (
     .getByRole("button", { name: "Sign in securely", exact: true })
     .click();
   await expect(admin).toHaveURL(/admin(?:\/setup)?$/);
-  await admin.goto("/admin");
-  const row = admin
-    .locator("details")
-    .filter({ has: admin.locator("summary", { hasText: reference }) });
-  await row.locator("summary").click();
+  const row = await openOrder(admin, reference);
   await row.getByLabel("Proposed total (minor units)").fill("2500");
   await row
     .getByLabel("Reason", { exact: true })
     .fill("Synthetic price adjustment");
-  await row.getByRole("button", { name: "Propose new terms" }).click();
-  await expect(row).not.toHaveAttribute("open", "");
+  await clickAction(
+    admin,
+    row.getByRole("button", { name: "Propose new terms" }),
+  );
+  await expect(admin).toHaveURL(/\/admin\/orders$/);
   await page.reload();
   await expect(
     page.getByRole("alert").getByText("Order Terms Updated", { exact: true }),
@@ -213,7 +213,7 @@ test("C8-C10 recovery, proposal acceptance and failed email visibility", async (
       "update event_deliveries set status='exhausted' where event_id in (select id from outbox_events where aggregate_id=$1)",
       [orderId],
     );
-    await admin.reload();
+    await admin.goto("/admin");
     await expect(admin.locator("#emails")).toContainText("exhausted");
     await page.reload();
     await expect(
@@ -268,9 +268,11 @@ test("M2/C3/C7 publish variants, free pickup checkout and availability", async (
     .getByRole("button", { name: "Sign in securely", exact: true })
     .click();
   await expect(page).toHaveURL(/admin(?:\/setup)?$/);
-  await page.getByRole("link", { name: "Products", exact: true }).click();
+  await page.goto("/admin/products");
+  await page.waitForLoadState("networkidle");
   const handle = "browser-gift-" + Date.now();
   const title = "Browser gift " + Date.now();
+  await page.getByRole("button", { name: "Add product", exact: true }).click();
   await page.getByLabel("Title", { exact: true }).fill(title);
   await page.getByLabel("URL handle", { exact: true }).fill(handle);
   await page.getByLabel("SKU", { exact: true }).fill(handle);
@@ -278,7 +280,7 @@ test("M2/C3/C7 publish variants, free pickup checkout and availability", async (
   await page
     .getByRole("button", { name: "Publish product", exact: true })
     .click();
-  await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: title })).toBeVisible();
   const context = await browser.newContext();
   const customer = await context.newPage();
   await customer.goto("/en/products/" + handle);
@@ -324,13 +326,13 @@ test("M2/C3/C7 publish variants, free pickup checkout and availability", async (
     customer.getByText("No payment or payment evidence is required."),
   ).toBeVisible();
   await expect(customer.getByText(/confirmed/).first()).toBeVisible();
-  const row = page
-    .locator("article")
-    .filter({ has: page.getByRole("heading", { name: title }) });
-  await row.getByRole("button", { name: "Mark unavailable" }).click();
-  await expect(
-    row.getByRole("button", { name: "Make available" }),
-  ).toBeVisible();
+  const row = page.getByRole("row").filter({ hasText: title });
+  await row.getByRole("link", { name: "Edit", exact: true }).click();
+  await page.getByLabel("Select all variants", { exact: true }).check();
+  await page.getByLabel("New availability").selectOption("false");
+  await page.getByRole("button", { name: "Review bulk changes" }).click();
+  await clickAction(page, page.getByRole("button", { name: "Apply bulk changes" }));
+  await expect(page.getByRole("row", { name: "Default", exact: true })).toContainText("Unavailable");
   await customer.goto("/en/products/" + handle);
   await expect(
     customer.getByRole("button", { name: "Currently unavailable" }),

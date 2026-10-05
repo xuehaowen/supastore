@@ -57,7 +57,7 @@ describe("frontend visual foundations", () => {
 
   it("provides responsive image sizing on product detail pages", async () => {
     const productPage = await readFile(
-      path.join(workspaceRoot, "src/app/[locale]/products/[handle]/page.tsx"),
+      path.join(workspaceRoot, "src/app/product-purchase.tsx"),
       "utf8",
     );
 

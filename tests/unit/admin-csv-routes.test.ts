@@ -41,6 +41,7 @@ import { POST as importProducts } from "@/app/api/admin/imports/products/route";
 describe("admin CSV routes", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.stubEnv("APP_URL", "http://localhost");
     mocks.getSession.mockResolvedValue({ user: { id: "customer-id" } });
     mocks.transaction.mockImplementation(async (work) => work({}));
     mocks.verifyStaff.mockResolvedValue({ userId: "staff-id", role: "staff" });
@@ -143,6 +144,7 @@ describe("admin CSV routes", () => {
     const response = await importProducts(
       new Request("http://localhost/api/admin/imports/products", {
         method: "POST",
+        headers: { origin: "http://localhost" },
         body: new FormData(),
       }) as never,
     );
@@ -155,6 +157,7 @@ describe("admin CSV routes", () => {
     const response = await importProducts(
       new Request("http://localhost/api/admin/imports/products", {
         method: "POST",
+        headers: { origin: "http://localhost" },
       }) as never,
     );
     expect(response.status).toBe(403);
@@ -169,6 +172,7 @@ describe("admin CSV routes", () => {
     const response = await importProducts(
       new Request("http://localhost/api/admin/imports/products", {
         method: "POST",
+        headers: { origin: "http://localhost" },
       }) as never,
     );
     expect(response.status).toBe(500);
@@ -177,4 +181,20 @@ describe("admin CSV routes", () => {
     });
     expect(mocks.importProductsCsv).not.toHaveBeenCalled();
   });
+
+  it.each([null, "https://foreign.example"])(
+    "rejects an import with origin %s before authentication or body parsing",
+    async (origin) => {
+      const response = await importProducts(
+        new Request("http://localhost/api/admin/imports/products", {
+          method: "POST",
+          headers: origin ? { origin } : {},
+        }) as never,
+      );
+      expect(response.status).toBe(403);
+      expect(mocks.getSession).not.toHaveBeenCalled();
+      expect(mocks.transaction).not.toHaveBeenCalled();
+      expect(mocks.importProductsCsv).not.toHaveBeenCalled();
+    },
+  );
 });

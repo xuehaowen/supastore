@@ -27,28 +27,76 @@ vi.mock("@/infrastructure/db", () => ({ db: mocks.db }));
 
 import { GET as redeem } from "@/app/api/auth/recover-owner/redeem/route";
 import { GET as asset } from "@/app/api/assets/route";
-import { POST as createEvidenceIntent, PATCH as finalizeEvidence } from "@/app/api/evidence/route";
+import {
+  POST as createEvidenceIntent,
+  PATCH as finalizeEvidence,
+} from "@/app/api/evidence/route";
 
-function request(url: string, init?: ConstructorParameters<typeof NextRequest>[1]) {
+function request(
+  url: string,
+  init?: ConstructorParameters<typeof NextRequest>[1],
+) {
   return new NextRequest(url, init);
 }
 
 describe("API route boundaries", () => {
+  it("serves bounded image bytes only for published assets", async () => {
+    const chain = (rows: unknown[]) => ({ from: () => ({
+      innerJoin: () => ({ where: () => ({ limit: async () => rows }) }),
+      where: () => ({ limit: async () => rows }),
+    }) });
+    const fetchImage = vi.fn();
+    vi.stubGlobal("fetch", fetchImage);
+    try {
+      for (const rows of [[{ key: "image.png" }], [], []])
+        mocks.db.select.mockImplementationOnce(() => chain(rows));
+      mocks.presignAsset.mockResolvedValueOnce("https://storage.test/image");
+      fetchImage.mockResolvedValueOnce(new Response(new Uint8Array([1, 2, 3]), {
+        headers: { "content-type": "image/png" },
+      }));
+      const response = await asset(request("https://shop.test/api/assets?key=image.png&inline=1"));
+      expect(response.status).toBe(200);
+      expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
+      expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+      for (const rows of [[], [], []])
+        mocks.db.select.mockImplementationOnce(() => chain(rows));
+      expect((await asset(request("https://shop.test/api/assets?key=private.png&inline=1"))).status).toBe(404);
+      expect(fetchImage).toHaveBeenCalledTimes(1);
+      for (const rows of [[{ key: "image.png" }], [], []])
+        mocks.db.select.mockImplementationOnce(() => chain(rows));
+      mocks.presignAsset.mockResolvedValueOnce("https://storage.test/image");
+      fetchImage.mockResolvedValueOnce(new Response(new Uint8Array(5 * 1024 * 1024 + 1), {
+        headers: { "content-type": "image/png" },
+      }));
+      expect((await asset(request("https://shop.test/api/assets?key=image.png&inline=1"))).status).toBe(502);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it("redirects a valid owner recovery redemption and sets the session cookie", async () => {
     const expiresAt = new Date("2030-01-01T00:00:00.000Z");
-    mocks.redeemOwnerRecovery.mockResolvedValueOnce({ sessionToken: "session-token", expiresAt });
+    mocks.redeemOwnerRecovery.mockResolvedValueOnce({
+      sessionToken: "session-token",
+      expiresAt,
+    });
 
-    const response = await redeem(request("https://shop.test/api/auth/recover-owner/redeem?token=token"));
+    const response = await redeem(
+      request("https://shop.test/api/auth/recover-owner/redeem?token=token"),
+    );
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe("https://shop.test/admin");
-    expect(response.headers.get("set-cookie")).toContain("better-auth.session_token=session-token");
+    expect(response.headers.get("set-cookie")).toContain(
+      "better-auth.session_token=session-token",
+    );
   });
 
   it("redirects invalid owner recovery tokens to login without exposing a stack trace", async () => {
     mocks.redeemOwnerRecovery.mockRejectedValueOnce(new Error("expired token"));
 
-    const response = await redeem(request("https://shop.test/api/auth/recover-owner/redeem?token=expired"));
+    const response = await redeem(
+      request("https://shop.test/api/auth/recover-owner/redeem?token=expired"),
+    );
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
@@ -65,17 +113,23 @@ describe("API route boundaries", () => {
     });
     mocks.db.select
       .mockImplementationOnce(() => chain([{ key: "products/image.png" }]))
+      .mockImplementationOnce(() => chain([]))
       .mockImplementationOnce(() => chain([]));
     mocks.presignAsset.mockResolvedValueOnce("https://storage.test/signed");
 
-    const found = await asset(request("https://shop.test/api/assets?key=products%2Fimage.png"));
+    const found = await asset(
+      request("https://shop.test/api/assets?key=products%2Fimage.png"),
+    );
     expect(found.status).toBe(307);
     expect(found.headers.get("location")).toBe("https://storage.test/signed");
 
     mocks.db.select
       .mockImplementationOnce(() => chain([]))
+      .mockImplementationOnce(() => chain([]))
       .mockImplementationOnce(() => chain([]));
-    const missing = await asset(request("https://shop.test/api/assets?key=missing.png"));
+    const missing = await asset(
+      request("https://shop.test/api/assets?key=missing.png"),
+    );
     expect(missing.status).toBe(404);
   });
 
@@ -83,8 +137,15 @@ describe("API route boundaries", () => {
     const response = await createEvidenceIntent(
       request("https://shop.test/api/evidence", {
         method: "POST",
-        headers: { origin: "https://attacker.test", "content-type": "application/json" },
-        body: JSON.stringify({ orderId: "00000000-0000-0000-0000-000000000000", mime: "image/png", size: 10 }),
+        headers: {
+          origin: "https://attacker.test",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          orderId: "00000000-0000-0000-0000-000000000000",
+          mime: "image/png",
+          size: 10,
+        }),
       }),
     );
 
@@ -97,7 +158,10 @@ describe("API route boundaries", () => {
     mocks.orderToken.mockResolvedValue("order-session");
     mocks.createUploadIntent.mockResolvedValueOnce({ intentId: "intent-1" });
     mocks.finalizeUpload.mockResolvedValueOnce(undefined);
-    const headers = { origin: "https://shop.test", "content-type": "application/json" };
+    const headers = {
+      origin: "https://shop.test",
+      "content-type": "application/json",
+    };
     const orderId = "00000000-0000-0000-0000-000000000000";
 
     const created = await createEvidenceIntent(
@@ -114,7 +178,10 @@ describe("API route boundaries", () => {
       request("https://shop.test/api/evidence", {
         method: "PATCH",
         headers,
-        body: JSON.stringify({ orderId, intentId: "00000000-0000-0000-0000-000000000001" }),
+        body: JSON.stringify({
+          orderId,
+          intentId: "00000000-0000-0000-0000-000000000001",
+        }),
       }),
     );
     expect(finalized.status).toBe(200);

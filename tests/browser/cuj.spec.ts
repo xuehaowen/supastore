@@ -121,14 +121,18 @@ test("C7/A3 free pickup confirms, rejects premature handoff, then completes", as
     admin,
     row.getByRole("button", { name: "Mark ready for pickup", exact: true }),
   );
-  await expect(admin).toHaveURL(/\/admin$/);
+  await expect(admin).toHaveURL(
+    /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
+  );
   row = await openOrder(admin, order.reference_code);
   await row.getByLabel("Recipient / authorized recipient").fill("CUJ Customer");
   await clickAction(
     admin,
     row.getByRole("button", { name: "Complete pickup handoff", exact: true }),
   );
-  await expect(admin).toHaveURL(/\/admin$/);
+  await expect(admin).toHaveURL(
+    /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
+  );
   await page.reload();
   await expect(page.getByText(/completed · fulfilled/)).toBeVisible();
   expect(
@@ -194,7 +198,9 @@ test("A1/A2/A3/A4 receipts, underpayment rejection, confirmation, packing slip a
   await correction.getByLabel("Corrected tracking number").fill("CORRECTED");
   await correction.getByLabel("Correction reason").fill("Tracking typo");
   await clickAction(admin, correction.getByRole("button"));
-  await expect(admin).toHaveURL(/\/admin$/);
+  await expect(admin).toHaveURL(
+    /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
+  );
   expect(
     (
       await sql`select tracking_number from order_fulfillments where order_id=${order.id}`
@@ -212,7 +218,9 @@ test("A1/A2/A3/A4 receipts, underpayment rejection, confirmation, packing slip a
     .fill("Synthetic courier");
   await shipment.getByLabel("Tracking number", { exact: true }).fill("SHIP-1");
   await clickAction(admin, shipment.getByRole("button"));
-  await expect(admin).toHaveURL(/\/admin$/);
+  await expect(admin).toHaveURL(
+    /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
+  );
   await page.reload();
   await expect(page.getByText(/completed · fulfilled/)).toBeVisible();
 });
@@ -239,7 +247,9 @@ test("C8/C11/C12/A10 cancelled unpaid order retains private tracking and has no 
     admin,
     row.getByRole("button", { name: "Cancel order", exact: true }),
   );
-  await expect(admin).toHaveURL(/\/admin$/);
+  await expect(admin).toHaveURL(
+    /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
+  );
   await page.reload();
   await expect(page.getByText(/cancelled/).first()).toBeVisible();
   await expect(
@@ -279,9 +289,12 @@ test("A5/A6 owner authorizes, claims and reconciles a partial refund", async ({
     admin,
     row.getByRole("button", { name: "Authorize refund", exact: true }),
   );
-  await expect(admin).toHaveURL(/\/admin$/);
+  await expect(admin).toHaveURL(
+    /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
+  );
   const [allocation] =
     await sql`select pa.id from payout_allocations pa join refund_authorizations ra on ra.id=pa.refund_authorization_id where ra.order_id=${order.id}`;
+  await admin.goto("/admin/payments");
   const payout = admin
     .locator("#payouts details")
     .filter({ hasText: allocation!.id });
@@ -294,7 +307,9 @@ test("A5/A6 owner authorizes, claims and reconciles a partial refund", async ({
     admin,
     payout.getByRole("button", { name: "Claim payout", exact: true }),
   );
-  await expect(admin).toHaveURL(/\/admin$/);
+  await expect(admin).toHaveURL(
+    /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
+  );
   await admin.reload();
   await payout.locator("summary").click();
   await expect(payout).toContainText("sending");
@@ -305,7 +320,9 @@ test("A5/A6 owner authorizes, claims and reconciles a partial refund", async ({
     admin,
     payout.getByRole("button", { name: "Reconcile payout", exact: true }),
   );
-  await expect(admin).toHaveURL(/\/admin$/);
+  await expect(admin).toHaveURL(
+    /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
+  );
   await admin.reload();
   await payout.locator("summary").click();
   await expect(payout).toContainText("reconciled");
@@ -344,7 +361,9 @@ test("A9 cash receipt records change and receipt correction is audited", async (
     .fill(String(order.purchase_total_cents + 100));
   await cash.getByLabel("Payer name").fill("CUJ Customer");
   await clickAction(admin, cash.getByRole("button"));
-  await expect(admin).toHaveURL(/\/admin$/);
+  await expect(admin).toHaveURL(
+    /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
+  );
   await confirm(admin, order.reference_code);
   row = await openOrder(admin, order.reference_code);
   const correction = row.locator("form").filter({
@@ -359,7 +378,9 @@ test("A9 cash receipt records change and receipt correction is audited", async (
     .getByLabel("Investigation notes")
     .fill("Synthetic investigation");
   await clickAction(admin, correction.getByRole("button"));
-  await expect(admin).toHaveURL(/\/admin$/);
+  await expect(admin).toHaveURL(
+    /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
+  );
   expect(
     (
       await sql`select d.change_due_cents from cash_receipt_details d join payment_receipts r on r.id=d.receipt_id where r.order_id=${order.id}`
@@ -529,10 +550,10 @@ test("M1/M2 setup profile, shipping, pickup, payment toggles and categories pers
     (await sql`select store_name from store_settings`)[0]!.store_name,
   ).toBe("CUJ Store");
   await admin.reload();
-  await admin.getByLabel("Zone name", { exact: true }).fill("CUJ Shipping");
+  await admin.getByLabel("Zone name", { exact: true }).first().fill("CUJ Shipping");
   await clickAction(
     admin,
-    admin.getByRole("button", { name: "Save shipping zone", exact: true }),
+    admin.getByRole("button", { name: "Save shipping zone", exact: true }).first(),
   );
   expect((await sql`select name from shipping_zones`)[0]!.name).toBe(
     "CUJ Shipping",
@@ -550,9 +571,9 @@ test("M1/M2 setup profile, shipping, pickup, payment toggles and categories pers
     (await sql`select id from pickup_location where name='CUJ Pickup'`).length,
   ).toBe(1);
   await admin.reload();
-  await admin.getByLabel("Method name", { exact: true }).fill("CUJ Bank");
+  await admin.getByLabel("Method name", { exact: true }).last().fill("CUJ Bank");
   await admin
-    .getByLabel("Receiving account and instructions")
+    .getByLabel("Receiving account and instructions").last()
     .fill("SYNTHETIC-" + randomUUID());
   await clickAction(
     admin,
@@ -857,6 +878,7 @@ test("A5 paid cancellation stops fulfillment and creates return work", async ({
       await sql`select sum(amount_cents)::int as amount from refund_authorizations where order_id=${order.id}`
     )[0]!.amount,
   ).toBe(order.purchase_total_cents);
+  await admin.goto("/admin/payments");
   await expect(admin.locator("#payouts")).toContainText(
     String(order.purchase_total_cents),
   );
@@ -877,7 +899,7 @@ test("A7 overpayment can be returned before confirmation", async ({
   await expect(admin.locator('[data-slot="alert"]')).toContainText(
     /surplus|overfunded|excess/i,
   );
-  await admin.goto("/admin");
+  await admin.goto("/admin/fulfillment");
   row = admin.locator("#ready details").filter({
     has: admin.locator("summary", { hasText: order.reference_code }),
   });

@@ -9,6 +9,14 @@ import {
 } from "./fixtures";
 
 async function accessible(page: import("@playwright/test").Page) {
+  await page.waitForLoadState("load");
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      { timeout: 10000 },
+    )
+    .toBe(true);
   const scan = await new AxeBuilder({ page }).analyze();
   expect(
     scan.violations.filter((v) =>
@@ -85,7 +93,7 @@ test("C3/C4 keyboard checkout and expanded admin forms are accessible on mobile"
   await openOrder(admin, reference);
   await accessible(admin);
   await record(admin, reference, 2900);
-  await admin.goto("/admin");
+  await admin.goto("/admin/fulfillment");
   const row = admin
     .locator("#ready details")
     .filter({ has: admin.locator("summary", { hasText: reference }) });
@@ -112,7 +120,7 @@ test("A7 late receipt on a cancelled order creates return work without reopening
     (await sql`select lifecycle_status from orders where id=${order.id}`)[0]!
       .lifecycle_status,
   ).toBe("cancelled");
-  await admin.goto("/admin");
+  await admin.goto("/admin/fulfillment");
   const operations = admin.locator("#ready details").filter({
     has: admin.locator("summary", { hasText: order.reference_code }),
   });
@@ -305,6 +313,10 @@ test("M2/C1 multiple variants and Chinese product text persist into customer sel
     page.getByRole("heading", { name: "测试商品", exact: true }),
   ).toBeVisible();
   await page.getByRole("link", { name: "English", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/en/products/${handle}$`));
+  await expect(
+    page.getByRole("heading", { name: "Variant CUJ", exact: true }),
+  ).toBeVisible();
   const [large] =
     await sql`select id from product_variants where sku=${handle + "-b"}`;
   const largeRadio = page.getByRole("radio", { name: /Large/ });

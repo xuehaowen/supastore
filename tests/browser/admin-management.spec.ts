@@ -27,13 +27,16 @@ test("product editor saves existing variants and translations without replacing 
   await admin
     .getByLabel("Description", { exact: true })
     .fill("Updated description");
-  const variantEditor = admin.getByRole("group", { name: "Original variant" });
+  const variantEditor = admin.getByRole("row", {
+    name: "Original variant",
+    exact: true,
+  });
   await variantEditor.getByLabel("Variant name").fill("Updated variant");
   await variantEditor.getByLabel("Price in minor units").fill("1750");
   await admin
     .getByRole("group", { name: "Image 1" })
-    .getByLabel("Image asset key")
-    .fill("fixture/updated");
+    .getByLabel("Image description")
+    .fill("Updated image description");
   const [category] = await sql`select id,name from categories limit 1`;
   await admin
     .getByRole("group", { name: "Categories", exact: true })
@@ -54,7 +57,8 @@ test("product editor saves existing variants and translations without replacing 
   const [savedImage] =
     await sql`select * from product_images where product_id=${product!.id}`;
   expect(savedImage!.id).toBe(image!.id);
-  expect(savedImage!.s3_key).toBe("fixture/updated");
+  expect(savedImage!.s3_key).toBe("fixture/old");
+  expect(savedImage!.alt_text).toBe("Updated image description");
   expect(
     await sql`select * from product_categories where product_id=${product!.id} and category_id=${category!.id}`,
   ).toHaveLength(1);
@@ -73,6 +77,15 @@ test("product editor saves existing variants and translations without replacing 
   await translation.getByLabel("Chinese text").fill("更新商品");
   await translation.getByLabel("Chinese description").fill("更新描述");
   await translation.getByRole("button", { name: "Save translation" }).click();
+  await expect(translation).not.toBeVisible();
+  await expect
+    .poll(
+      async () =>
+        (
+          await sql`select title from product_translations where product_id=${product!.id} and locale='zh'`
+        )[0]?.title,
+    )
+    .toBe("更新商品");
   await page.goto(`/zh/products/${handle}`);
   await expect(
     page.getByRole("heading", { name: "更新商品", exact: true }),
@@ -343,6 +356,7 @@ test("staff can see submitted payment evidence in the review grid", async ({
     .click();
   await expect(page.getByRole("status")).toHaveText(
     "Evidence received. This is not a payment receipt.",
+    { timeout: 20000 },
   );
 
   await admin.goto("/admin/payments#evidence");

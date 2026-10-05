@@ -77,6 +77,7 @@ vi.mock("@/infrastructure/auth", () => ({
 vi.mock("@/infrastructure/web", () => ({
   staffIdentity: mocks.staff,
   guestIdentity: mocks.guest,
+  customerIdentity: async () => "",
   orderToken: mocks.token,
   setOrderToken: mocks.setToken,
   localeOf: (value: string) => (value === "zh" ? "zh" : "en"),

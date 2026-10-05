@@ -1,3 +1,4 @@
+import { correctReceipt } from "@/application/use-cases/payments/correct-receipt";
 import { beforeAll, afterAll, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
@@ -19,7 +20,7 @@ beforeAll(async () => {
   await migrate(db, { migrationsFolder: "src/infrastructure/db/migrations" });
 });
 afterAll(() => sql.end());
-it.each(["claim", "reconcile", "close", "resolve"])(
+it.each(["claim", "reconcile", "close", "resolve", "correct"])(
   "%s waits for the owning order lock before changing payout state",
   async (command) => {
     const owner = randomUUID();
@@ -41,13 +42,20 @@ it.each(["claim", "reconcile", "close", "resolve"])(
     const [verification] =
       await sql`insert into payout_destination_verifications(receipt_id,destination_data,verified_by_user_id) values(${receipt!.id},'{"type":"cash"}',${owner}) returning id`;
     const [attempt] =
-      command === "claim"
+      ["claim", "correct"].includes(command)
         ? []
         : await sql`insert into payout_attempts(allocation_id,destination_verification_id,claimed_amount_cents,claimed_by_user_id,status) values(${allocation!.id},${verification!.id},100,${owner},${command === "resolve" ? "reconciliation_required" : "sending"}) returning id`;
     const [discrepancy] =
       command === "resolve"
         ? await sql`insert into payout_discrepancies(payout_attempt_id,reason) values(${attempt!.id},'Test hold') returning id`
         : [];
+    let otherReceiptId: string | undefined;
+    if (command === "correct") {
+      const [other] = await sql`insert into payment_receipts(order_id,payment_account_id,amount_cents,raw_reference,normalized_reference,recorded_by_user_id) values(${order!.id},${account!.id},200,${randomUUID()},${randomUUID()},${owner}) returning id`;
+      otherReceiptId = other!.id;
+      await sql`insert into payment_receipt_corrections(receipt_id,delta_amount_cents,reason,corrected_by_user_id) values(${other!.id},-100,'Prior correction',${owner})`;
+      await sql`insert into payout_allocations(payment_return_id,receipt_id,authorized_amount_cents,settled_amount_cents) values(${paymentReturn!.id},${other!.id},100,100)`;
+    }
     let unlock!: () => void;
     const gate = new Promise<void>((resolve) => {
       unlock = resolve;
@@ -64,7 +72,9 @@ it.each(["claim", "reconcile", "close", "resolve"])(
     });
     const pid = await ready;
     const operation =
-      command === "claim"
+      command === "correct"
+        ? correctReceipt({ receiptId: receipt!.id, deltaAmountCents: -1, reason: "Lock regression", ownerUserId: owner })
+        : command === "claim"
         ? claimPayout({
             allocationId: allocation!.id,
             ownerUserId: owner,
@@ -107,11 +117,27 @@ it.each(["claim", "reconcile", "close", "resolve"])(
           { timeout: 2000 },
         )
         .toBeGreaterThan(0);
+      if (command === "correct") {
+        // While correction waits for the order it must not hold its receipt lock.
+        await sql.begin(async (tx) => {
+          await tx`select id from payment_receipts where id=${receipt!.id} for update nowait`;
+        });
+      }
     } finally {
       unlock();
       await blocker;
       const outcome = await result;
       if ("error" in outcome) throw outcome.error;
+      if (command === "correct") {
+        const corrected = outcome.value as Awaited<ReturnType<typeof correctReceipt>>;
+        expect(corrected.projection.totalReceivedCents).toBe(1199);
+        expect(corrected.projection.totalSettledNonPurchaseReturnsCents).toBe(100);
+        expect(corrected.projection.receipts.find((r) => r.id === otherReceiptId)?.effectiveReceivedCents).toBe(100);
+        await sql`insert into confirmation_funding(order_id,receipt_id,funded_amount_cents) values(${order!.id},${receipt!.id},1000)`;
+        await sql`update orders set lifecycle_status='cancelled' where id=${order!.id}`;
+        const cancelled = await correctReceipt({ receiptId: receipt!.id, deltaAmountCents: -300, reason: "Correction after confirmed cancellation", ownerUserId: owner });
+        expect(cancelled.projection.operationalFundingShortfallCents).toBeGreaterThan(0);
+      }
     }
   },
 );

@@ -6,10 +6,19 @@ import {
 } from "@playwright/test";
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
+function clientHeaders() {
+  const seed = randomUUID().replaceAll("-", "");
+  // Independent synthetic customers must not share the production sign-in rate bucket.
+  return { "x-forwarded-for": `198.18.${Number.parseInt(seed.slice(0, 2), 16)}.${Number.parseInt(seed.slice(2, 4), 16)}` };
+}
 export const test = base.extend<{
   sql: ReturnType<typeof postgres>;
   admin: Page;
 }>({
+  page: async ({ page }, use) => {
+    await page.setExtraHTTPHeaders(clientHeaders());
+    await use(page);
+  },
   sql: async ({}, use) => {
     const url = new URL(process.env.DATABASE_URL ?? "http://missing");
     if (
@@ -25,7 +34,7 @@ export const test = base.extend<{
     }
   },
   admin: async ({ browser }, use) => {
-    const context = await browser.newContext();
+    const context = await browser.newContext({ extraHTTPHeaders: clientHeaders() });
     const page = await context.newPage();
     await login(page);
     try {
@@ -97,7 +106,11 @@ export async function openOrder(admin: Page, reference: string) {
   await admin.goto(`/admin/orders?q=${encodeURIComponent(reference)}`);
   const row = admin.getByRole("row").filter({ hasText: reference });
   await expect(row).toHaveCount(1);
-  await row.getByRole("link", { name: "Manage" }).click();
+  const link = row.getByRole("link", { name: "Manage" });
+  const target = new URL((await link.getAttribute("href"))!, admin.url());
+  await link.click();
+  await admin.waitForURL(target.href);
+  await admin.waitForLoadState("load");
   const dialog = admin.getByRole("dialog", { name: "Manage order payment" });
   if (await dialog.count()) return dialog;
   const details = admin.locator("#ready details[open]").filter({
@@ -146,6 +159,14 @@ export async function clickAction(page: Page, button: Locator) {
   const target =
     result.headers()["x-action-redirect"]?.split(";")[0] ??
     result.headers()["location"];
-  if (target) await page.waitForURL(new URL(target, page.url()).href);
-  await page.reload();
+  if (target) {
+    const expected = new URL(target, page.url());
+    await page.waitForURL(
+      (url) =>
+        url.origin === expected.origin &&
+        url.pathname === expected.pathname &&
+        url.search === expected.search,
+    );
+    await page.goto(expected.href);
+  } else await page.reload();
 }
