@@ -7,8 +7,9 @@ import {
   uniqueIndex,
   index,
   foreignKey,
+  boolean,
 } from "drizzle-orm/pg-core";
-import { categories, productVariants } from "./catalog";
+import { categories, products, productVariants } from "./catalog";
 
 const timestamps = () => ({
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -41,6 +42,7 @@ export const attributes = pgTable("attributes", {
   code: text("code").notNull().unique(),
   name: text("name").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
+  isArchived: boolean("is_archived").notNull().default(false),
   ...timestamps(),
 });
 
@@ -54,6 +56,7 @@ export const attributeValues = pgTable(
     code: text("code").notNull(),
     label: text("label").notNull(),
     sortOrder: integer("sort_order").notNull().default(0),
+    isArchived: boolean("is_archived").notNull().default(false),
     ...timestamps(),
   },
   (t) => [
@@ -126,6 +129,68 @@ export const variantAttributeValues = pgTable(
   (t) => [
     uniqueIndex("uq_variant_attribute").on(t.variantId, t.attributeId),
     index("idx_variant_attribute_value").on(t.attributeId, t.attributeValueId),
+    foreignKey({
+      columns: [t.attributeId, t.attributeValueId],
+      foreignColumns: [attributeValues.attributeId, attributeValues.id],
+    }).onDelete("restrict"),
+  ],
+);
+
+export const productOptions = pgTable(
+  "product_options",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    attributeId: uuid("attribute_id")
+      .notNull()
+      .references(() => attributes.id, { onDelete: "restrict" }),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => [
+    uniqueIndex("uq_product_option").on(t.productId, t.attributeId),
+    uniqueIndex("uq_product_option_owner").on(t.id, t.attributeId),
+  ],
+);
+
+// Descriptive properties do not create sellable variants.
+export const productSpecifications = pgTable(
+  "product_specifications",
+  {
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    attributeId: uuid("attribute_id").notNull(),
+    attributeValueId: uuid("attribute_value_id").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => [
+    uniqueIndex("uq_product_specification").on(
+      t.productId,
+      t.attributeId,
+      t.attributeValueId,
+    ),
+    foreignKey({
+      columns: [t.attributeId, t.attributeValueId],
+      foreignColumns: [attributeValues.attributeId, attributeValues.id],
+    }).onDelete("restrict"),
+  ],
+);
+
+export const productOptionValues = pgTable(
+  "product_option_values",
+  {
+    optionId: uuid("option_id").notNull(),
+    attributeId: uuid("attribute_id").notNull(),
+    attributeValueId: uuid("attribute_value_id").notNull(),
+  },
+  (t) => [
+    uniqueIndex("uq_product_option_value").on(t.optionId, t.attributeValueId),
+    foreignKey({
+      columns: [t.optionId, t.attributeId],
+      foreignColumns: [productOptions.id, productOptions.attributeId],
+    }).onDelete("cascade"),
     foreignKey({
       columns: [t.attributeId, t.attributeValueId],
       foreignColumns: [attributeValues.attributeId, attributeValues.id],

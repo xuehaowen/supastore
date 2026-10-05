@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "uq_product_variant_combination" ON "product_variants" USING btree ("product_id","combination_key");

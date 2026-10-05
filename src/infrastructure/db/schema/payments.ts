@@ -6,14 +6,19 @@ import {
   timestamp,
   uuid,
   uniqueIndex,
+  check,
 } from "drizzle-orm/pg-core";
 import { orders } from "./orders";
+import { storeCreditEntries } from "./store-credit";
+import { sql } from "drizzle-orm";
 
 export const paymentAccounts = pgTable("payment_accounts", {
   id: uuid("id").primaryKey().defaultRandom(),
   accountIdentifier: text("account_identifier").notNull().unique(),
   accountName: text("account_name").notNull(),
-  accountType: text("account_type", { enum: ["cash", "zelle", "venmo", "other"] })
+  accountType: text("account_type", {
+    enum: ["cash", "zelle", "venmo", "other"],
+  })
     .notNull()
     .default("other"),
   isActive: boolean("is_active").notNull().default(true),
@@ -49,24 +54,38 @@ export const paymentReceipts = pgTable(
   (table) => [
     uniqueIndex("idx_payment_receipts_account_ref").on(
       table.paymentAccountId,
-      table.normalizedReference
+      table.normalizedReference,
     ),
-  ]
+  ],
 );
 
-export const confirmationFunding = pgTable("confirmation_funding", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  orderId: uuid("order_id")
-    .notNull()
-    .references(() => orders.id, { onDelete: "restrict" }),
-  receiptId: uuid("receipt_id")
-    .notNull()
-    .references(() => paymentReceipts.id, { onDelete: "restrict" }),
-  fundedAmountCents: integer("funded_amount_cents").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
+export const confirmationFunding = pgTable(
+  "confirmation_funding",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "restrict" }),
+    receiptId: uuid("receipt_id").references(() => paymentReceipts.id, {
+      onDelete: "restrict",
+    }),
+    creditEntryId: uuid("credit_entry_id").references(
+      () => storeCreditEntries.id,
+      { onDelete: "restrict" },
+    ),
+    fundedAmountCents: integer("funded_amount_cents").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    check(
+      "confirmation_funding_one_source",
+      sql`(${t.receiptId} is not null) <> (${t.creditEntryId} is not null)`,
+    ),
+    check("confirmation_funding_positive", sql`${t.fundedAmountCents} > 0`),
+  ],
+);
 
 export const cashDrawerSessions = pgTable("cash_drawer_sessions", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -75,8 +94,12 @@ export const cashDrawerSessions = pgTable("cash_drawer_sessions", {
   closedByUserId: text("closed_by_user_id"),
   startingBalanceCents: integer("starting_balance_cents").notNull().default(0),
   closingBalanceCents: integer("closing_balance_cents"),
-  status: text("status", { enum: ["open", "closed"] }).notNull().default("open"),
-  openedAt: timestamp("opened_at", { withTimezone: true }).defaultNow().notNull(),
+  status: text("status", { enum: ["open", "closed"] })
+    .notNull()
+    .default("open"),
+  openedAt: timestamp("opened_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
   closedAt: timestamp("closed_at", { withTimezone: true }),
   notes: text("notes"),
 });
@@ -84,7 +107,9 @@ export const cashDrawerSessions = pgTable("cash_drawer_sessions", {
 export const cashReceiptSequences = pgTable("cash_receipt_sequences", {
   year: integer("year").primaryKey(),
   lastSequenceNumber: integer("last_sequence_number").notNull().default(0),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
 export const cashReceiptDetails = pgTable("cash_receipt_details", {
@@ -93,25 +118,33 @@ export const cashReceiptDetails = pgTable("cash_receipt_details", {
     .notNull()
     .unique()
     .references(() => paymentReceipts.id, { onDelete: "restrict" }),
-  cashDrawerSessionId: uuid("cash_drawer_session_id")
-    .references(() => cashDrawerSessions.id, { onDelete: "set null" }),
+  cashDrawerSessionId: uuid("cash_drawer_session_id").references(
+    () => cashDrawerSessions.id,
+    { onDelete: "set null" },
+  ),
   sequentialNumber: text("sequential_number").notNull().unique(), // e.g. CASH-2026-0001
   drawerName: text("drawer_name").notNull().default("Main Register"),
   payerName: text("payer_name"),
   tenderedAmountCents: integer("tendered_amount_cents").notNull(),
   changeDueCents: integer("change_due_cents").notNull().default(0),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
-export const paymentReceiptCorrections = pgTable("payment_receipt_corrections", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  receiptId: uuid("receipt_id")
-    .notNull()
-    .references(() => paymentReceipts.id, { onDelete: "restrict" }),
-  deltaAmountCents: integer("delta_amount_cents").notNull(), // signed integer
-  reason: text("reason").notNull(),
-  investigationNotes: text("investigation_notes"),
-  correctedByUserId: text("corrected_by_user_id").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
-
+export const paymentReceiptCorrections = pgTable(
+  "payment_receipt_corrections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    receiptId: uuid("receipt_id")
+      .notNull()
+      .references(() => paymentReceipts.id, { onDelete: "restrict" }),
+    deltaAmountCents: integer("delta_amount_cents").notNull(), // signed integer
+    reason: text("reason").notNull(),
+    investigationNotes: text("investigation_notes"),
+    correctedByUserId: text("corrected_by_user_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+);

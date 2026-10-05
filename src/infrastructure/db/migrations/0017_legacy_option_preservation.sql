@@ -1,0 +1,1 @@
+ALTER TABLE "product_variants" ADD COLUMN "legacy_attributes" jsonb;

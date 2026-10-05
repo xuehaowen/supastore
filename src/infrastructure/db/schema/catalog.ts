@@ -49,6 +49,7 @@ export const products = pgTable(
     description: text("description").notNull().default(""),
     isPublished: boolean("is_published").notNull().default(true),
     quoteVersion: integer("quote_version").notNull().default(1),
+    skuPrefix: text("sku_prefix"),
     // Stored generated tsvector for native full-text search (GIN-indexed).
     // The expression is set in the migration: to_tsvector('simple', title || ' ' || description)
     // Drizzle does not yet support GENERATED ALWAYS AS for tsvector, so we
@@ -70,27 +71,39 @@ export const products = pgTable(
 // ---------------------------------------------------------------------------
 // product_variants
 // ---------------------------------------------------------------------------
-export const productVariants = pgTable("product_variants", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  productId: uuid("product_id")
-    .notNull()
-    .references(() => products.id, { onDelete: "restrict" }),
-  sku: text("sku").notNull().unique(),
-  attributes: jsonb("attributes")
-    .$type<Record<string, string>>()
-    .notNull()
-    .default({}),
-  title: text("title").notNull(),
-  priceCents: integer("price_cents").notNull(), // CHECK (price_cents >= 0)
-  isAvailable: boolean("is_available").notNull().default(true),
-  sortOrder: integer("sort_order").notNull().default(0),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
+export const productVariants = pgTable(
+  "product_variants",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "restrict" }),
+    sku: text("sku").notNull().unique(),
+    combinationKey: text("combination_key"),
+    legacyAttributes:
+      jsonb("legacy_attributes").$type<Record<string, string>>(),
+    attributes: jsonb("attributes")
+      .$type<Record<string, string>>()
+      .notNull()
+      .default({}),
+    title: text("title").notNull(),
+    priceCents: integer("price_cents").notNull(), // CHECK (price_cents >= 0)
+    isAvailable: boolean("is_available").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    uniqueIndex("uq_product_variant_combination").on(
+      t.productId,
+      t.combinationKey,
+    ),
+  ],
+);
 
 // ---------------------------------------------------------------------------
 // product_categories — many-to-many join

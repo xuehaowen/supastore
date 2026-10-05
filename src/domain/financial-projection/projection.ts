@@ -32,6 +32,7 @@ export interface ReceiptProjection {
 }
 
 export interface OrderFinancialProjectionInput {
+  committedCreditCents?: number;
   purchaseTotalCents: number; // P
   isConfirmed: boolean;
   isCancelled: boolean;
@@ -58,15 +59,25 @@ export interface OrderFinancialProjection {
   operationalFundingShortfallCents: number; // max(uncovered, over-disbursement)
 }
 
-export function computeReceiptProjection(r: ReceiptInput, isConfirmed: boolean): ReceiptProjection {
+export function computeReceiptProjection(
+  r: ReceiptInput,
+  isConfirmed: boolean,
+): ReceiptProjection {
   const corrections = r.appliedCorrectionsCents ?? 0;
   const Ri = Math.max(0, r.originalAmountCents + corrections);
 
   const effPurchaseRefunds = r.effectivePurchaseRefundAuthorizationsCents ?? 0;
-  const effNonPurchaseReturns = r.effectiveNonPurchaseReturnAuthorizationsCents ?? 0;
-  const Ai = Math.max(effPurchaseRefunds + effNonPurchaseReturns, (r.settledPurchaseRefundsCents ?? 0) + (r.settledNonPurchaseReturnsCents ?? 0));
+  const effNonPurchaseReturns =
+    r.effectiveNonPurchaseReturnAuthorizationsCents ?? 0;
+  const Ai = Math.max(
+    effPurchaseRefunds + effNonPurchaseReturns,
+    (r.settledPurchaseRefundsCents ?? 0) +
+      (r.settledNonPurchaseReturnsCents ?? 0),
+  );
 
-  const Si = (r.settledPurchaseRefundsCents ?? 0) + (r.settledNonPurchaseReturnsCents ?? 0);
+  const Si =
+    (r.settledPurchaseRefundsCents ?? 0) +
+    (r.settledNonPurchaseReturnsCents ?? 0);
   const Ui = Math.max(0, Ai - Si);
 
   const availablePayoutCapacity = Math.max(0, Ri - Ai);
@@ -80,7 +91,10 @@ export function computeReceiptProjection(r: ReceiptInput, isConfirmed: boolean):
 
   // Purchase refund authorization per receipt is capped both by remaining F'i after effective prior purchase refunds and available payout capacity
   const remainingFprime = Math.max(0, Fprime_i - effPurchaseRefunds);
-  const remainingPurchaseRefundCapacity = Math.min(remainingFprime, availablePayoutCapacity);
+  const remainingPurchaseRefundCapacity = Math.min(
+    remainingFprime,
+    availablePayoutCapacity,
+  );
 
   let newExcessReturnCapacity = 0;
   if (isConfirmed) {
@@ -108,41 +122,87 @@ export function computeReceiptProjection(r: ReceiptInput, isConfirmed: boolean):
   };
 }
 
-export function computeOrderFinancialProjection(input: OrderFinancialProjectionInput): OrderFinancialProjection {
+export function computeOrderFinancialProjection(
+  input: OrderFinancialProjectionInput,
+): OrderFinancialProjection {
   const P = input.purchaseTotalCents;
-  const receiptProjections = input.receipts.map((r) => computeReceiptProjection(r, input.isConfirmed));
+  const credit = input.committedCreditCents ?? 0;
+  if (!Number.isSafeInteger(credit) || credit < 0 || credit > P)
+    throw new Error("Invalid committed store credit.");
+  const externalDue = P - credit;
+  const receiptProjections = input.receipts.map((r) =>
+    computeReceiptProjection(r, input.isConfirmed),
+  );
 
-  const totalReceivedCents = receiptProjections.reduce((sum, r) => sum + r.effectiveReceivedCents, 0);
-  const totalSettledNonPurchase = input.receipts.reduce((sum, r) => sum + (r.settledNonPurchaseReturnsCents ?? 0), 0);
-  const totalSettledPurchase = input.receipts.reduce((sum, r) => sum + (r.settledPurchaseRefundsCents ?? 0), 0);
-  const totalSettledPayoutsCents = receiptProjections.reduce((sum, r) => sum + r.settledPayoutsCents, 0);
-  const totalAuthorizedDispositionsCents = receiptProjections.reduce((sum, r) => sum + r.authorizedDispositionsCents, 0);
-  const totalUnsentRemainderCents = receiptProjections.reduce((sum, r) => sum + r.unsentRemainderCents, 0);
+  const totalReceivedCents = receiptProjections.reduce(
+    (sum, r) => sum + r.effectiveReceivedCents,
+    0,
+  );
+  const totalSettledNonPurchase = input.receipts.reduce(
+    (sum, r) => sum + (r.settledNonPurchaseReturnsCents ?? 0),
+    0,
+  );
+  const totalSettledPurchase = input.receipts.reduce(
+    (sum, r) => sum + (r.settledPurchaseRefundsCents ?? 0),
+    0,
+  );
+  const totalSettledPayoutsCents = receiptProjections.reduce(
+    (sum, r) => sum + r.settledPayoutsCents,
+    0,
+  );
+  const totalAuthorizedDispositionsCents = receiptProjections.reduce(
+    (sum, r) => sum + r.authorizedDispositionsCents,
+    0,
+  );
+  const totalUnsentRemainderCents = receiptProjections.reduce(
+    (sum, r) => sum + r.unsentRemainderCents,
+    0,
+  );
 
   const netReceivedCents = totalReceivedCents - totalSettledNonPurchase;
-  const isFullyFunded = netReceivedCents >= P;
-  const unfundedAmountCents = Math.max(0, P - netReceivedCents);
+  const isFullyFunded = netReceivedCents >= externalDue;
+  const unfundedAmountCents = Math.max(0, externalDue - netReceivedCents);
 
   // Order-wide excess capacity calculation
   let orderWideExcessCapacityCents = 0;
   if (!input.isConfirmed) {
-    const totalEffNonPurchase = input.receipts.reduce((sum, r) => sum + (r.effectiveNonPurchaseReturnAuthorizationsCents ?? 0), 0);
-    orderWideExcessCapacityCents = Math.max(0, totalReceivedCents - P - totalEffNonPurchase);
+    const totalEffNonPurchase = input.receipts.reduce(
+      (sum, r) => sum + (r.effectiveNonPurchaseReturnAuthorizationsCents ?? 0),
+      0,
+    );
+    orderWideExcessCapacityCents = Math.max(
+      0,
+      totalReceivedCents - externalDue - totalEffNonPurchase,
+    );
   } else {
-    orderWideExcessCapacityCents = receiptProjections.reduce((sum, r) => sum + r.newExcessReturnCapacityCents, 0);
+    orderWideExcessCapacityCents = receiptProjections.reduce(
+      (sum, r) => sum + r.newExcessReturnCapacityCents,
+      0,
+    );
   }
 
   // Loss calculations
-  const isHistoricallyConfirmed = input.isConfirmed || (input.isCancelled && input.wasConfirmedBeforeCancellation === true);
+  const isHistoricallyConfirmed =
+    input.isConfirmed ||
+    (input.isCancelled && input.wasConfirmedBeforeCancellation === true);
 
   let orderWideUncoveredAmountCents = 0;
-  let payoutOverDisbursementCents = Math.max(0, totalSettledPayoutsCents - totalReceivedCents);
+  let payoutOverDisbursementCents = Math.max(
+    0,
+    totalSettledPayoutsCents - totalReceivedCents,
+  );
   let operationalFundingShortfallCents = 0;
 
   if (isHistoricallyConfirmed) {
     // max(0, P + settled non-purchase returns - sum Ri)
-    orderWideUncoveredAmountCents = Math.max(0, P + totalSettledNonPurchase - totalReceivedCents);
-    operationalFundingShortfallCents = Math.max(orderWideUncoveredAmountCents, payoutOverDisbursementCents);
+    orderWideUncoveredAmountCents = Math.max(
+      0,
+      externalDue + totalSettledNonPurchase - totalReceivedCents,
+    );
+    operationalFundingShortfallCents = Math.max(
+      orderWideUncoveredAmountCents,
+      payoutOverDisbursementCents,
+    );
   } else {
     orderWideUncoveredAmountCents = 0;
     operationalFundingShortfallCents = payoutOverDisbursementCents;

@@ -7,47 +7,64 @@ import {
   uuid,
   boolean,
   index,
+  check,
 } from "drizzle-orm/pg-core";
 import { carts } from "./carts";
 import { quotes } from "./quotes";
 import { productVariants } from "./catalog";
 import { pickupTimeSlots } from "./shipping";
+import { customers } from "./customers";
+import { sql } from "drizzle-orm";
 
-export const orders = pgTable("orders", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  sourceCartId: uuid("source_cart_id")
-    .notNull()
-    .unique()
-    .references(() => carts.id, { onDelete: "restrict" }),
-  referenceCode: text("reference_code").notNull().unique(), // SP-XXXX-XXXXC
-  quoteId: uuid("quote_id")
-    .notNull()
-    .references(() => quotes.id, { onDelete: "restrict" }),
-  lifecycleStatus: text("lifecycle_status", {
-    enum: ["unpaid", "confirmed", "completed", "cancelled"],
-  })
-    .notNull()
-    .default("unpaid"),
-  purchaseTotalCents: integer("purchase_total_cents").notNull(),
-  discountCents: integer("discount_cents").notNull().default(0),
-  guestEmail: text("guest_email").notNull(),
-  guestName: text("guest_name").notNull(),
-  // 'shipping' | 'pickup' — determines which fulfillment fields are relevant
-  fulfillmentType: text("fulfillment_type", {
-    enum: ["shipping", "pickup"],
-  })
-    .notNull()
-    .default("shipping"),
-  shippingAddressSnapshot: jsonb("shipping_address_snapshot").notNull(),
-  financialRevision: integer("financial_revision").notNull().default(1),
-  termsSnapshot: jsonb("terms_snapshot").notNull().default({}),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
+export const orders = pgTable(
+  "orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sourceCartId: uuid("source_cart_id")
+      .notNull()
+      .unique()
+      .references(() => carts.id, { onDelete: "restrict" }),
+    referenceCode: text("reference_code").notNull().unique(), // SP-XXXX-XXXXC
+    quoteId: uuid("quote_id")
+      .notNull()
+      .references(() => quotes.id, { onDelete: "restrict" }),
+    lifecycleStatus: text("lifecycle_status", {
+      enum: ["unpaid", "confirmed", "completed", "cancelled"],
+    })
+      .notNull()
+      .default("unpaid"),
+    purchaseTotalCents: integer("purchase_total_cents").notNull(),
+    discountCents: integer("discount_cents").notNull().default(0),
+    creditAppliedCents: integer("credit_applied_cents").notNull().default(0),
+    guestEmail: text("guest_email").notNull(),
+    guestName: text("guest_name").notNull(),
+    customerId: uuid("customer_id").references(() => customers.id, {
+      onDelete: "restrict",
+    }),
+    // 'shipping' | 'pickup' — determines which fulfillment fields are relevant
+    fulfillmentType: text("fulfillment_type", {
+      enum: ["shipping", "pickup"],
+    })
+      .notNull()
+      .default("shipping"),
+    shippingAddressSnapshot: jsonb("shipping_address_snapshot").notNull(),
+    financialRevision: integer("financial_revision").notNull().default(1),
+    termsSnapshot: jsonb("terms_snapshot").notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    index("idx_order_customer_history").on(t.customerId, t.createdAt, t.id),
+    check(
+      "order_credit_within_purchase",
+      sql`${t.creditAppliedCents} >= 0 and ${t.creditAppliedCents} <= ${t.purchaseTotalCents}`,
+    ),
+  ],
+);
 
 export const orderItems = pgTable("order_items", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -60,6 +77,10 @@ export const orderItems = pgTable("order_items", {
   quantity: integer("quantity").notNull(),
   unitPriceCents: integer("unit_price_cents").notNull(),
   lineTotalCents: integer("line_total_cents").notNull(),
+  catalogSnapshot: jsonb("catalog_snapshot")
+    .$type<{ title?: string; sku?: string; options?: Record<string, string> }>()
+    .notNull()
+    .default({}),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

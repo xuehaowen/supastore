@@ -57,6 +57,104 @@
       "when": 1789402898872,
       "tag": "0007_moaning_the_spike",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789575192786,
+      "tag": "0008_catalog_collections",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789575598840,
+      "tag": "0009_catalog_options",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789575613426,
+      "tag": "0010_variant_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789575964528,
+      "tag": "0011_customer_ownership",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789581625785,
+      "tag": "0012_variant_inventory",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1789582022932,
+      "tag": "0013_store_credit_funding",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1789582244494,
+      "tag": "0014_physical_returns",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1789582358487,
+      "tag": "0015_immutable_purchase_items",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1789583169602,
+      "tag": "0016_catalog_media",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1789583292954,
+      "tag": "0017_legacy_option_preservation",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1789583718589,
+      "tag": "0018_product_specifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1789583983420,
+      "tag": "0019_store_information",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1789594613802,
+      "tag": "0020_ledger_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1789613364118,
+      "tag": "0021_ledger_cursors",
+      "breakpoints": true
     }
   ]
 }
