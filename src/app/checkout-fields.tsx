@@ -132,7 +132,9 @@ function PickupCalendar({
             type="button"
             className="secondary pickup-calendar-nav-btn"
             onClick={handlePrev}
-            aria-label={viewMode === "week" ? "Previous week" : "Previous month"}
+            aria-label={
+              viewMode === "week" ? "Previous week" : "Previous month"
+            }
           >
             ‹
           </Button>
@@ -187,7 +189,12 @@ function PickupCalendar({
         <div className="pickup-calendar-grid month-view">
           {monthCells.map((d, index) => {
             if (!d) {
-              return <div key={`empty-${index}`} className="pickup-calendar-day-empty" />;
+              return (
+                <div
+                  key={`empty-${index}`}
+                  className="pickup-calendar-day-empty"
+                />
+              );
             }
             const key = formatDateKey(d);
             const isAvailable = availableSet.has(key);
@@ -227,13 +234,17 @@ function PickupCalendar({
 export function CheckoutFields({
   locations,
   timezone,
+  addresses = [],
 }: {
   locations: PickupOption[];
   timezone: string;
+  addresses?: { id: string; label: string; address: Record<string, string> }[];
 }) {
   const [method, setMethod] = useState("shipping");
   const [locationId, setLocationId] = useState(locations[0]?.id ?? "");
   const [date, setDate] = useState("");
+  const [street, setStreet] = useState("");
+  const [country, setCountry] = useState("US");
   const location = locations.find((item) => item.id === locationId);
   const availableDateKeys = useMemo(
     () => location?.dates.map((item) => item.date) ?? [],
@@ -265,16 +276,61 @@ export function CheckoutFields({
       </fieldset>
       {method === "shipping" ? (
         <>
+          {addresses.length > 0 && (
+            <label>
+              Saved address
+              <NativeSelect
+                defaultValue=""
+                onChange={(event) => {
+                  const saved = addresses.find(
+                    (a) => a.id === event.target.value,
+                  );
+                  if (saved) {
+                    setStreet(
+                      [
+                        saved.address.name,
+                        saved.address.line1,
+                        saved.address.line2,
+                        saved.address.city,
+                        saved.address.region,
+                        saved.address.postalCode,
+                      ]
+                        .filter(Boolean)
+                        .join(", "),
+                    );
+                    setCountry(saved.address.country || "US");
+                  } else {
+                    setStreet("");
+                    setCountry("US");
+                  }
+                }}
+              >
+                <option value="">Enter a new address</option>
+                {addresses.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.label}
+                  </option>
+                ))}
+              </NativeSelect>
+            </label>
+          )}
           <label>
             Street address
-            <Input name="address" required autoComplete="street-address" />
+            <Input
+              name="address"
+              required
+              autoComplete="street-address"
+              value={street}
+              onChange={(event) => setStreet(event.target.value)}
+            />
           </label>
           <label>
             Country code
             <Input
               name="country"
               required
-              defaultValue="US"
+              value={country}
+              onChange={(event) => setCountry(event.target.value)}
               pattern="[A-Za-z]{2}"
               autoComplete="country"
             />

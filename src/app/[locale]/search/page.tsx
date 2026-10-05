@@ -4,7 +4,13 @@ export default async function Search({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ q?: string; category?: string; page?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    category?: string;
+    page?: string;
+    sort?: string;
+    options?: string | string[];
+  }>;
 }) {
   return <Catalog locale={(await params).locale} query={await searchParams} />;
 }

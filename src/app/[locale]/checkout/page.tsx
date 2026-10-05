@@ -7,7 +7,9 @@ import {
   pickupLocation,
   storeSettings,
 } from "@/infrastructure/db/schema";
-import { guestIdentity, money } from "@/infrastructure/web";
+import { guestIdentity, customerIdentity, money } from "@/infrastructure/web";
+import { customerAccount } from "@/application/use-cases/customers/customer-ownership";
+import { CheckoutCredit } from "@/app/checkout-credit";
 import { getCart } from "@/application/use-cases/cart/get-cart";
 import type { QuoteTerms } from "@/application/use-cases/get-quote";
 import { quoteCart, placeOrder } from "@/app/actions";
@@ -26,6 +28,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
+export const metadata = { robots: { index: false, follow: false } };
 export default async function Checkout({
   params,
   searchParams,
@@ -59,6 +62,10 @@ export default async function Checkout({
         )
     : [];
   const quote = ownedQuote?.quote;
+  const customerUserId = await customerIdentity();
+  const customer = customerUserId
+    ? await customerAccount(customerUserId)
+    : null;
   return (
     <section className="mx-auto my-12 min-h-[50vh] max-w-4xl">
       <p className="mb-6 text-[10px] font-bold tracking-[0.2em]">
@@ -160,8 +167,29 @@ export default async function Checkout({
               <form className="grid gap-4" action={placeOrder}>
                 <Hidden name="locale" value={locale} />
                 <Hidden name="quoteId" value={quote.id} />
-                <Field label={t("name")} name="name" />
-                <Field label={t("email")} name="email" type="email" />
+                <Field
+                  label={t("name")}
+                  name="name"
+                  value={customer?.customer.name}
+                />
+                <Field
+                  label={t("email")}
+                  name="email"
+                  type="email"
+                  value={customer?.customer.email}
+                />
+                {customer?.credit?.reconciled && (
+                  <CheckoutCredit
+                    availableCents={
+                      customer.credit.account.balanceCents -
+                      customer.credit.account.reservedCents
+                    }
+                    purchaseCents={quote.totalPayableCents}
+                    currency={customer.credit.account.currency}
+                    precision={customer.credit.account.precision}
+                    locale={locale}
+                  />
+                )}
                 <Label className="flex items-start gap-3 font-normal">
                   <Input
                     className="mt-0.5 size-4 shrink-0"
@@ -192,6 +220,7 @@ export default async function Checkout({
                 <Hidden name="locale" value={locale} />
                 <Hidden name="cartId" value={cart.id} />
                 <CheckoutFields
+                  addresses={customer?.addresses ?? []}
                   timezone={store?.timezone ?? "UTC"}
                   locations={locations.map((location) => ({
                     id: location.id,
@@ -212,7 +241,11 @@ export default async function Checkout({
                   <Label>
                     {t("payment")}
                     <NativeSelect name="paymentAccountId">
-                      <option value="">{t("freeOrderNoPayment")}</option>
+                      <option value="">
+                        {locale === "zh"
+                          ? "全额使用余额或免费订单"
+                          : "Store credit in full or free order"}
+                      </option>
                       {accounts.map((a) => (
                         <option key={a.id} value={a.id}>
                           {a.name}
