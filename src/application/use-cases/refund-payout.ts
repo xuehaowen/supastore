@@ -98,6 +98,10 @@ export async function authorizeRefund(input: AuthorizeRefundInput) {
       .where(eq(orders.id, input.orderId))
       .limit(1);
     if (!order) throw new NotFoundError(`Order '${input.orderId}' not found.`);
+    if (order.creditAppliedCents)
+      throw new InvariantViolationError(
+        "Use the source-aware purchase refund action for an order funded with store credit.",
+      );
 
     const [receipt] = await tx
       .select()
