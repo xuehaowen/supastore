@@ -7,7 +7,7 @@ import {
   orderFulfillments,
   paymentReceipts,
 } from "@/infrastructure/db/schema";
-import { eq, asc, inArray } from "drizzle-orm";
+import { eq, asc, inArray, sql } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
 // CSV serialization helpers
@@ -40,6 +40,8 @@ export async function* streamProductsCsv(): AsyncGenerator<string> {
     "is_available",
     "is_published",
     "created_at",
+    "option_values",
+    "collection_handles",
   ]);
   yield HEADER + "\n";
 
@@ -59,6 +61,8 @@ export async function* streamProductsCsv(): AsyncGenerator<string> {
         variantTitle: productVariants.title,
         priceCents: productVariants.priceCents,
         isAvailable: productVariants.isAvailable,
+        optionValues: sql<string>`coalesce((select string_agg(a.code || ':' || av.code, '|' order by a.code) from variant_attribute_values va join attributes a on a.id=va.attribute_id join attribute_values av on av.id=va.attribute_value_id where va.variant_id=${productVariants.id}), '')`,
+        collectionHandles: sql<string>`coalesce((select string_agg(c.handle, '|' order by c.handle) from product_collection_memberships m join product_collections c on c.id=m.collection_id where m.product_id=${products.id}), '')`,
       })
       .from(products)
       .innerJoin(productVariants, eq(productVariants.productId, products.id))
@@ -79,6 +83,8 @@ export async function* streamProductsCsv(): AsyncGenerator<string> {
         row.isAvailable,
         row.isPublished,
         row.productCreatedAt.toISOString(),
+        row.optionValues,
+        row.collectionHandles,
       ]) + "\n";
     }
 

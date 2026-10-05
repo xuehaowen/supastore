@@ -12,6 +12,9 @@ import {
   productVariants,
   variantTranslations,
   storeSettings,
+  variantStock,
+  productOptions,
+  catalogMediaUploads,
 } from "@/infrastructure/db/schema";
 import {
   ConflictError,
@@ -133,6 +136,15 @@ export async function addProductVariant(input: {
       .where(eq(products.id, productId))
       .for("update");
     if (!product) throw new NotFoundError("Product not found.");
+    const [option] = await tx
+      .select()
+      .from(productOptions)
+      .where(eq(productOptions.productId, productId))
+      .limit(1);
+    if (option)
+      throw new DomainError(
+        "Use option preview to generate variants for a product with configured options.",
+      );
     const [duplicate] = await tx
       .select({ id: productVariants.id })
       .from(productVariants)
@@ -194,15 +206,28 @@ export async function removeProductVariant(input: {
     const variant = variants.find((item) => item.id === variantId);
     if (!variant)
       throw new NotFoundError("Variant not found for this product.");
-    if (variants.length === 1)
-      throw new DomainError("A product must retain at least one variant.");
+    if (variants.length === 1) {
+      const [product] = await tx
+        .select()
+        .from(products)
+        .where(eq(products.id, productId));
+      if (product?.isPublished)
+        throw new DomainError(
+          "Unpublish this product before removing its last variant.",
+        );
+    }
     const [referenced] = await tx
       .select({ id: orderItems.id })
       .from(orderItems)
       .where(eq(orderItems.variantId, variantId))
       .limit(1);
-    const action = referenced ? "archived" : "deleted";
-    if (referenced)
+    const [stock] = await tx
+      .select()
+      .from(variantStock)
+      .where(eq(variantStock.variantId, variantId));
+    const retain = referenced || stock;
+    const action = retain ? "archived" : "deleted";
+    if (retain)
       await tx
         .update(productVariants)
         .set({ isAvailable: false, updatedAt: new Date() })
@@ -246,38 +271,9 @@ export async function addProductImage(input: {
   s3Key: string;
   altText: string;
 }) {
-  const productId = parseActionUuid(input.productId, "Product");
-  const s3Key = parseActionRequiredText(input.s3Key, "Image asset key", 2000);
-  return catalogTransaction(input.staffUserId, async (tx) => {
-    const [product] = await tx
-      .select({ id: products.id })
-      .from(products)
-      .where(eq(products.id, productId));
-    if (!product) throw new NotFoundError("Product not found.");
-    const images = await tx
-      .select({ id: productImages.id })
-      .from(productImages)
-      .where(eq(productImages.productId, productId));
-    if (images.length >= 100)
-      throw new DomainError("A product cannot have more than 100 images.");
-    const [image] = await tx
-      .insert(productImages)
-      .values({
-        productId,
-        s3Key,
-        altText: input.altText.trim(),
-        sortOrder: images.length,
-      })
-      .returning();
-    await tx.insert(auditRecords).values({
-      entityType: "product_image",
-      entityId: image!.id,
-      actorId: input.staffUserId,
-      action: "created",
-      details: { productId, s3Key },
-    });
-    return image!;
-  });
+  throw new DomainError(
+    "Use the image upload control to attach a validated image.",
+  );
 }
 
 export async function removeProductImage(input: {
@@ -300,6 +296,10 @@ export async function removeProductImage(input: {
       )
       .returning();
     if (!image) throw new NotFoundError("Image not found for this product.");
+    await tx
+      .update(catalogMediaUploads)
+      .set({ status: "pending", expiresAt: new Date() })
+      .where(eq(catalogMediaUploads.s3Key, image.s3Key));
     await tx.insert(auditRecords).values({
       entityType: "product_image",
       entityId: imageId,
@@ -348,8 +348,18 @@ export async function updateCategory(input: {
         .from(categories)
         .where(eq(categories.id, parentId));
       if (!parent) throw new NotFoundError("Parent category not found.");
-      if (parent.parentId === categoryId)
-        throw new DomainError("Category relationships cannot form a cycle.");
+      const visited = new Set<string>([categoryId]);
+      let ancestor: typeof parent | undefined = parent;
+      while (ancestor) {
+        if (visited.has(ancestor.id))
+          throw new DomainError("Category relationships cannot form a cycle.");
+        visited.add(ancestor.id);
+        if (!ancestor.parentId) break;
+        [ancestor] = await tx
+          .select()
+          .from(categories)
+          .where(eq(categories.id, ancestor.parentId));
+      }
     }
     await tx
       .update(categories)

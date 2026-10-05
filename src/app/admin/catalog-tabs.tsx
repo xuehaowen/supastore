@@ -4,6 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const tabs = [
+  {
+    href: "/admin/attributes",
+    label: "Attributes",
+    match: "/admin/attributes",
+  },
   { href: "/admin/products", label: "Products", match: "/admin/products" },
   {
     href: "/admin/categories",
@@ -14,6 +19,11 @@ const tabs = [
     href: "/admin/products/import",
     label: "Import & export",
     match: "/admin/products/import",
+  },
+  {
+    href: "/admin/collections",
+    label: "Collections",
+    match: "/admin/collections",
   },
 ];
 

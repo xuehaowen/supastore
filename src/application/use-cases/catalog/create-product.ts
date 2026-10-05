@@ -74,11 +74,19 @@ export async function createProduct(input: CreateProductInput) {
     images = [],
   } = input;
 
-  if (!variants || variants.length === 0) {
+  if (
+    !variants ||
+    variants.length > 50 ||
+    (isPublished && variants.length === 0)
+  ) {
     throw new InvariantViolationError(
-      "A product must have at least one variant",
+      "Published products need 1–50 variants; drafts can have zero.",
     );
   }
+  if (images.length)
+    throw new InvariantViolationError(
+      "Create the product, then upload images through its image controls.",
+    );
 
   return db.transaction(async (tx) => {
     await verifyStaffInTransaction(tx, input.staffUserId, "owner");
@@ -107,20 +115,22 @@ export async function createProduct(input: CreateProductInput) {
       .returning();
 
     // Insert variants
-    const insertedVariants = await tx
-      .insert(productVariants)
-      .values(
-        variants.map((v, idx) => ({
-          productId: product.id,
-          sku: v.sku,
-          attributes: v.attributes ?? {},
-          title: v.title,
-          priceCents: v.priceCents,
-          isAvailable: v.isAvailable ?? true,
-          sortOrder: v.sortOrder ?? idx,
-        })),
-      )
-      .returning();
+    const insertedVariants = variants.length
+      ? await tx
+          .insert(productVariants)
+          .values(
+            variants.map((v, idx) => ({
+              productId: product.id,
+              sku: v.sku,
+              attributes: v.attributes ?? {},
+              title: v.title,
+              priceCents: v.priceCents,
+              isAvailable: v.isAvailable ?? true,
+              sortOrder: v.sortOrder ?? idx,
+            })),
+          )
+          .returning()
+      : [];
 
     // Insert categories if any
     if (categoryIds.length > 0) {

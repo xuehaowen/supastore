@@ -8,6 +8,8 @@ import {
   productImages,
   categories,
   storeSettings,
+  collectionMemberships,
+  productCollections,
 } from "@/infrastructure/db/schema";
 export interface ListProductsInput {
   locale?: string;
@@ -15,6 +17,9 @@ export interface ListProductsInput {
   search?: string;
   page?: number;
   pageSize?: number;
+  collectionHandle?: string;
+  sort?: "newest" | "price-low" | "price-high";
+  optionValues?: { attribute: string; value: string }[];
 }
 export async function listProducts(input: ListProductsInput = {}) {
   return db.transaction(async (tx) => {
@@ -25,15 +30,36 @@ export async function listProducts(input: ListProductsInput = {}) {
       Math.min(100, Math.floor(input.pageSize || 24)),
     );
     const conditions = [eq(products.isPublished, true)];
+    const [settings] = await tx.select().from(storeSettings).limit(1);
     const search = input.search?.trim().slice(0, 200);
     if (search)
       conditions.push(
-        sql`(${products.searchVector} @@ plainto_tsquery('simple',${search}) OR ${products.title} % ${search})`,
+        sql`(${products.searchVector} @@ plainto_tsquery('simple',${search}) OR ${products.title} % ${search} OR ${products.title} ilike ${`%${search.replace(/[\\%_]/g, "\\$&")}%`} OR exists (select 1 from product_translations t where t.product_id=${products.id} and t.locale in (${input.locale || settings?.defaultLocale || "en"}, ${settings?.defaultLocale || "en"}) and t.title ilike ${`%${search.replace(/[\\%_]/g, "\\$&")}%`}))`,
       );
     if (input.categorySlug)
       conditions.push(
         sql`exists(select 1 from product_categories pc join categories c on c.id=pc.category_id where pc.product_id=${products.id} and c.slug=${input.categorySlug})`,
       );
+    if (input.collectionHandle)
+      conditions.push(
+        sql`exists(select 1 from product_collection_memberships m join product_collections c on c.id=m.collection_id where m.product_id=${products.id} and c.handle=${input.collectionHandle} and c.is_published=true)`,
+      );
+    const filters = (input.optionValues || [])
+      .slice(0, 4)
+      .filter(
+        (f) =>
+          /^[a-z0-9-]{1,40}$/.test(f.attribute) &&
+          /^[a-z0-9-]{1,40}$/.test(f.value),
+      );
+    if (filters.length) {
+      const assignments = filters.map(
+        (f) =>
+          sql`exists (select 1 from variant_attribute_values va join attributes a on a.id=va.attribute_id join attribute_values av on av.id=va.attribute_value_id where va.variant_id=v.id and a.code=${f.attribute} and av.code=${f.value})`,
+      );
+      conditions.push(
+        sql`exists (select 1 from product_variants v left join variant_stock s on s.variant_id=v.id where v.product_id=${products.id} and v.is_available and (s.tracking_enabled is not true or s.on_hand > s.reserved) and ${sql.join(assignments, sql` and `)})`,
+      );
+    }
     const [count] = await tx
       .select({ total: sql<number>`count(*)::int` })
       .from(products)
@@ -42,10 +68,20 @@ export async function listProducts(input: ListProductsInput = {}) {
       .select()
       .from(products)
       .where(and(...conditions))
-      .orderBy(products.createdAt, products.id)
+      .orderBy(
+        input.sort === "price-low"
+          ? sql`(select min(v.price_cents) from product_variants v where v.product_id=${products.id} and v.is_available) asc nulls last`
+          : input.sort === "price-high"
+            ? sql`(select min(v.price_cents) from product_variants v where v.product_id=${products.id} and v.is_available) desc nulls last`
+            : input.sort === "newest"
+              ? sql`${products.createdAt} desc`
+              : input.collectionHandle
+                ? sql`(select m.sort_order from product_collection_memberships m join product_collections c on c.id=m.collection_id where m.product_id=${products.id} and c.handle=${input.collectionHandle})`
+                : products.createdAt,
+        products.id,
+      )
       .limit(pageSize)
       .offset((page - 1) * pageSize);
-    const [settings] = await tx.select().from(storeSettings).limit(1);
     const ids = rows.map((p) => p.id);
     const translations = ids.length
       ? await tx

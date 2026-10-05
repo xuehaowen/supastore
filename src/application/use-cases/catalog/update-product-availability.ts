@@ -3,7 +3,11 @@ import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import { products, productVariants } from "@/infrastructure/db/schema";
-import { NotFoundError } from "@/application/common/errors";
+import {
+  NotFoundError,
+  DomainError,
+  ConflictError,
+} from "@/application/common/errors";
 
 export interface UpdateProductAvailabilityInput {
   staffUserId: string;
@@ -11,6 +15,7 @@ export interface UpdateProductAvailabilityInput {
   isPublished?: boolean;
   variantId?: string;
   isAvailable?: boolean;
+  quoteVersion?: number;
 }
 
 export async function updateProductAvailability(
@@ -22,6 +27,27 @@ export async function updateProductAvailability(
     const { productId, isPublished, variantId, isAvailable } = input;
 
     if (productId && isPublished !== undefined) {
+      const [current] = await tx
+        .select()
+        .from(products)
+        .where(eq(products.id, productId))
+        .for("update");
+      if (!current) throw new NotFoundError("Product not found.");
+      if (
+        input.quoteVersion !== undefined &&
+        current.quoteVersion !== input.quoteVersion
+      )
+        throw new ConflictError("Product changed. Reload before publishing.");
+      if (isPublished) {
+        const available = await tx
+          .select({ id: productVariants.id })
+          .from(productVariants)
+          .where(eq(productVariants.productId, productId));
+        if (!available.length)
+          throw new DomainError(
+            "Add a priced variant before publishing this draft.",
+          );
+      }
       const [updated] = await tx
         .update(products)
         .set({

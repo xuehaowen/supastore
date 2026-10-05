@@ -7,9 +7,14 @@ import {
 import { auth } from "@/infrastructure/auth";
 import { db } from "@/infrastructure/db";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
-import { ForbiddenError } from "@/application/common/errors";
+import { ForbiddenError, DomainError } from "@/application/common/errors";
+import { revalidateTag, revalidatePath } from "next/cache";
 
 export async function POST(request: NextRequest) {
+  const expectedOrigin = new URL(process.env.APP_URL || request.url).origin;
+  if (request.headers.get("origin") !== expectedOrigin) {
+    return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
+  }
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -19,20 +24,32 @@ export async function POST(request: NextRequest) {
     await db.transaction((tx) => verifyStaffInTransaction(tx, session.user.id));
   } catch (error) {
     if (error instanceof ForbiddenError) {
-      return NextResponse.json({ error: "Staff access required" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Staff access required" },
+        { status: 403 },
+      );
     }
-    return NextResponse.json({ error: "Unable to verify access" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Unable to verify access" },
+      { status: 500 },
+    );
   }
 
   const formData = await request.formData();
   const file = formData.get("file");
 
   if (!(file instanceof File)) {
-    return NextResponse.json({ error: "A CSV file is required." }, { status: 400 });
+    return NextResponse.json(
+      { error: "A CSV file is required." },
+      { status: 400 },
+    );
   }
 
   if (file.size > 5 * 1024 * 1024) {
-    return NextResponse.json({ error: "File exceeds 5 MB limit." }, { status: 413 });
+    return NextResponse.json(
+      { error: "File exceeds 5 MB limit." },
+      { status: 413 },
+    );
   }
 
   const csvText = await file.text();
@@ -43,12 +60,23 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await importProductsCsv({ rows, staffUserId: session.user.id });
+    const result = await importProductsCsv({
+      rows,
+      staffUserId: session.user.id,
+    });
+    revalidateTag("catalog");
+    revalidatePath("/[locale]", "layout");
     return NextResponse.json({ success: true, ...result });
-  } catch {
+  } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Import failed. Please try again." },
-      { status: 500 },
+      {
+        success: false,
+        error:
+          error instanceof DomainError
+            ? error.message
+            : "Import failed. Please try again.",
+      },
+      { status: error instanceof DomainError ? 422 : 500 },
     );
   }
 }

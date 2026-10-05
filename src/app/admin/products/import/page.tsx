@@ -14,22 +14,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { downloadAdminExport, importProductsCsv } from "@/app/client-requests";
+import type { ProductCsvRow } from "@/domain/catalog/product-csv";
 
 interface CsvParseError {
   line: number;
   field: string;
   message: string;
-}
-
-interface ProductCsvRow {
-  handle: string;
-  sku: string;
-  variantTitle: string;
-  productTitle: string;
-  description: string;
-  priceCents: number;
-  isAvailable: boolean;
-  isPublished: boolean;
 }
 
 type PreviewState =
@@ -216,8 +206,14 @@ export default function ProductImportExportPage() {
           <code className="rounded bg-gray-100 px-1">variant_title</code>,{" "}
           <code className="rounded bg-gray-100 px-1">description</code>,{" "}
           <code className="rounded bg-gray-100 px-1">is_available</code>,{" "}
-          <code className="rounded bg-gray-100 px-1">is_published</code>. Max 5
-          MB.
+          <code className="rounded bg-gray-100 px-1">is_published</code>,{" "}
+          <code>option_values</code> (color:red|size:m), and{" "}
+          <code>collection_handles</code> (summer|gifts). Max 5 MB. Existing
+          attribute values and collections must already exist. Memberships are
+          added; removing them uses the collection editor. Files import in
+          atomic batches of at most 100 rows, keeping each product together.
+          After a partial failure, retrying the same file preserves existing SKU
+          identities.
         </p>
 
         {preview.status === "idle" && (
@@ -288,6 +284,8 @@ export default function ProductImportExportPage() {
                     <TableHead>SKU</TableHead>
                     <TableHead>Title</TableHead>
                     <TableHead>Variant</TableHead>
+                    <TableHead>Options</TableHead>
+                    <TableHead>Collections to add</TableHead>
                     <TableHead className="text-right">Price (cents)</TableHead>
                     <TableHead className="text-center">Available</TableHead>
                     <TableHead className="text-center">Published</TableHead>
@@ -301,6 +299,14 @@ export default function ProductImportExportPage() {
                       <TableCell>{row.productTitle}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {row.variantTitle}
+                      </TableCell>
+                      <TableCell>
+                        {Object.entries(row.optionValues || {})
+                          .map(([axis, value]) => `${axis}:${value}`)
+                          .join(" · ") || "—"}
+                      </TableCell>
+                      <TableCell>
+                        {row.collectionHandles?.join(", ") || "—"}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {row.priceCents}
@@ -336,7 +342,7 @@ export default function ProductImportExportPage() {
         {preview.status === "importing" && (
           <div className="mt-4 flex items-center gap-2 text-sm text-gray-600">
             <span className="animate-spin">⟳</span> Importing — this runs in a
-            single transaction…
+            bounded product batches…
           </div>
         )}
 

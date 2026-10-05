@@ -30,7 +30,7 @@ export interface UpdateProductInput {
   description: string;
   categoryIds: string[];
   variants: { id: string; title: string; sku: string; priceCents: number }[];
-  images: { id: string; s3Key: string; altText: string }[];
+  images: { id: string; s3Key: string; altText: string; sortOrder?: number }[];
 }
 
 export async function updateProduct(input: UpdateProductInput) {
@@ -41,7 +41,7 @@ export async function updateProduct(input: UpdateProductInput) {
     throw new DomainError(
       "Use lowercase letters, numbers, and hyphens for the URL handle.",
     );
-  if (!input.variants.length || input.variants.length > 50)
+  if (input.variants.length > 50)
     throw new DomainError("A product must have between 1 and 50 variants.");
   for (const variant of input.variants) {
     parseActionUuid(variant.id, "Variant");
@@ -70,6 +70,8 @@ export async function updateProduct(input: UpdateProductInput) {
       .where(eq(products.id, input.productId))
       .for("update");
     if (!product) throw new NotFoundError("Product not found.");
+    if (product.isPublished && !input.variants.length)
+      throw new DomainError("Published products require at least one variant.");
     if (product.quoteVersion !== input.quoteVersion)
       throw new ConflictError(
         "This product changed since you opened it. Reload the editor before saving.",
@@ -129,6 +131,15 @@ export async function updateProduct(input: UpdateProductInput) {
       input.images.some((i) => !images.some((existing) => existing.id === i.id))
     )
       throw new DomainError("The image list has changed. Reload the editor.");
+    if (
+      input.images.some(
+        (i) =>
+          images.find((existing) => existing.id === i.id)?.s3Key !== i.s3Key,
+      )
+    )
+      throw new DomainError(
+        "Upload a new image instead of replacing an asset key.",
+      );
     await tx
       .update(products)
       .set({
@@ -177,7 +188,7 @@ export async function updateProduct(input: UpdateProductInput) {
     for (const image of input.images)
       await tx
         .update(productImages)
-        .set({ s3Key: image.s3Key, altText: image.altText })
+        .set({ s3Key: image.s3Key, altText: image.altText, ...(image.sortOrder !== undefined ? { sortOrder: parseActionInteger(image.sortOrder, "Image position", 0, 1000000) } : {}) })
         .where(
           and(
             eq(productImages.id, image.id),

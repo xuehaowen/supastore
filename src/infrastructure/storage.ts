@@ -39,23 +39,27 @@ export async function presignUpload(key: string, mime: string, size: number) {
 export async function putUpload(key: string, mime: string, body: Uint8Array) {
   const bucketName = bucket();
   try {
-    await storage.send(new PutObjectCommand({
-      Bucket: bucketName,
-      Key: key,
-      ContentType: mime,
-      ContentLength: body.byteLength,
-      Body: body,
-    }));
+    await storage.send(
+      new PutObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+        ContentType: mime,
+        ContentLength: body.byteLength,
+        Body: body,
+      }),
+    );
   } catch (error) {
     if ((error as { name?: string }).name !== "NoSuchBucket") throw error;
     await storage.send(new CreateBucketCommand({ Bucket: bucketName }));
-    await storage.send(new PutObjectCommand({
-      Bucket: bucketName,
-      Key: key,
-      ContentType: mime,
-      ContentLength: body.byteLength,
-      Body: body,
-    }));
+    await storage.send(
+      new PutObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+        ContentType: mime,
+        ContentLength: body.byteLength,
+        Body: body,
+      }),
+    );
   }
 }
 export async function copyCandidate(stagingKey: string, candidateKey: string) {
@@ -109,4 +113,30 @@ export async function presignAsset(key: string) {
     new GetObjectCommand({ Bucket: name, Key: key }),
     { expiresIn: 300 },
   );
+}
+export async function putCatalogAsset(
+  key: string,
+  mime: string,
+  body: Uint8Array,
+) {
+  const name = process.env.S3_BUCKET_PUBLIC;
+  if (!name) throw new Error("S3_BUCKET_PUBLIC is required.");
+  await storage.send(
+    new PutObjectCommand({
+      Bucket: name,
+      Key: key,
+      ContentType: mime,
+      ContentLength: body.byteLength,
+      Body: body,
+    }),
+  );
+}
+export async function deleteCatalogAsset(key: string) {
+  const name = process.env.S3_BUCKET_PUBLIC;
+  if (
+    !name ||
+    !/^catalog\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(png|jpg|webp)$/.test(key)
+  )
+    throw new Error("Invalid managed catalog asset.");
+  await storage.send(new DeleteObjectCommand({ Bucket: name, Key: key }));
 }
