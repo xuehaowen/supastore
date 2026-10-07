@@ -1,6 +1,8 @@
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import { settleOrderStock } from "../inventory/stock-operations";
+import { settleSlot } from "../inventory/slot-operations";
+import { releaseOrderReward } from "../store-credit/reward-operations";
 import {
   orders,
   orderFulfillments,
@@ -281,6 +283,7 @@ export async function completePickupHandoff(input: CompletePickupHandoffInput) {
     }
 
     const handoffAt = new Date();
+    await settleSlot(tx, order.id, "consumed");
     await settleOrderStock(tx, order.id, "consumed", staff.userId);
 
     const [updatedFulfillment] = await tx
@@ -303,6 +306,7 @@ export async function completePickupHandoff(input: CompletePickupHandoffInput) {
       })
       .where(eq(orders.id, order.id))
       .returning();
+    await releaseOrderReward(tx, order.id, staff.userId);
 
     const [event] = await tx
       .insert(outboxEvents)

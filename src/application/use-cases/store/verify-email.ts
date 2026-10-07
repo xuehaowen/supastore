@@ -4,9 +4,15 @@ import { db } from "@/infrastructure/db";
 import { verification, storeSettings } from "@/infrastructure/db/schema";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { hashToken } from "@/application/common/guest-access";
-import { smtpAdapter } from "@/infrastructure/notifications/smtp";
+import type { EmailSender } from "@/application/ports/notifications";
+import { renderEmail } from "@/application/notifications/render-message";
 import { InvariantViolationError } from "@/application/common/errors";
-export async function requestEmailVerification(staffUserId: string) {
+export async function requestEmailVerification(
+  staffUserId: string,
+  sender: EmailSender | undefined,
+) {
+  if (!sender)
+    throw new InvariantViolationError("Email delivery is not configured.");
   const token = randomBytes(32).toString("hex");
   const recipient = await db.transaction(async (tx) => {
     const staff = await verifyStaffInTransaction(tx, staffUserId, "owner");
@@ -19,21 +25,24 @@ export async function requestEmailVerification(staffUserId: string) {
     return staff.email;
   });
   try {
-    const result = await smtpAdapter.sendEmail({
-      recipient,
-      subject: "Verify store email delivery",
-      template: "store.email_verification",
-      data: {
-        verificationUrl:
-          (process.env.BETTER_AUTH_URL ?? "http://localhost:3000") +
-          "/admin/setup/verify-email?token=" +
-          token,
-      },
-    });
-    if (!result.success) throw new Error("Delivery rejected");
+    const result = await sender.send(
+      renderEmail({
+        deliveryId: randomUUID(),
+        recipient,
+        subject: "Verify store email delivery",
+        template: "store.email_verification",
+        data: {
+          verificationUrl:
+            (process.env.BETTER_AUTH_URL ?? "http://localhost:3000") +
+            "/admin/setup/verify-email?token=" +
+            token,
+        },
+      }),
+    );
+    if (result.status !== "accepted") throw new Error("Delivery not accepted");
   } catch {
     throw new InvariantViolationError(
-      "Verification email could not be sent. Check the SMTP host, port, TLS setting, credentials, and sender address, then retry.",
+      "Verification email could not be accepted. Check email provider configuration and delivery status before retrying.",
     );
   }
 }

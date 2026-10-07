@@ -4,6 +4,7 @@ import { settleOrderStock } from "../inventory/stock-operations";
 import { settleOrderCredit } from "../store-credit/credit-operations";
 import { refundPurchaseInTransaction } from "../store-credit/purchase-refund";
 import { randomUUID } from "node:crypto";
+import { settleSlot } from "../inventory/slot-operations";
 import {
   orders,
   orderFulfillments,
@@ -93,6 +94,7 @@ export async function cancelOrder(
     }
 
     const previousLifecycleStatus = order.lifecycleStatus;
+    await settleSlot(tx, order.id, "released");
     await settleOrderStock(tx, order.id, "released", staff.userId);
     let creditRefundAuthorization: string | undefined;
     let mixedRefundAmount = 0;
@@ -159,12 +161,10 @@ export async function cancelOrder(
           (sum, a) => sum + a.authorizedAmountCents,
           0,
         );
-        const corrections = order.creditAppliedCents
-          ? await tx
+        const corrections = await tx
               .select()
               .from(paymentReceiptCorrections)
-              .where(eq(paymentReceiptCorrections.receiptId, receipt.id))
-          : [];
+              .where(eq(paymentReceiptCorrections.receiptId, receipt.id));
         const availableCapacity = Math.max(
           0,
           receipt.amountCents +

@@ -28,6 +28,8 @@ export interface UpdateProductInput {
   title: string;
   handle: string;
   description: string;
+  taxable?: boolean;
+  rewardEligible?: boolean;
   categoryIds: string[];
   variants: { id: string; title: string; sku: string; priceCents: number }[];
   images: { id: string; s3Key: string; altText: string; sortOrder?: number }[];
@@ -37,6 +39,11 @@ export async function updateProduct(input: UpdateProductInput) {
   parseActionUuid(input.productId, "Product");
   parseActionInteger(input.quoteVersion, "Product version", 1, 2147483647);
   const title = parseActionRequiredText(input.title, "Product title", 200);
+  for (const flag of [input.taxable, input.rewardEligible])
+    if (flag !== undefined && typeof flag !== "boolean")
+      throw new DomainError(
+        "Product tax and reward eligibility must be boolean values.",
+      );
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.handle))
     throw new DomainError(
       "Use lowercase letters, numbers, and hyphens for the URL handle.",
@@ -146,6 +153,10 @@ export async function updateProduct(input: UpdateProductInput) {
         title,
         handle: input.handle,
         description: input.description,
+        ...(input.taxable !== undefined ? { taxable: input.taxable } : {}),
+        ...(input.rewardEligible !== undefined
+          ? { rewardEligible: input.rewardEligible }
+          : {}),
         quoteVersion: sql`${products.quoteVersion} + 1`,
         updatedAt: new Date(),
       })
@@ -188,7 +199,20 @@ export async function updateProduct(input: UpdateProductInput) {
     for (const image of input.images)
       await tx
         .update(productImages)
-        .set({ s3Key: image.s3Key, altText: image.altText, ...(image.sortOrder !== undefined ? { sortOrder: parseActionInteger(image.sortOrder, "Image position", 0, 1000000) } : {}) })
+        .set({
+          s3Key: image.s3Key,
+          altText: image.altText,
+          ...(image.sortOrder !== undefined
+            ? {
+                sortOrder: parseActionInteger(
+                  image.sortOrder,
+                  "Image position",
+                  0,
+                  1000000,
+                ),
+              }
+            : {}),
+        })
         .where(
           and(
             eq(productImages.id, image.id),

@@ -105,16 +105,14 @@ export async function adjustStock(input: {
           "Finish or cancel outstanding orders for this variant before enabling stock tracking.",
         );
     }
-    await tx
-      .insert(stockMovements)
-      .values({
-        variantId,
-        delta: onHand - stock.onHand,
-        reason,
-        actorId: input.staffUserId,
-        requestKey,
-        payload: { onHand, tracking: input.tracking },
-      });
+    await tx.insert(stockMovements).values({
+      variantId,
+      delta: onHand - stock.onHand,
+      reason,
+      actorId: input.staffUserId,
+      requestKey,
+      payload: { onHand, tracking: input.tracking },
+    });
     await tx
       .update(variantStock)
       .set({
@@ -123,21 +121,19 @@ export async function adjustStock(input: {
         revision: stock.revision + 1,
       })
       .where(eq(variantStock.variantId, variantId));
-    await tx
-      .insert(auditRecords)
-      .values({
-        entityType: "variant_stock",
-        entityId: variantId,
-        actorId: input.staffUserId,
-        action: "stock.counted",
-        reason,
-        details: {
-          onHand,
-          previous: stock.onHand,
-          reserved: stock.reserved,
-          shortage: onHand < stock.reserved,
-        },
-      });
+    await tx.insert(auditRecords).values({
+      entityType: "variant_stock",
+      entityId: variantId,
+      actorId: input.staffUserId,
+      action: "stock.counted",
+      reason,
+      details: {
+        onHand,
+        previous: stock.onHand,
+        reserved: stock.reserved,
+        shortage: onHand < stock.reserved,
+      },
+    });
   });
 }
 export async function reserveOrderStock(tx: Transaction, orderId: string) {
@@ -162,14 +158,12 @@ export async function reserveOrderStock(tx: Transaction, orderId: string) {
       throw new InvariantViolationError(
         `Not enough stock for ${variant.title}. Review your cart.`,
       );
-    await tx
-      .insert(stockReservations)
-      .values({
-        orderId,
-        orderItemId: item.id,
-        variantId: item.variantId,
-        quantity: item.quantity,
-      });
+    await tx.insert(stockReservations).values({
+      orderId,
+      orderItemId: item.id,
+      variantId: item.variantId,
+      quantity: item.quantity,
+    });
     await tx
       .update(variantStock)
       .set({
@@ -198,7 +192,9 @@ export async function settleOrderStock(
     .orderBy(asc(stockReservations.variantId));
   for (const reservation of reservations) {
     const { stock } = await lockStock(tx, reservation.variantId);
-    if (stock.reserved < reservation.quantity)
+    const remaining =
+      reservation.quantity - (reservation.consumedQuantity ?? 0);
+    if (stock.reserved < remaining)
       throw new InvariantViolationError(
         "Stock reservation drift needs owner review.",
       );
@@ -209,27 +205,83 @@ export async function settleOrderStock(
     await tx
       .update(variantStock)
       .set({
-        reserved: stock.reserved - reservation.quantity,
-        onHand:
-          stock.onHand - (status === "consumed" ? reservation.quantity : 0),
+        reserved: stock.reserved - remaining,
+        onHand: stock.onHand - (status === "consumed" ? remaining : 0),
         revision: stock.revision + 1,
       })
       .where(eq(variantStock.variantId, reservation.variantId));
     await tx
       .update(stockReservations)
-      .set({ status })
+      .set({
+        status,
+        ...(status === "consumed"
+          ? { consumedQuantity: reservation.quantity }
+          : {}),
+      })
       .where(eq(stockReservations.id, reservation.id));
     if (status === "consumed")
-      await tx
-        .insert(stockMovements)
-        .values({
-          variantId: reservation.variantId,
-          orderId,
-          delta: -reservation.quantity,
-          reason: "Order handed off",
-          actorId,
-          requestKey: reservation.id,
-        });
+      await tx.insert(stockMovements).values({
+        variantId: reservation.variantId,
+        orderId,
+        delta: -remaining,
+        reason: "Order handed off",
+        actorId,
+        requestKey: reservation.id,
+      });
+  }
+}
+export async function consumeShipmentStock(
+  tx: Transaction,
+  orderId: string,
+  shipmentId: string,
+  lines: { orderItemId: string; quantity: number }[],
+  actorId: string,
+) {
+  const holds = await tx
+    .select()
+    .from(stockReservations)
+    .where(eq(stockReservations.orderId, orderId))
+    .orderBy(asc(stockReservations.variantId), asc(stockReservations.id));
+  for (const hold of holds) {
+    const quantity =
+      lines.find((line) => line.orderItemId === hold.orderItemId)?.quantity ||
+      0;
+    if (!quantity) continue;
+    const consumed = hold.consumedQuantity + quantity;
+    if (hold.status !== "active" || consumed > hold.quantity)
+      throw new InvariantViolationError(
+        "Shipment stock reservation is no longer available.",
+      );
+    const { stock } = await lockStock(tx, hold.variantId);
+    if (stock.reserved < quantity || stock.onHand < stock.reserved)
+      throw new InvariantViolationError(
+        "Stock shortage or reservation drift blocks dispatch.",
+      );
+    await tx
+      .update(variantStock)
+      .set({
+        reserved: stock.reserved - quantity,
+        onHand: stock.onHand - quantity,
+        revision: stock.revision + 1,
+      })
+      .where(eq(variantStock.variantId, hold.variantId));
+    await tx
+      .update(stockReservations)
+      .set({
+        consumedQuantity: consumed,
+        status: consumed === hold.quantity ? "consumed" : "active",
+      })
+      .where(eq(stockReservations.id, hold.id));
+    await tx
+      .insert(stockMovements)
+      .values({
+        variantId: hold.variantId,
+        orderId,
+        delta: -quantity,
+        reason: "Shipment dispatched",
+        actorId,
+        requestKey: `shipment:${shipmentId}:${hold.orderItemId}`,
+      });
   }
 }
 export async function restockReturnedGoods(
@@ -259,16 +311,14 @@ export async function restockReturnedGoods(
     );
   if (existing)
     throw new InvariantViolationError("Return item is already restocked.");
-  await tx
-    .insert(stockMovements)
-    .values({
-      variantId: input.variantId,
-      orderId: input.orderId,
-      delta: input.quantity,
-      reason: "Returned goods received and restockable",
-      actorId: input.actorId,
-      requestKey: input.returnItemId,
-    });
+  await tx.insert(stockMovements).values({
+    variantId: input.variantId,
+    orderId: input.orderId,
+    delta: input.quantity,
+    reason: "Returned goods received and restockable",
+    actorId: input.actorId,
+    requestKey: input.returnItemId,
+  });
   await tx
     .update(variantStock)
     .set({

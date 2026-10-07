@@ -157,9 +157,9 @@ export async function saveCustomerAddress(input: {
       .from(customerAddresses)
       .where(eq(customerAddresses.customerId, customer.id))
       .for("update");
-    if (id && !existing.some((a) => a.id === id))
-      throw new NotFoundError("Address not found.");
-    if (input.remove && id)
+    if (input.remove) {
+      if (!id || !existing.some((a) => a.id === id))
+        throw new NotFoundError("Address not found.");
       await tx
         .delete(customerAddresses)
         .where(
@@ -168,12 +168,14 @@ export async function saveCustomerAddress(input: {
             eq(customerAddresses.customerId, customer.id),
           ),
         );
-    else if (id)
+    } else if (id) {
+      if (!existing.some((a) => a.id === id))
+        throw new NotFoundError("Address not found.");
       await tx
         .update(customerAddresses)
         .set({ label, address: input.address })
         .where(eq(customerAddresses.id, id));
-    else {
+    } else {
       if (existing.length >= 20)
         throw new DomainError("You can save up to 20 addresses.");
       await tx

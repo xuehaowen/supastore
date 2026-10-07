@@ -7,7 +7,10 @@ import {
   confirmationFunding,
   payoutAllocations,
   auditRecords,
+  storeCreditAccounts,
 } from "@/infrastructure/db/schema";
+import { lockCreditAccount } from "../store-credit/credit-operations";
+import { reconcileOrderReward } from "../store-credit/reward-operations";
 import { acquireTransactionLocks } from "@/domain/locking/lock-order";
 import { computeOrderFinancialProjection } from "@/domain/financial-projection/projection";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
@@ -63,7 +66,15 @@ export async function correctReceipt(input: CorrectReceiptInput) {
     const [reference] = await tx.select({ orderId: paymentReceipts.orderId })
       .from(paymentReceipts).where(eq(paymentReceipts.id, input.receiptId)).limit(1);
     if (!reference) throw new NotFoundError(`Receipt '${input.receiptId}' not found.`);
-    await acquireTransactionLocks(tx, { orderIds: [reference.orderId], receiptIds: [input.receiptId] });
+    await acquireTransactionLocks(tx, { orderIds: [reference.orderId] });
+    const [rewardOrder] = await tx.select().from(orders).where(eq(orders.id, reference.orderId));
+    if (rewardOrder?.customerId && rewardOrder.rewardSnapshot) {
+      const [account] = await tx.select().from(storeCreditAccounts).where(and(
+        eq(storeCreditAccounts.customerId, rewardOrder.customerId),
+        eq(storeCreditAccounts.currency, (rewardOrder.termsSnapshot as {currency: string}).currency)));
+      if (account) await lockCreditAccount(tx, account.id);
+    }
+    await acquireTransactionLocks(tx, { receiptIds: [input.receiptId] });
 
     const [receipt] = await tx
       .select()
@@ -125,6 +136,10 @@ export async function correctReceipt(input: CorrectReceiptInput) {
       .select()
       .from(confirmationFunding)
       .where(eq(confirmationFunding.orderId, order!.id));
+    if (order!.rewardSnapshot && allFunding.some(funding => funding.receiptId === receipt.id && funding.fundedAmountCents > newEffectiveAmount)) {
+      await tx.update(orders).set({rewardFundingReview: true}).where(eq(orders.id, order!.id));
+      await reconcileOrderReward(tx, order!.id, `reward:correction:${correction!.id}`, owner.userId);
+    }
 
     const allAllocations = await tx
       .select()
@@ -173,6 +188,7 @@ export async function correctReceipt(input: CorrectReceiptInput) {
         newEffectiveAmountCents: newEffectiveAmount,
         operationalFundingShortfallCents:
           projection.operationalFundingShortfallCents,
+        rewardFundingReview: Boolean(order!.rewardSnapshot && allFunding.some(funding => funding.receiptId === receipt.id && funding.fundedAmountCents > newEffectiveAmount)),
       },
     });
 
@@ -233,6 +249,9 @@ export async function crossOrderTransferReceipt(
       throw new NotFoundError(
         `Target order '${input.targetOrderId}' not found.`,
       );
+    if (sourceOrder.rewardSnapshot || targetOrder.rewardSnapshot) {
+      throw new InvariantViolationError("Reward-bearing receipt reassignment requires an explicit source-allocation repair; record an owner investigation instead.");
+    }
 
     const [receipt] = await tx
       .select()

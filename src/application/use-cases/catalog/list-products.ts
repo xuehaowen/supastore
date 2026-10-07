@@ -102,19 +102,31 @@ export async function listProducts(input: ListProductsInput = {}) {
           .where(inArray(productImages.productId, ids))
           .orderBy(productImages.sortOrder)
       : [];
+    const translationsByProduct = new Map<string, typeof translations>();
+    for (const translation of translations) {
+      const group = translationsByProduct.get(translation.productId) ?? [];
+      group.push(translation);
+      translationsByProduct.set(translation.productId, group);
+    }
+    const pricesByProduct = new Map<string, number[]>();
+    for (const variant of variants) {
+      const prices = pricesByProduct.get(variant.productId) ?? [];
+      prices.push(variant.priceCents);
+      pricesByProduct.set(variant.productId, prices);
+    }
+    const coverByProduct = new Map<string, string>();
+    for (const image of images)
+      if (!coverByProduct.has(image.productId))
+        coverByProduct.set(image.productId, image.s3Key);
     return {
       page,
       pageSize,
       total: count!.total,
       items: rows.map((p) => {
-        const productTranslations = translations.filter(
-          (t) => t.productId === p.id,
-        );
+        const productTranslations = translationsByProduct.get(p.id) ?? [];
         const defaultLocale = settings?.defaultLocale ?? "en";
         const locale = input.locale ?? defaultLocale;
-        const prices = variants
-          .filter((v) => v.productId === p.id)
-          .map((v) => v.priceCents);
+        const prices = pricesByProduct.get(p.id) ?? [];
         return {
           id: p.id,
           handle: p.handle,
@@ -134,7 +146,7 @@ export async function listProducts(input: ListProductsInput = {}) {
           ),
           isPublished: p.isPublished,
           coverImageKey:
-            images.find((i) => i.productId === p.id)?.s3Key ?? null,
+            coverByProduct.get(p.id) ?? null,
           lowestPriceCents: prices.length ? Math.min(...prices) : null,
           variantCount: prices.length,
         };

@@ -27,10 +27,15 @@ export interface ConfirmOrderInput {
 }
 
 export async function confirmOrder(input: ConfirmOrderInput) {
-  return await db.transaction(async (tx) => {
-    // 1. Staff verification
+  return db.transaction(async tx => {
     const staff = await verifyStaffInTransaction(tx, input.staffUserId);
-
+    return confirmOrderInTransaction(tx, input.orderId, staff.userId);
+  });
+}
+/** Trusted application entry point: caller authorizes staff or verified provider settlement. */
+export async function confirmOrderInTransaction(tx: import("@/application/common/transaction").Transaction, orderId: string, actorId: string) {
+  const input = { orderId };
+  const staff = { userId: actorId };
     // 2. Lock order
     await acquireTransactionLocks(tx, { orderIds: [input.orderId] });
 
@@ -244,5 +249,5 @@ export async function confirmOrder(input: ConfirmOrderInput) {
       lifecycleStatus: updatedOrder!.lifecycleStatus,
       isConfirmed: true,
     };
-  });
+
 }

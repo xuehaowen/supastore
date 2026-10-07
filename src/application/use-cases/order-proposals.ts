@@ -1,6 +1,6 @@
 import { validatePickup } from "@/domain/checkout";
 import type { QuoteTerms } from "./get-quote";
-import { pickupLocation, storeSettings } from "@/infrastructure/db/schema";
+import { pickupLocation, storeSettings, quotes } from "@/infrastructure/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import * as v from "valibot";
 import { db } from "@/infrastructure/db";
@@ -130,6 +130,11 @@ export async function acceptOrderChange(input: {
       throw new InvariantViolationError(
         "Reserved store credit blocks changed terms.",
       );
+    if (order.rewardSnapshot && proposal.proposedTotalCents !== order.purchaseTotalCents)
+      throw new InvariantViolationError("Reward-bearing purchases require a new checkout for changed prices; cancel this unpaid order before creating the replacement.");
+    const [acceptedQuote] = await tx.select().from(quotes).where(eq(quotes.id,order.quoteId));
+    if (proposal.proposedTotalCents !== order.purchaseTotalCents && acceptedQuote && (acceptedQuote.inclusiveTaxCents || acceptedQuote.exclusiveTaxCents))
+      throw new InvariantViolationError("Taxable price changes require a new checkout to recalculate tax; cancel this unpaid order before creating the replacement.");
     if (
       (
         await tx
@@ -143,7 +148,7 @@ export async function acceptOrderChange(input: {
       );
     if (proposal.proposedTotalCents === 0) {
       const terms = order.termsSnapshot as QuoteTerms;
-      if (terms.pickup) {
+      if (terms.pickup?.date) {
         const [location] = await tx
           .select()
           .from(pickupLocation)

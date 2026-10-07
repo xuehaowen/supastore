@@ -10,6 +10,7 @@ import {
 } from "@/infrastructure/db/schema";
 import { parseActionRequiredText } from "@/application/common/request-validation";
 import { NotFoundError } from "@/application/common/errors";
+import { updateConfiguredSlotCapacity } from "./slot-capacity";
 
 export interface ShippingZoneInput {
   id?: string;
@@ -27,6 +28,8 @@ export interface PickupLocationInput {
   weeklySchedule: Record<string, [string, string][]>;
   blackoutDates?: string[];
   prepMinutes?: number;
+  slotCapacity?: number | null;
+  scheduleRequired?: boolean;
 }
 
 export interface ConfigureShippingInput {
@@ -55,6 +58,9 @@ export async function configureShipping(input: ConfigureShippingInput) {
     parseActionRequiredText(pickup.name, "Pickup location name", 120);
     parseActionRequiredText(pickup.address, "Pickup address", 1000);
     v.parse(amount, pickup.prepMinutes ?? 60);
+    if (pickup.slotCapacity != null) v.parse(amount, pickup.slotCapacity);
+    if (pickup.scheduleRequired !== undefined)
+      v.parse(v.boolean(), pickup.scheduleRequired);
     for (const [day, slots] of Object.entries(pickup.weeklySchedule)) {
       if (!["mon", "tue", "wed", "thu", "fri", "sat", "sun"].includes(day))
         throw new Error("Invalid weekday");
@@ -135,6 +141,13 @@ export async function configureShipping(input: ConfigureShippingInput) {
       if (pickup.id && !existingPickup)
         throw new NotFoundError("Pickup location not found.");
       if (existingPickup) {
+        await updateConfiguredSlotCapacity(
+          tx,
+          { pickupLocationId: existingPickup.id },
+          pickup.slotCapacity === undefined
+            ? existingPickup.slotCapacity
+            : pickup.slotCapacity,
+        );
         const [updated] = await tx
           .update(pickupLocation)
           .set({
@@ -143,6 +156,12 @@ export async function configureShipping(input: ConfigureShippingInput) {
             weeklySchedule: pickup.weeklySchedule,
             blackoutDates: pickup.blackoutDates ?? [],
             prepMinutes: pickup.prepMinutes ?? 60,
+            slotCapacity:
+              pickup.slotCapacity === undefined
+                ? existingPickup.slotCapacity
+                : pickup.slotCapacity,
+            scheduleRequired:
+              pickup.scheduleRequired ?? existingPickup.scheduleRequired,
             updatedAt: new Date(),
           })
           .where(eq(pickupLocation.id, existingPickup.id))
@@ -157,6 +176,8 @@ export async function configureShipping(input: ConfigureShippingInput) {
             weeklySchedule: pickup.weeklySchedule,
             blackoutDates: pickup.blackoutDates ?? [],
             prepMinutes: pickup.prepMinutes ?? 60,
+            slotCapacity: pickup.slotCapacity ?? null,
+            scheduleRequired: pickup.scheduleRequired ?? true,
           })
           .returning();
         savedPickup = created;

@@ -8,10 +8,12 @@ import {
   quotes,
   storeSettings,
   shippingZones,
+  deliveryAreas,
   pickupLocation,
   paymentAccounts,
   promotions,
   promotionRedemptions,
+  productCategories,
 } from "@/infrastructure/db/schema";
 import type { Transaction } from "@/application/common/transaction";
 import { calculatePurchaseTotal } from "@/domain/money/calculations";
@@ -21,11 +23,16 @@ import {
   UnauthorizedError,
 } from "@/application/common/errors";
 import { calculateDiscountCents } from "@/domain/promotions";
+import { commercePolicy, rewardsActive, rewardMerchandiseEligible } from "@/domain/commerce-policy";
+import { allocateRewardFunding } from "@/domain/rewards";
+import { quoteDelivery } from "@/domain/delivery";
+import { stripeConfiguredFor, stripeCurrencyIssue } from "@/domain/stripe-currency";
 export interface GetQuoteInput {
   cartId: string;
   guestSessionId: string;
-  fulfillmentType: "shipping" | "pickup";
-  shippingAddress: { country: string; address: string };
+  fulfillmentType: "shipping" | "pickup" | "local_delivery";
+  shippingAddress: { country: string; address: string; postalCode?: string };
+  deliveryAreaId?: string;
   pickupDate?: string;
   pickupLocationId?: string;
   pickupTime?: string;
@@ -45,6 +52,9 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
   const [settings] = await tx.select().from(storeSettings).limit(1);
   if (!settings)
     throw new InvariantViolationError("Store setup is incomplete.");
+  const policy = commercePolicy(settings.commercePolicy);
+  if ((input.fulfillmentType === "shipping" && !policy.shippingEnabled) || (input.fulfillmentType === "pickup" && !policy.pickupEnabled) || (input.fulfillmentType === "local_delivery" && !policy.deliveryEnabled))
+    throw new InvariantViolationError("This fulfillment method is not available.");
   const items = await tx
     .select()
     .from(cartItems)
@@ -60,7 +70,10 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
         items.map((i) => i.variantId),
       ),
     );
-  const calculationItems = items.map((item) => {
+  const categoryMemberships = policy.rewardEligibleCategoryIds.length ? await tx.select().from(productCategories)
+    .where(inArray(productCategories.productId, [...new Set(rows.map(row => row.products.id))])) : [];
+  const rewardProgramActive = rewardsActive(policy, new Date());
+  let calculationItems = items.map((item) => {
     const row = rows.find((r) => r.product_variants.id === item.variantId);
     if (!row?.products.isPublished || !row.product_variants.isAvailable)
       throw new InvariantViolationError(
@@ -75,8 +88,11 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
       catalogVersion: row.products.quoteVersion,
       quantity: item.quantity,
       unitPriceCents: variant.priceCents,
-      taxRateBasisPoints: settings.taxRateBasisPoints,
+      taxRateBasisPoints: row.products.taxable === false ? 0 : settings.taxRateBasisPoints,
       isTaxInclusive: settings.isTaxInclusive,
+      rewardEligible: rewardMerchandiseEligible(policy, row.products.rewardEligible !== false,
+        categoryMemberships.filter(membership => membership.productId === row.products.id).map(membership => membership.categoryId)),
+      discountCents: 0,
     };
   });
   const subtotal = calculationItems.reduce(
@@ -91,6 +107,7 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
     startTime: string;
     endTime: string;
   } | null = null;
+  let delivery: { areaId: string; name: string; country: string; postalCode: string; rateCents: number; date?: string; startTime?: string; endTime?: string } | null = null;
   if (input.fulfillmentType === "shipping") {
     if (
       !/^[A-Z]{2}$/.test(input.shippingAddress.country) ||
@@ -104,6 +121,15 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
       input.shippingAddress.country,
       subtotal,
     );
+  } else if (input.fulfillmentType === "local_delivery") {
+    if (!input.shippingAddress.address.trim()) throw new InvariantViolationError("Enter your delivery address.");
+    const [area] = await tx.select().from(deliveryAreas).where(eq(deliveryAreas.id, input.deliveryAreaId || "00000000-0000-0000-0000-000000000000"));
+    if (!area) throw new InvariantViolationError("Choose an available delivery area.");
+    delivery = quoteDelivery(area, input.shippingAddress.country, input.shippingAddress.postalCode ?? "", subtotal);
+    if (area.scheduleRequired || input.pickupDate || input.pickupTime) {
+      delivery = { ...delivery, ...validatePickup({ ...area, blackoutDates: [] }, input.pickupDate ?? "", input.pickupTime ?? "", settings.timezone) };
+    }
+    shippingCents = delivery.rateCents;
   } else {
     const [location] = await tx
       .select()
@@ -119,19 +145,14 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
     pickup = {
       locationId: location.id,
       address: location.address,
-      ...validatePickup(
+      ...(location.scheduleRequired || input.pickupDate || input.pickupTime ? validatePickup(
         location,
         input.pickupDate ?? "",
         input.pickupTime ?? "",
         settings.timezone,
-      ),
+      ) : { date: "", startTime: "", endTime: "" }),
     };
   }
-  const result = calculatePurchaseTotal(calculationItems, {
-    amountCents: shippingCents,
-    taxRateBasisPoints: settings.taxRateBasisPoints,
-    isTaxInclusive: settings.isTaxInclusive,
-  });
   const promotionCode = input.promotionCode?.trim().toUpperCase() ?? "";
   let promotion: {
     id: string;
@@ -177,11 +198,11 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
       ),
     };
   }
-  const discountedResult = {
-    ...result,
-    totalPayableCents:
-      result.totalPayableCents - (promotion?.discountCents ?? 0),
-  };
+  if (promotion?.discountCents) {
+    const discounts = allocateRewardFunding(calculationItems.map(i => ({ id: i.variantId, type: "merchandise" as const, eligible: false, amount: i.unitPriceCents * i.quantity })), promotion.discountCents);
+    calculationItems = calculationItems.map(i => ({ ...i, discountCents: discounts.find(d => d.id === i.variantId)!.externalAmount }));
+  }
+  const discountedResult = calculatePurchaseTotal(calculationItems, { amountCents: shippingCents, taxRateBasisPoints: settings.taxRateBasisPoints, isTaxInclusive: settings.isTaxInclusive });
   let payment: { id: string; name: string; instructions: string } | null = null;
   if (discountedResult.totalPayableCents > 0 && input.paymentAccountId) {
     const [account] = await tx
@@ -194,7 +215,7 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
         ),
       )
       .limit(1);
-    if (!account?.isActive)
+    if (!account?.isActive || account.accountType === "stripe")
       throw new InvariantViolationError("Choose an active payment method.");
     payment = {
       id: account.id,
@@ -208,13 +229,16 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
     calculationItems,
     result: discountedResult,
     terms: {
+      rewardProgramActive,
       settingsVersion: settings.quoteVersion,
       currency: settings.currency,
       precision: settings.precision,
       fulfillmentType: input.fulfillmentType,
       shippingAddress: input.shippingAddress,
       pickup,
+      delivery,
       payment,
+      onlinePayment: !input.paymentAccountId && stripeConfiguredFor(settings) && !stripeCurrencyIssue(settings.currency, settings.precision, discountedResult.totalPayableCents),
       promotion,
       input: {
         fulfillmentType: input.fulfillmentType,
@@ -224,6 +248,7 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
         pickupTime: input.pickupTime ?? "",
         paymentAccountId: input.paymentAccountId ?? "",
         promotionCode,
+        deliveryAreaId: input.deliveryAreaId ?? "",
       },
     },
   };
