@@ -12,7 +12,19 @@ UUID IDs, UTC instants and explicit IANA timezones. Monetary snapshots carry cur
 | --- | --- |
 | store_settings | Branding, ordering/launch state, currency/precision, default locale/timezone, support and policy content, quote-relevant version; lock currency after first order |
 | staff_memberships | Auth user, owner/staff role, active state; server-managed; prevent removal of the last active owner without a protected recovery/transfer process |
-| products / product_variants | Published state, unique handles/SKUs, descriptive attributes, integer price, availability, image keys, quote-relevant versions; stored generated `search_vector tsvector` (`to_tsvector('simple', ...)` with GIN index); no inventory counters |
+| products / product_variants | Published state, unique handles/SKUs, descriptive attributes, integer price, availability, tracked-stock policy, image keys, quote-relevant versions; stored generated search vector and indexes |
+
+## Generic expansion storage contract
+
+This section defines required storage, not proof that migrations/use cases are complete. Preserve existing IDs, aggregate credit ledger, stock movement history, legacy pickup-slot foreign keys and immutable purchase snapshots. Additive upgrades must pass clean-install and forward-upgrade acceptance; provenance backfill requires financial replay and quarantines unreconciled origins.
+
+Generic fulfillment slots reference method plus pickup location or delivery service area, stable local date/window and timezone snapshot. Legacy pickup references map uniquely without inserting delivery areas into pickup-location foreign keys. Separate order-capacity bookings and variant quotas from global stock; null is unlimited and zero unavailable. Reservation request identities, terminal states and nonnegative quantities prevent double release/consumption. Dispatch and recorded delivery are distinct persisted transitions; one fulfillment per order remains unique.
+
+Reward policy/order snapshots persist version, accepted verified customer, rate, eligibility and original component/external/credit allocations. Reward issuance lots retain immutable source-entry/order lineage. Source allocations identify reservation/capture/refund amounts with scoped foreign keys and uniqueness. Debt/recovery records retain affected reward source and unique operation identity; existing one-reversal-per-entry storage cannot represent cumulative partial reversals by itself. Database checks enforce nonnegative integer components; transactional reconciliation enforces sums against aggregate funding/ledger.
+
+Online payment intents and authenticated provider inbox records require stable request/provider identities, unique deduplication and reconciliation state. Accepted redirects are not receipt rows. Provider expiry metadata is distinct from manual review deadlines. See [transaction contracts](transaction-contracts.md) for allocation/locking and [event contracts](api-events-spec.md) for inbox/outbox behavior.
+
+Reward reconciliation records distinguish nonnegative cumulative reversal and restoration increments. Append-only reward funding-review records retain order, owner, verified evidence reason, request identity and payload fingerprint. Clearing a review requires authoritative original-source verification and an audited atomic source/debt/aggregate adjustment; it does not rewrite accepted reward snapshots or financial history. UTC activation windows and category allowlists reside in validated store commerce policy; accepted quotes freeze active state and accepted order lines freeze eligibility.
 | categories / translations | Category membership and relational entity+locale translations; one default locale and deterministic fallback |
 | shipping_zones / shipping_rates | Supported destinations, flat amount/free threshold, active state and deterministic priority |
 | pickup_settings | At most one location; timezone, weekly intervals, blackouts and preparation notice; no capacity reservations |

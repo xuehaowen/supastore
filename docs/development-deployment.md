@@ -2,7 +2,7 @@
 
 ## Current status
 
-There are no application scripts, executable migrations, Docker files or runnable services. This document defines implementation deliverables, not commands that work today.
+The repository includes runnable Next.js backend and storefront services, executable Drizzle migrations, isolated PostgreSQL integration tests and Docker targets. See [two-service deployment](two-service-deployment.md) for current commands, configuration and acceptance limits.
 
 ## Reproducible development
 

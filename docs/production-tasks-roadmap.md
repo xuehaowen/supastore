@@ -1,6 +1,6 @@
 # Release roadmap
 
-No milestone is implemented. Scope, states, calculations and delivery semantics are owned by [product scope](product-scope.md), [workflows](business-workflows.md), [transaction contracts](transaction-contracts.md) and [events](api-events-spec.md); the tasks below implement those contracts. Performance numbers are provisional targets, not measured capabilities; record the tested configuration and revise budgets from evidence before release. Complete milestones through runnable evidence and user outcomes. Build one complete lifecycle early; add only the schema needed by its slice.
+This roadmap combines application milestones and operational release checklists. Current verified status is recorded in [generic-store validation](generic-store-validation.md); checkbox history alone does not certify a production launch. Scope, states, calculations and delivery semantics are owned by [product scope](product-scope.md), [workflows](business-workflows.md), [transaction contracts](transaction-contracts.md) and [events](api-events-spec.md); the tasks below implement those contracts. Performance numbers are provisional targets, not measured capabilities; record the tested configuration and revise budgets from evidence before release. Complete milestones through runnable evidence and user outcomes. Build one complete lifecycle early; add only the schema needed by its slice.
 
 ## Milestone dependencies
 
@@ -145,9 +145,9 @@ Contract: [Authorization boundary](architecture-overview.md#authorization-bounda
 - [x] **Localization with `next-intl`**
   - *Details:* Implement multi-language routing (`/en`, `/zh`) with fallback to store default locale. Store product title/description translations in relational `product_translations` table.
   - *Verification:* Changing language switches text seamlessly while preserving currency, active cart, and pricing.
-- [x] **Customer bundle size verification (<50KB budget)**
+- [x] **Customer bundle size verification (measured regression budget)**
   - *Details:* Restrict client-side React components (`'use client'`) to minimal interactive islands (`CartDrawer`, `QuantitySelector`, `CopyButton`, `Uploader`).
-  - *Verification:* Record total gzip client JavaScript per public route, including framework runtime, against the provisional 50KB target. Document measured results and approve an evidence-based budget before release.
+  - *Verification:* Record total gzip client JavaScript per public route, including framework runtime, against the 102 KB shared first-load baseline and relaxed 200 KB regression warning. Optimize within the current setup; this warning is not a launch restriction.
 
 ### Guest Cart & Checkout Flow
 
@@ -317,12 +317,12 @@ Contract: [Receipt corrections](business-workflows.md#7-receipt-corrections) and
 ## M3 — Deploy, recover and pilot
 
 ### Container Packaging & Lean Production Runtime
-- [x] **Multi-stage Dockerfile (<80MB image)**
+- [x] **Multi-stage Dockerfile (measured image footprint)**
   - *Details:* Create production Dockerfile utilizing Node 22 Alpine / distroless base, multi-stage dependency pruning, Next.js standalone build output, and non-root execution (`USER node`).
-  - *Verification:* Record compressed download and unpacked image sizes, platform and base image digest against the provisional 80MB target; establish the supported size budget from measurements.
-- [x] **Memory consumption validation (<256MB–512MB RAM)**
+  - *Verification:* Record compressed download and unpacked image sizes, platform and base image digest and compare changes against the measured current-setup baseline; the original 80 MB ceiling is relaxed, so optimize without changing the application stack solely to satisfy it.
+- [x] **Memory consumption validation (measured steady and peak usage)**
   - *Details:* Benchmark application container under load simulating 50 concurrent storefront visitors and 5 admin operations on a 1 vCPU, 1GB RAM virtual machine.
-  - *Verification:* Record steady and peak container memory, test duration and errors against the provisional 256–512MB target; include worker load and document database/storage memory separately.
+  - *Verification:* Record steady and peak container memory, test duration and errors under the current setup; original memory ceilings are relaxed. Include worker load and document database/storage memory separately before selecting a production capacity budget.
 - [x] **Graceful process termination (`SIGTERM`/`SIGINT`)**
   - *Details:* Implement graceful shutdown handler in server entrypoint that stops accepting new HTTP connections, waits for in-flight database transactions to complete (up to 15s timeout), and releases active worker advisory locks.
   - *Verification:* Configure the container stop grace period longer than the 15-second drain budget. Verify completed transactions remain committed, interrupted transactions roll back and unacknowledged deliveries recover after lease expiry.

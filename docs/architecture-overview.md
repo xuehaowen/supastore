@@ -2,20 +2,20 @@
 
 ## Deployment and stack
 
-Use a modular monolith: one Next.js (App Router, Node.js standalone output) application containing the customer storefront, explicit `/admin` routes, and backend endpoints. Route groups organize code cleanly and confer no authorization.
+Two independently deployable Next.js applications share one workspace: backend owns APIs, admin, auth and worker; storefront owns customer rendering through HTTP APIs. Backend sources remain at the repository root behind the apps/backend launcher. Local service-boundary acceptance has passed; production release gates are recorded in [validation](generic-store-validation.md). Route groups confer no authorization.
 
 ### Frontend Architecture & Bundle Isolation
-- **Customer Storefront:** Rendered via **React Server Components (RSC)** in React 19 / Next.js 15 with static/incremental generation (SSG/ISR) for public catalog browsing. Client-side JavaScript is strictly limited to isolated interactive islands (cart drawer, quantity counters, reference copy buttons, evidence file uploader), targeting 50KB gzip of total public-route client JavaScript, including framework runtime. This budget is unverified and must be measured and revised from evidence. Shared validation logic utilizes lightweight schema validation (**`valibot` v1.0+**) rather than heavyweight runtime libraries.
+- **Customer Storefront:** Rendered via **React Server Components (RSC)** in React 19 / Next.js 15 with static/incremental generation (SSG/ISR) for public catalog browsing. Client-side JavaScript is strictly limited to isolated interactive islands (cart drawer, quantity counters, reference copy buttons, evidence file uploader), with bundle size measured on production builds. The original 50 KB limit is relaxed by merchant instruction; use 200 KB shared first-load JavaScript as a regression warning, including framework runtime, and compare route-level changes against the measured baseline. This is an engineering warning rather than a launch restriction. Shared validation logic utilizes lightweight schema validation (**`valibot` v1.0+**) rather than heavyweight runtime libraries.
 - **Merchant Admin:** Full-featured operational dashboard under `/admin` built with **Tailwind CSS v4, shadcn/ui (Radix UI primitives), and Lucide React**. Loaded on demand strictly for authenticated staff routes.
 - **Localization:** Managed via `next-intl` with English and Simplified Chinese as default locales.
 
 ### Data Layer & Concurrency
 - **Drizzle ORM & PostgreSQL 16+ via `postgres.js`:** Drizzle defines the schema and versioned migrations without heavy binary engines. Database connections use `postgres.js` in direct session mode (or connection-pinned transaction pools) to guarantee that explicit `SELECT ... FOR UPDATE` row locks and advisory locks remain held for the full duration of financial use-case transactions. When using connection poolers (e.g. Supabase, PgBouncer, Neon), the application connection must target direct session mode rather than statement-pooling ports.
 - **Native Search:** Catalog search uses PostgreSQL native full-text search with a stored generated column (`tsvector` + GIN index) and trigram matching (`pg_trgm`), eliminating runtime query conversion overhead and removing any need for external search daemons (e.g., Elasticsearch or Meilisearch).
-- **Transactional Outbox & Worker:** Event notification delivery uses an `outbox_events` and `event_deliveries` table processed via `SELECT ... FOR UPDATE SKIP LOCKED` and PostgreSQL advisory locks (`pg_try_advisory_xact_lock`). No external broker daemon (Redis/BullMQ/RabbitMQ) is required.
+- **Transactional Outbox & Worker:** Provider-neutral notification ports separate application policy from transport adapters. Durable deliveries, immutable attempts/results and a signed callback inbox use PostgreSQL row leases and `SKIP LOCKED`; provider acceptance is distinct from confirmed delivery. See [notification integrations](notification-integrations.md). No external broker daemon is required.
 
 ### Unified Deployment & Process Model
-The planned application packages into one Docker container running a single Node.js 22 LTS standalone process. The <80MB image and 256–512MB application memory budgets are unverified targets; measure the supported configuration before claiming them:
+Backend and storefront build into separate images. Image and memory budgets remain unverified targets; measure both services before claiming them:
 1. **Single Unified Engine:** Standardizes on **Better-Auth** (storing users and sessions directly in PostgreSQL via Drizzle) and the **S3-compatible API** (`@aws-sdk/client-s3`), eliminating multiple fragmented auth/storage implementations.
 2. **Universal Portability:** Connects to any standard PostgreSQL 16+ instance via `DATABASE_URL` (local container, self-hosted VPS, or cloud-managed PostgreSQL such as Supabase, Neon, or AWS RDS). Object storage connects to any S3-compatible backend (RustFS, Cloudflare R2, AWS S3, or Supabase Storage).
 3. **Worker placement:** An in-process loop is the default; worker-only container mode is optional. In the standalone Next.js container, the loop initializes safely via `instrumentation.ts` (`register()` hook, guarded to `process.env.NEXT_RUNTIME === 'nodejs'`) or a server runner. Both implement the same [delivery and coordination contract](api-events-spec.md#worker-lifecycle-and-retry). Operators configure supervision through the [deployment guide](development-deployment.md#configuration-and-process-supervision).
@@ -27,6 +27,8 @@ Public endpoints (guest order submission, recovery link requests, payment eviden
 - **Layer 3 (Database Attempt Tracking):** Sensitive authentication, recovery tokens, and upload intent creations record attempt timestamps in PostgreSQL with atomic rate checks.
 
 ## Module boundaries
+
+Backend alone receives database, storage, SMTP and payment secrets. Shared packages contain serializable contracts/validation, never backend business imports. Browser `/api` requests use an explicit same-origin reverse proxy; backend owns sessions and CSRF/origin checks. Storefront SSR forwards only approved cookies/context and controlled Set-Cookie responses. Catalog TTL is bounded; checkout revalidates authoritative prices/settings. Sensitive limits require database or verified ingress enforcement across replicas. Migration execution is separate from backend lifecycle; storefront never runs the worker. Payment, tax and notification adapters use narrow interfaces.
 
 | Module | Owns |
 | --- | --- |

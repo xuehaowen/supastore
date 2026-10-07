@@ -4,6 +4,14 @@ This document owns user operations and state transitions. [Product scope](produc
 
 ## 1. States and authority
 
+Generic expansion targets: guest checkout remains the neutral default, with backend-enforced account-required configuration. Profiles do not alter purchase snapshots; email changes require verification. Rewards are disabled until configured and require verified identity linked at acceptance. Shipping dispatch and local-delivery dispatch consume stock once; recorded delivery completes fulfillment. Pickup completes at verified handoff. Quantity-based partial shipments are supported; order completion and reward release wait for every ordered unit to be delivered. Historical completed orders retain meaning with no reward backfill.
+
+Reward programs optionally select direct category membership (an empty allowlist includes all merchandise); product-level reward exclusions always win. Activation uses UTC instants, start inclusive and end exclusive. Quote acceptance revalidates activation boundaries and category eligibility. Accepted orders retain their policy and eligibility when programs or categories change later.
+
+An owner may resolve a reward funding-review flag only after every frozen original receipt again supports its accepted funding; another receipt cannot substitute for the corrected source. Record verified evidence, request identity and audit. Pending completed orders then release their supported earning. For issued rewards, restore only the cumulative entitlement reduced by actual component refunds: cancel associated debt first, preserve active holds, and compensate debt already recovered from later earnings without duplicate recovery. Restorations retain original reward provenance. No reward financial email is emitted by this operation.
+
+Optional slots identify method/location or service area, local date/window and timezone. Capacity counts orders; quotas count variant units independently of global stock. Completed bookings consume their production window. Rescheduling acquires destination before releasing source under sorted locks; reductions cannot silently invalidate bookings. Reward pending/released/reversed states obey [transaction contracts](transaction-contracts.md). Feature configuration and neutral onboarding must pass browser acceptance before release; these contracts do not claim all milestones implemented.
+
 | Dimension | States and rules |
 | --- | --- |
 | Order | open -> confirmed -> completed; open/confirmed -> cancelled before shipment or pickup handoff |
@@ -28,11 +36,11 @@ On submission, authorize the guest cart and acquire the cart lock. An exact succ
 
 Only after commit display payment instructions, the stable order reference and short payment reference code, issue the scoped session token in an HTTP-only secure cookie (with `sessionStorage` retention as a client helper), and send the acknowledgment email. For a zero-total order, confirm in the creation transaction if fulfillment remains valid; no method or proof is required. If a request times out, query/retry the same operation and display the existing order. Never prompt a second payment because the response was lost.
 
-The accepted order is independent of subsequent cart, price and configuration changes. Availability is not reserved: if staff cannot fulfill it, contact the customer and cancel through the normal process. A paused store blocks new order creation under the store lock but permits all existing-order work.
+The accepted order is independent of subsequent cart, price and configuration changes. Placement reserves tracked variant availability and applied credit atomically; optional slot limits join that transaction. Unfulfillable committed orders require audited cancellation or returns. A paused store blocks new order creation under the store lock but permits all existing-order work.
 
 ## 3. Payment and confirmation
 
-Each order selects one manual method/account and requests full payment; no installment or mixed-tender checkout is offered. Display clear transfer details, a 1-click copy button for the exact amount and payment reference code, and standard transfer QR codes where supported. Cash instructions require collection before confirmation and preparation. A payment-method rename or archive preserves the historical account and order instructions. Owners can stop displaying unsafe instructions with an audited notice and arrange cancellation; changing a method never silently redirects an accepted order's payment destination.
+Each order selects an external method/account for the remainder after applied store credit; installment schedules are not offered. Display clear transfer details, a 1-click copy button for the exact amount and payment reference code, and standard transfer QR codes where supported. Cash instructions require collection before confirmation and preparation. A payment-method rename or archive preserves the historical account and order instructions. Owners can stop displaying unsafe instructions with an audited notice and arrange cancellation; changing a method never silently redirects an accepted order's payment destination.
 
 Payment evidence accepts JPEG, PNG and WebP files smaller than 5MB. Evidence uploads attach to an existing authorized order. Create an expiring private upload intent, upload directly to storage outside the database transaction, then validate/finalize the object reference by verifying allowed file size, declared MIME type, and file magic bytes (inspected via partial byte-range read `Range: bytes=0-2047` on the candidate object). Interrupted uploads can retry without creating an order or receipt. Expired intent cleanup must not delete finalized evidence. Payment evidence is not a receipt.
 
@@ -46,7 +54,7 @@ For rejected evidence, show needs_correction, the reason and a correction deadli
 
 ## 4. Unpaid orders and permitted changes
 
-Open unpaid orders stay visible in the merchant queue. A configurable unpaid review deadline prompts staff; it does not silently cancel an order that might have received an unrecorded transfer. No automatic credit restoration is needed because core has no store credit.
+Open unpaid orders stay visible in the merchant queue. Manual review deadlines never release credit/stock/slot reservations automatically: an unrecorded transfer may have arrived. Owner cancellation releases active holds atomically. Provider expiration requires terminal provider reconciliation and explicit late-payment handling.
 
 An owner may revise an open order's price only when no receipt has ever been recorded and no refund/return authorization exists. Preserve the old snapshot, reason and proposed new total. Suppress payment instructions while customer acceptance is pending; changed terms require acceptance through scoped order access. Keep one pending proposal and reject stale revisions. Withdrawal restores the prior agreed instructions. Any receipt arriving before acceptance invalidates the proposal and is reconciled against the last accepted purchase; it must not apply new terms automatically. Cash follows the same rule.
 
@@ -66,7 +74,7 @@ Customers contact the store for cancellation. The owner cancels only before ship
 
 ## 6. Refunds, excess returns and cancellation
 
-Only original-source payouts are supported. The owner selects amount, purchased components where applicable and reason. Authorize under the order/receipt locks using remaining entitlement and per-receipt capacity. Pending authorizations reserve funds immediately. There is no store-credit destination and no cash payout of an unrelated transfer. Preserve original account/source references if a method is archived.
+Only original-source payouts are supported. The owner selects amount, purchased components where applicable and reason. Authorize under the order/receipt locks using remaining entitlement and per-receipt capacity. Pending authorizations reserve funds immediately. Captured credit restores original source provenance; external funds return to their original source. An unrelated transfer cannot fund a cash payout. Preserve original account/source references if a method is archived.
 
 For transfers, distinguish the merchant's receiving account from the payer's return destination. Before claiming a payout, the owner verifies that destination against the original transaction's bank/provider evidence and records the evidence reference, verified destination, actor and time. Customer-provided details alone are insufficient. If the source cannot be verified or cannot receive a return, keep the obligation pending for owner resolution; do not substitute another destination. Bind each claim to an immutable verified destination revision and show it before sending. A destination correction requires new verification and cannot alter an unresolved or settled attempt. For cash, verify the original payer or their documented authorized recipient and retain the recipient acknowledgment at settlement.
 

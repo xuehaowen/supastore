@@ -8,7 +8,21 @@ Use one pure calculation function for quotes and eligible price changes. Define 
 
 For initial supported configurations, calculate tax per adjusted line total and shipping component using exact decimal/rational arithmetic, round each tax component half-up to the currency minor unit, and sum. Inclusive tax extraction uses the same component rounding. Display the policy in setup. Free-shipping thresholds use adjusted merchandise subtotal before separately added exclusive tax. Do not use binary floating-point arithmetic for money. Quantities must be positive safe integers with an enforced upper bound. Reject overflow at API and persistence boundaries.
 
-Snapshot the currency/precision, rates, rounding policy, inputs, components and result. Refund component allocations cannot exceed purchased component amounts after earlier authorizations. There is no credit or promotion term in core.
+Snapshot the currency/precision, rates, rounding policy, inputs, components and result. Refund component allocations cannot exceed purchased component amounts after earlier authorizations. Credit is a funding source, never a discount; promotions alter merchandise before tax/funding allocation.
+
+## Generic reward/provenance contract
+
+These expansion contracts require migration/use-case acceptance before release. At accepted order creation snapshot policy version, rate (0–10000 basis points), verified linked customer identity and discounted line eligibility. Components include merchandise excluding extracted inclusive tax, tax and fulfillment fees. Let P be their sum and E accepted external funding excluding overpayments. Allocate floor(E*c_i/P), then remaining units by descending remainder, ties lexical component type/immutable ID. P=0 yields zero. Integer minor units and overflow-safe intermediate arithmetic are mandatory. Freeze funding at confirmation; extra receipts do not earn.
+
+Eligible external merchandise basis B earns floor(B*rate/10000), once per order. Completion releases pending entitlement. Original per-component external refunds reduce remaining basis; cumulative target is floor(remainingBasis*originalRate/10000), and incremental reversal is original entitlement minus target minus previously reversed. Tax/fee-only refunds do not reverse merchandise rewards. Later configuration changes do not rewrite accepted snapshots; uncertain source corrections require review.
+
+Every positive credit issuance has a source lot. Holds allocate reward lots first, then other sources, FIFO timestamp/ID. Capture/release retain exact lot allocations; cumulative source refunds restore capped original lineage. Legacy origins require replay/reconciliation, with unknown origins classified legacy rather than invented rewards.
+
+Revoke unreserved available value from the affected reward lot only; held/consumed entitlement becomes associated debt. Hold release or refund restoring revoked value recovers only remaining associated debt; if later earnings already repaid debt, preserve restored entitlement without another recovery. Future earnings record gross, debt recovery and net spendable credit separately. Unique recovery identities and account/lot locks prevent duplicate recovery; debt never reduces cash refund entitlement.
+
+Extend the global lock order with sorted slot keys before credit accounts/lots/debt, and provider intent locks before receipts; lower-rank helpers must not run after receipt locking. No network call holds financial locks. Manual deadlines prompt review only; provider expiry requires reconciled terminal status. See [storage responsibilities](database-schema.md) and [workflow transitions](business-workflows.md).
+
+Funding-review resolution locks order, customer credit account, then original receipts. It verifies the frozen external total matches the accepted component funding and every effective original receipt covers its frozen amount; new receipts cannot replace lost sources. The owner records evidence and a durable request identity. Net reversed entitlement is cumulative reversals minus cumulative reinstatements. Reinstatement cancels associated outstanding debt first, clears the corresponding revoked pending value and restores the remaining credit to the same reward source, offsetting other valid debt before spendability. Previously recovered debt is compensated exactly once. Active checkout holds remain unchanged, and later refunds use the adjusted cumulative entitlement. If funding remains short or lineage is uncertain, the review stays pending.
 
 ## Canonical financial projection
 
