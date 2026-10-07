@@ -126,7 +126,11 @@ export function calculatePurchaseTotal(
     assertValidQuantity(item.quantity);
     assertNonNegativeCents(item.unitPriceCents, 'Unit price');
 
-    const subtotalCents = item.unitPriceCents * item.quantity;
+    const grossCents = item.unitPriceCents * item.quantity;
+    const discountCents = (item as LineItemInput & { discountCents?: number }).discountCents ?? 0;
+    assertNonNegativeCents(discountCents, 'Line discount');
+    if (discountCents > grossCents) throw new Error('Line discount exceeds merchandise');
+    const subtotalCents = grossCents - discountCents;
     assertNonNegativeCents(subtotalCents, 'Line subtotal');
 
     const rateBps = item.taxRateBasisPoints ?? 0;
