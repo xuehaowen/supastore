@@ -16,6 +16,7 @@ import { Field, Hidden, Notice } from "@/app/components";
 import { Button } from "@/components/ui/button";
 import { money } from "@/infrastructure/web";
 import { AddressBook } from "@/app/address-book";
+import { CustomerAuthTools } from "@/app/customer-auth";
 export const metadata = { robots: { index: false, follow: false } };
 import type { QuoteTerms } from "@/application/use-cases/get-quote";
 
@@ -57,7 +58,7 @@ export default async function Account({
                   SIGNED IN AS
                 </p>
                 <p className="mt-2 font-medium">
-                  {session.user.name || "Customer"}
+                  {account?.customer.name || session.user.name || "Customer"}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {session.user.email}
@@ -67,6 +68,11 @@ export default async function Account({
                 Orders placed as a guest remain private to their order link. You
                 can always find one from the recovery page.
               </p>
+              <CustomerAuthTools
+                locale={locale}
+                name={account?.customer.name || session.user.name}
+                phone={account?.customer.phone || ""}
+              />
               <div className="flex flex-wrap gap-3">
                 <SignOutButton locale={locale} />
                 <Link
@@ -81,6 +87,7 @@ export default async function Account({
             <>
               {rawSession && <SessionVerificationGuard />}
               <AuthForm audience="customer" locale={locale} />
+              <CustomerAuthTools locale={locale} />
             </>
           )}
         </CardContent>

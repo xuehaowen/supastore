@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
   quotes,
@@ -47,7 +47,7 @@ export default async function Checkout({
   const accounts = await db
     .select({ id: paymentAccounts.id, name: paymentAccounts.accountName })
     .from(paymentAccounts)
-    .where(eq(paymentAccounts.isActive, true));
+    .where(and(eq(paymentAccounts.isActive, true), ne(paymentAccounts.accountType, "stripe")));
   const locations = await db
     .select()
     .from(pickupLocation)

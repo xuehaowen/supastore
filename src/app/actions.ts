@@ -1,4 +1,5 @@
 "use server";
+import { dispatchOrder } from "@/application/use-cases/fulfillment/dispatch-order";
 import { allowRequest } from "@/application/common/rate-limit";
 import { redirect } from "next/navigation";
 import { revalidateTag, revalidatePath } from "next/cache";
@@ -371,6 +372,8 @@ export async function savePickup(form: FormData) {
         name: field(form, "name"),
         address: field(form, "address"),
         weeklySchedule: schedule,
+        slotCapacity:field(form,"slotCapacity")?parseActionInteger(field(form,"slotCapacity"),"Slot capacity",0,2147483647):null,
+        scheduleRequired:form.has("scheduleRequired"),
         prepMinutes: parseActionInteger(
           field(form, "prepMinutes"),
           "Preparation notice",
@@ -507,6 +510,8 @@ export async function editProduct(form: FormData) {
         1,
         2147483647,
       ),
+      taxable:form.has("taxable"),
+      rewardEligible:form.has("rewardEligible"),
       title: field(form, "title"),
       handle: field(form, "handle"),
       description: field(form, "description"),
@@ -823,7 +828,11 @@ export async function fulfillConfirmedOrder(form: FormData) {
     });
   });
 }
-
+export async function dispatchConfirmedOrder(form: FormData) {
+  return perform(adminReturnPath(form), async () => {
+    await dispatchOrder({ staffUserId: await staffIdentity(), orderId: parseActionUuid(field(form, "orderId"), "Order"), carrier: field(form, "carrier"), ...(field(form, "trackingNumber") ? { trackingNumber: field(form, "trackingNumber") } : {}) });
+  });
+}
 export async function markOrderReady(form: FormData) {
   return perform(adminReturnPath(form), async () => {
     await markReadyForPickup({
@@ -1061,7 +1070,10 @@ export async function sendVerification() {
   return perform("/admin/setup", async () => {
     const { requestEmailVerification } =
       await import("@/application/use-cases/store/verify-email");
-    await requestEmailVerification(await staffIdentity());
+    const { getNotificationProviders } = await import("@/infrastructure/bootstrap/notification-providers");
+    const { trackInFlight } = await import("@/infrastructure/runtime/shutdown");
+    const identity = await staffIdentity();
+    await trackInFlight(() => requestEmailVerification(identity, getNotificationProviders().email));
     return "/admin/setup?sent=1";
   });
 }

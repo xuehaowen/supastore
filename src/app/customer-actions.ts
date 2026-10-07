@@ -13,6 +13,14 @@ import {
   saveCustomerAddress,
 } from "@/application/use-cases/customers/customer-ownership";
 import { DomainError } from "@/application/common/errors";
+import { updateCustomerProfile } from "@/application/use-cases/customers/update-profile";
+export async function saveProfileAction(form: FormData) {
+  await updateCustomerProfile(await customerIdentity(), {
+    name: String(form.get("name") || ""),
+    phone: String(form.get("phone") || ""),
+  });
+  revalidatePath("/[locale]/account", "page");
+}
 const text = (form: FormData, key: string) =>
   String(form.get(key) ?? "").trim();
 async function perform(path: string, work: () => Promise<void>) {
