@@ -105,8 +105,11 @@ mail fixture. Nodemailer and Telnyx API behavior was checked against their
   signup/verification, password reset and store-email proof redemption.
 - Independent review found no remaining critical/high issues. A permanent SMTP
   timeout circuit identified during review was replaced with bounded recovery.
-- Standalone container/migration validation is recorded after the final gate;
-  the earlier generic-store sustained load evidence is unchanged.
+- Standalone images built and passed smoke, restore, upgrade through migration
+  0034 (35 journal entries), outage/recovery and short load checks. Confirmation
+  on 2026-10-07 exited successfully and removed the synthetic fixture. PostgreSQL
+  validation was also repeated that day: 83 tests passed. The earlier generic-store
+  sustained load evidence is unchanged.
 
 These checks used local SMTP and fake Telnyx clients. Provider activation,
 delivery to real recipients and live SMS authorization are separate operations.

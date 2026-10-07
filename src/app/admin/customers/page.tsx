@@ -7,6 +7,14 @@ import { staffIdentity } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { AdminNav } from "@/app/admin/admin-nav";
 import { Field } from "@/app/components";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 export default async function CustomersPage({
   searchParams,
@@ -84,39 +92,43 @@ export default async function CustomersPage({
       </form>
       <section className="panel">
         <h2>{query.guests ? "Guest order contacts" : "Customer profiles"}</h2>
-        <div className="admin-table-scroll">
-          <table className="admin-data-table">
-            <thead>
-              <tr>
-                <th>Customer</th>
-                <th>Email</th>
-                <th>Orders</th>
-              </tr>
-            </thead>
-            <tbody>
-              {query.guests
-                ? data.guests.slice(0, 25).map((g) => (
-                    <tr key={g.email}>
-                      <td>Guest contact</td>
-                      <td>{g.email}</td>
-                      <td>{g.orderCount}</td>
-                    </tr>
-                  ))
-                : data.profiles.slice(0, 25).map((c) => (
-                    <tr key={c.id}>
-                      <td>
-                        <Link href={`/admin/customers/${c.id}`}>
-                          {c.name || c.email}
-                        </Link>
-                      </td>
-                      <td>{c.email}</td>
-                      <td>{c.orderCount}</td>
-                    </tr>
-                  ))}
-            </tbody>
-          </table>
-        </div>
-        {!rows.length && <p>No customers match this view.</p>}
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Customer</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead className="text-right">Orders</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {query.guests
+              ? data.guests.slice(0, 25).map((g) => (
+                  <TableRow key={g.email}>
+                    <TableCell className="font-medium">Guest contact</TableCell>
+                    <TableCell>{g.email}</TableCell>
+                    <TableCell className="text-right">{g.orderCount}</TableCell>
+                  </TableRow>
+                ))
+              : data.profiles.slice(0, 25).map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell className="font-medium">
+                      <Link href={`/admin/customers/${c.id}`}>
+                        {c.name || c.email}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{c.email}</TableCell>
+                    <TableCell className="text-right">{c.orderCount}</TableCell>
+                  </TableRow>
+                ))}
+            {!rows.length && (
+              <TableRow>
+                <TableCell colSpan={3} className="text-center text-muted-foreground">
+                  No customers match this view.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </section>
       <nav className="pager" aria-label="Customer pages">
         {page > 1 && <Link href={href(page - 1)}>Previous</Link>}

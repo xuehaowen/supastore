@@ -14,6 +14,14 @@ import {
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { staffIdentity } from "@/infrastructure/web";
 import { AdminNav } from "@/app/admin/admin-nav";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 export default async function StockHistory({
   params,
   searchParams,
@@ -73,38 +81,47 @@ export default async function StockHistory({
       </p>
       <section className="panel">
         <h2>Stock movement history</h2>
-        <div className="admin-table-scroll">
-          <table className="admin-data-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Quantity change</th>
-                <th>Reason</th>
-                <th>Order</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.movements.slice(0, 25).map((m) => (
-                <tr key={m.id}>
-                  <td>{m.createdAt.toISOString()}</td>
-                  <td>
-                    {m.delta > 0 ? "+" : ""}
-                    {m.delta}
-                  </td>
-                  <td>{m.reason}</td>
-                  <td>
-                    {m.orderId && (
-                      <Link href={`/admin/orders/${m.orderId}`}>
-                        View order
-                      </Link>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {!data.movements.length && <p>No stock movements.</p>}
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Date</TableHead>
+              <TableHead>Quantity change</TableHead>
+              <TableHead>Reason</TableHead>
+              <TableHead className="text-right">Order</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.movements.slice(0, 25).map((m) => (
+              <TableRow key={m.id}>
+                <TableCell>
+                  <time dateTime={m.createdAt.toISOString()}>
+                    {m.createdAt.toLocaleString()}
+                  </time>
+                </TableCell>
+                <TableCell className="font-medium">
+                  {m.delta > 0 ? `+${m.delta}` : m.delta}
+                </TableCell>
+                <TableCell>{m.reason}</TableCell>
+                <TableCell className="text-right">
+                  {m.orderId ? (
+                    <Link href={`/admin/orders/${m.orderId}`} className="admin-edit-link">
+                      View order
+                    </Link>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+            {!data.movements.length && (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  No stock movements.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
         <nav className="pager" aria-label="Stock movement pages">
           {cursor && <Link href="?">Latest movements</Link>}
           {data.movements.length > 25 && (

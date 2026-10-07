@@ -15,6 +15,14 @@ import { AdminNav } from "@/app/admin/admin-nav";
 import { Field, Hidden, Notice } from "@/app/components";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default async function Specifications({
   params,
@@ -74,23 +82,23 @@ export default async function Specifications({
       <Notice error={query.error} />
       {query.saved && <p role="status">Specifications saved.</p>}
       <section className="panel">
-        <table>
-          <thead>
-            <tr>
-              <th>Attribute</th>
-              <th>Value</th>
-              <th>Position</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Attribute</TableHead>
+              <TableHead>Value</TableHead>
+              <TableHead>Position</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {specs.map((s) => (
-              <tr key={s.valueId}>
-                <td>{s.name}</td>
-                <td>{s.label}</td>
-                <td>{s.sortOrder}</td>
-                <td>
-                  <form action={changeSpecificationAction}>
+              <TableRow key={s.valueId}>
+                <TableCell className="font-medium">{s.name}</TableCell>
+                <TableCell>{s.label}</TableCell>
+                <TableCell>{s.sortOrder}</TableCell>
+                <TableCell className="text-right">
+                  <form action={changeSpecificationAction} className="inline-flex items-center justify-end gap-2">
                     {identity}
                     <Hidden name="valueId" value={s.valueId} />
                     <Field
@@ -99,22 +107,29 @@ export default async function Specifications({
                       type="number"
                       value={s.sortOrder}
                     />
-                    <Button type="submit">Save position</Button>
+                    <Button type="submit" size="sm">Save position</Button>
                     <Button
                       name="remove"
                       value="true"
                       type="submit"
                       variant="outline"
+                      size="sm"
                     >
                       Remove
                     </Button>
                   </form>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-        {!specs.length && <p>No specifications yet.</p>}
+            {!specs.length && (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  No specifications yet.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </section>
       <section className="panel">
         <h2>Add specification</h2>

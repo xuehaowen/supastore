@@ -10,6 +10,14 @@ import { commercePolicy } from "@/domain/commerce-policy";
 import { AdminNav } from "@/app/admin/admin-nav";
 import { adjustOutsideSales } from "./actions";
 import { DomainError } from "@/application/common/errors";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 export default async function Reports({
   searchParams,
 }: {
@@ -110,32 +118,39 @@ export default async function Reports({
           >
             Export CSV
           </Link>
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Activity</th>
-                <th>Method</th>
-                <th>Net sales</th>
-                <th>Tax</th>
-                <th>Collections</th>
-                <th>Payouts</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Activity</TableHead>
+                <TableHead>Method</TableHead>
+                <TableHead>Net sales</TableHead>
+                <TableHead>Tax</TableHead>
+                <TableHead>Collections</TableHead>
+                <TableHead>Payouts</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {report.rows.map((row) => (
-                <tr key={row.id}>
-                  <td>{row.date}</td>
-                  <td>{row.kind}</td>
-                  <td>{row.method}</td>
-                  <td>{format(row.netCents)}</td>
-                  <td>{format(row.taxCents)}</td>
-                  <td>{format(row.collectionCents)}</td>
-                  <td>{format(row.payoutCents)}</td>
-                </tr>
+                <TableRow key={row.id}>
+                  <TableCell>{row.date}</TableCell>
+                  <TableCell>{row.kind}</TableCell>
+                  <TableCell>{row.method}</TableCell>
+                  <TableCell>{format(row.netCents)}</TableCell>
+                  <TableCell>{format(row.taxCents)}</TableCell>
+                  <TableCell>{format(row.collectionCents)}</TableCell>
+                  <TableCell>{format(row.payoutCents)}</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+              {!report.rows.length && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                    No activity in this period.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </>
       ) : (
         <p role="alert">{reportError}</p>

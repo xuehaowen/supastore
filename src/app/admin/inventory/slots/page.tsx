@@ -13,6 +13,17 @@ import { staffIdentity } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { AdminNav } from "@/app/admin/admin-nav";
 import { saveSlotQuota, createSlot } from "./actions";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Input } from "@/components/ui/input";
 export default async function SlotsPage({
   searchParams,
 }: {
@@ -110,66 +121,75 @@ export default async function SlotsPage({
           <button type="submit">Create window</button>
         </form>
       )}
-      <table>
-        <thead>
-          <tr>
-            <th>Method / window</th>
-            <th>Bookings</th>
-            <th>Variant quotas</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.slots.map((slot) => (
-            <tr key={slot.id}>
-              <td>
-                {slot.pickupSlotId ? "Pickup" : "Local delivery"} {slot.date}{" "}
-                {slot.startTime}–{slot.endTime} ({slot.timezone})
-              </td>
-              <td>
-                {data.bookings.find((b) => b.slotId === slot.id)?.count ?? 0} /{" "}
-                {slot.capacity ?? "Unlimited"}
-              </td>
-              <td>
-                {data.quotas
-                  .filter((q) => q.slotId === slot.id)
-                  .map((q) => (
-                    <p key={q.id}>
-                      {data.variants.find((v) => v.id === q.variantId)?.sku}:{" "}
-                      {q.quantity}
-                    </p>
-                  ))}
-                {data.owner && (
-                  <form action={saveSlotQuota}>
-                    <input type="hidden" name="slotId" value={slot.id} />
-                    <label>
-                      Variant
-                      <select name="variantId" required>
-                        {data.variants.map((v) => (
-                          <option key={v.id} value={v.id}>
-                            {v.sku}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      Maximum units
-                      <input
-                        name="quantity"
-                        type="number"
-                        min="0"
-                        max="2147483647"
-                        required
-                      />
-                    </label>
-                    <button type="submit">Save quota</button>
-                  </form>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {!data.slots.length && <p>No booked windows yet.</p>}
+      <section className="panel mt-6">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Method / window</TableHead>
+              <TableHead>Bookings</TableHead>
+              <TableHead>Variant quotas</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.slots.map((slot) => (
+              <TableRow key={slot.id}>
+                <TableCell className="font-medium">
+                  {slot.pickupSlotId ? "Pickup" : "Local delivery"} {slot.date}{" "}
+                  {slot.startTime}–{slot.endTime} ({slot.timezone})
+                </TableCell>
+                <TableCell>
+                  {data.bookings.find((b) => b.slotId === slot.id)?.count ?? 0} /{" "}
+                  {slot.capacity ?? "Unlimited"}
+                </TableCell>
+                <TableCell>
+                  {data.quotas
+                    .filter((q) => q.slotId === slot.id)
+                    .map((q) => (
+                      <p key={q.id} className="text-sm">
+                        {data.variants.find((v) => v.id === q.variantId)?.sku}:{" "}
+                        {q.quantity}
+                      </p>
+                    ))}
+                  {data.owner && (
+                    <form action={saveSlotQuota} className="mt-2 flex flex-wrap items-center gap-2">
+                      <input type="hidden" name="slotId" value={slot.id} />
+                      <label className="text-xs">
+                        Variant
+                        <NativeSelect name="variantId" required className="mt-1">
+                          {data.variants.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              {v.sku}
+                            </option>
+                          ))}
+                        </NativeSelect>
+                      </label>
+                      <label className="text-xs">
+                        Max units
+                        <Input
+                          name="quantity"
+                          type="number"
+                          min="0"
+                          max="2147483647"
+                          required
+                          className="mt-1 w-24"
+                        />
+                      </label>
+                      <Button type="submit" size="sm" className="self-end">Save quota</Button>
+                    </form>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+            {!data.slots.length && (
+              <TableRow>
+                <TableCell colSpan={3} className="text-center text-muted-foreground">
+                  No booked windows yet.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </section>
     </main>
   );
 }
