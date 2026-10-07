@@ -22,6 +22,16 @@ const input: UpdateProductInput = {
   ],
 };
 describe("product edit validation", () => {
+  it("rejects untyped tax and reward settings before database work", async () => {
+    for (const field of ["taxable", "rewardEligible"]) {
+      await expect(
+        updateProduct({
+          ...input,
+          [field]: "false",
+        } as unknown as UpdateProductInput),
+      ).rejects.toThrow("boolean");
+    }
+  });
   it("rejects negative or fractional prices before writing", async () => {
     for (const priceCents of [-1, 1.5])
       await expect(

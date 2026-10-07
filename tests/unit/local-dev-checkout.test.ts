@@ -9,8 +9,10 @@ vi.mock("nodemailer", () => ({
   default: { createTransport: mail.createTransport },
 }));
 import { smtpAdapter } from "@/infrastructure/notifications/smtp";
+import { closeNotificationProviders } from "@/infrastructure/bootstrap/notification-providers";
 
-afterEach(() => {
+afterEach(async () => {
+  await closeNotificationProviders();
   vi.unstubAllEnvs();
   vi.clearAllMocks();
 });
@@ -55,9 +57,11 @@ describe("pickup date choices", () => {
 
 describe("SMTP delivery", () => {
   it("defaults port 465 to implicit TLS", async () => {
+    vi.stubEnv("SMTP_HOST", "127.0.0.1");
+    vi.stubEnv("SMTP_FROM", "owner@example.test");
     vi.stubEnv("SMTP_PORT", "465");
     vi.stubEnv("SMTP_SECURE", undefined);
-    mail.createTransport.mockReturnValue({ sendMail: mail.sendMail });
+    mail.createTransport.mockReturnValue({ sendMail: mail.sendMail, close: vi.fn() });
     mail.sendMail.mockResolvedValue({
       accepted: ["owner@example.test"],
       messageId: "test",
@@ -75,7 +79,9 @@ describe("SMTP delivery", () => {
     );
   });
   it("does not report rejected recipients as successful", async () => {
-    mail.createTransport.mockReturnValue({ sendMail: mail.sendMail });
+    vi.stubEnv("SMTP_HOST", "127.0.0.1");
+    vi.stubEnv("SMTP_FROM", "owner@example.test");
+    mail.createTransport.mockReturnValue({ sendMail: mail.sendMail, close: vi.fn() });
     mail.sendMail.mockResolvedValue({
       accepted: [],
       rejected: ["owner@example.test"],

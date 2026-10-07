@@ -62,10 +62,14 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
   await payment.getByRole("checkbox").check();
   await clickAction(admin, payment.getByRole("button", { name: "Record receipt", exact: true }));
   await clickAction(admin, admin.getByRole("button", { name: "Confirm exact payment", exact: true }));
-  await admin.getByRole("button", { name: "Complete shipping handoff", exact: true }).click();
-  const handoff = admin.getByRole("dialog", { name: "Complete shipping handoff", exact: true });
+  await admin.getByRole("button", { name: "Dispatch shipment", exact: true }).click();
+  const dispatch = admin.getByRole("dialog", { name: "Dispatch shipment", exact: true });
+  await dispatch.getByLabel("Carrier or delivery method").fill("Synthetic delivery");
+  await clickAction(admin, dispatch.getByRole("button", { name: "Dispatch shipment", exact: true }));
+  await admin.getByRole("button", { name: "Record delivery", exact: true }).click();
+  const handoff = admin.getByRole("dialog", { name: "Record completed delivery", exact: true });
   await handoff.getByLabel("Carrier or delivery method").fill("Synthetic delivery");
-  await clickAction(admin, handoff.getByRole("button", { name: "Complete handoff", exact: true }));
+  await clickAction(admin, handoff.getByRole("button", { name: "Record delivery", exact: true }));
   await page.reload();
   await page.getByLabel(/up to 2 units/).fill("1");
   await page.getByLabel("Return reason").fill("One unit returned");

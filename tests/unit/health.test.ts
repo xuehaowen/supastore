@@ -35,7 +35,7 @@ describe('Health Endpoints', () => {
     const body = await response.json();
     expect(body.status).toBe('unhealthy');
     expect(body.database).toBe('disconnected');
-    expect(body.error).toContain('Connection terminated');
+    expect(body.error).toBe('Database query failed');
   });
 
   it('/api/health/worker returns 200 with outbox metrics', async () => {

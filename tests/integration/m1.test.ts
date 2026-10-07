@@ -331,9 +331,10 @@ describe.skipIf(!enabled)("M1 real PostgreSQL journeys", () => {
     const order = await createOrder(p.input);
     await processOutboxBatch({
       batchSize: 100,
-      adapter: {
-        sendEmail: async () => ({ success: false, error: "Synthetic outage" }),
-      },
+      providers: {email: {
+        identity: {provider: "fixture", profile: "email"}, capabilities: {deliveryTracking: false},
+        send: async () => ({status: "rejected", code: "fixture_outage", retryable: true}),
+      }},
     });
     expect((await trackOrder(order.id, order.sessionToken)).order.id).toBe(
       order.id,

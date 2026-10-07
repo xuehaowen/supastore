@@ -1,10 +1,15 @@
 import { beforeAll, afterAll, describe, it, expect, vi } from "vitest";
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { and, asc, desc, eq, getTableColumns } from "drizzle-orm";
-import { ledgerTimestamp, ledgerBoundary, type LedgerCursor } from "@/infrastructure/db/ledger-cursor";
+import {
+  ledgerTimestamp,
+  ledgerBoundary,
+  type LedgerCursor,
+} from "@/infrastructure/db/ledger-cursor";
 const active = vi.hoisted(() => ({ db: undefined as unknown }));
 const storage = vi.hoisted(() => ({
   putCatalogAsset: vi.fn(),
@@ -27,6 +32,16 @@ import { recordReceipt } from "@/application/use-cases/record-receipt";
 import { confirmOrder } from "@/application/use-cases/confirm-order";
 import { fulfillOrder } from "@/application/use-cases/fulfill-order";
 import {
+  dispatchShipment,
+  recordShipmentDelivered,
+  applyCarrierDelivery,
+} from "@/application/use-cases/fulfillment/shipments";
+import {
+  rescheduleOrder,
+  rescheduleOrderWindow,
+} from "@/application/use-cases/fulfillment/reschedule-order";
+import { configureSlotQuota } from "@/application/use-cases/inventory/slot-operations";
+import {
   claimGuestOrder,
   customerAccount,
   openOwnedOrder,
@@ -34,6 +49,15 @@ import {
 } from "@/application/use-cases/customers/customer-ownership";
 import { issueStoreCredit } from "@/application/use-cases/store-credit/credit-operations";
 import { refundPurchase } from "@/application/use-cases/store-credit/purchase-refund";
+import {
+  createCreditSourceLot,
+  reclaimRewardSource,
+  offsetRewardDebts,
+} from "@/application/use-cases/store-credit/credit-sources";
+import {
+  lockCreditAccount,
+  creditHash,
+} from "@/application/use-cases/store-credit/credit-operations";
 import { authorizeRefund } from "@/application/use-cases/refund-payout";
 import { uploadCatalogImage } from "@/application/use-cases/catalog/upload-catalog-image";
 import { cleanupCatalogMedia } from "@/application/use-cases/catalog/cleanup-catalog-media";
@@ -91,9 +115,9 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
     });
     return result.variants[0]!;
   }
-  async function prepare(variantId: string) {
+  async function prepare(variantId: string, quantity = 1) {
     const guestSessionId = randomUUID();
-    const cart = await addToCart({ guestSessionId, variantId, quantity: 1 });
+    const cart = await addToCart({ guestSessionId, variantId, quantity });
     const quote = await getQuote({
       guestSessionId,
       cartId: cart.id,
@@ -108,6 +132,295 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
       guestName: "Guest",
     };
   }
+  it("consumes partial shipment stock once and completes only after all units arrive", async () => {
+    const variant = await product();
+    await adjustStock({
+      staffUserId: owner,
+      variantId: variant.id,
+      onHand: 3,
+      tracking: true,
+      reason: "Count",
+      requestKey: randomUUID(),
+    });
+    const order = await createOrder(await prepare(variant.id, 3));
+    await recordReceipt({
+      orderId: order.id,
+      paymentAccountId: bank,
+      amountCents: order.purchaseTotalCents,
+      rawReference: randomUUID(),
+      staffUserId: owner,
+    });
+    await confirmOrder({ orderId: order.id, staffUserId: owner });
+    const [item] =
+      await client`select id from order_items where order_id=${order.id}`;
+    const input = {
+      orderId: order.id,
+      staffUserId: owner,
+      requestKey: randomUUID(),
+      carrier: "Synthetic carrier",
+      items: [{ orderItemId: item!.id, quantity: 1 }],
+    };
+    const first = await dispatchShipment(input);
+    await dispatchShipment(input);
+    expect(
+      (
+        await client`select on_hand,reserved from variant_stock where variant_id=${variant.id}`
+      )[0],
+    ).toMatchObject({ on_hand: 2, reserved: 2 });
+    await recordShipmentDelivered({
+      shipmentId: first!.id,
+      staffUserId: owner,
+    });
+    expect(
+      (
+        await client`select lifecycle_status from orders where id=${order.id}`
+      )[0]!.lifecycle_status,
+    ).toBe("confirmed");
+    await expect(
+      fulfillOrder({
+        orderId: order.id,
+        staffUserId: owner,
+        carrier: "Manual",
+      }),
+    ).rejects.toThrow("every ordered unit");
+    await expect(
+      cancelOrder({
+        orderId: order.id,
+        actorUserId: owner,
+        reason: "Cancel dispatched",
+      }),
+    ).rejects.toThrow();
+    const previous = process.env.CARRIER_WEBHOOK_PROVIDER;
+    process.env.CARRIER_WEBHOOK_PROVIDER = "synthetic";
+    try {
+      const second = await dispatchShipment({
+        ...input,
+        requestKey: randomUUID(),
+        provider: "synthetic",
+        items: [{ orderItemId: item!.id, quantity: 2 }],
+      });
+      const event = {
+        provider: "synthetic",
+        eventId: "delivered-event",
+        shipmentId: second!.id,
+        bodyHash: "same-body",
+      };
+      await applyCarrierDelivery(event);
+      expect((await applyCarrierDelivery(event)).duplicate).toBe(true);
+      await expect(
+        applyCarrierDelivery({ ...event, bodyHash: "changed" }),
+      ).rejects.toThrow("changed payload");
+      expect(
+        (
+          await client`select lifecycle_status from orders where id=${order.id}`
+        )[0]!.lifecycle_status,
+      ).toBe("completed");
+      expect(
+        (
+          await client`select on_hand,reserved from variant_stock where variant_id=${variant.id}`
+        )[0],
+      ).toMatchObject({ on_hand: 0, reserved: 0 });
+      expect(
+        (
+          await client`select count(*)::int count from stock_movements where order_id=${order.id}`
+        )[0]!.count,
+      ).toBe(2);
+    } finally {
+      if (previous === undefined) delete process.env.CARRIER_WEBHOOK_PROVIDER;
+      else process.env.CARRIER_WEBHOOK_PROVIDER = previous;
+    }
+  });
+  it("serializes pickup capacity and enforces variant quotas after cancellation", async () => {
+    const variant = await product();
+    const schedule = Object.fromEntries(
+      ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].map((day) => [
+        day,
+        [["12:00", "13:00"]],
+      ]),
+    );
+    const [location] =
+      await client`insert into pickup_location(name,address,weekly_schedule,prep_minutes,slot_capacity) values('Generic pickup','1 Test St',${JSON.stringify(schedule)}::jsonb,0,1) returning id`;
+    const date = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+    async function pickupInput() {
+      const guestSessionId = randomUUID();
+      const cart = await addToCart({
+        guestSessionId,
+        variantId: variant.id,
+        quantity: 1,
+      });
+      const quote = await getQuote({
+        guestSessionId,
+        cartId: cart.id,
+        fulfillmentType: "pickup",
+        shippingAddress: { country: "US", address: "" },
+        pickupLocationId: location!.id,
+        pickupDate: date,
+        pickupTime: "12:00",
+        paymentAccountId: bank,
+      });
+      return {
+        guestSessionId,
+        quoteId: quote.id,
+        guestEmail: "slot@example.test",
+        guestName: "Slot buyer",
+      };
+    }
+    const inputs = await Promise.all([pickupInput(), pickupInput()]);
+    const results = await Promise.allSettled(inputs.map(createOrder));
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const accepted = results.find(
+      (r) => r.status === "fulfilled",
+    ) as PromiseFulfilledResult<Awaited<ReturnType<typeof createOrder>>>;
+    const [hold] =
+      await client`select slot_id from slot_reservations where order_id=${accepted.value.id}`;
+    const newDate = new Date(Date.now() + 8 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const [pickup] =
+      await client`insert into pickup_time_slots(location_id,date,start_time,end_time) values(${location!.id},${newDate},'12:00','13:00') returning id`;
+    const [destination] =
+      await client`insert into fulfillment_slots(pickup_slot_id,date,start_time,end_time,timezone,capacity) values(${pickup!.id},${newDate},'12:00','13:00','UTC',0) returning id`;
+    await expect(
+      rescheduleOrder({
+        staffUserId: owner,
+        orderId: accepted.value.id,
+        slotId: destination!.id,
+        reason: "Change date",
+      }),
+    ).rejects.toThrow("full");
+    expect(
+      (
+        await client`select slot_id from slot_reservations where order_id=${accepted.value.id}`
+      )[0]!.slot_id,
+    ).toBe(hold!.slot_id);
+    await client`update fulfillment_slots set capacity=1 where id=${destination!.id}`;
+    await rescheduleOrder({
+      staffUserId: owner,
+      orderId: accepted.value.id,
+      slotId: destination!.id,
+      reason: "Change date",
+    });
+    expect(
+      (
+        await client`select slot_id from slot_reservations where order_id=${accepted.value.id}`
+      )[0]!.slot_id,
+    ).toBe(destination!.id);
+    await rescheduleOrder({
+      staffUserId: owner,
+      orderId: accepted.value.id,
+      slotId: hold!.slot_id,
+      reason: "Return to original window",
+    });
+    const newlyProvisioned = await rescheduleOrderWindow({
+      staffUserId: owner,
+      orderId: accepted.value.id,
+      date: new Date(Date.now() + 9 * 86400000).toISOString().slice(0, 10),
+      startTime: "12:00",
+      reason: "Choose new window",
+    });
+    expect(newlyProvisioned?.slotId).not.toBe(hold!.slot_id);
+    await rescheduleOrder({
+      staffUserId: owner,
+      orderId: accepted.value.id,
+      slotId: hold!.slot_id,
+      reason: "Restore original booking",
+    });
+    // Restored pre-capacity installations have fulfillment snapshots but no holds.
+    await client`delete from slot_reservations where order_id=${accepted.value.id}`;
+    await client.unsafe(
+      readFileSync(
+        "src/infrastructure/db/migrations/0029_legacy_slot_bookings.sql",
+        "utf8",
+      ),
+    );
+    await client.unsafe(
+      readFileSync(
+        "src/infrastructure/db/migrations/0029_legacy_slot_bookings.sql",
+        "utf8",
+      ),
+    );
+    expect(
+      await client`select slot_id,status from slot_reservations where order_id=${accepted.value.id}`,
+    ).toEqual([
+      expect.objectContaining({ slot_id: hold!.slot_id, status: "active" }),
+    ]);
+    await expect(
+      configureSlotQuota({
+        staffUserId: owner,
+        slotId: hold!.slot_id,
+        variantId: variant.id,
+        quantity: 0,
+      }),
+    ).rejects.toThrow("already booked");
+    await cancelOrder({
+      orderId: accepted.value.id,
+      actorUserId: owner,
+      reason: "Release slot",
+    });
+    await configureSlotQuota({
+      staffUserId: owner,
+      slotId: hold!.slot_id,
+      variantId: variant.id,
+      quantity: 0,
+    });
+    await expect(createOrder(await pickupInput())).rejects.toThrow("sold out");
+  });
+  it("books scheduled local delivery without requiring a pickup location", async () => {
+    const [settings] =
+      await client`select commerce_policy from store_settings limit 1`;
+    await client`update store_settings set commerce_policy=${JSON.stringify({ ...settings!.commerce_policy, deliveryEnabled: true })}::jsonb`;
+    try {
+      const schedule = Object.fromEntries(
+        ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].map((day) => [
+          day,
+          [["12:00", "13:00"]],
+        ]),
+      );
+      const [area] =
+        await client`insert into delivery_areas(name,country_codes,postal_prefixes,rate_cents,weekly_schedule,prep_minutes,schedule_required,slot_capacity) values('Neighborhood','["US"]','["981"]',0,${JSON.stringify(schedule)}::jsonb,0,true,1) returning id`;
+      const variant = await product();
+      const guestSessionId = randomUUID();
+      const cart = await addToCart({
+        guestSessionId,
+        variantId: variant.id,
+        quantity: 1,
+      });
+      const quote = await getQuote({
+        guestSessionId,
+        cartId: cart.id,
+        fulfillmentType: "local_delivery",
+        shippingAddress: {
+          country: "US",
+          address: "1 Test St",
+          postalCode: "98101",
+        },
+        deliveryAreaId: area!.id,
+        pickupDate: new Date(Date.now() + 7 * 86400000)
+          .toISOString()
+          .slice(0, 10),
+        pickupTime: "12:00",
+        paymentAccountId: bank,
+      });
+      const order = await createOrder({
+        guestSessionId,
+        quoteId: quote.id,
+        guestEmail: "delivery@example.test",
+        guestName: "Delivery buyer",
+      });
+      expect(
+        (
+          await client`select f.delivery_area_id,o.pickup_slot_id from order_fulfillments o join fulfillment_slots f on f.id=o.fulfillment_slot_id where o.order_id=${order.id}`
+        )[0],
+      ).toMatchObject({ delivery_area_id: area!.id, pickup_slot_id: null });
+      await cancelOrder({
+        orderId: order.id,
+        actorUserId: owner,
+        reason: "Release delivery",
+      });
+    } finally {
+      await client`update store_settings set commerce_policy=${JSON.stringify(settings!.commerce_policy)}::jsonb`;
+    }
+  });
   it("applies reviewed bulk changes atomically and rejects stale or foreign variants", async () => {
     const variant = await product();
     const other = await product();
@@ -152,7 +465,8 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
   });
   it("pages immutable history without skipping microseconds or duplicating entries after a new append", async () => {
     const variant = await product();
-    const inserted = await client`insert into stock_movements(variant_id,delta,reason,actor_id,request_key,created_at)
+    const inserted =
+      await client`insert into stock_movements(variant_id,delta,reason,actor_id,request_key,created_at)
       select ${variant.id},0,'Cursor fixture',${owner},gen_random_uuid()::text,
         '2026-01-01T00:00:00Z'::timestamptz + (n % 3 + 1) * interval '1 microsecond'
       from generate_series(1,61) n returning id`;
@@ -162,10 +476,23 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
       const seen: string[] = [];
       while (true) {
         const table = schema.stockMovements;
-        const rows = await (active.db as ReturnType<typeof drizzle>).select({
-          ...getTableColumns(table), timestamp: ledgerTimestamp(table.createdAt),
-        }).from(table).where(and(eq(table.variantId, variant.id), ledgerBoundary(table.createdAt, table.id, cursor, ascending)))
-          .orderBy(ascending ? asc(table.createdAt) : desc(table.createdAt), ascending ? asc(table.id) : desc(table.id)).limit(25);
+        const rows = await (active.db as ReturnType<typeof drizzle>)
+          .select({
+            ...getTableColumns(table),
+            timestamp: ledgerTimestamp(table.createdAt),
+          })
+          .from(table)
+          .where(
+            and(
+              eq(table.variantId, variant.id),
+              ledgerBoundary(table.createdAt, table.id, cursor, ascending),
+            ),
+          )
+          .orderBy(
+            ascending ? asc(table.createdAt) : desc(table.createdAt),
+            ascending ? asc(table.id) : desc(table.id),
+          )
+          .limit(25);
         if (!rows.length) break;
         seen.push(...rows.map((r) => r.id));
         const last = rows[rows.length - 1]!;
@@ -674,6 +1001,140 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
         address: {},
       }),
     ).rejects.toThrow("not found");
+  });
+  it("keeps revoked reward holds intact and recovers debt on cancellation without unrelated credit", async () => {
+    const userId = `lot-${randomUUID()}`;
+    await client`insert into "user"(id,name,email,email_verified) values(${userId},'Lot customer',${`${userId}@example.test`},true)`;
+    const customer = (await customerAccount(userId)).customer;
+    const accountId = await issueStoreCredit({
+      staffUserId: owner,
+      customerId: customer.id,
+      amountCents: 500,
+      reason: "Unrelated merchant credit",
+      requestKey: randomUUID(),
+    });
+    const database = active.db as typeof import("@/infrastructure/db").db;
+    const rewardLot = await database.transaction(async (tx) => {
+      const account = await lockCreditAccount(tx, accountId);
+      const [entry] = await tx
+        .insert(schema.storeCreditEntries)
+        .values({
+          accountId,
+          amountCents: 100,
+          kind: "issue",
+          reason: "Reward fixture",
+          actorId: owner,
+          requestKey: randomUUID(),
+          payloadHash: creditHash([100]),
+        })
+        .returning();
+      await tx
+        .update(schema.storeCreditAccounts)
+        .set({ balanceCents: account.balanceCents + 100 })
+        .where(eq(schema.storeCreditAccounts.id, accountId));
+      return createCreditSourceLot(tx, {
+        accountId,
+        sourceEntryId: entry!.id,
+        kind: "reward",
+        amountCents: 100,
+      });
+    });
+    const variant = await product(1000);
+    const order = await createOrder({
+      ...(await prepare(variant.id)),
+      customerUserId: userId,
+      creditAppliedCents: 100,
+    });
+    expect(
+      (
+        await client`select lot_id,a.amount_cents from credit_source_allocations a join store_credit_reservations r on r.id=a.reservation_id where r.order_id=${order.id}`
+      )[0],
+    ).toMatchObject({ lot_id: rewardLot.id, amount_cents: 100 });
+    await database.transaction(async (tx) => {
+      await lockCreditAccount(tx, accountId);
+      expect(await reclaimRewardSource(tx, rewardLot.id, 100)).toEqual({
+        reclaimedCents: 0,
+        debtCents: 100,
+      });
+    });
+    await cancelOrder({
+      orderId: order.id,
+      actorUserId: owner,
+      reason: "Release revoked hold",
+    });
+    expect(
+      (
+        await client`select remaining_cents,reserved_cents,debt_cents,revoked_pending_cents from credit_source_lots where id=${rewardLot.id}`
+      )[0],
+    ).toMatchObject({
+      remaining_cents: 0,
+      reserved_cents: 0,
+      debt_cents: 0,
+      revoked_pending_cents: 0,
+    });
+    expect(
+      (
+        await client`select balance_cents,reserved_cents from store_credit_accounts where id=${accountId}`
+      )[0],
+    ).toMatchObject({ balance_cents: 500, reserved_cents: 0 });
+    expect((await customerAccount(userId)).credit!.reconciled).toBe(true);
+  });
+  it("preserves restored revoked credit after future earnings already recovered its debt", async () => {
+    const userId = `refund-lot-${randomUUID()}`;
+    await client`insert into "user"(id,name,email,email_verified) values(${userId},'Refund lot customer',${`${userId}@example.test`},true)`;
+    const customer = (await customerAccount(userId)).customer;
+    const accountId = await issueStoreCredit({
+      staffUserId: owner,
+      customerId: customer.id,
+      amountCents: 100,
+      reason: "Credit fixture",
+      requestKey: randomUUID(),
+    });
+    const [lot] =
+      await client`select id from credit_source_lots where account_id=${accountId}`;
+    await client`update credit_source_lots set kind='reward' where id=${lot!.id}`;
+    const variant = await product(100);
+    const order = await createOrder({
+      ...(await prepare(variant.id)),
+      customerUserId: userId,
+      creditAppliedCents: 100,
+    });
+    expect(order.lifecycleStatus).toBe("confirmed");
+    const database = active.db as typeof import("@/infrastructure/db").db;
+    await database.transaction(async (tx) => {
+      await lockCreditAccount(tx, accountId);
+      expect(await reclaimRewardSource(tx, lot!.id, 100)).toEqual({
+        reclaimedCents: 0,
+        debtCents: 100,
+      });
+      expect(await offsetRewardDebts(tx, accountId, 100)).toEqual({
+        recoveredCents: 100,
+        netCents: 0,
+      });
+    });
+    const request = {
+      orderId: order.id,
+      ownerUserId: owner,
+      amountCents: 100,
+      reason: "Restore after recovery",
+      requestKey: randomUUID(),
+    };
+    await Promise.all([refundPurchase(request), refundPurchase(request)]);
+    expect(
+      (
+        await client`select remaining_cents,debt_cents,revoked_pending_cents from credit_source_lots where id=${lot!.id}`
+      )[0],
+    ).toMatchObject({
+      remaining_cents: 100,
+      debt_cents: 0,
+      revoked_pending_cents: 0,
+    });
+    expect(
+      (
+        await client`select balance_cents from store_credit_accounts where id=${accountId}`
+      )[0]!.balance_cents,
+    ).toBe(100);
+    expect((await customerAccount(userId)).credit!.reconciled).toBe(true);
   });
   it("captures mixed funding and refunds original credit and external sources exactly once", async () => {
     const customer = (await customerAccount("customer-a")).customer;

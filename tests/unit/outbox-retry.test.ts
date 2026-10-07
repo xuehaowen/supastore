@@ -3,7 +3,7 @@ import {
   getNextRetryInfo,
   MAX_DELIVERY_ATTEMPTS,
   RETRY_DELAYS_MS,
-} from '@/infrastructure/worker/outbox';
+} from '@/application/notifications/delivery-policy';
 
 describe('Outbox Retry Schedule', () => {
   const baseTime = 1700000000000;

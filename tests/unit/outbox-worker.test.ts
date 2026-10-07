@@ -1,17 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getNextRetryInfo, processOutboxBatch } from '@/infrastructure/worker/outbox';
-import type { NotificationAdapter } from '@/infrastructure/notifications/adapter';
+import type { EmailSender } from '@/application/ports/notifications';
 
 describe('Outbox Worker Unit Tests', () => {
   it('respects DISABLE_OUTBOUND_DELIVERY flag', async () => {
     process.env.DISABLE_OUTBOUND_DELIVERY = 'true';
     try {
-      const mockAdapter: NotificationAdapter = {
-        sendEmail: vi.fn(),
+      const sender: EmailSender = {
+        identity: {provider: 'fixture', profile: 'email'}, capabilities: {deliveryTracking: false}, send: vi.fn(),
       };
-      const result = await processOutboxBatch({ adapter: mockAdapter });
+      const result = await processOutboxBatch({ providers: {email: sender} });
       expect(result).toBe(0);
-      expect(mockAdapter.sendEmail).not.toHaveBeenCalled();
+      expect(sender.send).not.toHaveBeenCalled();
     } finally {
       delete process.env.DISABLE_OUTBOUND_DELIVERY;
     }
