@@ -23,6 +23,7 @@ import { staffIdentity, money } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { orderItemName } from "@/domain/catalog/order-item-name";
 import { AdminNav } from "@/app/admin/admin-nav";
+import { resolveRewardReviewAction } from "@/app/admin/reward-actions";
 import { AdminDialog } from "@/app/admin/admin-dialog";
 import { Field, Hidden, Notice } from "@/app/components";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ import {
   confirmPayment,
   cancelAdminOrder,
   fulfillConfirmedOrder,
+  dispatchConfirmedOrder,
 } from "@/app/actions";
 import { refundPurchaseAction } from "@/app/admin/credit-actions";
 import type { QuoteTerms } from "@/application/use-cases/get-quote";
@@ -269,6 +271,7 @@ export default async function OrderDetail({
       )}
       <section className="panel">
         <h2>Fulfillment</h2>
+         <Link href={`/admin/fulfillment/shipments?orderId=${id}`}>Manage partial shipments & reschedule booking</Link>
         <p>
           {data.fulfillment?.status.replaceAll("_", " ")} ·{" "}
           {data.fulfillment?.carrier || ""} ·{" "}
@@ -277,11 +280,25 @@ export default async function OrderDetail({
         {o.lifecycleStatus === "confirmed" &&
           o.fulfillmentType === "shipping" && (
             <AdminDialog
-              trigger="Complete shipping handoff"
-              title="Complete shipping handoff"
-              description="This records physical handoff and consumes reserved stock once. Resolve stock shortages first."
+              trigger={
+                data.fulfillment?.status === "shipped"
+                  ? "Record delivery"
+                  : "Dispatch shipment"
+              }
+              title={
+                data.fulfillment?.status === "shipped"
+                  ? "Record completed delivery"
+                  : "Dispatch shipment"
+              }
+              description="Dispatch consumes stock once. Record delivery when the customer receives the order to release purchase rewards."
             >
-              <form action={fulfillConfirmedOrder}>
+              <form
+                action={
+                  data.fulfillment?.status === "shipped"
+                    ? fulfillConfirmedOrder
+                    : dispatchConfirmedOrder
+                }
+              >
                 {identity}
                 <Field name="carrier" label="Carrier or delivery method" />
                 <Field
@@ -289,7 +306,11 @@ export default async function OrderDetail({
                   label="Tracking number"
                   required={false}
                 />
-                <Button type="submit">Complete handoff</Button>
+                <Button type="submit">
+                  {data.fulfillment?.status === "shipped"
+                    ? "Record delivery"
+                    : "Dispatch shipment"}
+                </Button>
               </form>
             </AdminDialog>
           )}
@@ -327,6 +348,49 @@ export default async function OrderDetail({
                   type="number"
                 />
                 <Field name="reason" label="Refund reason" />
+                {o.rewardSnapshot && (
+                  <fieldset>
+                    <legend>Detailed refund allocation (optional)</legend>
+                    <p>
+                      Enter which merchandise, tax, and fulfillment amounts are
+                      refunded. Leave all zero to allocate proportionally.
+                      Detailed amounts must add up to the refund total and
+                      retain their original payment source.
+                    </p>
+                    {o.rewardSnapshot.allocations
+                      .filter((item) => item.amount > 0)
+                      .map((item) => (
+                        <div key={item.id}>
+                          <p>
+                            {item.type === "merchandise"
+                              ? orderItemName(
+                                  data.items.find(
+                                    (line) => line.variantId === item.id,
+                                  ) ?? { variantId: item.id },
+                                  data.quote?.itemsSnapshot,
+                                )
+                              : item.type === "tax"
+                                ? "Tax"
+                                : "Fulfillment fee"}
+                          </p>
+                          <Field
+                            name={`external:${item.id}`}
+                            label={`External payment refund (up to ${format(item.externalAmount)})`}
+                            type="number"
+                            value="0"
+                            required={false}
+                          />
+                          <Field
+                            name={`credit:${item.id}`}
+                            label={`Credit refund (up to ${format(item.creditAmount)})`}
+                            type="number"
+                            value="0"
+                            required={false}
+                          />
+                        </div>
+                      ))}
+                  </fieldset>
+                )}
                 <Button type="submit">Authorize source-aware refund</Button>
               </form>
             </AdminDialog>
@@ -334,6 +398,20 @@ export default async function OrderDetail({
         <Link href={`/admin/payments?managePayment=${id}`}>
           Payouts, surplus returns & corrections
         </Link>
+        {o.rewardFundingReview && (
+          <div><p role="alert">
+            Reward funding requires review after a receipt correction. Pending
+            rewards are suspended; issued rewards have been conservatively
+            reversed. Original-source refund entitlements remain recorded.
+          </p>
+          {data.identity.role === "owner" && <form action={resolveRewardReviewAction}>
+            <Hidden name="orderId" value={o.id}/><Hidden name="requestKey" value={randomUUID()}/>
+            <p>Verify and correct every original frozen receipt first. Another payment cannot replace a corrected source. Resolving review restores only the supported accepted reward, including its debt history.</p>
+            <Field name="reason" label="Verified funding evidence and review reason"/>
+            <Button type="submit">Resolve verified reward funding</Button>
+          </form>}
+          </div>
+        )}
       </section>
       {data.identity.role === "owner" &&
         ["unpaid", "confirmed"].includes(o.lifecycleStatus) && (

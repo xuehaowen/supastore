@@ -40,15 +40,33 @@ export function ProductDraftForm({
       const draft = stored.values;
       if (!draft || typeof draft !== "object" || Array.isArray(draft)) return;
       for (const element of Array.from(ref.current?.elements || [])) {
-        if (element instanceof HTMLInputElement && element.type === "checkbox" && element.name === "categoryIds") {
+        if (
+          element instanceof HTMLInputElement &&
+          element.type === "checkbox" &&
+          ["taxable", "rewardEligible"].includes(element.name)
+        ) {
+          element.checked = draft[element.name] === "true";
+          continue;
+        }
+        if (
+          element instanceof HTMLInputElement &&
+          element.type === "checkbox" &&
+          element.name === "categoryIds"
+        ) {
           const selected = draft.categoryIds;
-          if (Array.isArray(selected) && selected.every((value) => typeof value === "string"))
+          if (
+            Array.isArray(selected) &&
+            selected.every((value) => typeof value === "string")
+          )
             element.checked = selected.includes(element.value);
           continue;
         }
         if (element instanceof HTMLSelectElement) {
           const selected = draft[element.name];
-          if (Array.isArray(selected) && selected.every((value) => typeof value === "string")) {
+          if (
+            Array.isArray(selected) &&
+            selected.every((value) => typeof value === "string")
+          ) {
             for (const option of Array.from(element.options))
               option.selected = selected.includes(option.value);
           }
@@ -91,13 +109,28 @@ export function ProductDraftForm({
       onChange={() => setDirty(true)}
       onSubmit={() => {
         const draft: Record<string, string | string[]> = {};
+        for (const element of Array.from(ref.current?.elements || []))
+          if (
+            element instanceof HTMLInputElement &&
+            element.type === "checkbox" &&
+            ["taxable", "rewardEligible"].includes(element.name)
+          )
+            draft[element.name] = String(element.checked);
         draft.categoryIds = Array.from(ref.current?.elements || [])
-          .filter((element): element is HTMLInputElement => element instanceof HTMLInputElement && element.type === "checkbox" && element.name === "categoryIds" && element.checked)
+          .filter(
+            (element): element is HTMLInputElement =>
+              element instanceof HTMLInputElement &&
+              element.type === "checkbox" &&
+              element.name === "categoryIds" &&
+              element.checked,
+          )
           .map((element) => element.value);
         for (const element of Array.from(ref.current?.elements || [])) {
           if (element instanceof HTMLSelectElement) {
             if (element.name)
-              draft[element.name] = Array.from(element.selectedOptions).map((option) => option.value);
+              draft[element.name] = Array.from(element.selectedOptions).map(
+                (option) => option.value,
+              );
             continue;
           }
           if (!(

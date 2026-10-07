@@ -10,6 +10,13 @@ import { staffIdentity } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { AdminNav } from "@/app/admin/admin-nav";
 
+const deliveryLabels: Record<string, string> = {
+  pending: "Queued", retrying: "Retry scheduled", dispatching: "Sending",
+  accepted: "Provider accepted · delivery unconfirmed", awaiting: "Awaiting delivery confirmation",
+  sent: "Sent by provider", delivered: "Delivery confirmed", failed: "Delivery failed",
+  review: "Review before retrying", suppressed: "Suppressed", exhausted: "Retry limit reached",
+};
+
 export default async function ActivityPage() {
   const staff = await staffIdentity().catch(() => redirect("/admin/login"));
   const data = await db.transaction(async (tx) => {
@@ -85,7 +92,9 @@ export default async function ActivityPage() {
                   {item.channel} · {item.attempts} attempts
                 </small>
               </span>
-              <span>{item.status}</span>
+              <span>{item.providerStatus === "legacy_success_unverified"
+                ? "Legacy send acknowledged · delivery unconfirmed"
+                : deliveryLabels[item.status] ?? item.status}</span>
             </article>
           ))}
         </section>

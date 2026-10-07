@@ -82,6 +82,7 @@ export default async function InventoryPage({
         their reservations until explicit cancellation.
       </p>
       <Link href="/admin/inventory/pending">Review overdue payment holds</Link>
+      <Link href="/admin/inventory/slots">Manage fulfillment slot quotas</Link>
       <Notice error={query.error} />
       {query.saved && <p role="status">Stock count recorded.</p>}
       <form method="get" className="filter-bar">

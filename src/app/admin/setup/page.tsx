@@ -64,6 +64,7 @@ export default async function Setup({
       <AdminNav />
       <p className="eyebrow">WORKSPACE SETTINGS</p>
       <h1>Store setup</h1>
+      <Link href="/admin/settings/commerce">Accounts, rewards & fulfillment policies</Link>
       <Link href="/admin/settings/content">
         Store information & customer policies
       </Link>
@@ -199,6 +200,8 @@ export default async function Setup({
             </label>
             <Field label="Location name" name="name" />
             <Field label="Pickup address" name="address" />
+            <Field label="Orders per pickup slot (blank = unlimited, 0 = closed)" name="slotCapacity" type="number" required={false}/>
+            <label className="check"><Checkbox name="scheduleRequired" defaultChecked/>Require a pickup time window</label>
             <Field
               label="Preparation notice (minutes)"
               name="prepMinutes"

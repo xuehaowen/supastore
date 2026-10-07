@@ -40,6 +40,31 @@ export async function refundPurchaseAction(form: FormData) {
     ? `/admin/orders/${orderId}`
     : "/admin/orders";
   try {
+    const components = [
+      ...new Set(
+        [...form.keys()]
+          .filter(
+            (key) => key.startsWith("external:") || key.startsWith("credit:"),
+          )
+          .map((key) => key.slice(key.indexOf(":") + 1)),
+      ),
+    ]
+      .map((componentId) => ({
+        componentId,
+        externalCents: parseActionInteger(
+          String(form.get(`external:${componentId}`) ?? "0"),
+          "External component refund",
+          0,
+          2147483647,
+        ),
+        creditCents: parseActionInteger(
+          String(form.get(`credit:${componentId}`) ?? "0"),
+          "Credit component refund",
+          0,
+          2147483647,
+        ),
+      }))
+      .filter((item) => item.externalCents || item.creditCents);
     await refundPurchase({
       orderId,
       ownerUserId: await staffIdentity(),
@@ -51,6 +76,7 @@ export async function refundPurchaseAction(form: FormData) {
       ),
       reason: text(form, "reason"),
       requestKey: text(form, "requestKey"),
+      ...(components.length ? { componentRefunds: components } : {}),
     });
     revalidatePath("/admin", "layout");
     revalidatePath("/[locale]/account", "page");

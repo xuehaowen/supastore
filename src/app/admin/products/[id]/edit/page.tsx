@@ -137,6 +137,17 @@ export default async function EditProductPage({
         <section className="panel">
           <h2>Product details</h2>
           <Field name="title" label="Title" value={product.title} />
+          <label className="check">
+            <Checkbox name="taxable" defaultChecked={product.taxable} />
+            Taxable merchandise
+          </label>
+          <label className="check">
+            <Checkbox
+              name="rewardEligible"
+              defaultChecked={product.rewardEligible}
+            />
+            Eligible for purchase rewards
+          </label>
           <Field name="handle" label="URL handle" value={product.handle} />
           <p className="text-sm text-muted-foreground">
             Changing the URL handle changes the public product address. Existing
