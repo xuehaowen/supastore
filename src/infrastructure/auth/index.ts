@@ -21,12 +21,13 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+    revokeSessionsOnPasswordReset: true,
     requireEmailVerification: false,
     autoSignIn: false,
     sendResetPassword: async ({ user, url, token }) => {
       if (process.env.DISABLE_OUTBOUND_DELIVERY === "true") return;
       try {
-        await smtpAdapter.sendEmail({
+        const result = await smtpAdapter.sendEmail({
           recipient: user.email,
           subject: 'Reset your password',
           template: 'auth.reset_password',
@@ -36,8 +37,9 @@ export const auth = betterAuth({
             token,
           },
         });
-      } catch (error) {
-        logger.error('Failed to send password reset email.', error);
+        if (!result.success) throw new Error("Email was not accepted.");
+      } catch {
+        logger.error('Password reset email was not accepted; inspect provider configuration and delivery status.');
       }
     },
   },
@@ -47,7 +49,7 @@ export const auth = betterAuth({
     sendVerificationEmail: async ({ user, url, token }) => {
       if (process.env.DISABLE_OUTBOUND_DELIVERY === "true") return;
       try {
-        await smtpAdapter.sendEmail({
+        const result = await smtpAdapter.sendEmail({
           recipient: user.email,
           subject: 'Verify your email address',
           template: 'auth.email_verification',
@@ -56,8 +58,9 @@ export const auth = betterAuth({
             token,
           },
         });
-      } catch (error) {
-        logger.error('Failed to send verification email.', error);
+        if (!result.success) throw new Error("Email was not accepted.");
+      } catch {
+        logger.error('Verification email was not accepted; inspect provider configuration and delivery status.');
       }
     },
   },

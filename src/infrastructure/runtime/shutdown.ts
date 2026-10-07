@@ -14,7 +14,9 @@ interface ShutdownState {
   registeredSignals: boolean;
 }
 
-const state: ShutdownState = {
+// Next.js entrypoint bundles must share drain accounting and signal registration.
+const processGlobal = globalThis as typeof globalThis & { __supastoreShutdownState?: ShutdownState };
+const state: ShutdownState = processGlobal.__supastoreShutdownState ??= {
   isShuttingDown: false,
   inFlightCount: 0,
   handlers: new Map(),

@@ -1,9 +1,11 @@
-import type { EmailNotificationPayload, NotificationAdapter } from './adapter';
+import type { EmailNotificationPayload, NotificationAdapter } from "./adapter";
 
 export class MockEmailAdapter implements NotificationAdapter {
   private sentMessages: EmailNotificationPayload[] = [];
 
-  async sendEmail(payload: EmailNotificationPayload): Promise<{ success: boolean; messageId: string }> {
+  async sendEmail(
+    payload: EmailNotificationPayload,
+  ): Promise<{ success: boolean; messageId: string }> {
     this.sentMessages.push({ ...payload });
     return {
       success: true,
