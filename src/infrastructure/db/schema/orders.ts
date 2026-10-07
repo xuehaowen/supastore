@@ -12,7 +12,7 @@ import {
 import { carts } from "./carts";
 import { quotes } from "./quotes";
 import { productVariants } from "./catalog";
-import { pickupTimeSlots } from "./shipping";
+import { pickupTimeSlots, fulfillmentSlots } from "./shipping";
 import { customers } from "./customers";
 import { sql } from "drizzle-orm";
 
@@ -43,13 +43,15 @@ export const orders = pgTable(
     }),
     // 'shipping' | 'pickup' — determines which fulfillment fields are relevant
     fulfillmentType: text("fulfillment_type", {
-      enum: ["shipping", "pickup"],
+      enum: ["shipping", "pickup", "local_delivery"],
     })
       .notNull()
       .default("shipping"),
     shippingAddressSnapshot: jsonb("shipping_address_snapshot").notNull(),
     financialRevision: integer("financial_revision").notNull().default(1),
     termsSnapshot: jsonb("terms_snapshot").notNull().default({}),
+    rewardSnapshot: jsonb("reward_snapshot").$type<import("@/domain/rewards").RewardSnapshot | null>(),
+    rewardFundingReview: boolean("reward_funding_review").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -110,6 +112,7 @@ export const orderFulfillments = pgTable("order_fulfillments", {
   pickupSlotId: uuid("pickup_slot_id").references(() => pickupTimeSlots.id, {
     onDelete: "restrict",
   }),
+  fulfillmentSlotId: uuid("fulfillment_slot_id").references(() => fulfillmentSlots.id, { onDelete: "restrict" }),
   handoffActor: text("handoff_actor"), // staff member who completed the handoff
   handoffAt: timestamp("handoff_at", { withTimezone: true }),
   fulfilledAt: timestamp("fulfilled_at", { withTimezone: true }),

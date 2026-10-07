@@ -15,6 +15,7 @@ export const customers = pgTable(
       .unique()
       .references(() => user.id, { onDelete: "restrict" }),
     name: text("name").notNull(),
+    phone: text("phone"),
     email: text("email").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

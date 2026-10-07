@@ -17,7 +17,7 @@ export const paymentAccounts = pgTable("payment_accounts", {
   accountIdentifier: text("account_identifier").notNull().unique(),
   accountName: text("account_name").notNull(),
   accountType: text("account_type", {
-    enum: ["cash", "zelle", "venmo", "other"],
+    enum: ["cash", "zelle", "venmo", "other", "stripe"],
   })
     .notNull()
     .default("other"),

@@ -7,6 +7,7 @@ export const refundAuthorizations = pgTable('refund_authorizations', {
   orderId: uuid('order_id').notNull().references(() => orders.id, { onDelete: 'restrict' }),
   kind: text('kind', { enum: ['purchase_refund', 'cancellation_refund'] }).notNull(),
   amountCents: integer('amount_cents').notNull(),
+  componentRefunds: jsonb('component_refunds').$type<import('@/domain/rewards').RewardComponentRefund[] | null>(),
   reason: text('reason').notNull(),
   authorizedByUserId: text('authorized_by_user_id').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

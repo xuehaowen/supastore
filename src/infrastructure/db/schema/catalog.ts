@@ -47,6 +47,8 @@ export const products = pgTable(
     handle: text("handle").notNull().unique(),
     title: text("title").notNull(),
     description: text("description").notNull().default(""),
+    taxable: boolean("taxable").notNull().default(true),
+    rewardEligible: boolean("reward_eligible").notNull().default(true),
     isPublished: boolean("is_published").notNull().default(true),
     quoteVersion: integer("quote_version").notNull().default(1),
     skuPrefix: text("sku_prefix"),

@@ -155,6 +155,97 @@
       "when": 1789613364118,
       "tag": "0021_ledger_cursors",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791167400000,
+      "tag": "0022_generic_commerce",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791167400001,
+      "tag": "0023_credit_sources",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791167400002,
+      "tag": "0024_online_payments",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791167400003,
+      "tag": "0025_local_delivery",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791167400004,
+      "tag": "0026_fulfillment_slots",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1791167400005,
+      "tag": "0027_reward_refund_components",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1791167400006,
+      "tag": "0028_sales_reporting",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1791167400007,
+      "tag": "0029_legacy_slot_bookings",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1791167400008,
+      "tag": "0030_reward_review_resolution",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1791167400009,
+      "tag": "0031_fulfillment_shipments",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1791167400010,
+      "tag": "0032_optional_sms",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791167400011,
+      "tag": "0033_notification_delivery",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1791167400012,
+      "tag": "0034_sms_verification_provider",
+      "breakpoints": true
     }
   ]
 }
