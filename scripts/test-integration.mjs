@@ -7,7 +7,8 @@ import EmbeddedPostgres from "embedded-postgres";
 
 // Dedicated to integration tests; never attach to the developer's database.
 const databaseDir = "./.test-integration-postgres";
-const port = 55438;
+// Below Windows' dynamic port range, which Docker/Hyper-V may reserve.
+const port = 25438;
 const databaseUrl = `postgresql://postgres:postgres@127.0.0.1:${port}/supastore_test`;
 const pg = new EmbeddedPostgres({
   databaseDir,
@@ -57,10 +58,11 @@ try {
     pgCtl = binaries.pg_ctl;
     databaseProcess = spawn(
       binaries.postgres,
-      ["-D", databaseDir, "-p", String(port)],
+      ["-D", databaseDir, "-p", String(port), "-h", "127.0.0.1"],
       { stdio: ["ignore", "ignore", "pipe"], windowsHide: true },
     );
     await new Promise((resolve, reject) => {
+      let startupDiagnostics = "";
       const timer = setTimeout(
         () => reject(new Error("Integration database startup timed out")),
         30000,
@@ -71,9 +73,10 @@ try {
       });
       databaseProcess.once("exit", (code) => {
         clearTimeout(timer);
-        reject(new Error(`Integration database exited with ${code}`));
+        reject(new Error(`Integration database exited with ${code}: ${startupDiagnostics}`));
       });
       databaseProcess.stderr.on("data", (data) => {
+        startupDiagnostics = (startupDiagnostics + String(data)).slice(-8000);
         if (
           String(data).includes(
             "database system is ready to accept connections",

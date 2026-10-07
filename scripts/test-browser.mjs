@@ -107,19 +107,7 @@ async function stop() {
     for (const child of [...children].reverse()) {
       try {
         if (child.exitCode !== null || child.signalCode !== null) continue;
-        if (process.platform === "win32") {
-          await completed(
-            spawn(
-              join(
-                process.env.SystemRoot ?? "C:/Windows",
-                "System32",
-                "taskkill.exe",
-              ),
-              ["/pid", String(child.pid), "/t", "/f"],
-              { stdio: "inherit", windowsHide: true },
-            ),
-          );
-        } else {
+        {
           const exited = new Promise((resolve) => child.once("exit", resolve));
           child.kill("SIGTERM");
           await Promise.race([

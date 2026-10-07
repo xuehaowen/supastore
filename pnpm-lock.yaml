@@ -78,7 +78,7 @@ importers:
         specifier: ^1.4.0
         version: 1.4.0
       valibot:
-        specifier: ^1.0.0-beta.9
+        specifier: ^1.4.2
         version: 1.4.2(typescript@5.9.3)
     devDependencies:
       '@axe-core/playwright':
@@ -138,6 +138,35 @@ importers:
       vitest:
         specifier: ^3.0.5
         version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.23.13)
+
+  apps/backend: {}
+
+  apps/storefront:
+    dependencies:
+      next:
+        specifier: ^15.1.7
+        version: 15.5.25(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.63.0)(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.8
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.8(react@19.2.8)
+    devDependencies:
+      '@types/node':
+        specifier: ^22.13.4
+        version: 22.20.1
+      '@types/react':
+        specifier: ^19.0.8
+        version: 19.2.18
+      '@types/react-dom':
+        specifier: ^19.0.3
+        version: 19.2.7(@types/react@19.2.18)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
+  packages/contracts: {}
 
 packages:
 
@@ -3838,6 +3867,9 @@ packages:
   third-party-web@0.29.2:
     resolution: {integrity: sha512-fegtha91tq2DHphyoiBXVHjVi2YG9zFaRnboT9C28tO1en9Y3wJsfspuy40F+u5wl3hHVbw7cnd1b67kEGHb8g==}
 
+  third-party-web@0.30.0:
+    resolution: {integrity: sha512-p+PfyL5U0ediGzvwPzMSdD9MnC8rHW6nWJJVLIQvqN7RsSqfaZ+7n4c9GILqH36EYR0eXB9CzAeCRnKFr/9uJg==}
+
   thread-stream@4.2.0:
     resolution: {integrity: sha512-e2zZ96wSChazBsbENf/Pcm/4swHt2cEKQ92rhUjkL9GCKiTDJIaTBenjE/m9DXi0QBmTMDkFDdOomUy20A1tDQ==}
     engines: {node: '>=20'}
@@ -5236,7 +5268,7 @@ snapshots:
   '@paulirish/trace_engine@0.0.65':
     dependencies:
       legacy-javascript: 0.0.1
-      third-party-web: 0.29.2
+      third-party-web: 0.30.0
 
   '@petamoriken/float16@3.9.3': {}
 
@@ -7644,6 +7676,8 @@ snapshots:
       minimatch: 10.2.6
 
   third-party-web@0.29.2: {}
+
+  third-party-web@0.30.0: {}
 
   thread-stream@4.2.0:
     dependencies:

@@ -19,10 +19,19 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run typecheck
+      - run: pnpm --filter @supastore/storefront run typecheck
       - run: pnpm test
+      - run: pnpm run test:storefront:unit
       - run: pnpm run test:coverage
       - run: pnpm run test:frontend:coverage
-      - run: pnpm run build
+      - run: pnpm run build:backend
+        env:
+          DATABASE_URL: postgresql://build:build@127.0.0.1:1/build_only
+          BETTER_AUTH_SECRET: build-only-placeholder-secret-at-least-32-characters
+          BETTER_AUTH_URL: http://localhost:3000
+      - run: pnpm --filter @supastore/storefront run build
+        env:
+          BACKEND_URL: http://127.0.0.1:3000
 
   integration:
     runs-on: ubuntu-latest
@@ -52,6 +61,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm run test:browser
+      - run: pnpm run test:storefront
       - if: failure()
         uses: actions/upload-artifact@v4
         with:

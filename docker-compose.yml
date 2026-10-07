@@ -20,13 +20,14 @@ services:
   adminer:
     image: adminer:latest
     restart: unless-stopped
+    profiles: [tools]
     depends_on:
       postgres:
         condition: service_healthy
     environment:
       ADMINER_DEFAULT_SERVER: postgres
     ports:
-      - "9001:8080"
+      - "9002:8080"
 
   rustfs:
     image: rustfs/rustfs:latest
@@ -41,22 +42,25 @@ services:
     volumes:
       - rustfs_data:/data
 
-  app:
+  backend:
     build:
       context: .
       dockerfile: Dockerfile
-    image: supastore:latest
-    container_name: supastore-app
+      target: backend
+    image: supastore-backend:latest
     restart: unless-stopped
-    ports:
-      - "${PORT:-3000}:3000"
+    stop_grace_period: 45s
+    expose: ["3000"]
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-supastore}?sslmode=disable
       - ADMIN_SETUP_SECRET=${ADMIN_SETUP_SECRET:-change-me-to-a-secure-random-secret-for-bootstrap}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-change-me-to-a-secure-random-auth-secret-min-32-chars}
-      - BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://localhost:3000}
+      - BETTER_AUTH_URL=${STOREFRONT_ORIGIN:-http://localhost:3000}
       - APP_URL=${APP_URL:-http://localhost:3000}
+      - STOREFRONT_ORIGIN=${STOREFRONT_ORIGIN:-http://localhost:3000}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
       - S3_ENDPOINT=http://rustfs:9000
       - S3_BUCKET_PRIVATE=supastore-private
       - S3_BUCKET_PUBLIC=supastore-public
@@ -69,6 +73,17 @@ services:
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - SMTP_FROM=${SMTP_FROM}
+      - EMAIL_PROVIDER=${EMAIL_PROVIDER:-nodemailer}
+      - SMTP_SECURE
+      - SMTP_REQUIRE_TLS
+      - SMS_PROVIDER=${SMS_PROVIDER:-disabled}
+      - PHONE_VERIFICATION_PROVIDER=${PHONE_VERIFICATION_PROVIDER:-disabled}
+      - TELNYX_API_KEY=${TELNYX_API_KEY:-}
+      - TELNYX_FROM=${TELNYX_FROM:-}
+      - TELNYX_MESSAGING_PROFILE_ID=${TELNYX_MESSAGING_PROFILE_ID:-}
+      - TELNYX_VERIFY_PROFILE_ID=${TELNYX_VERIFY_PROFILE_ID:-}
+      - TELNYX_VERIFY_PROFILE_ID_ZH=${TELNYX_VERIFY_PROFILE_ID_ZH:-}
+      - TELNYX_PUBLIC_KEY=${TELNYX_PUBLIC_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -81,6 +96,38 @@ services:
           memory: 512M
         reservations:
           memory: 256M
+
+  storefront:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: storefront
+      args:
+        BACKEND_URL: http://backend:3000
+    image: supastore-storefront:latest
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      BACKEND_URL: http://backend:3000
+      STOREFRONT_ORIGIN: ${STOREFRONT_ORIGIN:-http://localhost:3000}
+      EDGE_PROXY_SECRET: ${EDGE_PROXY_SECRET:-}
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrations
+    profiles: [migration]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-supastore}?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:

@@ -44,3 +44,5 @@ test-results/
 .next-cuj/
 .tsconfig-cuj.json
 .test-integration-postgres/
+.implementation-*.log
+.test-storefront-postgres/
