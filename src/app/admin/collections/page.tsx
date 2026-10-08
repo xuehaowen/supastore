@@ -10,6 +10,7 @@ import { CatalogTabs } from "@/app/admin/catalog-tabs";
 import { AdminDialog } from "@/app/admin/admin-dialog";
 import { Field, Notice } from "@/app/components";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableHeader,
@@ -18,6 +19,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { saveCollectionAction } from "@/app/admin/catalog-actions";
 export default async function Collections({
   searchParams,
@@ -60,8 +62,8 @@ export default async function Collections({
             <Field name="title" label="Collection title" />
             <Field name="handle" label="Collection handle" />
             <Field name="description" label="Description" required={false} />
-            <label>
-              <input type="checkbox" name="published" /> Publish collection
+            <label className="flex items-center gap-2">
+              <Checkbox name="published" /> Publish collection
             </label>
             <Button type="submit">Create collection</Button>
           </form>
@@ -96,7 +98,11 @@ export default async function Collections({
                 <TableCell>/{collection.handle}</TableCell>
                 <TableCell>{count}</TableCell>
                 <TableCell>
-                  {collection.isPublished ? "Published" : "Draft"}
+                  <Badge
+                    variant={collection.isPublished ? "default" : "secondary"}
+                  >
+                    {collection.isPublished ? "Published" : "Draft"}
+                  </Badge>
                 </TableCell>
                 <TableCell>
                   <Link href={`/admin/collections/${collection.id}`}>

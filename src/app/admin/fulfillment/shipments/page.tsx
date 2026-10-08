@@ -16,6 +16,10 @@ import { parseActionUuid } from "@/application/common/request-validation";
 import { Field, Hidden, Notice } from "@/app/components";
 import { AdminNav } from "@/app/admin/admin-nav";
 import { shipmentAction } from "./actions";
+import { Button } from "@/components/ui/button";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 export default async function Shipments({
   searchParams,
 }: {
@@ -118,14 +122,20 @@ export default async function Shipments({
       <h1>Shipments & booking</h1>
       <Link href={`/admin/orders/${id}`}>Order {order.referenceCode}</Link>
       <Notice error={query.error} />
-      {query.saved && <p role="status">Fulfillment saved.</p>}
+      {query.saved && (
+        <Alert>
+          <AlertDescription>Fulfillment saved.</AlertDescription>
+        </Alert>
+      )}
       {data.shipments.map((shipment) => (
         <section className="panel" key={shipment.id}>
           <h2>
             {shipment.carrier} ·{" "}
             {shipment.trackingNumber || "No tracking number"}
           </h2>
-          <p>{shipment.status}</p>
+          <div className="my-2">
+            <Badge variant="outline">{shipment.status}</Badge>
+          </div>
           {shipment.status === "dispatched" &&
             order.lifecycleStatus === "confirmed" && (
               <form action={shipmentAction}>
@@ -136,7 +146,7 @@ export default async function Shipments({
                   Record receipt only after verifying this shipment reached the
                   customer.
                 </p>
-                <button>Record verified delivery</button>
+                <Button type="submit">Record verified delivery</Button>
               </form>
             )}
         </section>
@@ -156,14 +166,14 @@ export default async function Shipments({
             />
             <label>
               Callback provider
-              <select name="provider">
+              <NativeSelect name="provider">
                 <option value="manual">Staff verified delivery</option>
                 {process.env.CARRIER_WEBHOOK_PROVIDER && (
                   <option value={process.env.CARRIER_WEBHOOK_PROVIDER}>
                     {process.env.CARRIER_WEBHOOK_PROVIDER}
                   </option>
                 )}
-              </select>
+              </NativeSelect>
             </label>
             {data.items.map((item) => {
               const remaining =
@@ -181,7 +191,7 @@ export default async function Shipments({
                 />
               );
             })}
-            <button>Dispatch shipment</button>
+            <Button type="submit">Dispatch shipment</Button>
           </form>
         )}
       {data.hold?.status === "active" &&
@@ -193,7 +203,7 @@ export default async function Shipments({
             <Hidden name="orderId" value={id} />
             <label>
               Destination slot
-              <select name="slotId">
+              <NativeSelect name="slotId">
                 <option value="">
                   Choose a new date and window start below
                 </option>
@@ -202,7 +212,7 @@ export default async function Shipments({
                     {slot.date} {slot.startTime}–{slot.endTime}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
             <Field
               name="date"
@@ -221,7 +231,7 @@ export default async function Shipments({
               Destination capacity is acquired before the original booking is
               released.
             </p>
-            <button>Reschedule</button>
+            <Button type="submit">Reschedule</Button>
           </form>
         )}
     </main>

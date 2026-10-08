@@ -8,6 +8,8 @@ import { saveCommercePolicy } from "./actions";
 import { Field, Notice } from "@/app/components";
 import { AdminNav } from "@/app/admin/admin-nav";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 export default async function CommerceSettings({
   searchParams,
 }: {
@@ -25,7 +27,11 @@ export default async function CommerceSettings({
       <AdminNav />
       <h1>Commerce policies</h1>
       <Notice error={query.error} />
-      {query.saved && <p role="status">Settings saved.</p>}
+      {query.saved && (
+        <Alert>
+          <AlertDescription>Settings saved.</AlertDescription>
+        </Alert>
+      )}
       <form action={saveCommercePolicy} className="panel">
         {(
           [
@@ -36,8 +42,8 @@ export default async function CommerceSettings({
             ["rewardsEnabled", "Enable purchase rewards"],
           ] as const
         ).map(([name, label]) => (
-          <label key={name}>
-            <input type="checkbox" name={name} defaultChecked={policy[name]} />
+          <label key={name} className="flex items-center gap-2">
+            <Checkbox name={name} defaultChecked={policy[name]} />
             {label}
           </label>
         ))}
@@ -54,9 +60,11 @@ export default async function CommerceSettings({
         </p>
         <fieldset><legend>Eligible reward categories</legend>
           <p>Leave all unchecked to include every category. Product reward exclusions always apply.</p>
-          {rewardCategories.map(category => <label key={category.id}>
-            <input type="checkbox" name="rewardEligibleCategoryIds" value={category.id} defaultChecked={policy.rewardEligibleCategoryIds.includes(category.id)}/>{category.name}
-          </label>)}
+          {rewardCategories.map(category => (
+            <label key={category.id} className="flex items-center gap-2">
+              <Checkbox name="rewardEligibleCategoryIds" value={category.id} defaultChecked={policy.rewardEligibleCategoryIds.includes(category.id)}/>{category.name}
+            </label>
+          ))}
         </fieldset>
         <Field label="Reward start (UTC, e.g. 2026-10-01T00:00:00Z; optional)" name="rewardsStartAt" value={policy.rewardsStartAt ?? ""} required={false}/>
         <Field label="Reward end, exclusive (UTC; optional)" name="rewardsEndAt" value={policy.rewardsEndAt ?? ""} required={false}/>

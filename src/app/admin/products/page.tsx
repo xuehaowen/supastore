@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 export default async function Products({
   searchParams,
 }: {
@@ -146,11 +147,11 @@ export default async function Products({
                         ` – ${money(maxPrice, store?.currency, store?.precision)}`}
                     </TableCell>
                     <TableCell>
-                      <span
-                        className={`status-badge ${product.isPublished ? "status-active" : "status-muted"}`}
+                      <Badge
+                        variant={product.isPublished ? "default" : "secondary"}
                       >
                         {product.isPublished ? "Published" : "Draft"}
-                      </span>
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="table-actions">

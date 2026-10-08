@@ -18,6 +18,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 export default async function Reports({
   searchParams,
 }: {
@@ -68,12 +71,20 @@ export default async function Reports({
         liabilities and does not count as a sale. Outside adjustments are
         signed, auditable entries.
       </p>
-      {query.error && <p role="alert">{query.error}</p>}
-      {query.saved && <p role="status">Adjustment recorded.</p>}
+      {query.error && (
+        <Alert variant="destructive">
+          <AlertDescription>{query.error}</AlertDescription>
+        </Alert>
+      )}
+      {query.saved && (
+        <Alert>
+          <AlertDescription>Adjustment recorded.</AlertDescription>
+        </Alert>
+      )}
       <form method="get">
         <label>
           From
-          <input
+          <Input
             name="start"
             type="date"
             defaultValue={query.start ?? fiscal.start}
@@ -82,14 +93,14 @@ export default async function Reports({
         </label>
         <label>
           Until (exclusive)
-          <input
+          <Input
             name="end"
             type="date"
             defaultValue={query.end ?? nextDay}
             required
           />
         </label>
-        <button>Apply period</button>
+        <Button type="submit">Apply period</Button>
       </form>
       {report ? (
         <>
@@ -153,7 +164,9 @@ export default async function Reports({
           </Table>
         </>
       ) : (
-        <p role="alert">{reportError}</p>
+        <Alert variant="destructive">
+          <AlertDescription>{reportError}</AlertDescription>
+        </Alert>
       )}
       {identity.role === "owner" && (
         <form action={adjustOutsideSales} className="panel">
@@ -161,21 +174,21 @@ export default async function Reports({
           <input type="hidden" name="requestKey" value={randomUUID()} />
           <label>
             Sale date
-            <input type="date" name="saleDate" defaultValue={today} required />
+            <Input type="date" name="saleDate" defaultValue={today} required />
           </label>
           <label>
             Net sales in minor units
-            <input type="number" name="netCents" required />
+            <Input type="number" name="netCents" required />
           </label>
           <label>
             Tax in minor units
-            <input type="number" name="taxCents" defaultValue="0" required />
+            <Input type="number" name="taxCents" defaultValue="0" required />
           </label>
           <label>
             Reason
-            <input name="reason" maxLength={500} required />
+            <Input name="reason" maxLength={500} required />
           </label>
-          <button>Record adjustment</button>
+          <Button type="submit">Record adjustment</Button>
           <p>
             Use a negative entry to correct an earlier adjustment; history is
             retained.

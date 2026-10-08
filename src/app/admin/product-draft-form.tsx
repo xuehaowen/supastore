@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function ProductDraftForm({
   action,
@@ -157,11 +158,13 @@ export function ProductDraftForm({
       }}
     >
       {dirty && (
-        <p role="status" className="product-editor-wide">
-          {restored
-            ? "Your text edits were restored after the error. Category selections were restored where still available. Review before saving."
-            : "You have unsaved changes."}
-        </p>
+        <Alert className="product-editor-wide">
+          <AlertDescription>
+            {restored
+              ? "Your text edits were restored after the error. Category selections were restored where still available. Review before saving."
+              : "You have unsaved changes."}
+          </AlertDescription>
+        </Alert>
       )}
       {children}
     </form>

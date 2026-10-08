@@ -1,6 +1,10 @@
 "use client";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function BulkVariantEditor({
   productId,
@@ -55,8 +59,7 @@ export function BulkVariantEditor({
         {!reviewing ? (
           <>
             <label className="check">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={
                   selected.length === variants.length && variants.length > 0
                 }
@@ -69,8 +72,7 @@ export function BulkVariantEditor({
             <div className="grid gap-2 my-4">
               {variants.map((v) => (
                 <label key={v.id} className="check">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={selected.includes(v.id)}
                     onChange={(e) =>
                       setSelected((current) =>
@@ -87,8 +89,7 @@ export function BulkVariantEditor({
             </div>
             <label className="grid gap-2">
               New price in minor units (blank keeps current prices)
-              <input
-                className="border rounded p-2"
+              <Input
                 type="number"
                 min="0"
                 max="2147483647"
@@ -99,18 +100,21 @@ export function BulkVariantEditor({
             </label>
             <label className="grid gap-2 my-4">
               New availability
-              <select
-                className="border rounded p-2"
+              <NativeSelect
                 value={availability}
                 onChange={(e) => setAvailability(e.target.value)}
               >
                 <option value="">Keep current availability</option>
                 <option value="true">Available</option>
                 <option value="false">Unavailable</option>
-              </select>
+              </NativeSelect>
             </label>
             {!validPrice && (
-              <p role="alert">Enter a whole number between 0 and 2147483647.</p>
+              <Alert variant="destructive">
+                <AlertDescription>
+                  Enter a whole number between 0 and 2147483647.
+                </AlertDescription>
+              </Alert>
             )}
             <Button
               type="button"

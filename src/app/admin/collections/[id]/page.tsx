@@ -6,6 +6,7 @@ import { AdminNav } from "@/app/admin/admin-nav";
 import { Field, Hidden, Notice } from "@/app/components";
 import { AdminDialog } from "@/app/admin/admin-dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CatalogImageUpload } from "@/app/admin/catalog-image-upload";
 import { NativeSelect } from "@/components/ui/native-select";
 import {
@@ -16,6 +17,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   saveCollectionAction,
   changeCollectionMemberAction,
@@ -108,9 +110,9 @@ export default async function CollectionDetail({
         )}
       </nav>
       {query.saved && (
-        <p role="status" className="admin-save-notice">
-          Collection saved.
-        </p>
+        <Alert>
+          <AlertDescription>Collection saved.</AlertDescription>
+        </Alert>
       )}
       <section className="panel">
         <form action={saveCollectionAction} className="grid gap-4">
@@ -132,12 +134,11 @@ export default async function CollectionDetail({
             value={collection.description}
             required={false}
           />
-          <label>
-            <input
+          <label className="check">
+            <Checkbox
               name="published"
-              type="checkbox"
               defaultChecked={collection.isPublished}
-            />{" "}
+            />
             Published
           </label>
           <Button type="submit">Save collection</Button>

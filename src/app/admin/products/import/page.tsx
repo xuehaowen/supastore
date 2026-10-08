@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { AdminNav } from "@/app/admin/admin-nav";
 import { CatalogTabs } from "@/app/admin/catalog-tabs";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Table,
   TableBody,
@@ -183,9 +184,9 @@ export default function ProductImportExportPage() {
           </Button>
         </div>
         {exportError && (
-          <p className="mt-3 text-sm text-red-700" role="alert">
-            {exportError}
-          </p>
+          <Alert variant="destructive" className="mt-3">
+            <AlertDescription>{exportError}</AlertDescription>
+          </Alert>
         )}
         <p className="mt-3 text-xs text-gray-400">
           Tip: the exported products CSV can be re-imported cleanly without

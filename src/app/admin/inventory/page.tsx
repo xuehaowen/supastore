@@ -25,6 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { countStockAction } from "@/app/admin/inventory-actions";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 export default async function InventoryPage({
   searchParams,
 }: {
@@ -84,7 +85,11 @@ export default async function InventoryPage({
       <Link href="/admin/inventory/pending">Review overdue payment holds</Link>
       <Link href="/admin/inventory/slots">Manage fulfillment slot quotas</Link>
       <Notice error={query.error} />
-      {query.saved && <p role="status">Stock count recorded.</p>}
+      {query.saved && (
+        <Alert>
+          <AlertDescription>Stock count recorded.</AlertDescription>
+        </Alert>
+      )}
       <form method="get" className="filter-bar">
         <Field
           name="q"

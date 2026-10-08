@@ -6,6 +6,10 @@ import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { Field, Hidden, Notice } from "@/app/components";
 import { AdminNav } from "@/app/admin/admin-nav";
 import { saveDeliveryArea } from "./actions";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 export default async function DeliverySettings({
   searchParams,
 }: {
@@ -24,7 +28,11 @@ export default async function DeliverySettings({
       <AdminNav />
       <h1>Local delivery areas</h1>
       <Notice error={query.error} />
-      {query.saved && <p role="status">Delivery area saved.</p>}
+      {query.saved && (
+        <Alert>
+          <AlertDescription>Delivery area saved.</AlertDescription>
+        </Alert>
+      )}
       <p>
         Configure eligible countries and postal prefixes. Empty prefixes allow
         all postal codes within the selected countries. Rates apply to each
@@ -73,7 +81,7 @@ export default async function DeliverySettings({
           />
           <label>
             Weekly schedule JSON (e.g. {`{"mon":[["09:00","12:00"]]}`})
-            <textarea
+            <Textarea
               name="weeklySchedule"
               defaultValue={JSON.stringify(area?.weeklySchedule || {})}
               maxLength={12000}
@@ -92,23 +100,21 @@ export default async function DeliverySettings({
             value={area?.slotCapacity == null ? "" : String(area.slotCapacity)}
             required={false}
           />
-          <label>
-            <input
-              type="checkbox"
+          <label className="flex items-center gap-2">
+            <Checkbox
               name="scheduleRequired"
               defaultChecked={area?.scheduleRequired ?? false}
             />
             Require a delivery window
           </label>
-          <label>
-            <input
-              type="checkbox"
+          <label className="flex items-center gap-2">
+            <Checkbox
               name="isActive"
               defaultChecked={area?.isActive ?? true}
             />
             Active
           </label>
-          <button type="submit">Save delivery area</button>
+          <Button type="submit">Save delivery area</Button>
         </form>
       ))}
     </main>

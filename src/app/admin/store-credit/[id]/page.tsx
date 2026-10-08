@@ -25,6 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { issueCreditAction } from "@/app/admin/credit-actions";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 export default async function CreditDetail({
   params,
   searchParams,
@@ -91,7 +92,11 @@ export default async function CreditDetail({
       <h1>{c.name} · Credit ledger</h1>
       <p>{c.email}</p>
       <Notice error={query.error} />
-      {query.saved && <p role="status">Credit entry posted.</p>}
+      {query.saved && (
+        <Alert>
+          <AlertDescription>Credit entry posted.</AlertDescription>
+        </Alert>
+      )}
       <section className="panel">
         <h2>Balance</h2>
         <p>

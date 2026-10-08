@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 export default async function SlotsPage({
   searchParams,
 }: {
@@ -84,8 +85,16 @@ export default async function SlotsPage({
         units independently of counted stock. Configure schedules and capacity
         in fulfillment settings; booked slots appear here.
       </p>
-      {query.error && <p role="alert">{query.error}</p>}
-      {query.saved && <p role="status">Quota saved.</p>}
+      {query.error && (
+        <Alert variant="destructive">
+          <AlertDescription>{query.error}</AlertDescription>
+        </Alert>
+      )}
+      {query.saved && (
+        <Alert>
+          <AlertDescription>Quota saved.</AlertDescription>
+        </Alert>
+      )}
       {data.owner && (
         <form action={createSlot} className="panel">
           <h2>Configure an upcoming window</h2>
@@ -95,7 +104,7 @@ export default async function SlotsPage({
           </p>
           <label>
             Location
-            <select name="location" required>
+            <NativeSelect name="location" required>
               {data.locations.map((location) => (
                 <option key={location.id} value={`pickup:${location.id}`}>
                   Pickup: {location.name}
@@ -108,17 +117,17 @@ export default async function SlotsPage({
                     Delivery: {area.name}
                   </option>
                 ))}
-            </select>
+            </NativeSelect>
           </label>
           <label>
             Date
-            <input name="date" type="date" required />
+            <Input name="date" type="date" required />
           </label>
           <label>
             Window start
-            <input name="startTime" type="time" required />
+            <Input name="startTime" type="time" required />
           </label>
-          <button type="submit">Create window</button>
+          <Button type="submit">Create window</Button>
         </form>
       )}
       <section className="panel mt-6">

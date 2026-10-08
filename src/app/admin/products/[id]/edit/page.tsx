@@ -31,6 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AdminDialog } from "@/app/admin/admin-dialog";
 import { CatalogImageUpload } from "@/app/admin/catalog-image-upload";
 import {
@@ -114,15 +115,17 @@ export default async function EditProductPage({
       </p>
       <Notice error={q.error} />
       {q.saved === "true" && !q.error && (
-        <p role="status" className="admin-save-notice">
-          Product changes saved.
-        </p>
+        <Alert>
+          <AlertDescription>Product changes saved.</AlertDescription>
+        </Alert>
       )}
       {(q.added || q.removed) && !q.error && (
-        <p role="status" className="admin-save-notice">
-          Catalog structure updated (
-          {q.added ? `${q.added} added` : `${q.removed} removed`}).
-        </p>
+        <Alert>
+          <AlertDescription>
+            Catalog structure updated (
+            {q.added ? `${q.added} added` : `${q.removed} removed`}).
+          </AlertDescription>
+        </Alert>
       )}
       <ProductDraftForm
         action={editProduct}

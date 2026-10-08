@@ -23,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default async function Specifications({
   params,
@@ -80,7 +81,11 @@ export default async function Specifications({
         not generate variants.
       </p>
       <Notice error={query.error} />
-      {query.saved && <p role="status">Specifications saved.</p>}
+      {query.saved && (
+        <Alert>
+          <AlertDescription>Specifications saved.</AlertDescription>
+        </Alert>
+      )}
       <section className="panel">
         <Table>
           <TableHeader>

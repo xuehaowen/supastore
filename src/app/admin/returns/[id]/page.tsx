@@ -15,6 +15,7 @@ import { AdminNav } from "@/app/admin/admin-nav";
 import { Field, Hidden, Notice } from "@/app/components";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { orderItemName } from "@/domain/catalog/order-item-name";
 import { reviewReturnAction, receiveReturnAction } from "@/app/return-actions";
 export default async function ReturnDetail({
@@ -58,7 +59,11 @@ export default async function ReturnDetail({
         {data.order.guestName} · {r.status}
       </p>
       <Notice error={query.error} />
-      {query.saved && <p role="status">Return updated.</p>}
+      {query.saved && (
+        <Alert>
+          <AlertDescription>Return updated.</AlertDescription>
+        </Alert>
+      )}
       <section className="panel">
         <h2>Customer request</h2>
         <p>{r.reason}</p>

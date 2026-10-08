@@ -21,6 +21,7 @@ import { AdminNav } from "@/app/admin/admin-nav";
 import { Field, Hidden, Notice } from "@/app/components";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { NativeSelect } from "@/components/ui/native-select";
 import {
   Table,
   TableBody,
@@ -29,6 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { generateVariantsAction } from "@/app/admin/catalog-actions";
 
 export default async function ProductOptionsPage({
@@ -140,9 +142,11 @@ export default async function ProductOptionsPage({
       </p>
       <Notice error={query.error || data.error} />
       {query.generated !== undefined && (
-        <p role="status">
-          {query.generated} variants created. Existing variants preserved.
-        </p>
+        <Alert>
+          <AlertDescription>
+            {query.generated} variants created. Existing variants preserved.
+          </AlertDescription>
+        </Alert>
       )}
       <section className="panel">
         <h2>Product options</h2>
@@ -215,7 +219,7 @@ export default async function ProductOptionsPage({
                   <label key={v.id}>
                     <Hidden name="legacyIds" value={v.id} />
                     {v.title} · {v.sku}
-                    <select
+                    <NativeSelect
                       name={`mapping.${v.id}`}
                       aria-label={`Map ${v.sku}`}
                       required
@@ -227,7 +231,7 @@ export default async function ProductOptionsPage({
                           {c.title}
                         </option>
                       ))}
-                    </select>
+                    </NativeSelect>
                   </label>
                 ))}
               </fieldset>

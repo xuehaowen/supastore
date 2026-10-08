@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 export default async function Setup({
   searchParams,
 }: {
@@ -234,10 +235,12 @@ export default async function Setup({
         <section className="panel">
           <h2>03 / Email & payment methods</h2>
           {q.sent && (
-            <p role="status">
-              Verification email accepted by the mail server. Check the owner
-              account inbox and spam folder.
-            </p>
+            <Alert>
+              <AlertDescription>
+                Verification email accepted by the mail server. Check the owner
+                account inbox and spam folder.
+              </AlertDescription>
+            </Alert>
           )}
           <p>
             {store.emailVerifiedAt

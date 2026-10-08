@@ -27,7 +27,10 @@ import { resolveRewardReviewAction } from "@/app/admin/reward-actions";
 import { AdminDialog } from "@/app/admin/admin-dialog";
 import { Field, Hidden, Notice } from "@/app/components";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -179,11 +182,29 @@ export default async function OrderDetail({
       <AdminNav />
       <Link href="/admin/orders">← All orders</Link>
       <h1>{o.referenceCode}</h1>
-      <p>
-        {o.guestName} · {o.guestEmail} · {o.lifecycleStatus}
-      </p>
+      <div className="flex items-center gap-2 mb-2">
+        <span>
+          {o.guestName} · {o.guestEmail}
+        </span>
+        <Badge
+          variant={
+            o.lifecycleStatus === "completed" ||
+            o.lifecycleStatus === "confirmed"
+              ? "default"
+              : o.lifecycleStatus === "cancelled"
+                ? "destructive"
+                : "outline"
+          }
+        >
+          {o.lifecycleStatus}
+        </Badge>
+      </div>
       <Notice error={query.error} />
-      {query.saved && <p role="status">Order updated.</p>}
+      {query.saved && (
+        <Alert>
+          <AlertDescription>Order updated.</AlertDescription>
+        </Alert>
+      )}
       <section className="panel">
         <h2>Purchase & funding</h2>
         <p>
@@ -256,8 +277,8 @@ export default async function OrderDetail({
                 type="number"
               />
               <Field name="reference" label="Actual payment reference" />
-              <label>
-                <input type="checkbox" name="verified" required />I verified the
+              <label className="flex items-center gap-2">
+                <Checkbox name="verified" required />I verified the
                 actual receiving account and amount.
               </label>
               <Button type="submit">Record receipt</Button>
@@ -399,17 +420,20 @@ export default async function OrderDetail({
           Payouts, surplus returns & corrections
         </Link>
         {o.rewardFundingReview && (
-          <div><p role="alert">
-            Reward funding requires review after a receipt correction. Pending
-            rewards are suspended; issued rewards have been conservatively
-            reversed. Original-source refund entitlements remain recorded.
-          </p>
-          {data.identity.role === "owner" && <form action={resolveRewardReviewAction}>
-            <Hidden name="orderId" value={o.id}/><Hidden name="requestKey" value={randomUUID()}/>
-            <p>Verify and correct every original frozen receipt first. Another payment cannot replace a corrected source. Resolving review restores only the supported accepted reward, including its debt history.</p>
-            <Field name="reason" label="Verified funding evidence and review reason"/>
-            <Button type="submit">Resolve verified reward funding</Button>
-          </form>}
+          <div>
+            <Alert variant="destructive">
+              <AlertDescription>
+                Reward funding requires review after a receipt correction. Pending
+                rewards are suspended; issued rewards have been conservatively
+                reversed. Original-source refund entitlements remain recorded.
+              </AlertDescription>
+            </Alert>
+            {data.identity.role === "owner" && <form action={resolveRewardReviewAction}>
+              <Hidden name="orderId" value={o.id}/><Hidden name="requestKey" value={randomUUID()}/>
+              <p>Verify and correct every original frozen receipt first. Another payment cannot replace a corrected source. Resolving review restores only the supported accepted reward, including its debt history.</p>
+              <Field name="reason" label="Verified funding evidence and review reason"/>
+              <Button type="submit">Resolve verified reward funding</Button>
+            </form>}
           </div>
         )}
       </section>

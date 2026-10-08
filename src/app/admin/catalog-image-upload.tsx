@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 export function CatalogImageUpload({
   entityId,
   entityType,
@@ -78,7 +79,11 @@ export function CatalogImageUpload({
       <Button type="submit" disabled={busy}>
         {busy ? "Uploading…" : "Upload image"}
       </Button>
-      {message && <p role="status">{message}</p>}
+      {message && (
+        <Alert>
+          <AlertDescription>{message}</AlertDescription>
+        </Alert>
+      )}
     </form>
   );
 }

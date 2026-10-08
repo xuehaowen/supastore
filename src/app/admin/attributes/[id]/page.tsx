@@ -15,6 +15,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import {
   saveAttributeAction,
   saveAttributeTranslationAction,
@@ -44,7 +46,11 @@ export default async function AttributePage({
       <Link href="/admin/attributes">← All attributes</Link>
       <h1>{a.name}</h1>
       <Notice error={q.error} />
-      {q.saved && <p role="status">Attribute saved.</p>}
+      {q.saved && (
+        <Alert>
+          <AlertDescription>Attribute saved.</AlertDescription>
+        </Alert>
+      )}
       <section className="panel">
         <h2>Attribute details</h2>
         <form action={saveAttributeAction}>
@@ -83,7 +89,11 @@ export default async function AttributePage({
               <TableRow key={v.id}>
                 <TableCell>{v.label}</TableCell>
                 <TableCell>{v.code}</TableCell>
-                <TableCell>{v.isArchived ? "Archived" : "Active"}</TableCell>
+                <TableCell>
+                  <Badge variant={v.isArchived ? "secondary" : "default"}>
+                    {v.isArchived ? "Archived" : "Active"}
+                  </Badge>
+                </TableCell>
                 <TableCell>
                   <AdminDialog
                     trigger="Edit value"

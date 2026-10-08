@@ -56,6 +56,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 export default async function Admin({
   searchParams,
   view = "overview",
@@ -386,9 +388,11 @@ export default async function Admin({
       )}
       <Notice error={query.error} />
       {query.created && view === "orders" && (
-        <p className="admin-save-notice" role="status">
-          Manual order {query.created} created.
-        </p>
+        <Alert>
+          <AlertDescription>
+            Manual order {query.created} created.
+          </AlertDescription>
+        </Alert>
       )}
       {view === "orders" && (
         <form method="get" className="admin-filter-bar">
@@ -522,11 +526,18 @@ export default async function Admin({
                   <TableCell>{order.guestName}</TableCell>
                   <TableCell>{order.guestEmail}</TableCell>
                   <TableCell>
-                    <span
-                      className={`status-badge status-${order.lifecycleStatus}`}
+                    <Badge
+                      variant={
+                        order.lifecycleStatus === "completed" ||
+                        order.lifecycleStatus === "confirmed"
+                          ? "default"
+                          : order.lifecycleStatus === "cancelled"
+                            ? "destructive"
+                            : "outline"
+                      }
                     >
                       {order.lifecycleStatus}
-                    </span>
+                    </Badge>
                   </TableCell>
                   <TableCell>{order.fulfillmentType}</TableCell>
                   <TableCell>
@@ -641,11 +652,18 @@ export default async function Admin({
                     <TableCell>{order.guestName}</TableCell>
                     <TableCell>{order.guestEmail}</TableCell>
                     <TableCell>
-                      <span
-                        className={`status-badge status-${order.lifecycleStatus}`}
+                      <Badge
+                        variant={
+                          order.lifecycleStatus === "completed" ||
+                          order.lifecycleStatus === "confirmed"
+                            ? "default"
+                            : order.lifecycleStatus === "cancelled"
+                              ? "destructive"
+                              : "outline"
+                        }
                       >
                         {order.lifecycleStatus}
-                      </span>
+                      </Badge>
                     </TableCell>
                     <TableCell className="capitalize">
                       {account.accountType}

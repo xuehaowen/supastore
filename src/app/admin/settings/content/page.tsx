@@ -9,6 +9,7 @@ import { Hidden, Notice } from "@/app/components";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { saveStoreContentAction } from "@/app/admin/settings/content/actions";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 export default async function Content({
   searchParams,
 }: {
@@ -30,7 +31,11 @@ export default async function Content({
         fall back to the default store language.
       </p>
       <Notice error={query.error} />
-      {query.saved && <p role="status">Store content saved.</p>}
+      {query.saved && (
+        <Alert>
+          <AlertDescription>Store content saved.</AlertDescription>
+        </Alert>
+      )}
       <section className="panel">
         <form action={saveStoreContentAction}>
           <Hidden name="revision" value={String(store?.quoteVersion ?? 1)} />
