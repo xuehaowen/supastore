@@ -104,5 +104,30 @@
     "postalCode": "邮编",
     "country": "国家代码",
     "phone": "电话（可选）"
+  },
+  "order": {
+    "saved": "您的订单已保存",
+    "addToAccount": "添加到我的账户",
+    "claimHint": "请先登录已验证的账户。需通过此专属订单链接关联订单。",
+    "total": "订单总额",
+    "received": "实收金额",
+    "creditApplied": "使用账户余额",
+    "balance": "待付余额",
+    "items": "订单商品",
+    "refunds": "退款记录",
+    "returns": "退货记录",
+    "requestReturn": "申请商品退货",
+    "returnReason": "退货原因",
+    "submitReturn": "提交退货申请",
+    "paymentInstructions": "付款说明",
+    "copyAmount": "复制付款金额",
+    "copyRef": "复制订单编号",
+    "bookmarkHint": "请收藏此页面。即使邮件延迟，您也可以随时在此查看订单进度。",
+    "cancelled": "订单已取消",
+    "cancelledMsg": "该订单已取消。如有任何疑问，请联系商店客服。",
+    "placed": "已下单",
+    "payment": "付款确认",
+    "fulfillment": "履约配货",
+    "completed": "已完成"
   }
 }

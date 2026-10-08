@@ -17,6 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getTranslations } from "next-intl/server";
 export default async function OrderPage({
   params,
   searchParams,
@@ -26,6 +27,7 @@ export default async function OrderPage({
 }) {
   const { locale, id } = await params;
   const query = await searchParams;
+  const t = await getTranslations({ locale });
   const result = await trackOrder(id, await orderToken(id)).catch((error) => {
     if (error instanceof UnauthorizedError) redirect("/recover");
     throw error;
@@ -41,43 +43,109 @@ export default async function OrderPage({
     goodsReturns,
     returnItems,
   } = result;
-  const returnableQuantities = new Map(items.map((item) => {
-                const committed = returnItems
-                  .filter(
-                    (ri) =>
-                      ri.orderItemId === item.id &&
-                      goodsReturns.some(
-                        (r) =>
-                          r.id === ri.returnId &&
-                          ["requested", "approved", "received"].includes(
-                            r.status,
-                          ),
-                      ),
-                  )
-                  .reduce((sum, ri) => sum + ri.quantity, 0);
-                const available = item.quantity - committed;
-    return [item.id, available] as const;
-  }));
+  const returnableQuantities = new Map(
+    items.map((item) => {
+      const committed = returnItems
+        .filter(
+          (ri) =>
+            ri.orderItemId === item.id &&
+            goodsReturns.some(
+              (r) =>
+                r.id === ri.returnId &&
+                ["requested", "approved", "received"].includes(r.status),
+            ),
+        )
+        .reduce((sum, ri) => sum + ri.quantity, 0);
+      const available = item.quantity - committed;
+      return [item.id, available] as const;
+    }),
+  );
   const terms = order.termsSnapshot as QuoteTerms;
   return (
     <section className="mx-auto my-12 min-h-[50vh] max-w-3xl">
       <p className="mb-6 text-[10px] font-bold tracking-[0.2em]">
-        YOUR ORDER IS SAVED
+        {t("order.saved")}
       </p>
       <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">
         {order.referenceCode}
       </h1>
       <Notice error={query.error} />
+
+      {/* Visual Order Lifecycle Stepper */}
+      {order.lifecycleStatus === "cancelled" ? (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTitle>{t("order.cancelled")}</AlertTitle>
+          <AlertDescription>{t("order.cancelledMsg")}</AlertDescription>
+        </Alert>
+      ) : (
+        <div className="mb-8 rounded-xl border bg-card p-5">
+          <div className="grid grid-cols-4 gap-2 text-center">
+            {[
+              {
+                step: 1,
+                label: t("order.placed"),
+                done: true,
+                current: false,
+              },
+              {
+                step: 2,
+                label: t("order.payment"),
+                done: order.lifecycleStatus !== "unpaid",
+                current: order.lifecycleStatus === "unpaid",
+              },
+              {
+                step: 3,
+                label: t("order.fulfillment"),
+                done:
+                  fulfillment?.status === "fulfilled" ||
+                  order.lifecycleStatus === "completed",
+                current:
+                  order.lifecycleStatus === "confirmed" &&
+                  fulfillment?.status !== "fulfilled",
+              },
+              {
+                step: 4,
+                label: t("order.completed"),
+                done: order.lifecycleStatus === "completed",
+                current: false,
+              },
+            ].map((item, idx) => (
+              <div key={idx} className="flex flex-col items-center">
+                <div
+                  className={`flex size-7 items-center justify-center rounded-full text-xs font-semibold ${
+                    item.done
+                      ? "bg-primary text-primary-foreground"
+                      : item.current
+                        ? "border-2 border-primary text-primary"
+                        : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {item.done ? "✓" : item.step}
+                </div>
+                <span
+                  className={`mt-2 text-xs ${
+                    item.done || item.current
+                      ? "font-medium text-foreground"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {item.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {!order.customerId && (
         <form action={claimOrderAction} className="mb-5">
           <Hidden name="locale" value={locale} />
           <Hidden name="orderId" value={id} />
           <Button type="submit" variant="outline">
-            Add to my account
+            {t("order.addToAccount")}
           </Button>
           <p className="mt-2 text-sm text-muted-foreground">
-            Sign in with a verified account first. This private order link is
-            required to claim the order.
+            {t("order.claimHint")}
           </p>
         </form>
       )}
@@ -85,23 +153,23 @@ export default async function OrderPage({
         {order.lifecycleStatus} · {fulfillment?.status.replaceAll("_", " ")}
       </Badge>
       <dl className="grid grid-cols-2 gap-4 border-t pt-5">
-        <dt>Order total</dt>
+        <dt>{t("order.total")}</dt>
         <dd className="m-0 text-right">
           {money(order.purchaseTotalCents, terms.currency, terms.precision)}
         </dd>
-        <dt>Net external received</dt>
+        <dt>{t("order.received")}</dt>
         <dd className="m-0 text-right">
           {money(receivedCents, terms.currency, terms.precision)}
         </dd>
         {order.creditAppliedCents > 0 && (
           <>
-            <dt>Store credit applied</dt>
+            <dt>{t("order.creditApplied")}</dt>
             <dd className="m-0 text-right">
               {money(order.creditAppliedCents, terms.currency, terms.precision)}
             </dd>
           </>
         )}
-        <dt>Balance</dt>
+        <dt>{t("order.balance")}</dt>
         <dd className="m-0 text-right">
           {money(
             order.lifecycleStatus === "unpaid"
@@ -119,7 +187,7 @@ export default async function OrderPage({
       </dl>
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle>Order items</CardTitle>
+          <CardTitle>{t("order.items")}</CardTitle>
         </CardHeader>
         <CardContent>
           {items.map((item) => (
@@ -133,7 +201,7 @@ export default async function OrderPage({
       {result.refunds.length > 0 && (
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle>Refunds</CardTitle>
+            <CardTitle>{t("order.refunds")}</CardTitle>
           </CardHeader>
           <CardContent>
             {result.refunds.map((r) => (
@@ -153,7 +221,7 @@ export default async function OrderPage({
       {goodsReturns.length > 0 && (
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle>Product returns</CardTitle>
+            <CardTitle>{t("order.returns")}</CardTitle>
           </CardHeader>
           <CardContent>
             {goodsReturns.map((r) => (
@@ -169,39 +237,40 @@ export default async function OrderPage({
           </CardContent>
         </Card>
       )}
-      {fulfillment?.status === "fulfilled" && [...returnableQuantities.values()].some((quantity) => quantity > 0) && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Request a product return</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form action={requestReturnAction} className="grid gap-4">
-              <Hidden name="locale" value={locale} />
-              <Hidden name="orderId" value={id} />
-              <Hidden name="requestKey" value={randomUUID()} />
-              {items.map((item) => {
-                const available = returnableQuantities.get(item.id) ?? 0;
-                return available > 0 ? (
-                  <label key={item.id}>
-                    <Hidden name="itemIds" value={item.id} />
-                    {orderItemName(item, quoteItems)} · up to {available} units
-                    <Input
-                      name={`quantity.${item.id}`}
-                      type="number"
-                      min="0"
-                      max={available}
-                      defaultValue="0"
-                      required
-                    />
-                  </label>
-                ) : null;
-              })}
-              <Field name="reason" label="Return reason" />
-              <Button type="submit">Submit return request</Button>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+      {fulfillment?.status === "fulfilled" &&
+        [...returnableQuantities.values()].some((quantity) => quantity > 0) && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>{t("order.requestReturn")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form action={requestReturnAction} className="grid gap-4">
+                <Hidden name="locale" value={locale} />
+                <Hidden name="orderId" value={id} />
+                <Hidden name="requestKey" value={randomUUID()} />
+                {items.map((item) => {
+                  const available = returnableQuantities.get(item.id) ?? 0;
+                  return available > 0 ? (
+                    <label key={item.id}>
+                      <Hidden name="itemIds" value={item.id} />
+                      {orderItemName(item, quoteItems)} · up to {available} units
+                      <Input
+                        name={`quantity.${item.id}`}
+                        type="number"
+                        min="0"
+                        max={available}
+                        defaultValue="0"
+                        required
+                      />
+                    </label>
+                  ) : null;
+                })}
+                <Field name="reason" label={t("order.returnReason")} />
+                <Button type="submit">{t("order.submitReturn")}</Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
       {proposal ? (
         <Alert className="mt-6">
           <AlertTitle>Order Terms Updated</AlertTitle>
@@ -231,7 +300,7 @@ export default async function OrderPage({
         terms.payment ? (
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle>Payment instructions</CardTitle>
+            <CardTitle>{t("order.paymentInstructions")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p>{terms.payment.name}</p>
@@ -244,11 +313,11 @@ export default async function OrderPage({
                   (order.purchaseTotalCents - order.creditAppliedCents) /
                   10 ** terms.precision
                 ).toFixed(terms.precision)}
-                label="Copy exact amount"
+                label={t("order.copyAmount")}
               />
               <CopyButton
                 value={order.referenceCode}
-                label="Copy payment reference"
+                label={t("order.copyRef")}
               />
             </div>
             <p>
@@ -278,8 +347,7 @@ export default async function OrderPage({
         </section>
       )}
       <p className="mt-8 text-sm text-muted-foreground">
-        Bookmark this page. Your order remains available here even if an email
-        is delayed.
+        {t("order.bookmarkHint")}
       </p>
     </section>
   );

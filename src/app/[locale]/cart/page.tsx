@@ -57,26 +57,46 @@ export default async function Cart({
                         <Badge variant="secondary">{t("unavailable")}</Badge>
                       )}
                     </div>
-                    <form className="cart-quantity-form" action={changeItem}>
-                      <Hidden name="locale" value={locale} />
-                      <Hidden name="itemId" value={item.id} />
-                      <div className="cart-quantity-control">
-                        <Label>
-                          {t("quantity")}
-                          <Input
-                            aria-label={t("quantity") + " " + item.productTitle}
-                            name="quantity"
-                            type="number"
-                            min="0"
-                            max="999"
-                            defaultValue={item.quantity}
-                          />
-                        </Label>
-                        <Button type="submit" variant="outline">
-                          Update
+                    <div className="flex items-center gap-1 rounded-lg border bg-background p-1">
+                      <form action={changeItem}>
+                        <Hidden name="locale" value={locale} />
+                        <Hidden name="itemId" value={item.id} />
+                        <Hidden
+                          name="quantity"
+                          value={String(Math.max(0, item.quantity - 1))}
+                        />
+                        <Button
+                          type="submit"
+                          variant="ghost"
+                          size="sm"
+                          className="size-7 p-0"
+                          aria-label={`Decrease quantity of ${item.productTitle}`}
+                        >
+                          −
                         </Button>
-                      </div>
-                    </form>
+                      </form>
+                      <span className="w-8 text-center text-sm font-medium tabular-nums">
+                        {item.quantity}
+                      </span>
+                      <form action={changeItem}>
+                        <Hidden name="locale" value={locale} />
+                        <Hidden name="itemId" value={item.id} />
+                        <Hidden
+                          name="quantity"
+                          value={String(Math.min(999, item.quantity + 1))}
+                        />
+                        <Button
+                          type="submit"
+                          variant="ghost"
+                          size="sm"
+                          className="size-7 p-0"
+                          disabled={item.quantity >= 999}
+                          aria-label={`Increase quantity of ${item.productTitle}`}
+                        >
+                          +
+                        </Button>
+                      </form>
+                    </div>
                     <strong className="tabular-nums">
                       {money(
                         item.lineTotalCents,
@@ -88,7 +108,7 @@ export default async function Cart({
                       <Hidden name="locale" value={locale} />
                       <Hidden name="itemId" value={item.id} />
                       <Hidden name="quantity" value="0" />
-                      <Button type="submit" variant="link">
+                      <Button type="submit" variant="link" className="text-muted-foreground hover:text-destructive">
                         {t("remove")}
                       </Button>
                     </form>
@@ -101,17 +121,18 @@ export default async function Cart({
               className="rounded-xl border bg-card p-5 lg:sticky lg:top-6"
             >
               <p className="text-sm font-medium text-muted-foreground">
-                Order summary
+                {locale === "zh" ? "订单摘要" : "Order summary"}
               </p>
               <div className="mt-5 flex justify-between border-t pt-5 text-xl">
-                <span>Subtotal</span>
+                <span>{locale === "zh" ? "商品小计" : "Subtotal"}</span>
                 <strong className="tabular-nums">
                   {money(cart.subtotalCents, store?.currency, store?.precision)}
                 </strong>
               </div>
               <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                Shipping, tax, and fulfillment options are confirmed at
-                checkout.
+                {locale === "zh"
+                  ? "运费、税费及履约方式将在结账时最终确认。"
+                  : "Shipping, tax, and fulfillment options are confirmed at checkout."}
               </p>
               <Link
                 className={cn(
@@ -126,15 +147,26 @@ export default async function Cart({
           </div>
         </>
       ) : (
-        <>
-          <p>{t("empty")}</p>
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div
+            className="mb-4 flex size-20 items-center justify-center rounded-full bg-muted text-3xl"
+            aria-hidden="true"
+          >
+            🛍️
+          </div>
+          <h2 className="mb-2 font-serif text-2xl font-medium">{t("empty")}</h2>
+          <p className="mb-6 max-w-sm text-sm text-muted-foreground">
+            {locale === "zh"
+              ? "您的购物袋还是空的，快去挑选心仪的商品吧。"
+              : "Your shopping bag is empty. Explore our collection of carefully curated everyday goods."}
+          </p>
           <Link
-            className={cn(buttonVariants(), "mt-4 no-underline")}
+            className={cn(buttonVariants({ size: "lg" }), "no-underline")}
             href={"/" + locale}
           >
-            {t("shop")}
+            {t("shop")} <span aria-hidden="true">→</span>
           </Link>
-        </>
+        </div>
       )}
     </section>
   );

@@ -104,5 +104,30 @@
     "postalCode": "Postal code",
     "country": "Country code",
     "phone": "Phone (optional)"
+  },
+  "order": {
+    "saved": "YOUR ORDER IS SAVED",
+    "addToAccount": "Add to my account",
+    "claimHint": "Sign in with a verified account first. This private order link is required to claim the order.",
+    "total": "Order total",
+    "received": "Net external received",
+    "creditApplied": "Store credit applied",
+    "balance": "Balance",
+    "items": "Order items",
+    "refunds": "Refunds",
+    "returns": "Product returns",
+    "requestReturn": "Request a product return",
+    "returnReason": "Return reason",
+    "submitReturn": "Submit return request",
+    "paymentInstructions": "Payment instructions",
+    "copyAmount": "Copy exact amount",
+    "copyRef": "Copy payment reference",
+    "bookmarkHint": "Bookmark this page. Your order remains available here even if an email is delayed.",
+    "cancelled": "Order Cancelled",
+    "cancelledMsg": "This order has been cancelled. If you have questions, please contact support.",
+    "placed": "Placed",
+    "payment": "Payment",
+    "fulfillment": "Fulfillment",
+    "completed": "Completed"
   }
 }

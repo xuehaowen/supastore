@@ -25,6 +25,8 @@ export function ProductPurchase({
   const initial =
     product.variants.find((v) => v.isAvailable) || product.variants[0];
   const [variantId, setVariantId] = useState(initial?.id || "");
+  const [activeImageKey, setActiveImageKey] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState(1);
   const current = product.variants.find((v) => v.id === variantId);
   const axes = [
     ...new Map(
@@ -41,10 +43,13 @@ export function ProductPurchase({
   const selected = new Map(
     current?.localizedAttributes.map((a) => [a.code, a.valueCode]) || [],
   );
-  const image =
+  const variantImage =
     product.images.find((i) => i.variantId === variantId) ||
     product.images.find((i) => i.variantId === null) ||
     product.images[0];
+  const activeImage =
+    (activeImageKey ? product.images.find((i) => i.s3Key === activeImageKey) : null) ||
+    variantImage;
   const price = current
     ? new Intl.NumberFormat(locale, {
         style: "currency",
@@ -53,25 +58,62 @@ export function ProductPurchase({
         maximumFractionDigits: precision,
       }).format(current.priceCents / 10 ** precision)
     : "";
+  const maxQty = Math.max(
+    1,
+    Math.min(999, availableQuantities[variantId] ?? 999),
+  );
   return (
     <div className="contents">
-      <div className="flex aspect-square items-center justify-center overflow-hidden rounded-[1.5rem] bg-[#e5e8df] md:sticky md:top-6">
-        {image ? (
-          <Image
-            className="size-full object-cover"
-            src={`/api/assets?key=${encodeURIComponent(image.s3Key)}&inline=1`}
-            alt={image.altText || product.title}
-            width={800}
-            height={800}
-            sizes="(max-width: 767px) 88vw, 50vw"
-          />
-        ) : (
-          <span
-            className="font-serif text-8xl text-[#889475]"
-            aria-hidden="true"
+      <div className="flex flex-col gap-3 md:sticky md:top-6">
+        <div className="flex aspect-square items-center justify-center overflow-hidden rounded-[1.5rem] bg-[#e5e8df]">
+          {activeImage ? (
+            <Image
+              className="size-full object-cover transition-all duration-300"
+              src={`/api/assets?key=${encodeURIComponent(activeImage.s3Key)}&inline=1`}
+              alt={activeImage.altText || product.title}
+              width={800}
+              height={800}
+              sizes="(max-width: 767px) 88vw, 50vw"
+            />
+          ) : (
+            <span
+              className="font-serif text-8xl text-[#889475]"
+              aria-hidden="true"
+            >
+              {product.title.slice(0, 1)}
+            </span>
+          )}
+        </div>
+        {product.images.length > 1 && (
+          <div
+            className="flex gap-2.5 overflow-x-auto pb-1"
+            aria-label={locale === "zh" ? "商品图片预览" : "Product image gallery"}
           >
-            {product.title.slice(0, 1)}
-          </span>
+            {product.images.map((img) => {
+              const isSelected = (activeImage?.s3Key === img.s3Key);
+              return (
+                <button
+                  key={img.s3Key}
+                  type="button"
+                  onClick={() => setActiveImageKey(img.s3Key)}
+                  className={`relative size-16 shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
+                    isSelected
+                      ? "border-primary ring-2 ring-primary/20"
+                      : "border-transparent opacity-70 hover:opacity-100"
+                  }`}
+                  aria-label={img.altText || product.title}
+                >
+                  <Image
+                    className="size-full object-cover"
+                    src={`/api/assets?key=${encodeURIComponent(img.s3Key)}&inline=1`}
+                    alt=""
+                    width={80}
+                    height={80}
+                  />
+                </button>
+              );
+            })}
+          </div>
         )}
       </div>
       <div className="max-w-xl self-center">
@@ -193,21 +235,36 @@ export function ProductPurchase({
               {availableQuantities[variantId]}
             </p>
           )}
-          <div className="grid max-w-32 gap-2">
-            <Label>
-              {labels.quantity}
-              <Input
-                type="number"
-                name="quantity"
-                min="1"
-                max={Math.max(
-                  1,
-                  Math.min(999, availableQuantities[variantId] ?? 999),
-                )}
-                defaultValue="1"
-                required
-              />
-            </Label>
+          <div className="grid gap-2">
+            <Label>{labels.quantity}</Label>
+            <div className="inline-flex items-center rounded-lg border bg-background p-1 w-fit">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="size-8 p-0"
+                disabled={quantity <= 1}
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                aria-label="Decrease quantity"
+              >
+                −
+              </Button>
+              <input type="hidden" name="quantity" value={quantity} />
+              <span className="w-12 text-center text-sm font-medium tabular-nums">
+                {quantity}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="size-8 p-0"
+                disabled={quantity >= maxQty}
+                onClick={() => setQuantity((q) => Math.min(maxQty, q + 1))}
+                aria-label="Increase quantity"
+              >
+                +
+              </Button>
+            </div>
           </div>
           <Button
             className="w-full sm:w-auto"

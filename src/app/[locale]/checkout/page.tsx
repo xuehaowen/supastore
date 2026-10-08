@@ -72,8 +72,39 @@ export default async function Checkout({
         {t("eyebrowCheckout")}
       </p>
       <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">
-        {t("review")}
+        {quote ? t("review") : (locale === "zh" ? "结账" : "Checkout")}
       </h1>
+      <div className="mb-8 flex items-center gap-3">
+        <div
+          className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium ${
+            quote
+              ? "bg-muted text-muted-foreground"
+              : "bg-primary text-primary-foreground"
+          }`}
+        >
+          <span className="flex size-4 items-center justify-center rounded-full bg-background/20 font-bold">
+            1
+          </span>
+          <span>
+            {locale === "zh" ? "配送与信息" : "Fulfillment & Details"}
+          </span>
+        </div>
+        <div className="h-px w-6 bg-border" aria-hidden="true" />
+        <div
+          className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium ${
+            quote
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground"
+          }`}
+        >
+          <span className="flex size-4 items-center justify-center rounded-full bg-background/20 font-bold">
+            2
+          </span>
+          <span>
+            {locale === "zh" ? "核对并下单" : "Review & Place Order"}
+          </span>
+        </div>
+      </div>
       <Notice error={query.error} />
       {quote ? (
         <div className="grid gap-8 md:grid-cols-2">
