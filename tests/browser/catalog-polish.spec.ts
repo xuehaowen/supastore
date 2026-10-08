@@ -2,17 +2,30 @@ import { randomUUID } from "node:crypto";
 import { test, expect, clickAction } from "./fixtures";
 
 test("public catalog requests responsive optimized thumbnails", async ({
-  page, admin, sql,
+  page,
+  admin,
+  sql,
 }) => {
-  const [product] = await sql`select id from products where handle='studio-cup'`;
+  const [product] =
+    await sql`select id from products where handle='studio-cup'`;
   await admin.goto(`/admin/products/${product!.id}/edit`);
   await admin.getByLabel("Image file").setInputFiles({
-    name: "thumbnail.png", mimeType: "image/png",
-    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAGUlEQVQokWN4+uI+SYhhVMOL0VB6OlyTBgCmaawfkFnzKAAAAABJRU5ErkJggg==", "base64"),
+    name: "thumbnail.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAGUlEQVQokWN4+uI+SYhhVMOL0VB6OlyTBgCmaawfkFnzKAAAAABJRU5ErkJggg==",
+      "base64",
+    ),
   });
-  await admin.getByLabel("Image description", { exact: true }).fill("Thumbnail fixture");
-  await admin.getByRole("button", { name: "Upload image", exact: true }).click();
-  await expect(admin.getByRole("status").filter({ hasText: "Image uploaded." })).toBeVisible({ timeout: 20000 });
+  await admin
+    .getByLabel("Image description", { exact: true })
+    .fill("Thumbnail fixture");
+  await admin
+    .getByRole("button", { name: "Upload image", exact: true })
+    .click();
+  await expect(
+    admin.getByRole("status").filter({ hasText: "Image uploaded." }),
+  ).toBeVisible({ timeout: 20000 });
   await page.goto("/en");
   const image = page.getByRole("img", { name: "Studio cup", exact: true });
   await expect(image).toBeVisible();
@@ -73,9 +86,12 @@ test("merchant reviews bulk changes and retains edits and categories after inval
   expect(saved.every((v) => v.price_cents === 1250 && !v.is_available)).toBe(
     true,
   );
-  const [category] = await sql`insert into categories(slug,name) values(${`draft-${code}`},${`Draft category ${code}`}) returning id`;
+  const [category] =
+    await sql`insert into categories(slug,name) values(${`draft-${code}`},${`Draft category ${code}`}) returning id`;
   await admin.reload();
-  await admin.getByRole("checkbox", { name: `Draft category ${code}`, exact: true }).check();
+  await admin
+    .getByRole("checkbox", { name: `Draft category ${code}`, exact: true })
+    .check();
   await admin.getByLabel("Title", { exact: true }).fill("Keep my edited title");
   await admin.getByLabel("URL handle").fill("Invalid HANDLE");
   await expect(
@@ -92,13 +108,22 @@ test("merchant reviews bulk changes and retains edits and categories after inval
   await expect(
     admin.getByRole("status").filter({ hasText: "restored after the error" }),
   ).toBeVisible();
-  await expect(admin.getByRole("checkbox", { name: `Draft category ${code}`, exact: true })).toBeChecked();
+  await expect(
+    admin.getByRole("checkbox", {
+      name: `Draft category ${code}`,
+      exact: true,
+    }),
+  ).toBeChecked();
   expect(
     (await sql`select title from products where id=${product!.id}`)[0]!.title,
   ).toBe("Bulk review product");
   await admin.getByLabel("URL handle").fill(`bulk-${code}`);
-  await clickAction(admin, admin.getByRole("button", { name: "Save changes", exact: true }));
-  const memberships = await sql`select category_id from product_categories where product_id=${product!.id}`;
+  await clickAction(
+    admin,
+    admin.getByRole("button", { name: "Save changes", exact: true }),
+  );
+  const memberships =
+    await sql`select category_id from product_categories where product_id=${product!.id}`;
   expect(memberships.map((row) => row.category_id)).toEqual([category!.id]);
 });
 

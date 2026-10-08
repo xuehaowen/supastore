@@ -1,11 +1,25 @@
 /** Serializable HTTP DTOs only. No server code, secrets, database or runtime dependencies. */
 export interface CustomerAccountDto {
   customer: { name: string; email: string; phone: string | null };
-  orders: { id: string; referenceCode: string; lifecycleStatus: string; purchaseTotalCents: number; createdAt: string }[];
+  orders: {
+    id: string;
+    referenceCode: string;
+    lifecycleStatus: string;
+    purchaseTotalCents: number;
+    createdAt: string;
+  }[];
   addresses: { id: string; label: string; address: Record<string, string> }[];
   credit: null | {
-    balanceCents: number; reservedCents: number; currency: string; precision: number;
-    entries: { id: string; amountCents: number; kind: string; createdAt: string }[];
+    balanceCents: number;
+    reservedCents: number;
+    currency: string;
+    precision: number;
+    entries: {
+      id: string;
+      amountCents: number;
+      kind: string;
+      createdAt: string;
+    }[];
   };
   hasNext: boolean;
 }

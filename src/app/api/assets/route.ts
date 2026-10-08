@@ -39,8 +39,12 @@ export async function GET(request: NextRequest) {
   try {
     const upstream = await fetch(url, { signal: AbortSignal.timeout(10_000) });
     const type = upstream.headers.get("content-type")?.split(";")[0];
-    if (!upstream.ok || !upstream.body || !type ||
-      !["image/jpeg", "image/png", "image/webp"].includes(type))
+    if (
+      !upstream.ok ||
+      !upstream.body ||
+      !type ||
+      !["image/jpeg", "image/png", "image/webp"].includes(type)
+    )
       throw new Error("Invalid image response");
     const reader = upstream.body.getReader();
     const chunks: Uint8Array[] = [];
@@ -62,11 +66,13 @@ export async function GET(request: NextRequest) {
       bytes.set(chunk, offset);
       offset += chunk.length;
     }
-    return new NextResponse(bytes, { headers: {
-      "Content-Type": type,
-      "X-Content-Type-Options": "nosniff",
-      "Cache-Control": "public, max-age=60",
-    } });
+    return new NextResponse(bytes, {
+      headers: {
+        "Content-Type": type,
+        "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "public, max-age=60",
+      },
+    });
   } catch {
     return new NextResponse("Image unavailable", { status: 502 });
   }

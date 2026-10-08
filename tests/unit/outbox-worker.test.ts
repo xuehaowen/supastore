@@ -1,15 +1,20 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getNextRetryInfo, processOutboxBatch } from '@/infrastructure/worker/outbox';
-import type { EmailSender } from '@/application/ports/notifications';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import {
+  getNextRetryInfo,
+  processOutboxBatch,
+} from "@/infrastructure/worker/outbox";
+import type { EmailSender } from "@/application/ports/notifications";
 
-describe('Outbox Worker Unit Tests', () => {
-  it('respects DISABLE_OUTBOUND_DELIVERY flag', async () => {
-    process.env.DISABLE_OUTBOUND_DELIVERY = 'true';
+describe("Outbox Worker Unit Tests", () => {
+  it("respects DISABLE_OUTBOUND_DELIVERY flag", async () => {
+    process.env.DISABLE_OUTBOUND_DELIVERY = "true";
     try {
       const sender: EmailSender = {
-        identity: {provider: 'fixture', profile: 'email'}, capabilities: {deliveryTracking: false}, send: vi.fn(),
+        identity: { provider: "fixture", profile: "email" },
+        capabilities: { deliveryTracking: false },
+        send: vi.fn(),
       };
-      const result = await processOutboxBatch({ providers: {email: sender} });
+      const result = await processOutboxBatch({ providers: { email: sender } });
       expect(result).toBe(0);
       expect(sender.send).not.toHaveBeenCalled();
     } finally {
@@ -17,13 +22,13 @@ describe('Outbox Worker Unit Tests', () => {
     }
   });
 
-  it('determines exhaustion accurately after 5 retries (6 total attempts)', () => {
+  it("determines exhaustion accurately after 5 retries (6 total attempts)", () => {
     // attempts = 0 (before 1st failure) -> next is retry 1
-    expect(getNextRetryInfo(0).status).toBe('retrying');
+    expect(getNextRetryInfo(0).status).toBe("retrying");
     // attempts = 4 (before 5th failure) -> next is retry 5
-    expect(getNextRetryInfo(4).status).toBe('retrying');
+    expect(getNextRetryInfo(4).status).toBe("retrying");
     // attempts = 5 (before 6th failure) -> next is exhausted
-    expect(getNextRetryInfo(5).status).toBe('exhausted');
+    expect(getNextRetryInfo(5).status).toBe("exhausted");
     expect(getNextRetryInfo(5).attempts).toBe(6);
   });
 });

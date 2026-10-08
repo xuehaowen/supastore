@@ -13,7 +13,7 @@ if (
   backendOrigin.hash
 )
   throw new Error("BACKEND_URL must be an HTTP origin");
-export default {
+const nextConfig = {
   outputFileTracingRoot: fileURLToPath(new URL("../../", import.meta.url)),
   ...(process.env.STANDALONE === "true" || process.env.DOCKER_BUILD === "true"
     ? { output: "standalone" }
@@ -28,3 +28,5 @@ export default {
     ];
   },
 };
+
+export default nextConfig;

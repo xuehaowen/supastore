@@ -25,4 +25,8 @@ export const money = (value: number, currency = "USD", precision = 2) =>
   new Intl.NumberFormat("en", { style: "currency", currency }).format(
     value / 10 ** precision,
   );
-export type { StoreDto as Store, ProductDto as Product, CartDto as Cart } from "@supastore/contracts";
+export type {
+  StoreDto as Store,
+  ProductDto as Product,
+  CartDto as Cart,
+} from "@supastore/contracts";

@@ -1,11 +1,11 @@
-import { betterAuth } from 'better-auth';
-import { APIError } from 'better-auth/api';
-import { and, eq } from 'drizzle-orm';
-import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { db } from '@/infrastructure/db';
-import { staffMemberships, user } from '@/infrastructure/db/schema';
-import { smtpAdapter } from '@/infrastructure/notifications/smtp';
-import { logger } from '@/infrastructure/security/logger';
+import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
+import { and, eq } from "drizzle-orm";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { db } from "@/infrastructure/db";
+import { staffMemberships, user } from "@/infrastructure/db/schema";
+import { smtpAdapter } from "@/infrastructure/notifications/smtp";
+import { logger } from "@/infrastructure/security/logger";
 
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
@@ -17,7 +17,7 @@ export const auth = betterAuth({
     process.env.BETTER_AUTH_URL,
   ].filter((origin): origin is string => Boolean(origin)),
   database: drizzleAdapter(db, {
-    provider: 'pg',
+    provider: "pg",
   }),
   emailAndPassword: {
     enabled: true,
@@ -29,8 +29,8 @@ export const auth = betterAuth({
       try {
         const result = await smtpAdapter.sendEmail({
           recipient: user.email,
-          subject: 'Reset your password',
-          template: 'auth.reset_password',
+          subject: "Reset your password",
+          template: "auth.reset_password",
           data: {
             resetUrl: url,
             recoveryUrl: url,
@@ -39,7 +39,9 @@ export const auth = betterAuth({
         });
         if (!result.success) throw new Error("Email was not accepted.");
       } catch {
-        logger.error('Password reset email was not accepted; inspect provider configuration and delivery status.');
+        logger.error(
+          "Password reset email was not accepted; inspect provider configuration and delivery status.",
+        );
       }
     },
   },
@@ -51,8 +53,8 @@ export const auth = betterAuth({
       try {
         const result = await smtpAdapter.sendEmail({
           recipient: user.email,
-          subject: 'Verify your email address',
-          template: 'auth.email_verification',
+          subject: "Verify your email address",
+          template: "auth.email_verification",
           data: {
             verificationUrl: url,
             token,
@@ -60,7 +62,9 @@ export const auth = betterAuth({
         });
         if (!result.success) throw new Error("Email was not accepted.");
       } catch {
-        logger.error('Verification email was not accepted; inspect provider configuration and delivery status.');
+        logger.error(
+          "Verification email was not accepted; inspect provider configuration and delivery status.",
+        );
       }
     },
   },
@@ -68,20 +72,29 @@ export const auth = betterAuth({
     session: {
       create: {
         before: async (session) => {
-          const [identity] = await db.select({ emailVerified: user.emailVerified })
-            .from(user).where(eq(user.id, session.userId)).limit(1);
+          const [identity] = await db
+            .select({ emailVerified: user.emailVerified })
+            .from(user)
+            .where(eq(user.id, session.userId))
+            .limit(1);
           if (identity?.emailVerified) return;
 
           // Only an active, server-managed staff membership exempts verification.
-          const [staff] = await db.select({ id: staffMemberships.id })
+          const [staff] = await db
+            .select({ id: staffMemberships.id })
             .from(staffMemberships)
-            .where(and(eq(staffMemberships.userId, session.userId), eq(staffMemberships.isActive, true)))
+            .where(
+              and(
+                eq(staffMemberships.userId, session.userId),
+                eq(staffMemberships.isActive, true),
+              ),
+            )
             .limit(1);
           if (identity && staff) return;
 
-          throw new APIError('FORBIDDEN', {
-            code: 'EMAIL_NOT_VERIFIED',
-            message: 'Email not verified',
+          throw new APIError("FORBIDDEN", {
+            code: "EMAIL_NOT_VERIFIED",
+            message: "Email not verified",
           });
         },
       },

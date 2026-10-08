@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
@@ -230,11 +231,12 @@ export default async function EditProductPage({
                 <legend>Image {i + 1}</legend>
                 <Hidden name={`imageId-${i}`} value={img.id} />
                 <Hidden name={`imageKey-${i}`} value={img.s3Key} />
-                <img
+                <Image
                   src={`/api/admin/catalog-image?id=${img.id}`}
                   alt={img.altText || product.title}
-                  width="160"
-                  height="160"
+                  width={160}
+                  height={160}
+                  unoptimized
                   className="size-40 rounded-lg object-cover"
                 />
                 <Field

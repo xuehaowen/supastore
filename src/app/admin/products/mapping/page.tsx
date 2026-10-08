@@ -44,9 +44,9 @@ export default async function LegacyMapping({
       <h1>Legacy option mapping</h1>
       <p className="admin-description">
         This read-only report identifies variants without a canonical option
-        combination. Existing IDs, SKUs, prices, and labels stay in place. Assign
-        each legacy variant explicitly in the product option preview or supply
-        its stable option codes in CSV.
+        combination. Existing IDs, SKUs, prices, and labels stay in place.
+        Assign each legacy variant explicitly in the product option preview or
+        supply its stable option codes in CSV.
       </p>
       <section className="panel">
         <Table>
@@ -64,7 +64,9 @@ export default async function LegacyMapping({
                 <TableCell className="font-medium">{r.product.title}</TableCell>
                 <TableCell>
                   <div>{r.variant.title}</div>
-                  <p className="text-xs text-muted-foreground">{r.variant.sku}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {r.variant.sku}
+                  </p>
                 </TableCell>
                 <TableCell>
                   {Object.entries(r.variant.attributes || {})
@@ -83,7 +85,10 @@ export default async function LegacyMapping({
             ))}
             {!rows.length && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                <TableCell
+                  colSpan={4}
+                  className="text-center text-muted-foreground"
+                >
                   No unmapped variants.
                 </TableCell>
               </TableRow>

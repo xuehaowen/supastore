@@ -31,7 +31,10 @@ export async function getLaunchReadiness(tx: Transaction | typeof db = db) {
     .where(eq(paymentAccounts.isActive, true));
   const zones = await tx.select().from(shippingZones);
   const locations = await tx.select().from(pickupLocation);
-  const areas = await tx.select().from(deliveryAreas).where(eq(deliveryAreas.isActive, true));
+  const areas = await tx
+    .select()
+    .from(deliveryAreas)
+    .where(eq(deliveryAreas.isActive, true));
   const policy = commercePolicy(settings?.commercePolicy);
   const checklist = [
     {
@@ -47,15 +50,27 @@ export async function getLaunchReadiness(tx: Transaction | typeof db = db) {
     {
       key: "payment",
       label: "Active payment method",
-      isReady: accounts.some(account=>account.accountType!=="stripe") || stripeConfiguredFor(settings),
+      isReady:
+        accounts.some((account) => account.accountType !== "stripe") ||
+        stripeConfiguredFor(settings),
     },
     {
       key: "fulfillment",
       label: "Enabled fulfillment method configured",
       isReady:
         (policy.shippingEnabled && zones.length > 0) ||
-        (policy.pickupEnabled && locations.some((l) => !l.scheduleRequired || Object.values(l.weeklySchedule).some((s) => s.length > 0))) ||
-        (policy.deliveryEnabled && areas.some(a => !a.scheduleRequired || Object.values(a.weeklySchedule).some(s => s.length > 0))),
+        (policy.pickupEnabled &&
+          locations.some(
+            (l) =>
+              !l.scheduleRequired ||
+              Object.values(l.weeklySchedule).some((s) => s.length > 0),
+          )) ||
+        (policy.deliveryEnabled &&
+          areas.some(
+            (a) =>
+              !a.scheduleRequired ||
+              Object.values(a.weeklySchedule).some((s) => s.length > 0),
+          )),
     },
     {
       key: "email",

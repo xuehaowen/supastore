@@ -113,17 +113,17 @@ Lock ranks for the extensions: store gate → cart → order → catalog product
 
 Credit is typed funding, not a discount or a synthetic receipt. Purchase totals and immutable quote terms remain unchanged. An active credit hold reduces only external due; confirmation captures it exactly once and freezes funding sources. Cancellation of unpaid orders releases holds; captured credit refunds use capped source allocations and compensating ledger entries. External surplus and late transfers retain original-source return rules. Currency and precision changes share the first-credit/first-order store gate. Provider and notification network calls occur outside these transactions.
 
-| Scenario | Expected result |
-| --- | --- |
-| $40 order submission response lost | Retry recovers one unpaid order; no second payment request |
-| $40 order, $50 received | Return $10 excess; confirm only after it settles |
-| Confirmed $40, refund $40, late additional $10 | Original funding remains consumed; only new $10 is excess |
-| Unpaid $40 order cancelled | No refund row; late $40 creates a separate return |
-| Open order receives $10 of $40, then cancels | Actual-funds cancellation entitlement is $10 |
-| $50 handover entered twice | Void duplicate; retain $50 received, no invented $50 payout |
-| Confirmed $100 corrected to actual $10 | Preserve P; future purchase funding capped at $10; funding loss $90 |
-| Same correction after $30 purchase refund settled | Keep $30 sent; no further entitlement; total funding loss remains $90, not $110 |
-| Cancelled open order had $10 refunded, receipt corrected to $100 | Authorize separate $90 return, whether the $10 is pending or settled |
-| Two payout claims race | One unresolved attempt; total sent cannot exceed authorization |
+| Scenario                                                         | Expected result                                                                 |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| $40 order submission response lost                               | Retry recovers one unpaid order; no second payment request                      |
+| $40 order, $50 received                                          | Return $10 excess; confirm only after it settles                                |
+| Confirmed $40, refund $40, late additional $10                   | Original funding remains consumed; only new $10 is excess                       |
+| Unpaid $40 order cancelled                                       | No refund row; late $40 creates a separate return                               |
+| Open order receives $10 of $40, then cancels                     | Actual-funds cancellation entitlement is $10                                    |
+| $50 handover entered twice                                       | Void duplicate; retain $50 received, no invented $50 payout                     |
+| Confirmed $100 corrected to actual $10                           | Preserve P; future purchase funding capped at $10; funding loss $90             |
+| Same correction after $30 purchase refund settled                | Keep $30 sent; no further entitlement; total funding loss remains $90, not $110 |
+| Cancelled open order had $10 refunded, receipt corrected to $100 | Authorize separate $90 return, whether the $10 is pending or settled            |
+| Two payout claims race                                           | One unresolved attempt; total sent cannot exceed authorization                  |
 
 Implement table-driven examples and generated operation sequences for money invariants. Test allocation sums, component caps, reference uniqueness, repeated commands, correction reversals, concurrent receipt/cancellation, and fulfillment/cancellation races. Every rule above requires executable evidence before release.

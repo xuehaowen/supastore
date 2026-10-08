@@ -213,7 +213,13 @@ export function CustomerAuthTools({
                 onSubmit={(e) => submit(e, operation)}
               >
                 <label>
-                  {operation === "forgot" ? (zh ? "重置密码邮箱" : "Email for password reset") : (zh ? "验证邮箱" : "Email for verification")}
+                  {operation === "forgot"
+                    ? zh
+                      ? "重置密码邮箱"
+                      : "Email for password reset"
+                    : zh
+                      ? "验证邮箱"
+                      : "Email for verification"}
                   <Input
                     name="email"
                     type="email"
@@ -221,7 +227,9 @@ export function CustomerAuthTools({
                     autoComplete="email"
                   />
                 </label>
-                <Button type="submit" disabled={busy}>{zh ? "发送链接" : "Send link"}</Button>
+                <Button type="submit" disabled={busy}>
+                  {zh ? "发送链接" : "Send link"}
+                </Button>
               </form>
             </details>
           ))}
@@ -230,4 +238,3 @@ export function CustomerAuthTools({
     </div>
   );
 }
-

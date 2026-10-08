@@ -147,8 +147,8 @@ export default async function SlotsPage({
                   {slot.startTime}–{slot.endTime} ({slot.timezone})
                 </TableCell>
                 <TableCell>
-                  {data.bookings.find((b) => b.slotId === slot.id)?.count ?? 0} /{" "}
-                  {slot.capacity ?? "Unlimited"}
+                  {data.bookings.find((b) => b.slotId === slot.id)?.count ?? 0}{" "}
+                  / {slot.capacity ?? "Unlimited"}
                 </TableCell>
                 <TableCell>
                   {data.quotas
@@ -160,11 +160,18 @@ export default async function SlotsPage({
                       </p>
                     ))}
                   {data.owner && (
-                    <form action={saveSlotQuota} className="mt-2 flex flex-wrap items-center gap-2">
+                    <form
+                      action={saveSlotQuota}
+                      className="mt-2 flex flex-wrap items-center gap-2"
+                    >
                       <input type="hidden" name="slotId" value={slot.id} />
                       <label className="text-xs">
                         Variant
-                        <NativeSelect name="variantId" required className="mt-1">
+                        <NativeSelect
+                          name="variantId"
+                          required
+                          className="mt-1"
+                        >
                           {data.variants.map((v) => (
                             <option key={v.id} value={v.id}>
                               {v.sku}
@@ -183,7 +190,9 @@ export default async function SlotsPage({
                           className="mt-1 w-24"
                         />
                       </label>
-                      <Button type="submit" size="sm" className="self-end">Save quota</Button>
+                      <Button type="submit" size="sm" className="self-end">
+                        Save quota
+                      </Button>
                     </form>
                   )}
                 </TableCell>
@@ -191,7 +200,10 @@ export default async function SlotsPage({
             ))}
             {!data.slots.length && (
               <TableRow>
-                <TableCell colSpan={3} className="text-center text-muted-foreground">
+                <TableCell
+                  colSpan={3}
+                  className="text-center text-muted-foreground"
+                >
                   No booked windows yet.
                 </TableCell>
               </TableRow>

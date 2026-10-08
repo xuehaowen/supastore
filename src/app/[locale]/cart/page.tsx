@@ -108,7 +108,11 @@ export default async function Cart({
                       <Hidden name="locale" value={locale} />
                       <Hidden name="itemId" value={item.id} />
                       <Hidden name="quantity" value="0" />
-                      <Button type="submit" variant="link" className="text-muted-foreground hover:text-destructive">
+                      <Button
+                        type="submit"
+                        variant="link"
+                        className="text-muted-foreground hover:text-destructive"
+                      >
                         {t("remove")}
                       </Button>
                     </form>

@@ -81,23 +81,21 @@ export async function receiveReturnAction(form: FormData) {
       await receiveGoodsReturn({
         staffUserId: await staffIdentity(),
         returnId: id,
-        items: form
-          .getAll("itemIds")
-          .map((value) => ({
-            returnItemId: String(value),
-            restock: parseActionInteger(
-              text(form, `restock.${value}`),
-              "Restockable quantity",
-              0,
-              999,
-            ),
-            damaged: parseActionInteger(
-              text(form, `damaged.${value}`),
-              "Damaged quantity",
-              0,
-              999,
-            ),
-          })),
+        items: form.getAll("itemIds").map((value) => ({
+          returnItemId: String(value),
+          restock: parseActionInteger(
+            text(form, `restock.${value}`),
+            "Restockable quantity",
+            0,
+            999,
+          ),
+          damaged: parseActionInteger(
+            text(form, `damaged.${value}`),
+            "Damaged quantity",
+            0,
+            999,
+          ),
+        })),
       });
     },
   );

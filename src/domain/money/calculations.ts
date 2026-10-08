@@ -48,14 +48,29 @@ export const MAX_SAFE_QUANTITY = 10_000;
 export const MAX_SAFE_AMOUNT_CENTS = 1_000_000_000; // 10 million dollars
 
 export function assertValidQuantity(quantity: number): void {
-  if (!Number.isInteger(quantity) || quantity <= 0 || quantity > MAX_SAFE_QUANTITY) {
-    throw new Error(`Invalid quantity: ${quantity}. Must be an integer between 1 and ${MAX_SAFE_QUANTITY}.`);
+  if (
+    !Number.isInteger(quantity) ||
+    quantity <= 0 ||
+    quantity > MAX_SAFE_QUANTITY
+  ) {
+    throw new Error(
+      `Invalid quantity: ${quantity}. Must be an integer between 1 and ${MAX_SAFE_QUANTITY}.`,
+    );
   }
 }
 
-export function assertNonNegativeCents(amountCents: number, fieldName = 'Amount'): void {
-  if (!Number.isInteger(amountCents) || amountCents < 0 || amountCents > MAX_SAFE_AMOUNT_CENTS) {
-    throw new Error(`${fieldName} must be a non-negative integer minor unit under ${MAX_SAFE_AMOUNT_CENTS}. Received: ${amountCents}`);
+export function assertNonNegativeCents(
+  amountCents: number,
+  fieldName = "Amount",
+): void {
+  if (
+    !Number.isInteger(amountCents) ||
+    amountCents < 0 ||
+    amountCents > MAX_SAFE_AMOUNT_CENTS
+  ) {
+    throw new Error(
+      `${fieldName} must be a non-negative integer minor unit under ${MAX_SAFE_AMOUNT_CENTS}. Received: ${amountCents}`,
+    );
   }
 }
 
@@ -65,10 +80,10 @@ export function assertNonNegativeCents(amountCents: number, fieldName = 'Amount'
  */
 export function roundHalfUp(numerator: bigint, denominator: bigint): number {
   if (denominator === 0n) {
-    throw new Error('Division by zero in roundHalfUp');
+    throw new Error("Division by zero in roundHalfUp");
   }
 
-  const isNegative = (numerator < 0n) !== (denominator < 0n);
+  const isNegative = numerator < 0n !== denominator < 0n;
   const absNum = numerator < 0n ? -numerator : numerator;
   const absDen = denominator < 0n ? -denominator : denominator;
 
@@ -89,8 +104,11 @@ export function roundHalfUp(numerator: bigint, denominator: bigint): number {
 /**
  * Calculate tax for an exclusive amount with basis points (1 bp = 0.01%, 10,000 bp = 100%).
  */
-export function calculateExclusiveTaxCents(amountCents: number, rateBasisPoints: number): number {
-  assertNonNegativeCents(amountCents, 'Amount for exclusive tax');
+export function calculateExclusiveTaxCents(
+  amountCents: number,
+  rateBasisPoints: number,
+): number {
+  assertNonNegativeCents(amountCents, "Amount for exclusive tax");
   if (rateBasisPoints <= 0) return 0;
 
   const num = BigInt(amountCents) * BigInt(rateBasisPoints);
@@ -102,8 +120,11 @@ export function calculateExclusiveTaxCents(amountCents: number, rateBasisPoints:
  * Extract tax from an inclusive amount with basis points.
  * T_inclusive = roundHalfUp(Amount * rate / (1 + rate)) = roundHalfUp(Amount * bps / (10000 + bps))
  */
-export function calculateInclusiveTaxCents(amountCents: number, rateBasisPoints: number): number {
-  assertNonNegativeCents(amountCents, 'Amount for inclusive tax');
+export function calculateInclusiveTaxCents(
+  amountCents: number,
+  rateBasisPoints: number,
+): number {
+  assertNonNegativeCents(amountCents, "Amount for inclusive tax");
   if (rateBasisPoints <= 0) return 0;
 
   const num = BigInt(amountCents) * BigInt(rateBasisPoints);
@@ -116,7 +137,11 @@ export function calculateInclusiveTaxCents(amountCents: number, rateBasisPoints:
  */
 export function calculatePurchaseTotal(
   items: LineItemInput[],
-  shipping: ShippingInput = { amountCents: 0, taxRateBasisPoints: 0, isTaxInclusive: false }
+  shipping: ShippingInput = {
+    amountCents: 0,
+    taxRateBasisPoints: 0,
+    isTaxInclusive: false,
+  },
 ): PurchaseCalculationResult {
   let merchandiseSubtotalCents = 0;
   let exclusiveTaxCents = 0;
@@ -124,14 +149,16 @@ export function calculatePurchaseTotal(
 
   const calculatedItems: LineItemCalculation[] = items.map((item) => {
     assertValidQuantity(item.quantity);
-    assertNonNegativeCents(item.unitPriceCents, 'Unit price');
+    assertNonNegativeCents(item.unitPriceCents, "Unit price");
 
     const grossCents = item.unitPriceCents * item.quantity;
-    const discountCents = (item as LineItemInput & { discountCents?: number }).discountCents ?? 0;
-    assertNonNegativeCents(discountCents, 'Line discount');
-    if (discountCents > grossCents) throw new Error('Line discount exceeds merchandise');
+    const discountCents =
+      (item as LineItemInput & { discountCents?: number }).discountCents ?? 0;
+    assertNonNegativeCents(discountCents, "Line discount");
+    if (discountCents > grossCents)
+      throw new Error("Line discount exceeds merchandise");
     const subtotalCents = grossCents - discountCents;
-    assertNonNegativeCents(subtotalCents, 'Line subtotal');
+    assertNonNegativeCents(subtotalCents, "Line subtotal");
 
     const rateBps = item.taxRateBasisPoints ?? 0;
     const isInclusive = item.isTaxInclusive ?? false;
@@ -158,17 +185,23 @@ export function calculatePurchaseTotal(
     };
   });
 
-  assertNonNegativeCents(shipping.amountCents, 'Shipping amount');
+  assertNonNegativeCents(shipping.amountCents, "Shipping amount");
   const shippingRateBps = shipping.taxRateBasisPoints ?? 0;
   const shippingIsInclusive = shipping.isTaxInclusive ?? false;
 
   let shippingTaxCents = 0;
   if (shippingRateBps > 0) {
     if (shippingIsInclusive) {
-      shippingTaxCents = calculateInclusiveTaxCents(shipping.amountCents, shippingRateBps);
+      shippingTaxCents = calculateInclusiveTaxCents(
+        shipping.amountCents,
+        shippingRateBps,
+      );
       inclusiveTaxCents += shippingTaxCents;
     } else {
-      shippingTaxCents = calculateExclusiveTaxCents(shipping.amountCents, shippingRateBps);
+      shippingTaxCents = calculateExclusiveTaxCents(
+        shipping.amountCents,
+        shippingRateBps,
+      );
       exclusiveTaxCents += shippingTaxCents;
     }
   }
@@ -179,9 +212,10 @@ export function calculatePurchaseTotal(
     isTaxInclusive: shippingIsInclusive,
   };
 
-  const totalPayableCents = merchandiseSubtotalCents + shipping.amountCents + exclusiveTaxCents;
+  const totalPayableCents =
+    merchandiseSubtotalCents + shipping.amountCents + exclusiveTaxCents;
 
-  assertNonNegativeCents(totalPayableCents, 'Total payable P');
+  assertNonNegativeCents(totalPayableCents, "Total payable P");
 
   return {
     merchandiseSubtotalCents,

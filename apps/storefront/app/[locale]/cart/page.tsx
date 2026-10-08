@@ -19,7 +19,12 @@ export default async function CartPage({
       <h1>{m.cart.title}</h1>
       {cart && cart.items.length ? (
         <>
-          <CartEditor cart={cart} locale={locale} store={store} messages={m.cart} />
+          <CartEditor
+            cart={cart}
+            locale={locale}
+            store={store}
+            messages={m.cart}
+          />
           <p>{money(cart.subtotalCents, store.currency, store.precision)}</p>
           <Link href={`/${locale}/checkout`}>{m.cart.checkout}</Link>
         </>

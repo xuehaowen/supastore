@@ -36,17 +36,35 @@ describe("domain validation edge cases", () => {
 
   it("accepts JPEG and WebP signatures and rejects unknown bytes", () => {
     expect(
-      validateEvidence(Uint8Array.from([255, 216, 255]), 3, 3, "image/jpeg", "image/jpeg"),
+      validateEvidence(
+        Uint8Array.from([255, 216, 255]),
+        3,
+        3,
+        "image/jpeg",
+        "image/jpeg",
+      ),
     ).toBe("image/jpeg");
     const webp = new Uint8Array(12);
     webp.set([82, 73, 70, 70], 0);
     webp.set([87, 69, 66, 80], 8);
-    expect(validateEvidence(webp, 12, 12, "image/webp", "image/webp")).toBe("image/webp");
-    expect(() => validateEvidence(Uint8Array.from([1, 2, 3]), 3, 3, "image/png", "image/png")).toThrow();
+    expect(validateEvidence(webp, 12, 12, "image/webp", "image/webp")).toBe(
+      "image/webp",
+    );
+    expect(() =>
+      validateEvidence(
+        Uint8Array.from([1, 2, 3]),
+        3,
+        3,
+        "image/png",
+        "image/png",
+      ),
+    ).toThrow();
   });
 
   it("compares destinations across type, hash, raw, and incomplete values", () => {
-    expect(areDestinationsEqual({ type: "cash" }, { type: "card" })).toBe(false);
+    expect(areDestinationsEqual({ type: "cash" }, { type: "card" })).toBe(
+      false,
+    );
     expect(
       areDestinationsEqual(
         { type: "bank_account", accountNumberHash: "a" },
@@ -69,10 +87,12 @@ describe("domain validation edge cases", () => {
     expect(() => assertValidQuantity(0)).toThrow();
     expect(() => assertValidQuantity(10_001)).toThrow();
     expect(() => assertNonNegativeCents(-1)).toThrow();
-    expect(calculatePurchaseTotal(
-      [{ unitPriceCents: 1000, quantity: 1, taxRateBasisPoints: 0 }],
-      { amountCents: 500, taxRateBasisPoints: 2000, isTaxInclusive: true },
-    ).shipping.taxCents).toBe(83);
+    expect(
+      calculatePurchaseTotal(
+        [{ unitPriceCents: 1000, quantity: 1, taxRateBasisPoints: 0 }],
+        { amountCents: 500, taxRateBasisPoints: 2000, isTaxInclusive: true },
+      ).shipping.taxCents,
+    ).toBe(83);
   });
 
   it("rejects malformed reference codes and ignores unsupported checksum input", () => {

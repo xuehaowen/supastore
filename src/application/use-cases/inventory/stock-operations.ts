@@ -272,16 +272,14 @@ export async function consumeShipmentStock(
         status: consumed === hold.quantity ? "consumed" : "active",
       })
       .where(eq(stockReservations.id, hold.id));
-    await tx
-      .insert(stockMovements)
-      .values({
-        variantId: hold.variantId,
-        orderId,
-        delta: -quantity,
-        reason: "Shipment dispatched",
-        actorId,
-        requestKey: `shipment:${shipmentId}:${hold.orderItemId}`,
-      });
+    await tx.insert(stockMovements).values({
+      variantId: hold.variantId,
+      orderId,
+      delta: -quantity,
+      reason: "Shipment dispatched",
+      actorId,
+      requestKey: `shipment:${shipmentId}:${hold.orderItemId}`,
+    });
   }
 }
 export async function restockReturnedGoods(

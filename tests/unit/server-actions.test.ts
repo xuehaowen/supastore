@@ -154,7 +154,9 @@ vi.mock("@/application/use-cases/record-receipt", () => ({
 vi.mock("@/application/use-cases/confirm-order", () => ({
   confirmOrder: mocks.commands.confirmOrder,
 }));
-vi.mock("@/application/use-cases/fulfillment/dispatch-order", () => ({dispatchOrder: mocks.commands.dispatchOrder}));
+vi.mock("@/application/use-cases/fulfillment/dispatch-order", () => ({
+  dispatchOrder: mocks.commands.dispatchOrder,
+}));
 vi.mock("@/application/use-cases/fulfill-order", () => ({
   fulfillOrder: mocks.commands.fulfillOrder,
 }));
@@ -516,7 +518,10 @@ const expectedPayloads: Record<string, unknown> = {
     rawReference: "BANK-123",
   },
   confirmPayment: { staffUserId: "staff-session", orderId: id },
-  dispatchConfirmedOrder: {orderId: "00000000-0000-0000-0000-000000000001", carrier: "Manual delivery"},
+  dispatchConfirmedOrder: {
+    orderId: "00000000-0000-0000-0000-000000000001",
+    carrier: "Manual delivery",
+  },
   fulfillConfirmedOrder: {
     staffUserId: "staff-session",
     orderId: id,

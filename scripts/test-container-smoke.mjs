@@ -38,7 +38,11 @@ assert.match(await home.text(), /Generic smoke store/);
 const store = await api("store", undefined, "GET");
 assert.equal(store.storeName, "Generic smoke store");
 const reusableConnection = await request("/api/v1/catalog");
-assert.notEqual(reusableConnection.headers.get("connection"), "close", "API proxy must allow persistent client connections");
+assert.notEqual(
+  reusableConnection.headers.get("connection"),
+  "close",
+  "API proxy must allow persistent client connections",
+);
 await reusableConnection.arrayBuffer();
 const catalog = await api("catalog", undefined, "GET");
 const product = await api(

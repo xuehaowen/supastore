@@ -73,7 +73,11 @@ try {
       });
       databaseProcess.once("exit", (code) => {
         clearTimeout(timer);
-        reject(new Error(`Integration database exited with ${code}: ${startupDiagnostics}`));
+        reject(
+          new Error(
+            `Integration database exited with ${code}: ${startupDiagnostics}`,
+          ),
+        );
       });
       databaseProcess.stderr.on("data", (data) => {
         startupDiagnostics = (startupDiagnostics + String(data)).slice(-8000);

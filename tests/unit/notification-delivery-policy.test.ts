@@ -92,13 +92,36 @@ describe("provider-neutral delivery outcome policy", () => {
     ).toBe("exhausted");
   });
   it("keeps prior ambiguity bounded when a later request receives a rejection", () => {
-    const capabilities = {deliveryTracking: true, idempotencyWindowMs: 300000};
-    const rejected = {status: "rejected" as const, code: "rate_limit", retryable: true, retryAfterMs: 3600000};
-    const result = deliveryOutcome(rejected, {...context, capabilities, attempts: 2, hadUncertainty: true});
+    const capabilities = {
+      deliveryTracking: true,
+      idempotencyWindowMs: 300000,
+    };
+    const rejected = {
+      status: "rejected" as const,
+      code: "rate_limit",
+      retryable: true,
+      retryAfterMs: 3600000,
+    };
+    const result = deliveryOutcome(rejected, {
+      ...context,
+      capabilities,
+      attempts: 2,
+      hadUncertainty: true,
+    });
     expect(result.status).toBe("review");
     expect(result.retryAfter.getTime()).toBe(now.getTime() + 3600000);
-    expect(deliveryOutcome({status: "rejected", code: "invalid_request", retryable: false}, {...context, capabilities, hadUncertainty: true}).status).toBe("review");
-    expect(deliveryOutcome({status: "accepted", providerMessageId: "resolved"}, {...context, capabilities, hadUncertainty: true}).status).toBe("awaiting");
+    expect(
+      deliveryOutcome(
+        { status: "rejected", code: "invalid_request", retryable: false },
+        { ...context, capabilities, hadUncertainty: true },
+      ).status,
+    ).toBe("review");
+    expect(
+      deliveryOutcome(
+        { status: "accepted", providerMessageId: "resolved" },
+        { ...context, capabilities, hadUncertainty: true },
+      ).status,
+    ).toBe("awaiting");
   });
   it("keeps terminal delivery facts from regressing on duplicates and reordered callbacks", () => {
     expect(callbackStatus("delivered", "failed", false)).toBe("delivered");

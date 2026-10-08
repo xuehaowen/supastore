@@ -121,76 +121,205 @@ describe.skipIf(!server)("Stripe durable payment lifecycle", () => {
     expect(f.network).not.toHaveBeenCalled();
   });
   it("rejects mismatched new and existing card intents before network activity", async () => {
-    for (const [currency, precision] of [["USD", 0], ["JPY", 2], ["XYZ", 2]] as const) {
+    for (const [currency, precision] of [
+      ["USD", 0],
+      ["JPY", 2],
+      ["XYZ", 2],
+    ] as const) {
       const f = await fixture();
       await client`update orders set terms_snapshot=${JSON.stringify({ currency, precision })}::jsonb where id=${f.id}`;
-      await expect(startStripeCheckout({ orderId: f.id, sessionToken: f.token }, f.adapter)).rejects.toThrow(/precision|verified/);
-      expect(await client`select id from stripe_checkout_attempts where order_id=${f.id}`).toHaveLength(0);
+      await expect(
+        startStripeCheckout(
+          { orderId: f.id, sessionToken: f.token },
+          f.adapter,
+        ),
+      ).rejects.toThrow(/precision|verified/);
+      expect(
+        await client`select id from stripe_checkout_attempts where order_id=${f.id}`,
+      ).toHaveLength(0);
       expect(f.network).not.toHaveBeenCalled();
     }
     const f = await fixture();
-    await startStripeCheckout({ orderId: f.id, sessionToken: f.token }, f.adapter);
+    await startStripeCheckout(
+      { orderId: f.id, sessionToken: f.token },
+      f.adapter,
+    );
     await client`update orders set terms_snapshot='{"currency":"USD","precision":0}' where id=${f.id}`;
-    await expect(startStripeCheckout({ orderId: f.id, sessionToken: f.token }, f.adapter)).rejects.toThrow("precision");
+    await expect(
+      startStripeCheckout({ orderId: f.id, sessionToken: f.token }, f.adapter),
+    ).rejects.toThrow("precision");
     expect(f.network).toHaveBeenCalledTimes(1);
   });
   it("settles compatible JPY units unchanged and retains incompatible captured payments for review", async () => {
     const valid = await fixture();
     await client`update orders set terms_snapshot='{"currency":"JPY","precision":0}' where id=${valid.id}`;
     valid.session.currency = "jpy";
-    await startStripeCheckout({ orderId: valid.id, sessionToken: valid.token }, valid.adapter);
+    await startStripeCheckout(
+      { orderId: valid.id, sessionToken: valid.token },
+      valid.adapter,
+    );
     valid.session.status = "complete";
     valid.session.payment_status = "paid";
-    await acceptStripeEvent({ id: `evt_${randomUUID().replaceAll("-", "")}`, type: "checkout.session.completed", livemode: false, data: { object: { id: valid.session.id } } }, valid.adapter);
-    expect((await client`select amount_cents from payment_receipts where order_id=${valid.id}`)[0]!.amount_cents).toBe(1000);
+    await acceptStripeEvent(
+      {
+        id: `evt_${randomUUID().replaceAll("-", "")}`,
+        type: "checkout.session.completed",
+        livemode: false,
+        data: { object: { id: valid.session.id } },
+      },
+      valid.adapter,
+    );
+    expect(
+      (
+        await client`select amount_cents from payment_receipts where order_id=${valid.id}`
+      )[0]!.amount_cents,
+    ).toBe(1000);
     const invalid = await fixture();
-    await startStripeCheckout({ orderId: invalid.id, sessionToken: invalid.token }, invalid.adapter);
+    await startStripeCheckout(
+      { orderId: invalid.id, sessionToken: invalid.token },
+      invalid.adapter,
+    );
     await client`update orders set terms_snapshot='{"currency":"USD","precision":0}' where id=${invalid.id}`;
     invalid.session.status = "complete";
     invalid.session.payment_status = "paid";
-    expect((await acceptStripeEvent({ id: `evt_${randomUUID().replaceAll("-", "")}`, type: "checkout.session.completed", livemode: false, data: { object: { id: invalid.session.id } } }, invalid.adapter)).status).toBe("review");
-    expect(await client`select id from payment_receipts where order_id=${invalid.id}`).toHaveLength(0);
+    expect(
+      (
+        await acceptStripeEvent(
+          {
+            id: `evt_${randomUUID().replaceAll("-", "")}`,
+            type: "checkout.session.completed",
+            livemode: false,
+            data: { object: { id: invalid.session.id } },
+          },
+          invalid.adapter,
+        )
+      ).status,
+    ).toBe("review");
+    expect(
+      await client`select id from payment_receipts where order_id=${invalid.id}`,
+    ).toHaveLength(0);
   });
   it("blocks incompatible original-payment refunds before claiming a payout", async () => {
     const f = await fixture();
-    await startStripeCheckout({ orderId: f.id, sessionToken: f.token }, f.adapter);
+    await startStripeCheckout(
+      { orderId: f.id, sessionToken: f.token },
+      f.adapter,
+    );
     f.session.status = "complete";
     f.session.payment_status = "paid";
-    await acceptStripeEvent({ id: `evt_${randomUUID().replaceAll("-", "")}`, type: "checkout.session.completed", livemode: false, data: { object: { id: f.session.id } } }, f.adapter);
-    const [receipt] = await client`select id from payment_receipts where order_id=${f.id}`;
-    const refund = await authorizeRefund({ ownerUserId: owner, orderId: f.id, receiptId: receipt!.id, amountCents: 200, reason: "Unit regression" });
-    const [allocation] = await client`select id from payout_allocations where refund_authorization_id=${refund.authorizationId}`;
+    await acceptStripeEvent(
+      {
+        id: `evt_${randomUUID().replaceAll("-", "")}`,
+        type: "checkout.session.completed",
+        livemode: false,
+        data: { object: { id: f.session.id } },
+      },
+      f.adapter,
+    );
+    const [receipt] =
+      await client`select id from payment_receipts where order_id=${f.id}`;
+    const refund = await authorizeRefund({
+      ownerUserId: owner,
+      orderId: f.id,
+      receiptId: receipt!.id,
+      amountCents: 200,
+      reason: "Unit regression",
+    });
+    const [allocation] =
+      await client`select id from payout_allocations where refund_authorization_id=${refund.authorizationId}`;
     await client`update orders set terms_snapshot='{"currency":"USD","precision":0}' where id=${f.id}`;
     const calls = f.network.mock.calls.length;
-    await expect(sendStripeRefund({ allocationId: allocation!.id, ownerUserId: owner }, f.adapter)).rejects.toThrow("precision");
-    expect(await client`select id from payout_attempts where allocation_id=${allocation!.id}`).toHaveLength(0);
-    expect(await client`select id from stripe_refund_intents where allocation_id=${allocation!.id}`).toHaveLength(0);
+    await expect(
+      sendStripeRefund(
+        { allocationId: allocation!.id, ownerUserId: owner },
+        f.adapter,
+      ),
+    ).rejects.toThrow("precision");
+    expect(
+      await client`select id from payout_attempts where allocation_id=${allocation!.id}`,
+    ).toHaveLength(0);
+    expect(
+      await client`select id from stripe_refund_intents where allocation_id=${allocation!.id}`,
+    ).toHaveLength(0);
     expect(f.network).toHaveBeenCalledTimes(calls);
     await client`update orders set terms_snapshot='{"currency":"USD","precision":2}' where id=${f.id}`;
-    f.network.mockImplementationOnce(async () => Response.json({ id: `re_${f.session.payment_intent}`, amount: 200, currency: "usd", payment_intent: f.session.payment_intent, status: "pending" }));
-    await sendStripeRefund({ allocationId: allocation!.id, ownerUserId: owner }, f.adapter);
+    f.network.mockImplementationOnce(async () =>
+      Response.json({
+        id: `re_${f.session.payment_intent}`,
+        amount: 200,
+        currency: "usd",
+        payment_intent: f.session.payment_intent,
+        status: "pending",
+      }),
+    );
+    await sendStripeRefund(
+      { allocationId: allocation!.id, ownerUserId: owner },
+      f.adapter,
+    );
     await client`update orders set terms_snapshot='{"currency":"USD","precision":0}' where id=${f.id}`;
     const retryCalls = f.network.mock.calls.length;
-    await expect(sendStripeRefund({ allocationId: allocation!.id, ownerUserId: owner }, f.adapter)).rejects.toThrow("precision");
+    await expect(
+      sendStripeRefund(
+        { allocationId: allocation!.id, ownerUserId: owner },
+        f.adapter,
+      ),
+    ).rejects.toThrow("precision");
     expect(f.network).toHaveBeenCalledTimes(retryCalls);
-    expect(await client`select id from payout_attempts where allocation_id=${allocation!.id}`).toHaveLength(1);
+    expect(
+      await client`select id from payout_attempts where allocation_id=${allocation!.id}`,
+    ).toHaveLength(1);
   });
   it("disables incompatible card-only quote/readiness and never exposes the provider account as manual payment", async () => {
-    const product = await createProduct({ staffUserId: owner, title: "Units fixture", handle: `units-${randomUUID()}`, variants: [{ sku: randomUUID(), title: "Default", priceCents: 1000 }] });
+    const product = await createProduct({
+      staffUserId: owner,
+      title: "Units fixture",
+      handle: `units-${randomUUID()}`,
+      variants: [{ sku: randomUUID(), title: "Default", priceCents: 1000 }],
+    });
     const guestSessionId = randomUUID();
-    const cart = await addToCart({ guestSessionId, variantId: product.variants[0]!.id, quantity: 1 });
+    const cart = await addToCart({
+      guestSessionId,
+      variantId: product.variants[0]!.id,
+      quantity: 1,
+    });
     await client`update store_settings set precision=0`;
     try {
-      const quote = await getQuote({ guestSessionId, cartId: cart.id, fulfillmentType: "shipping", shippingAddress: { country: "US", address: "1 Fixture St" } });
-      expect((quote.termsSnapshot as { onlinePayment?: boolean }).onlinePayment).toBe(false);
-      expect((await getLaunchReadiness()).checklist.find(item => item.key === "payment")!.isReady).toBe(false);
+      const quote = await getQuote({
+        guestSessionId,
+        cartId: cart.id,
+        fulfillmentType: "shipping",
+        shippingAddress: { country: "US", address: "1 Fixture St" },
+      });
+      expect(
+        (quote.termsSnapshot as { onlinePayment?: boolean }).onlinePayment,
+      ).toBe(false);
+      expect(
+        (await getLaunchReadiness()).checklist.find(
+          (item) => item.key === "payment",
+        )!.isReady,
+      ).toBe(false);
       const response = await publicStore();
       const store = (await response.json()).data;
       expect(store.stripeConfigured).toBe(false);
-      expect(store.paymentMethods.some((method: { type: string }) => method.type === "stripe")).toBe(false);
-      const [provider] = await client`select id from payment_accounts where account_type='stripe' limit 1`;
-      await expect(getQuote({ guestSessionId, cartId: cart.id, fulfillmentType: "shipping", shippingAddress: { country: "US", address: "1 Fixture St" }, paymentAccountId: provider!.id })).rejects.toThrow("active payment");
-    } finally { await client`update store_settings set precision=2`; }
+      expect(
+        store.paymentMethods.some(
+          (method: { type: string }) => method.type === "stripe",
+        ),
+      ).toBe(false);
+      const [provider] =
+        await client`select id from payment_accounts where account_type='stripe' limit 1`;
+      await expect(
+        getQuote({
+          guestSessionId,
+          cartId: cart.id,
+          fulfillmentType: "shipping",
+          shippingAddress: { country: "US", address: "1 Fixture St" },
+          paymentAccountId: provider!.id,
+        }),
+      ).rejects.toThrow("active payment");
+    } finally {
+      await client`update store_settings set precision=2`;
+    }
   });
   it("creates a generic card-only purchase through cart and quote without a manual account", async () => {
     const code = randomUUID();
@@ -333,20 +462,42 @@ describe.skipIf(!server)("Stripe durable payment lifecycle", () => {
       const f = await fixture();
       await client`update orders set terms_snapshot=${JSON.stringify({ currency: "USD", precision: 2, onlinePayment })}::jsonb where id=${f.id}`;
       const product = await createProduct({
-        staffUserId: owner, title: "Expiry fixture", handle: `expiry-${randomUUID()}`,
+        staffUserId: owner,
+        title: "Expiry fixture",
+        handle: `expiry-${randomUUID()}`,
         variants: [{ sku: randomUUID(), title: "Default", priceCents: 1000 }],
       });
       const variantId = product.variants[0]!.id;
       await client`insert into variant_stock(variant_id,tracking_enabled,on_hand,reserved) values(${variantId},true,2,1)`;
-      const [item] = await client`insert into order_items(order_id,variant_id,quantity,unit_price_cents,line_total_cents) values(${f.id},${variantId},1,1000,1000) returning id`;
+      const [item] =
+        await client`insert into order_items(order_id,variant_id,quantity,unit_price_cents,line_total_cents) values(${f.id},${variantId},1,1000,1000) returning id`;
       await client`insert into stock_reservations(order_id,order_item_id,variant_id,quantity) values(${f.id},${item!.id},${variantId},1)`;
-      await startStripeCheckout({ orderId: f.id, sessionToken: f.token }, f.adapter);
+      await startStripeCheckout(
+        { orderId: f.id, sessionToken: f.token },
+        f.adapter,
+      );
       f.session.status = "expired";
-      const event = { id: `evt_${randomUUID().replaceAll("-", "")}`, type: "checkout.session.expired", livemode: false, data: { object: { id: f.session.id } } };
+      const event = {
+        id: `evt_${randomUUID().replaceAll("-", "")}`,
+        type: "checkout.session.expired",
+        livemode: false,
+        data: { object: { id: f.session.id } },
+      };
       await acceptStripeEvent(event, f.adapter);
-      expect((await client`select lifecycle_status from orders where id=${f.id}`)[0]!.lifecycle_status).toBe(onlinePayment ? "cancelled" : "unpaid");
-      expect((await client`select status from stock_reservations where order_id=${f.id}`)[0]!.status).toBe(onlinePayment ? "released" : "active");
-      expect((await client`select reserved from variant_stock where variant_id=${variantId}`)[0]!.reserved).toBe(onlinePayment ? 0 : 1);
+      expect(
+        (await client`select lifecycle_status from orders where id=${f.id}`)[0]!
+          .lifecycle_status,
+      ).toBe(onlinePayment ? "cancelled" : "unpaid");
+      expect(
+        (
+          await client`select status from stock_reservations where order_id=${f.id}`
+        )[0]!.status,
+      ).toBe(onlinePayment ? "released" : "active");
+      expect(
+        (
+          await client`select reserved from variant_stock where variant_id=${variantId}`
+        )[0]!.reserved,
+      ).toBe(onlinePayment ? 0 : 1);
     }
   });
 });

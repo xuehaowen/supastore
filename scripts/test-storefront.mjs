@@ -186,7 +186,8 @@ try {
     start(["node_modules/tsx/dist/cli.mjs", "scripts/seed-demo.ts"]),
   );
 
-  if (production) await completed(start(["node_modules/next/dist/bin/next", "build"]));
+  if (production)
+    await completed(start(["node_modules/next/dist/bin/next", "build"]));
   if (production)
     await completed(
       start(["node_modules/next/dist/bin/next", "build", "apps/storefront"]),

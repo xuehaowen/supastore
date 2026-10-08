@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import { ApiError, request } from "../lib/client";
 import type { CustomerAccountDto as Account } from "@supastore/contracts";
@@ -36,7 +36,7 @@ export function AccountClient({
     return () => {
       active = false;
     };
-  }, []);
+  }, [m.account.unableToLoad]);
   return (
     <div className="stack">
       <button
@@ -71,7 +71,9 @@ export function AccountClient({
                 await load();
                 setMessage(m.account.profileSaved);
               } catch (e) {
-                setMessage(e instanceof Error ? e.message : m.account.profileSaved);
+                setMessage(
+                  e instanceof Error ? e.message : m.account.profileSaved,
+                );
               } finally {
                 setBusy(false);
               }
@@ -100,8 +102,7 @@ export function AccountClient({
           {account.credit && (
             <p>
               {m.account.availableCredit}:{" "}
-              {(account.credit.balanceCents -
-                account.credit.reservedCents) /
+              {(account.credit.balanceCents - account.credit.reservedCents) /
                 10 ** account.credit.precision}{" "}
               {account.credit.currency}
             </p>
@@ -115,14 +116,20 @@ export function AccountClient({
                   await request("v1/account/orders", { orderId: o.id });
                   window.location.assign(`/${locale}/orders/${o.id}`);
                 } catch (e) {
-                  setMessage(e instanceof Error ? e.message : m.account.profileSaved);
+                  setMessage(
+                    e instanceof Error ? e.message : m.account.profileSaved,
+                  );
                 }
               }}
             >
               {o.referenceCode} · {o.lifecycleStatus}
             </button>
           ))}
-          <PasswordForm locale={locale} messages={m.auth} onMessage={setMessage} />
+          <PasswordForm
+            locale={locale}
+            messages={m.auth}
+            onMessage={setMessage}
+          />
           <h2>{m.address.title}</h2>
           {[...account.addresses, { id: "", label: "", address: {} }].map(
             (address) => (
@@ -141,7 +148,9 @@ export function AccountClient({
                 await request("auth/sign-out", {});
                 window.location.reload();
               } catch (e) {
-                setMessage(e instanceof Error ? e.message : m.account.profileSaved);
+                setMessage(
+                  e instanceof Error ? e.message : m.account.profileSaved,
+                );
               }
             }}
           >
@@ -403,7 +412,12 @@ export function ResetPasswordClient({
       {!token || error ? (
         <p role="alert">{m.linkInvalidOrExpired}</p>
       ) : (
-        <PasswordForm locale={locale} messages={m} token={token} onMessage={setMessage} />
+        <PasswordForm
+          locale={locale}
+          messages={m}
+          token={token}
+          onMessage={setMessage}
+        />
       )}
       <p role="status">{message}</p>
       <a href={`/${locale}/account`}>{m.returnToAccount}</a>

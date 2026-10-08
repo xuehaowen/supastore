@@ -278,8 +278,8 @@ export default async function OrderDetail({
               />
               <Field name="reference" label="Actual payment reference" />
               <label className="flex items-center gap-2">
-                <Checkbox name="verified" required />I verified the
-                actual receiving account and amount.
+                <Checkbox name="verified" required />I verified the actual
+                receiving account and amount.
               </label>
               <Button type="submit">Record receipt</Button>
             </form>
@@ -292,7 +292,9 @@ export default async function OrderDetail({
       )}
       <section className="panel">
         <h2>Fulfillment</h2>
-         <Link href={`/admin/fulfillment/shipments?orderId=${id}`}>Manage partial shipments & reschedule booking</Link>
+        <Link href={`/admin/fulfillment/shipments?orderId=${id}`}>
+          Manage partial shipments & reschedule booking
+        </Link>
         <p>
           {data.fulfillment?.status.replaceAll("_", " ")} ·{" "}
           {data.fulfillment?.carrier || ""} ·{" "}
@@ -423,17 +425,29 @@ export default async function OrderDetail({
           <div>
             <Alert variant="destructive">
               <AlertDescription>
-                Reward funding requires review after a receipt correction. Pending
-                rewards are suspended; issued rewards have been conservatively
-                reversed. Original-source refund entitlements remain recorded.
+                Reward funding requires review after a receipt correction.
+                Pending rewards are suspended; issued rewards have been
+                conservatively reversed. Original-source refund entitlements
+                remain recorded.
               </AlertDescription>
             </Alert>
-            {data.identity.role === "owner" && <form action={resolveRewardReviewAction}>
-              <Hidden name="orderId" value={o.id}/><Hidden name="requestKey" value={randomUUID()}/>
-              <p>Verify and correct every original frozen receipt first. Another payment cannot replace a corrected source. Resolving review restores only the supported accepted reward, including its debt history.</p>
-              <Field name="reason" label="Verified funding evidence and review reason"/>
-              <Button type="submit">Resolve verified reward funding</Button>
-            </form>}
+            {data.identity.role === "owner" && (
+              <form action={resolveRewardReviewAction}>
+                <Hidden name="orderId" value={o.id} />
+                <Hidden name="requestKey" value={randomUUID()} />
+                <p>
+                  Verify and correct every original frozen receipt first.
+                  Another payment cannot replace a corrected source. Resolving
+                  review restores only the supported accepted reward, including
+                  its debt history.
+                </p>
+                <Field
+                  name="reason"
+                  label="Verified funding evidence and review reason"
+                />
+                <Button type="submit">Resolve verified reward funding</Button>
+              </form>
+            )}
           </div>
         )}
       </section>

@@ -20,7 +20,7 @@
   "pickup": "Local pickup",
   "name": "Your name",
   "email": "Email address",
-  "address": "Street address",
+  "streetAddress": "Street address",
   "country": "Country code",
   "payment": "Payment method",
   "total": "Total",

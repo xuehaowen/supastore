@@ -83,15 +83,13 @@ export async function fulfillOrder(input: FulfillOrderInput) {
           deliveredAt: new Date(),
         })
         .returning();
-      await tx
-        .insert(shipmentItems)
-        .values(
-          items.map((item) => ({
-            shipmentId: manual!.id,
-            orderItemId: item.id,
-            quantity: item.quantity,
-          })),
-        );
+      await tx.insert(shipmentItems).values(
+        items.map((item) => ({
+          shipmentId: manual!.id,
+          orderItemId: item.id,
+          quantity: item.quantity,
+        })),
+      );
     } else if (
       !shipmentCoverageComplete(items, await shipmentLines(tx, order.id))
     )

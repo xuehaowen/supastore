@@ -3,6 +3,7 @@
 Supastore is packaged as a standalone, zero-external-cache Next.js 15 application running with PostgreSQL and S3-compatible object storage.
 
 ## Target Resource Footprint
+
 - **Memory Ceiling:** 256MB–512MB RAM for application container (`node server.js`).
 - **CPU:** 0.5–1.0 vCPU.
 - **Base Image:** Node.js 22 Alpine (<80MB compressed).
@@ -43,13 +44,16 @@ curl -f http://localhost:3000/api/health/ready
 ## 3. Railway / Fly.io / Render
 
 ### Railway
+
 1. Create a **PostgreSQL** database service.
 2. Deploy the Supastore repository. Railway detects the `Dockerfile` automatically.
 3. Link `DATABASE_URL` from the PostgreSQL service.
 4. Set `BETTER_AUTH_URL` to your Railway public domain (`https://*.up.railway.app`).
 
 ### Fly.io
+
 Deploy with `fly.toml`:
+
 ```toml
 app = "supastore"
 primary_region = "iad"
@@ -75,6 +79,7 @@ primary_region = "iad"
 ## 4. Managed PostgreSQL (Supabase / Neon / AWS RDS)
 
 When using connection poolers or serverless PostgreSQL:
+
 - Ensure session isolation is configured for transactional locks (`SELECT ... FOR UPDATE`).
 - Use direct connection string (port `5432` or session mode) rather than transaction mode poolers if row-level locking is required.
 - Set `sslmode=require` in production `DATABASE_URL`.

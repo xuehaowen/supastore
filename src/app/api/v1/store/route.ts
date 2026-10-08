@@ -35,7 +35,12 @@ export async function GET() {
             type: paymentAccounts.accountType,
           })
           .from(paymentAccounts)
-          .where(and(eq(paymentAccounts.isActive, true), ne(paymentAccounts.accountType, "stripe"))),
+          .where(
+            and(
+              eq(paymentAccounts.isActive, true),
+              ne(paymentAccounts.accountType, "stripe"),
+            ),
+          ),
         db.select().from(pickupLocation),
         db
           .select({

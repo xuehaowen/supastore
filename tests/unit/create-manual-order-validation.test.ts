@@ -25,7 +25,10 @@ describe("manual order validation", () => {
 
   it("rejects duplicate variants and invalid quantities", async () => {
     await expect(
-      createManualOrder({ ...input, items: [input.items[0]!, input.items[0]!] }),
+      createManualOrder({
+        ...input,
+        items: [input.items[0]!, input.items[0]!],
+      }),
     ).rejects.toThrow("duplicate product variants");
     await expect(
       createManualOrder({

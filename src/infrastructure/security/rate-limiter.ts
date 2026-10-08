@@ -1,4 +1,4 @@
-import { LRUCache } from 'lru-cache';
+import { LRUCache } from "lru-cache";
 
 export interface RateLimitOptions {
   maxRequests: number;
@@ -27,7 +27,7 @@ const cache = new LRUCache<string, RateLimitRecord>({
  */
 export function checkRateLimit(
   key: string,
-  options: RateLimitOptions = { maxRequests: 20, windowMs: 60_000 }
+  options: RateLimitOptions = { maxRequests: 20, windowMs: 60_000 },
 ): RateLimitResult {
   const now = Date.now();
   const record = cache.get(key);

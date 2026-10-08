@@ -94,19 +94,17 @@ export async function bulkUpdateVariants(input: {
       .update(products)
       .set({ quoteVersion: revision + 1, updatedAt: new Date() })
       .where(eq(products.id, productId));
-    await tx
-      .insert(auditRecords)
-      .values({
-        entityType: "product",
-        entityId: productId,
-        actorId: input.staffUserId,
-        action: "variants.bulk_updated",
-        details: {
-          before: selected,
-          priceCents,
-          isAvailable: input.isAvailable,
-        },
-      });
+    await tx.insert(auditRecords).values({
+      entityType: "product",
+      entityId: productId,
+      actorId: input.staffUserId,
+      action: "variants.bulk_updated",
+      details: {
+        before: selected,
+        priceCents,
+        isAvailable: input.isAvailable,
+      },
+    });
     return { updated: selected.length };
   });
 }

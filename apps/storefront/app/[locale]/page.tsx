@@ -1,4 +1,5 @@
-﻿import Link from "next/link";
+import Link from "next/link";
+import Image from "next/image";
 import { readApi, money, type Store } from "../../lib/api";
 import { alternateLinks, publicOrigin } from "../../lib/seo";
 import { getStorefrontMessages } from "../../lib/i18n";
@@ -85,9 +86,13 @@ export default async function Catalog({
         {catalog.items.map((p) => (
           <article className="card" key={p.id}>
             {p.coverImageKey && (
-              <img
+              <Image
                 src={`/api/assets?key=${encodeURIComponent(p.coverImageKey)}`}
                 alt=""
+                width={400}
+                height={300}
+                unoptimized
+                style={{ width: "100%", height: "auto" }}
               />
             )}
             <h2>

@@ -232,41 +232,68 @@ test("Account registration requires verification, retries sign-in, denies admin 
   ).toBeVisible();
 });
 
-test("customer profile and emailed password reset persist and reject the old password", async ({page,sql}) => {
-  const email=`reset-${Date.now()}@example.test`, oldPassword="SyntheticOldPassword123!", newPassword="SyntheticNewPassword123!";
-  const signup=await page.request.post("/api/auth/sign-up/email",{headers:{origin:process.env.APP_URL!},data:{name:"Reset customer",email,password:oldPassword}});
+test("customer profile and emailed password reset persist and reject the old password", async ({
+  page,
+  sql,
+}) => {
+  const email = `reset-${Date.now()}@example.test`,
+    oldPassword = "SyntheticOldPassword123!",
+    newPassword = "SyntheticNewPassword123!";
+  const signup = await page.request.post("/api/auth/sign-up/email", {
+    headers: { origin: process.env.APP_URL! },
+    data: { name: "Reset customer", email, password: oldPassword },
+  });
   expect(signup.ok()).toBe(true);
   await sql`update "user" set email_verified=true where email=${email}`;
   await page.goto("/en/account");
-  await page.getByLabel("Email",{exact:true}).fill(email);
-  await page.getByLabel("Password",{exact:true}).fill(oldPassword);
-  await page.getByRole("button",{name:"Sign in securely",exact:true}).click();
-  await page.getByLabel("Name",{exact:true}).fill("Updated reset customer");
-  await page.getByRole("button",{name:"Save profile",exact:true}).click();
-  await expect.poll(async()=> (await sql`select name from customers where email=${email}`)[0]?.name).toBe("Updated reset customer");
-  await page.getByRole("button",{name:"Sign out",exact:true}).click();
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(oldPassword);
+  await page
+    .getByRole("button", { name: "Sign in securely", exact: true })
+    .click();
+  await page.getByLabel("Name", { exact: true }).fill("Updated reset customer");
+  await page.getByRole("button", { name: "Save profile", exact: true }).click();
+  await expect
+    .poll(
+      async () =>
+        (await sql`select name from customers where email=${email}`)[0]?.name,
+    )
+    .toBe("Updated reset customer");
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page).toHaveURL(/\/en$/);
   await page.goto("/en/account");
-  await page.getByText("Forgot password?",{exact:true}).click();
+  await page.getByText("Forgot password?", { exact: true }).click();
   await page.getByLabel("Email for password reset").fill(email);
-  await page.getByRole("button",{name:"Send link",exact:true}).click();
+  await page.getByRole("button", { name: "Send link", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Check your inbox");
-  const messages:string[]=await (await page.request.get("http://127.0.0.1:9010")).json();
-  const message=messages.find(text=>text.includes(email)&&text.includes("resetUrl:"));
+  const messages: string[] = await (
+    await page.request.get("http://127.0.0.1:9010")
+  ).json();
+  const message = messages.find(
+    (text) => text.includes(email) && text.includes("resetUrl:"),
+  );
   expect(message).toBeTruthy();
   await page.goto(message!.match(/resetUrl: (https?:\/\/\S+)/)![1]!);
-  await page.getByLabel("New password",{exact:true}).fill(newPassword);
-  await page.getByLabel("Confirm password",{exact:true}).fill(newPassword);
-  await page.getByRole("button",{name:"Reset password",exact:true}).click();
+  await page.getByLabel("New password", { exact: true }).fill(newPassword);
+  await page.getByLabel("Confirm password", { exact: true }).fill(newPassword);
+  await page
+    .getByRole("button", { name: "Reset password", exact: true })
+    .click();
   await expect(page.getByRole("status")).toHaveText("Saved.");
-  await page.getByRole("link",{name:"Return to sign in"}).click();
-  await page.getByLabel("Email",{exact:true}).fill(email);
-  await page.getByLabel("Password",{exact:true}).fill(oldPassword);
-  await page.getByRole("button",{name:"Sign in securely",exact:true}).click();
+  await page.getByRole("link", { name: "Return to sign in" }).click();
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(oldPassword);
+  await page
+    .getByRole("button", { name: "Sign in securely", exact: true })
+    .click();
   await expect(page.locator('[data-slot="alert"]')).toBeVisible();
-  await page.getByLabel("Password",{exact:true}).fill(newPassword);
-  await page.getByRole("button",{name:"Sign in securely",exact:true}).click();
-  await expect(page.getByRole("heading",{name:"Good to see you."})).toBeVisible();
+  await page.getByLabel("Password", { exact: true }).fill(newPassword);
+  await page
+    .getByRole("button", { name: "Sign in securely", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Good to see you." }),
+  ).toBeVisible();
 });
 test("M1 store email verification sends a local test link and rejects reuse", async ({
   admin,

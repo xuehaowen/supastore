@@ -35,7 +35,8 @@ export function validatePaymentReference(raw: string): {
     return {
       isValid: false,
       normalized: "",
-      error: "Payment reference must contain at least 3 alphanumeric characters.",
+      error:
+        "Payment reference must contain at least 3 alphanumeric characters.",
     };
   }
 

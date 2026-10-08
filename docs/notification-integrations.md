@@ -60,20 +60,20 @@ required. STOP suppresses pending sends without erasing already accepted facts.
 
 ## Backend configuration
 
-| Setting | Meaning |
-| --- | --- |
-| `EMAIL_PROVIDER` | `nodemailer` or `disabled`; inferred from SMTP host when absent |
-| `SMTP_HOST/PORT/FROM` | Selected SMTP endpoint and sender |
-| `SMTP_USER/PASSWORD` | Optional authentication, kept private to the adapter |
-| `SMTP_SECURE` | Optional implicit TLS override; port 465 defaults secure |
-| `SMTP_REQUIRE_TLS` | Optional STARTTLS override; required by default off-loopback |
-| `SMS_PROVIDER` | `telnyx` or `disabled`, default disabled |
-| `PHONE_VERIFICATION_PROVIDER` | `telnyx` or `disabled`, default disabled |
-| `TELNYX_API_KEY` | Backend-only credential |
-| `TELNYX_FROM/MESSAGING_PROFILE_ID` | SMS sender and messaging profile |
-| `TELNYX_VERIFY_PROFILE_ID` | Verification profile; optional `_ZH` profile for Chinese |
-| `TELNYX_PUBLIC_KEY` | Signature validation for callbacks |
-| `DISABLE_OUTBOUND_DELIVERY` | Global suspension; no transport construction/sending |
+| Setting                            | Meaning                                                         |
+| ---------------------------------- | --------------------------------------------------------------- |
+| `EMAIL_PROVIDER`                   | `nodemailer` or `disabled`; inferred from SMTP host when absent |
+| `SMTP_HOST/PORT/FROM`              | Selected SMTP endpoint and sender                               |
+| `SMTP_USER/PASSWORD`               | Optional authentication, kept private to the adapter            |
+| `SMTP_SECURE`                      | Optional implicit TLS override; port 465 defaults secure        |
+| `SMTP_REQUIRE_TLS`                 | Optional STARTTLS override; required by default off-loopback    |
+| `SMS_PROVIDER`                     | `telnyx` or `disabled`, default disabled                        |
+| `PHONE_VERIFICATION_PROVIDER`      | `telnyx` or `disabled`, default disabled                        |
+| `TELNYX_API_KEY`                   | Backend-only credential                                         |
+| `TELNYX_FROM/MESSAGING_PROFILE_ID` | SMS sender and messaging profile                                |
+| `TELNYX_VERIFY_PROFILE_ID`         | Verification profile; optional `_ZH` profile for Chinese        |
+| `TELNYX_PUBLIC_KEY`                | Signature validation for callbacks                              |
+| `DISABLE_OUTBOUND_DELIVERY`        | Global suspension; no transport construction/sending            |
 
 Selected configuration fails fast if invalid. Provider identity uses nonsecret
 endpoint/sender/profile fields; credential rotation preserves that identity.

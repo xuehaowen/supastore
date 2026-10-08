@@ -31,10 +31,16 @@ import {
   settleOrderCredit,
 } from "./store-credit/credit-operations";
 import { parseActionInteger } from "@/application/common/request-validation";
-import { reserveSlot, reserveFulfillmentSlot } from "./inventory/slot-operations";
+import {
+  reserveSlot,
+  reserveFulfillmentSlot,
+} from "./inventory/slot-operations";
 import { commercePolicy } from "@/domain/commerce-policy";
 import { createRewardSnapshot, type RewardComponent } from "@/domain/rewards";
-import { stripeConfiguredFor, stripeCurrencyIssue } from "@/domain/stripe-currency";
+import {
+  stripeConfiguredFor,
+  stripeCurrencyIssue,
+} from "@/domain/stripe-currency";
 export interface CreateOrderInput {
   quoteId: string;
   guestSessionId: string;
@@ -125,7 +131,19 @@ export async function createOrder(input: CreateOrderInput) {
         "Your checkout changed or expired. Review the final total again before ordering.",
       );
     const terms = quote.termsSnapshot as QuoteTerms;
-    if (quote.totalPayableCents > creditAppliedCents && !terms.payment && !(terms.onlinePayment && stripeConfiguredFor(terms) && !stripeCurrencyIssue(terms.currency, terms.precision, quote.totalPayableCents - creditAppliedCents)))
+    if (
+      quote.totalPayableCents > creditAppliedCents &&
+      !terms.payment &&
+      !(
+        terms.onlinePayment &&
+        stripeConfiguredFor(terms) &&
+        !stripeCurrencyIssue(
+          terms.currency,
+          terms.precision,
+          quote.totalPayableCents - creditAppliedCents,
+        )
+      )
+    )
       throw new InvariantViolationError(
         "Choose a payment method for the amount remaining after store credit. Edit checkout and review again.",
       );
@@ -146,18 +164,65 @@ export async function createOrder(input: CreateOrderInput) {
     const customer = input.customerUserId
       ? await verifiedCustomer(tx, input.customerUserId)
       : undefined;
-    if (!input.staffUserId && !customer && !commercePolicy(settings.commercePolicy).guestCheckout)
-      throw new UnauthorizedError("Sign in with a verified account to check out.");
+    if (
+      !input.staffUserId &&
+      !customer &&
+      !commercePolicy(settings.commercePolicy).guestCheckout
+    )
+      throw new UnauthorizedError(
+        "Sign in with a verified account to check out.",
+      );
     const policy = commercePolicy(settings.commercePolicy);
-    const rewardComponents: RewardComponent[] = current.calculationItems.flatMap((item, index) => {
-      const calculated = current.result.lineItems[index]!;
-      return [
-        { id: item.variantId, type: "merchandise" as const, amount: calculated.subtotalCents - (calculated.isTaxInclusive ? calculated.taxCents : 0), eligible: item.rewardEligible },
-        { id: `tax:${item.variantId}`, type: "tax" as const, amount: calculated.taxCents, eligible: false },
-      ];
-    });
-    rewardComponents.push({ id: "fulfillment", type: "fulfillment", amount: current.result.shipping.amountCents - (current.result.shipping.isTaxInclusive ? current.result.shipping.taxCents : 0), eligible: false }, { id: "tax:fulfillment", type: "tax", amount: current.result.shipping.taxCents, eligible: false });
-    const rewardSnapshot = customer && current.terms.rewardProgramActive ? createRewardSnapshot({ policyVersion: String(settings.quoteVersion), customerId: customer.id, verified: true, enabled: true, rateBasisPoints: policy.rewardRateBasisPoints, externalAmount: quote.totalPayableCents - creditAppliedCents, components: rewardComponents }) : null;
+    const rewardComponents: RewardComponent[] =
+      current.calculationItems.flatMap((item, index) => {
+        const calculated = current.result.lineItems[index]!;
+        return [
+          {
+            id: item.variantId,
+            type: "merchandise" as const,
+            amount:
+              calculated.subtotalCents -
+              (calculated.isTaxInclusive ? calculated.taxCents : 0),
+            eligible: item.rewardEligible,
+          },
+          {
+            id: `tax:${item.variantId}`,
+            type: "tax" as const,
+            amount: calculated.taxCents,
+            eligible: false,
+          },
+        ];
+      });
+    rewardComponents.push(
+      {
+        id: "fulfillment",
+        type: "fulfillment",
+        amount:
+          current.result.shipping.amountCents -
+          (current.result.shipping.isTaxInclusive
+            ? current.result.shipping.taxCents
+            : 0),
+        eligible: false,
+      },
+      {
+        id: "tax:fulfillment",
+        type: "tax",
+        amount: current.result.shipping.taxCents,
+        eligible: false,
+      },
+    );
+    const rewardSnapshot =
+      customer && current.terms.rewardProgramActive
+        ? createRewardSnapshot({
+            policyVersion: String(settings.quoteVersion),
+            customerId: customer.id,
+            verified: true,
+            enabled: true,
+            rateBasisPoints: policy.rewardRateBasisPoints,
+            externalAmount: quote.totalPayableCents - creditAppliedCents,
+            components: rewardComponents,
+          })
+        : null;
     for (let attempt = 0; attempt < 10 && !order; attempt++) {
       [order] = await tx
         .insert(orders)
@@ -201,17 +266,58 @@ export async function createOrder(input: CreateOrderInput) {
     let fulfillmentSlotId: string | null = null;
     if (terms.pickup?.date) {
       const { locationId, date, startTime, endTime } = terms.pickup;
-      const [slot] = await tx.insert(pickupTimeSlots).values({ locationId, date, startTime, endTime })
-        .onConflictDoUpdate({ target: [pickupTimeSlots.locationId, pickupTimeSlots.date, pickupTimeSlots.startTime, pickupTimeSlots.endTime], set: { locationId } }).returning();
+      const [slot] = await tx
+        .insert(pickupTimeSlots)
+        .values({ locationId, date, startTime, endTime })
+        .onConflictDoUpdate({
+          target: [
+            pickupTimeSlots.locationId,
+            pickupTimeSlots.date,
+            pickupTimeSlots.startTime,
+            pickupTimeSlots.endTime,
+          ],
+          set: { locationId },
+        })
+        .returning();
       pickupSlotId = slot!.id;
-      fulfillmentSlotId = await reserveSlot(tx, order.id, pickupSlotId, settings.timezone);
+      fulfillmentSlotId = await reserveSlot(
+        tx,
+        order.id,
+        pickupSlotId,
+        settings.timezone,
+      );
     }
-    if (terms.delivery?.date && terms.delivery.startTime && terms.delivery.endTime) {
+    if (
+      terms.delivery?.date &&
+      terms.delivery.startTime &&
+      terms.delivery.endTime
+    ) {
       const { areaId, date, startTime, endTime } = terms.delivery;
       const { deliveryAreas } = await import("@/infrastructure/db/schema");
-      const [area] = await tx.select().from(deliveryAreas).where(eq(deliveryAreas.id, areaId));
-      const [slot] = await tx.insert(fulfillmentSlots).values({ deliveryAreaId: areaId, date, startTime, endTime, timezone: settings.timezone, capacity: area?.slotCapacity })
-        .onConflictDoUpdate({ target: [fulfillmentSlots.deliveryAreaId, fulfillmentSlots.date, fulfillmentSlots.startTime, fulfillmentSlots.endTime], set: { deliveryAreaId: areaId } }).returning();
+      const [area] = await tx
+        .select()
+        .from(deliveryAreas)
+        .where(eq(deliveryAreas.id, areaId));
+      const [slot] = await tx
+        .insert(fulfillmentSlots)
+        .values({
+          deliveryAreaId: areaId,
+          date,
+          startTime,
+          endTime,
+          timezone: settings.timezone,
+          capacity: area?.slotCapacity,
+        })
+        .onConflictDoUpdate({
+          target: [
+            fulfillmentSlots.deliveryAreaId,
+            fulfillmentSlots.date,
+            fulfillmentSlots.startTime,
+            fulfillmentSlots.endTime,
+          ],
+          set: { deliveryAreaId: areaId },
+        })
+        .returning();
       fulfillmentSlotId = slot!.id;
       await reserveFulfillmentSlot(tx, order.id, fulfillmentSlotId);
     }
@@ -240,9 +346,12 @@ export async function createOrder(input: CreateOrderInput) {
         orderId: order.id,
         discountCents: terms.promotion.discountCents,
       });
-    await tx
-      .insert(orderFulfillments)
-      .values({ orderId: order.id, status: "unfulfilled", pickupSlotId, fulfillmentSlotId });
+    await tx.insert(orderFulfillments).values({
+      orderId: order.id,
+      status: "unfulfilled",
+      pickupSlotId,
+      fulfillmentSlotId,
+    });
     await tx
       .update(carts)
       .set({ convertedOrderId: order.id, updatedAt: new Date() })

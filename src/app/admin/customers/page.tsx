@@ -122,7 +122,10 @@ export default async function CustomersPage({
                 ))}
             {!rows.length && (
               <TableRow>
-                <TableCell colSpan={3} className="text-center text-muted-foreground">
+                <TableCell
+                  colSpan={3}
+                  className="text-center text-muted-foreground"
+                >
                   No customers match this view.
                 </TableCell>
               </TableRow>

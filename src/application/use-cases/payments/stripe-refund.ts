@@ -69,11 +69,32 @@ export async function sendStripeRefund(
       throw new DomainError(
         "This allocation is not funded by a settled Stripe payment.",
       );
-    const [order] = await tx.select().from(orders).where(eq(orders.id, initial.orderId));
+    const [order] = await tx
+      .select()
+      .from(orders)
+      .where(eq(orders.id, initial.orderId));
     const terms = order!.termsSnapshot as QuoteTerms;
-    const unitIssue = stripeCurrencyIssue(terms.currency, terms.precision, checkout.amountCents) || stripeCurrencyIssue(terms.currency, terms.precision, existing?.amountCents ?? (allocation!.authorizedAmountCents - allocation!.settledAmountCents));
-    if (unitIssue || typeof terms.currency !== "string" || checkout.currency !== terms.currency.toLowerCase() || (existing && existing.currency !== checkout.currency))
-      throw new DomainError(unitIssue || "Original payment currency units require merchant review.");
+    const unitIssue =
+      stripeCurrencyIssue(
+        terms.currency,
+        terms.precision,
+        checkout.amountCents,
+      ) ||
+      stripeCurrencyIssue(
+        terms.currency,
+        terms.precision,
+        existing?.amountCents ??
+          allocation!.authorizedAmountCents - allocation!.settledAmountCents,
+      );
+    if (
+      unitIssue ||
+      typeof terms.currency !== "string" ||
+      checkout.currency !== terms.currency.toLowerCase() ||
+      (existing && existing.currency !== checkout.currency)
+    )
+      throw new DomainError(
+        unitIssue || "Original payment currency units require merchant review.",
+      );
     if (existing) return existing;
     const amountCents =
       allocation!.authorizedAmountCents - allocation!.settledAmountCents;

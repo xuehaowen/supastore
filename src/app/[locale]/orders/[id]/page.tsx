@@ -253,7 +253,8 @@ export default async function OrderPage({
                   return available > 0 ? (
                     <label key={item.id}>
                       <Hidden name="itemIds" value={item.id} />
-                      {orderItemName(item, quoteItems)} · up to {available} units
+                      {orderItemName(item, quoteItems)} · up to {available}{" "}
+                      units
                       <Input
                         name={`quantity.${item.id}`}
                         type="number"

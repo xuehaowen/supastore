@@ -4,7 +4,11 @@ import { smtpAdapter } from "@/infrastructure/notifications/smtp";
 
 const queries = vi.hoisted(() => ({ limit: vi.fn() }));
 vi.mock("@/infrastructure/db", () => ({
-  db: { select: () => ({ from: () => ({ where: () => ({ limit: queries.limit }) }) }) },
+  db: {
+    select: () => ({
+      from: () => ({ where: () => ({ limit: queries.limit }) }),
+    }),
+  },
 }));
 
 describe("Auth Module Configuration and Callbacks", () => {
@@ -13,29 +17,58 @@ describe("Auth Module Configuration and Callbacks", () => {
     expect(auth.options.emailAndPassword?.requireEmailVerification).toBe(false);
     expect(auth.options.emailAndPassword?.autoSignIn).toBe(false);
     expect(auth.options.emailVerification?.sendOnSignUp).toBe(true);
-    expect(auth.options.emailVerification?.autoSignInAfterVerification).toBe(true);
+    expect(auth.options.emailVerification?.autoSignInAfterVerification).toBe(
+      true,
+    );
   });
 
   it.each([
     { label: "verified customer", verified: true, staff: false, allowed: true },
-    { label: "unverified active staff", verified: false, staff: true, allowed: true },
-    { label: "unverified customer", verified: false, staff: false, allowed: false },
-    { label: "unverified inactive staff", verified: false, staff: false, allowed: false },
-  ])("checks session creation for $label", async ({ verified, staff, allowed }) => {
-    queries.limit.mockReset();
-    queries.limit.mockResolvedValueOnce([{ emailVerified: verified }]);
-    if (!verified) queries.limit.mockResolvedValueOnce(staff ? [{ id: "membership" }] : []);
-    const before = auth.options.databaseHooks!.session!.create!.before!;
-    const result = before({
-      id: "session", userId: "user", token: "token", expiresAt: new Date(),
-      createdAt: new Date(), updatedAt: new Date(),
-    });
-    if (allowed) await expect(result).resolves.toBeUndefined();
-    else await expect(result).rejects.toMatchObject({
-      status: "FORBIDDEN", body: { code: "EMAIL_NOT_VERIFIED" },
-    });
-    expect(queries.limit).toHaveBeenCalledTimes(verified ? 1 : 2);
-  });
+    {
+      label: "unverified active staff",
+      verified: false,
+      staff: true,
+      allowed: true,
+    },
+    {
+      label: "unverified customer",
+      verified: false,
+      staff: false,
+      allowed: false,
+    },
+    {
+      label: "unverified inactive staff",
+      verified: false,
+      staff: false,
+      allowed: false,
+    },
+  ])(
+    "checks session creation for $label",
+    async ({ verified, staff, allowed }) => {
+      queries.limit.mockReset();
+      queries.limit.mockResolvedValueOnce([{ emailVerified: verified }]);
+      if (!verified)
+        queries.limit.mockResolvedValueOnce(
+          staff ? [{ id: "membership" }] : [],
+        );
+      const before = auth.options.databaseHooks!.session!.create!.before!;
+      const result = before({
+        id: "session",
+        userId: "user",
+        token: "token",
+        expiresAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      if (allowed) await expect(result).resolves.toBeUndefined();
+      else
+        await expect(result).rejects.toMatchObject({
+          status: "FORBIDDEN",
+          body: { code: "EMAIL_NOT_VERIFIED" },
+        });
+      expect(queries.limit).toHaveBeenCalledTimes(verified ? 1 : 2);
+    },
+  );
 
   it("dispatches verification email with correct link and payload", async () => {
     const sendEmailSpy = vi.spyOn(smtpAdapter, "sendEmail").mockResolvedValue({
@@ -121,7 +154,8 @@ describe("Auth Module Configuration and Callbacks", () => {
     const previous = process.env.DISABLE_OUTBOUND_DELIVERY;
     process.env.DISABLE_OUTBOUND_DELIVERY = "true";
     try {
-      const sendVerificationEmail = auth.options.emailVerification?.sendVerificationEmail;
+      const sendVerificationEmail =
+        auth.options.emailVerification?.sendVerificationEmail;
       await sendVerificationEmail?.({
         user: {
           id: "user-disabled",

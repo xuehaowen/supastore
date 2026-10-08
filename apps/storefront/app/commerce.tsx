@@ -33,7 +33,9 @@ export function AddToCart({
           });
           window.location.assign(`/${locale}/cart`);
         } catch (e) {
-          setMsg(e instanceof Error ? e.message : (m?.pleaseRetry ?? "Please retry"));
+          setMsg(
+            e instanceof Error ? e.message : (m?.pleaseRetry ?? "Please retry"),
+          );
         } finally {
           setBusy(false);
         }
@@ -113,7 +115,11 @@ export function CartEditor({
               );
               window.location.reload();
             } catch (e) {
-              setMsg(e instanceof Error ? e.message : (m?.pleaseRetry ?? "Please retry"));
+              setMsg(
+                e instanceof Error
+                  ? e.message
+                  : (m?.pleaseRetry ?? "Please retry"),
+              );
             } finally {
               setBusy(false);
             }
@@ -241,7 +247,9 @@ export function Checkout({
             window.location.assign(`/${locale}/orders/${order.id}`);
           }
         } catch (e) {
-          setMsg(e instanceof Error ? e.message : (m?.pleaseRetry ?? "Please retry"));
+          setMsg(
+            e instanceof Error ? e.message : (m?.pleaseRetry ?? "Please retry"),
+          );
         } finally {
           setBusy(false);
         }
@@ -250,9 +258,21 @@ export function Checkout({
       <label htmlFor="checkout-name">{m?.name ?? "Name"}</label>
       <input id="checkout-name" name="name" required autoComplete="name" />
       <label htmlFor="checkout-email">{m?.email ?? "Email"}</label>
-      <input id="checkout-email" name="email" type="email" required autoComplete="email" />
-      <label htmlFor="checkout-fulfillment">{m?.fulfillment ?? "Fulfillment"}</label>
-      <select id="checkout-fulfillment" value={method} onChange={(e) => setMethod(e.target.value)}>
+      <input
+        id="checkout-email"
+        name="email"
+        type="email"
+        required
+        autoComplete="email"
+      />
+      <label htmlFor="checkout-fulfillment">
+        {m?.fulfillment ?? "Fulfillment"}
+      </label>
+      <select
+        id="checkout-fulfillment"
+        value={method}
+        onChange={(e) => setMethod(e.target.value)}
+      >
         {store.shippingZones.length > 0 && (
           <option value="shipping">{m?.shipping ?? "Shipping"}</option>
         )}
@@ -260,12 +280,16 @@ export function Checkout({
           <option value="pickup">{m?.pickup ?? "Pickup"}</option>
         )}
         {!!store.deliveryAreas?.length && (
-          <option value="local_delivery">{m?.localDelivery ?? "Local delivery"}</option>
+          <option value="local_delivery">
+            {m?.localDelivery ?? "Local delivery"}
+          </option>
         )}
       </select>
       {method === "shipping" || method === "local_delivery" ? (
         <>
-          <label htmlFor="checkout-country">{m?.countryCode ?? "Country code"}</label>
+          <label htmlFor="checkout-country">
+            {m?.countryCode ?? "Country code"}
+          </label>
           <input
             id="checkout-country"
             name="country"
@@ -276,7 +300,9 @@ export function Checkout({
           />
           {method === "local_delivery" && (
             <>
-              <label htmlFor="checkout-delivery-area">{m?.deliveryArea ?? "Delivery area"}</label>
+              <label htmlFor="checkout-delivery-area">
+                {m?.deliveryArea ?? "Delivery area"}
+              </label>
               <select
                 id="checkout-delivery-area"
                 name="deliveryAreaId"
@@ -301,7 +327,9 @@ export function Checkout({
                   </option>
                 ))}
               </select>
-              <label htmlFor="checkout-postal-code">{m?.postalCode ?? "Postal code"}</label>
+              <label htmlFor="checkout-postal-code">
+                {m?.postalCode ?? "Postal code"}
+              </label>
               <input
                 id="checkout-postal-code"
                 name="postalCode"
@@ -311,7 +339,9 @@ export function Checkout({
               />
               {deliveryArea?.scheduleRequired && (
                 <>
-                  <label htmlFor="checkout-delivery-date">{m?.deliveryDate ?? "Delivery date"}</label>
+                  <label htmlFor="checkout-delivery-date">
+                    {m?.deliveryDate ?? "Delivery date"}
+                  </label>
                   <select
                     id="checkout-delivery-date"
                     name="pickupDate"
@@ -326,7 +356,9 @@ export function Checkout({
                       </option>
                     ))}
                   </select>
-                  <label htmlFor="checkout-delivery-time">{m?.deliveryWindow ?? "Delivery window"}</label>
+                  <label htmlFor="checkout-delivery-time">
+                    {m?.deliveryWindow ?? "Delivery window"}
+                  </label>
                   <select
                     id="checkout-delivery-time"
                     name="pickupTime"
@@ -344,7 +376,9 @@ export function Checkout({
               )}
             </>
           )}
-          <label htmlFor="checkout-address">{m?.fullShippingAddress ?? "Full shipping address"}</label>
+          <label htmlFor="checkout-address">
+            {m?.fullShippingAddress ?? "Full shipping address"}
+          </label>
           <textarea
             id="checkout-address"
             name="address"
@@ -355,7 +389,9 @@ export function Checkout({
         </>
       ) : (
         <>
-          <label htmlFor="checkout-pickup-location">{m?.pickupLocation ?? "Pickup location"}</label>
+          <label htmlFor="checkout-pickup-location">
+            {m?.pickupLocation ?? "Pickup location"}
+          </label>
           <select
             id="checkout-pickup-location"
             name="pickupLocationId"
@@ -377,7 +413,9 @@ export function Checkout({
           </select>
           {location?.scheduleRequired !== false && (
             <>
-              <label htmlFor="checkout-pickup-date">{m?.pickupDate ?? "Pickup date"}</label>
+              <label htmlFor="checkout-pickup-date">
+                {m?.pickupDate ?? "Pickup date"}
+              </label>
               <select
                 id="checkout-pickup-date"
                 name="pickupDate"
@@ -392,7 +430,9 @@ export function Checkout({
                   </option>
                 ))}
               </select>
-              <label htmlFor="checkout-pickup-time">{m?.pickupTime ?? "Pickup time"}</label>
+              <label htmlFor="checkout-pickup-time">
+                {m?.pickupTime ?? "Pickup time"}
+              </label>
               <select
                 id="checkout-pickup-time"
                 name="pickupTime"
@@ -410,10 +450,18 @@ export function Checkout({
           )}
         </>
       )}
-      <label htmlFor="checkout-payment-method">{m?.paymentMethod ?? "Payment method"}</label>
-      <select id="checkout-payment-method" name="paymentAccountId" required={!store.stripeConfigured}>
+      <label htmlFor="checkout-payment-method">
+        {m?.paymentMethod ?? "Payment method"}
+      </label>
+      <select
+        id="checkout-payment-method"
+        name="paymentAccountId"
+        required={!store.stripeConfigured}
+      >
         {store.stripeConfigured && (
-          <option value="">{m?.onlineCardPayment ?? "Online card payment"}</option>
+          <option value="">
+            {m?.onlineCardPayment ?? "Online card payment"}
+          </option>
         )}
         {store.paymentMethods.map((p) => (
           <option key={p.id} value={p.id}>
@@ -421,7 +469,9 @@ export function Checkout({
           </option>
         ))}
       </select>
-      <label htmlFor="checkout-promo-code">{m?.promoCode ?? "Promotion code"}</label>
+      <label htmlFor="checkout-promo-code">
+        {m?.promoCode ?? "Promotion code"}
+      </label>
       <input id="checkout-promo-code" name="promotionCode" maxLength={100} />
       <label htmlFor="checkout-credit-amount">
         {m?.creditToApply ?? "Account credit to apply"} ({store.currency})

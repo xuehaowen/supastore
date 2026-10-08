@@ -12,7 +12,11 @@ import {
   auditRecords,
   creditSourceLots,
 } from "@/infrastructure/db/schema";
-import { createCreditSourceLot, reserveCreditSources, settleCreditSources } from "./credit-sources";
+import {
+  createCreditSourceLot,
+  reserveCreditSources,
+  settleCreditSources,
+} from "./credit-sources";
 import type { Transaction } from "@/application/common/transaction";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import {
@@ -133,9 +137,20 @@ export async function issueStoreCredit(input: {
       if (reversed)
         throw new ConflictError("This issuance is already reversed.");
       delta = -amount;
-      const [source] = await tx.select().from(creditSourceLots).where(and(
-        eq(creditSourceLots.sourceEntryId, original.id), eq(creditSourceLots.accountId, account!.id)));
-      if (!source || source.kind !== "merchant" || source.remainingCents - source.reservedCents < amount)
+      const [source] = await tx
+        .select()
+        .from(creditSourceLots)
+        .where(
+          and(
+            eq(creditSourceLots.sourceEntryId, original.id),
+            eq(creditSourceLots.accountId, account!.id),
+          ),
+        );
+      if (
+        !source ||
+        source.kind !== "merchant" ||
+        source.remainingCents - source.reservedCents < amount
+      )
         throw new ConflictError(
           "This credit has been spent or reserved. Investigate the issuance instead of reducing the balance.",
         );
@@ -156,11 +171,20 @@ export async function issueStoreCredit(input: {
         actorId: input.staffUserId,
         requestKey,
         payloadHash,
-      }).returning();
+      })
+      .returning();
     if (reversedLotId) {
-      await tx.update(creditSourceLots).set({remainingCents: 0}).where(eq(creditSourceLots.id, reversedLotId));
+      await tx
+        .update(creditSourceLots)
+        .set({ remainingCents: 0 })
+        .where(eq(creditSourceLots.id, reversedLotId));
     } else {
-      await createCreditSourceLot(tx, {accountId: account!.id, sourceEntryId: entry!.id, kind: "merchant", amountCents: amount});
+      await createCreditSourceLot(tx, {
+        accountId: account!.id,
+        sourceEntryId: entry!.id,
+        kind: "merchant",
+        amountCents: amount,
+      });
     }
     await tx
       .update(storeCreditAccounts)
@@ -169,16 +193,14 @@ export async function issueStoreCredit(input: {
         revision: account!.revision + 1,
       })
       .where(eq(storeCreditAccounts.id, account!.id));
-    await tx
-      .insert(auditRecords)
-      .values({
-        entityType: "store_credit",
-        entityId: account!.id,
-        actorId: input.staffUserId,
-        action: reversalOfId ? "credit.reversed" : "credit.issued",
-        reason,
-        details: { amountCents: delta, customerId },
-      });
+    await tx.insert(auditRecords).values({
+      entityType: "store_credit",
+      entityId: account!.id,
+      actorId: input.staffUserId,
+      action: reversalOfId ? "credit.reversed" : "credit.issued",
+      reason,
+      details: { amountCents: delta, customerId },
+    });
     return account!.id;
   });
 }
@@ -219,7 +241,8 @@ export async function reserveOrderCredit(
   }
   const [reservation] = await tx
     .insert(storeCreditReservations)
-    .values({ orderId, accountId: account.id, amountCents }).returning();
+    .values({ orderId, accountId: account.id, amountCents })
+    .returning();
   await reserveCreditSources(tx, account.id, reservation!.id, amountCents);
   await tx
     .update(storeCreditAccounts)
@@ -261,7 +284,13 @@ export async function settleOrderCredit(
       "Credit reservation drift requires owner review.",
     );
   let debitEntryId: string | null = null;
-  const recoveredCents = await settleCreditSources(tx, account.id, hold.id, hold.amountCents, status);
+  const recoveredCents = await settleCreditSources(
+    tx,
+    account.id,
+    hold.id,
+    hold.amountCents,
+    status,
+  );
   if (status === "captured") {
     const [debit] = await tx
       .insert(storeCreditEntries)
@@ -277,25 +306,31 @@ export async function settleOrderCredit(
       })
       .returning();
     debitEntryId = debit!.id;
-    await tx
-      .insert(confirmationFunding)
-      .values({
-        orderId,
-        creditEntryId: debitEntryId,
-        fundedAmountCents: hold.amountCents,
-      });
+    await tx.insert(confirmationFunding).values({
+      orderId,
+      creditEntryId: debitEntryId,
+      fundedAmountCents: hold.amountCents,
+    });
   }
   if (status === "released" && recoveredCents > 0) {
-    await tx.insert(storeCreditEntries).values({accountId: account.id, amountCents: -recoveredCents,
-      kind: "reversal", orderId, reason: "Revoked reward hold released", actorId,
-      requestKey: `source-release:${hold.id}`, payloadHash: creditHash([hold.id, recoveredCents])});
+    await tx.insert(storeCreditEntries).values({
+      accountId: account.id,
+      amountCents: -recoveredCents,
+      kind: "reversal",
+      orderId,
+      reason: "Revoked reward hold released",
+      actorId,
+      requestKey: `source-release:${hold.id}`,
+      payloadHash: creditHash([hold.id, recoveredCents]),
+    });
   }
   await tx
     .update(storeCreditAccounts)
     .set({
       reservedCents: account.reservedCents - hold.amountCents,
       balanceCents:
-        account.balanceCents - (status === "captured" ? hold.amountCents : recoveredCents),
+        account.balanceCents -
+        (status === "captured" ? hold.amountCents : recoveredCents),
       revision: account.revision + 1,
     })
     .where(eq(storeCreditAccounts.id, account.id));
@@ -341,10 +376,13 @@ export async function customerCredit(tx: Transaction, customerId: string) {
         eq(storeCreditReservations.status, "active"),
       ),
     );
-  const [sources] = await tx.select({
-    balance: sql<number>`coalesce(sum(${creditSourceLots.remainingCents}),0)::bigint`,
-    reserved: sql<number>`coalesce(sum(${creditSourceLots.reservedCents}),0)::bigint`,
-  }).from(creditSourceLots).where(eq(creditSourceLots.accountId, account.id));
+  const [sources] = await tx
+    .select({
+      balance: sql<number>`coalesce(sum(${creditSourceLots.remainingCents}),0)::bigint`,
+      reserved: sql<number>`coalesce(sum(${creditSourceLots.reservedCents}),0)::bigint`,
+    })
+    .from(creditSourceLots)
+    .where(eq(creditSourceLots.accountId, account.id));
   return {
     account,
     entries,

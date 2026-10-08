@@ -278,8 +278,13 @@ describe("M2 Executable Accounting Contract Suite (transaction-contracts.md)", (
           const originalAmountCents = Math.floor(Math.random() * 30000) + 100;
           const correction = Math.floor(Math.random() * 10000) - 5000;
           // Ri >= 0
-          const appliedCorrectionsCents = Math.max(-originalAmountCents, correction);
-          const frozenFunding = isConfirmed ? Math.min(originalAmountCents, purchaseTotalCents) : 0;
+          const appliedCorrectionsCents = Math.max(
+            -originalAmountCents,
+            correction,
+          );
+          const frozenFunding = isConfirmed
+            ? Math.min(originalAmountCents, purchaseTotalCents)
+            : 0;
           const settledRefunds = Math.floor(Math.random() * frozenFunding);
 
           receipts.push({
@@ -305,14 +310,19 @@ describe("M2 Executable Accounting Contract Suite (transaction-contracts.md)", (
         expect(proj.orderWideUncoveredAmountCents).toBeGreaterThanOrEqual(0);
         expect(proj.payoutOverDisbursementCents).toBeGreaterThanOrEqual(0);
         expect(proj.operationalFundingShortfallCents).toBe(
-          Math.max(proj.orderWideUncoveredAmountCents, proj.payoutOverDisbursementCents)
+          Math.max(
+            proj.orderWideUncoveredAmountCents,
+            proj.payoutOverDisbursementCents,
+          ),
         );
 
         for (const r of proj.receipts) {
           expect(r.effectiveReceivedCents).toBeGreaterThanOrEqual(0);
           expect(r.effectiveOriginalFundingCents).toBeGreaterThanOrEqual(0);
           expect(r.availablePayoutCapacityCents).toBeGreaterThanOrEqual(0);
-          expect(r.remainingPurchaseRefundCapacityCents).toBeGreaterThanOrEqual(0);
+          expect(r.remainingPurchaseRefundCapacityCents).toBeGreaterThanOrEqual(
+            0,
+          );
           expect(r.newExcessReturnCapacityCents).toBeGreaterThanOrEqual(0);
           expect(Number.isInteger(r.effectiveReceivedCents)).toBe(true);
         }

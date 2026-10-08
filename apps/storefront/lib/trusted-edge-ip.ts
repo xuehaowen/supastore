@@ -14,7 +14,13 @@ export function trustedEdgeClientIP(
   if (actual.length !== expected.length || !timingSafeEqual(actual, expected))
     return null;
   const ip = headers.get("x-supastore-client-ip");
-  if (!ip || ip !== ip.trim() || ip.includes(",") || ip.includes("%") || !isIP(ip))
+  if (
+    !ip ||
+    ip !== ip.trim() ||
+    ip.includes(",") ||
+    ip.includes("%") ||
+    !isIP(ip)
+  )
     return null;
   return ip;
 }

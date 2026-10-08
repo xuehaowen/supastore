@@ -20,7 +20,7 @@
   "pickup": "到店自取",
   "name": "姓名",
   "email": "电子邮箱",
-  "address": "街道地址",
+  "streetAddress": "街道地址",
   "country": "国家代码",
   "payment": "付款方式",
   "total": "总计",

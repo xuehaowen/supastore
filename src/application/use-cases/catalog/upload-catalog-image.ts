@@ -67,16 +67,14 @@ export async function uploadCatalogImage(input: {
       if (!collection) throw new NotFoundError("Collection not found.");
       version = collection.revision;
     }
-    await tx
-      .insert(catalogMediaUploads)
-      .values({
-        id,
-        entityId,
-        entityType: input.entityType,
-        actorId: input.staffUserId,
-        s3Key: key,
-        expiresAt: new Date(Date.now() + 3600000),
-      });
+    await tx.insert(catalogMediaUploads).values({
+      id,
+      entityId,
+      entityType: input.entityType,
+      actorId: input.staffUserId,
+      s3Key: key,
+      expiresAt: new Date(Date.now() + 3600000),
+    });
     return version;
   });
   let attached = false;
@@ -115,17 +113,14 @@ export async function uploadCatalogImage(input: {
           if (!variant)
             throw new NotFoundError("Variant does not belong to this product.");
         }
-        await tx
-          .insert(productImages)
-          .values({
-            productId: entityId,
-            variantId: variantId || null,
-            s3Key: key,
-            altText,
-            sortOrder:
-              existing.reduce((max, img) => Math.max(max, img.sortOrder), -1) +
-              1,
-          });
+        await tx.insert(productImages).values({
+          productId: entityId,
+          variantId: variantId || null,
+          s3Key: key,
+          altText,
+          sortOrder:
+            existing.reduce((max, img) => Math.max(max, img.sortOrder), -1) + 1,
+        });
         await tx
           .update(products)
           .set({
@@ -179,15 +174,13 @@ export async function uploadCatalogImage(input: {
         .update(catalogMediaUploads)
         .set({ status: "attached" })
         .where(eq(catalogMediaUploads.id, id));
-      await tx
-        .insert(auditRecords)
-        .values({
-          entityType: input.entityType,
-          entityId,
-          actorId: input.staffUserId,
-          action: "image.uploaded",
-          details: { uploadId: id, altText },
-        });
+      await tx.insert(auditRecords).values({
+        entityType: input.entityType,
+        entityId,
+        actorId: input.staffUserId,
+        action: "image.uploaded",
+        details: { uploadId: id, altText },
+      });
     });
     attached = true;
   } finally {

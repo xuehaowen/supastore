@@ -54,16 +54,36 @@ describe("admin command validation", () => {
   it("rejects unsafe payout commands before database access", async () => {
     const destination = { type: "cash" as const, rawDestination: "drawer" };
     await expect(
-      claimPayout({ allocationId: "allocation", claimedAmountCents: 0, destination, ownerUserId: "owner" }),
+      claimPayout({
+        allocationId: "allocation",
+        claimedAmountCents: 0,
+        destination,
+        ownerUserId: "owner",
+      }),
     ).rejects.toThrow("Claimed payout amount must be a positive integer.");
     await expect(
-      reconcilePayout({ attemptId: "attempt", actualAmountCents: 1, transferReference: " ", actualDestination: destination, ownerUserId: "owner" }),
+      reconcilePayout({
+        attemptId: "attempt",
+        actualAmountCents: 1,
+        transferReference: " ",
+        actualDestination: destination,
+        ownerUserId: "owner",
+      }),
     ).rejects.toThrow("Transfer reference is required.");
     await expect(
-      resolvePayoutDiscrepancy({ discrepancyId: "discrepancy", writeOffCents: 0, resolutionReason: " ", ownerUserId: "owner" }),
+      resolvePayoutDiscrepancy({
+        discrepancyId: "discrepancy",
+        writeOffCents: 0,
+        resolutionReason: " ",
+        ownerUserId: "owner",
+      }),
     ).rejects.toThrow("Resolution reason is required.");
     await expect(
-      closePayoutAttempt({ attemptId: "attempt", reason: " ", ownerUserId: "owner" }),
+      closePayoutAttempt({
+        attemptId: "attempt",
+        reason: " ",
+        ownerUserId: "owner",
+      }),
     ).rejects.toThrow("Payout closure reason is required.");
   });
 });

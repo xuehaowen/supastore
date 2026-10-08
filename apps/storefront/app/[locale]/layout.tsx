@@ -22,14 +22,14 @@ export default async function Layout({
           <Link href={`/${locale}/cart`}>{m.nav.cart}</Link>
           <Link href={`/${locale}/account`}>{m.nav.account}</Link>
           <Link href={`/${locale}/recover`}>{m.nav.findOrder}</Link>
-          <Link href={`/${locale === "zh" ? "en" : "zh"}`}>{locale === "zh" ? "English" : "中文"}</Link>
+          <Link href={`/${locale === "zh" ? "en" : "zh"}`}>
+            {locale === "zh" ? "English" : "中文"}
+          </Link>
         </nav>
       </header>
       <main>
         {store?.isPaused && (
-          <p className="notice">
-            {store.pauseMessage || m.nav.pauseDefault}
-          </p>
+          <p className="notice">{store.pauseMessage || m.nav.pauseDefault}</p>
         )}
         {children}
       </main>

@@ -155,7 +155,10 @@ export default async function Reports({
               ))}
               {!report.rows.length && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={7}
+                    className="text-center text-muted-foreground"
+                  >
                     No activity in this period.
                   </TableCell>
                 </TableRow>

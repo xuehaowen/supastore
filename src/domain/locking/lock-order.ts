@@ -57,7 +57,9 @@ export async function acquireTransactionLocks(
   }
 
   for (const id of sortUniqueUuids(targets.fulfillmentSlotIds)) {
-    await tx.execute(sql`SELECT id FROM fulfillment_slots WHERE id = ${id} FOR UPDATE`);
+    await tx.execute(
+      sql`SELECT id FROM fulfillment_slots WHERE id = ${id} FOR UPDATE`,
+    );
   }
   // 5. Stock variants
   for (const id of sortUniqueUuids(targets.stockVariantIds)) {
@@ -69,7 +71,9 @@ export async function acquireTransactionLocks(
     );
   }
   for (const id of sortUniqueUuids(targets.creditAccountIds)) {
-    await tx.execute(sql`SELECT id FROM store_credit_accounts WHERE id = ${id} FOR UPDATE`);
+    await tx.execute(
+      sql`SELECT id FROM store_credit_accounts WHERE id = ${id} FOR UPDATE`,
+    );
   }
   // 7. Payment accounts then receipts
   const paymentAccountIds = sortUniqueUuids(targets.paymentAccountIds);

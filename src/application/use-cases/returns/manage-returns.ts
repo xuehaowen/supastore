@@ -112,24 +112,20 @@ export async function requestGoodsReturn(input: {
       .insert(orderReturns)
       .values({ orderId: order.id, requestKey: input.requestKey, reason })
       .returning();
-    await tx
-      .insert(orderReturnItems)
-      .values(
-        input.items.map((i) => ({
-          returnId: goodsReturn!.id,
-          orderItemId: i.orderItemId,
-          quantity: i.quantity,
-        })),
-      );
-    await tx
-      .insert(auditRecords)
-      .values({
-        entityType: "order_return",
-        entityId: goodsReturn!.id,
-        actorId: `order:${order.id}`,
-        action: "return.requested",
-        reason,
-      });
+    await tx.insert(orderReturnItems).values(
+      input.items.map((i) => ({
+        returnId: goodsReturn!.id,
+        orderItemId: i.orderItemId,
+        quantity: i.quantity,
+      })),
+    );
+    await tx.insert(auditRecords).values({
+      entityType: "order_return",
+      entityId: goodsReturn!.id,
+      actorId: `order:${order.id}`,
+      action: "return.requested",
+      reason,
+    });
     await emitOrderEvent(tx, order.id, "return.requested", order.guestEmail, {
       referenceCode: order.referenceCode,
       message:
@@ -177,15 +173,13 @@ export async function reviewGoodsReturn(input: {
       .update(orderReturns)
       .set({ status: input.decision, reviewReason: reason })
       .where(eq(orderReturns.id, goodsReturn!.id));
-    await tx
-      .insert(auditRecords)
-      .values({
-        entityType: "order_return",
-        entityId: goodsReturn!.id,
-        actorId: input.staffUserId,
-        action: `return.${input.decision}`,
-        reason,
-      });
+    await tx.insert(auditRecords).values({
+      entityType: "order_return",
+      entityId: goodsReturn!.id,
+      actorId: input.staffUserId,
+      action: `return.${input.decision}`,
+      reason,
+    });
     await emitOrderEvent(
       tx,
       candidate.orderId,
@@ -279,15 +273,13 @@ export async function receiveGoodsReturn(input: {
       .update(orderReturns)
       .set({ status: "received", receivedAt: new Date() })
       .where(eq(orderReturns.id, candidate.id));
-    await tx
-      .insert(auditRecords)
-      .values({
-        entityType: "order_return",
-        entityId: candidate.id,
-        actorId: input.staffUserId,
-        action: "return.received",
-        details: { items: input.items },
-      });
+    await tx.insert(auditRecords).values({
+      entityType: "order_return",
+      entityId: candidate.id,
+      actorId: input.staffUserId,
+      action: "return.received",
+      details: { items: input.items },
+    });
     await emitOrderEvent(
       tx,
       candidate.orderId,

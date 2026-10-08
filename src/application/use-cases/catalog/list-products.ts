@@ -145,8 +145,7 @@ export async function listProducts(input: ListProductsInput = {}) {
             p.description,
           ),
           isPublished: p.isPublished,
-          coverImageKey:
-            coverByProduct.get(p.id) ?? null,
+          coverImageKey: coverByProduct.get(p.id) ?? null,
           lowestPriceCents: prices.length ? Math.min(...prices) : null,
           variantCount: prices.length,
         };

@@ -17,16 +17,16 @@ Updated 2026-10-06. This records local implementation evidence, not production l
 
 ## Local evidence
 
-| Check | Result |
-| --- | --- |
-| Backend and storefront TypeScript | Passed |
-| Unit, synthetic lifecycle and storefront library tests | 71 files / 619 tests passed after notification refactor |
-| Clean PostgreSQL integration | 11 files / 83 tests passed, including migrations through 0034 |
-| Production browser journeys, including profile and emailed reset | 54 passed from rebuilt follow-up source |
-| Two-service production browser journeys | Both services rebuilt from follow-up source; 2 passed |
-| Domain coverage | 96.1% statements/lines, 91.47% branches |
-| Container builds and isolated service smoke | Built and passed; 30-minute load: 685,003 requests / zero failures |
-| Final code review | No remaining critical/high findings |
+| Check                                                            | Result                                                             |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Backend and storefront TypeScript                                | Passed                                                             |
+| Unit, synthetic lifecycle and storefront library tests           | 71 files / 619 tests passed after notification refactor            |
+| Clean PostgreSQL integration                                     | 11 files / 83 tests passed, including migrations through 0034      |
+| Production browser journeys, including profile and emailed reset | 54 passed from rebuilt follow-up source                            |
+| Two-service production browser journeys                          | Both services rebuilt from follow-up source; 2 passed              |
+| Domain coverage                                                  | 96.1% statements/lines, 91.47% branches                            |
+| Container builds and isolated service smoke                      | Built and passed; 30-minute load: 685,003 requests / zero failures |
+| Final code review                                                | No remaining critical/high findings                                |
 
 Run `pnpm test:all` for both applications' type, unit, integration and browser checks, or run the individual scripts. `pnpm test:containers` runs the disposable container acceptance gate; `pnpm bench:storefront` measures the current production bundle and `pnpm check:services` reports service configuration without connecting. Integration and browser runners use isolated synthetic databases. The integration runner listens on 127.0.0.1:25438. See [two-service deployment](two-service-deployment.md) for settings, container builds and migration execution.
 

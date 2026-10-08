@@ -41,34 +41,56 @@ function request(
 
 describe("API route boundaries", () => {
   it("serves bounded image bytes only for published assets", async () => {
-    const chain = (rows: unknown[]) => ({ from: () => ({
-      innerJoin: () => ({ where: () => ({ limit: async () => rows }) }),
-      where: () => ({ limit: async () => rows }),
-    }) });
+    const chain = (rows: unknown[]) => ({
+      from: () => ({
+        innerJoin: () => ({ where: () => ({ limit: async () => rows }) }),
+        where: () => ({ limit: async () => rows }),
+      }),
+    });
     const fetchImage = vi.fn();
     vi.stubGlobal("fetch", fetchImage);
     try {
       for (const rows of [[{ key: "image.png" }], [], []])
         mocks.db.select.mockImplementationOnce(() => chain(rows));
       mocks.presignAsset.mockResolvedValueOnce("https://storage.test/image");
-      fetchImage.mockResolvedValueOnce(new Response(new Uint8Array([1, 2, 3]), {
-        headers: { "content-type": "image/png" },
-      }));
-      const response = await asset(request("https://shop.test/api/assets?key=image.png&inline=1"));
+      fetchImage.mockResolvedValueOnce(
+        new Response(new Uint8Array([1, 2, 3]), {
+          headers: { "content-type": "image/png" },
+        }),
+      );
+      const response = await asset(
+        request("https://shop.test/api/assets?key=image.png&inline=1"),
+      );
       expect(response.status).toBe(200);
-      expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
+      expect(new Uint8Array(await response.arrayBuffer())).toEqual(
+        new Uint8Array([1, 2, 3]),
+      );
       expect(response.headers.get("x-content-type-options")).toBe("nosniff");
       for (const rows of [[], [], []])
         mocks.db.select.mockImplementationOnce(() => chain(rows));
-      expect((await asset(request("https://shop.test/api/assets?key=private.png&inline=1"))).status).toBe(404);
+      expect(
+        (
+          await asset(
+            request("https://shop.test/api/assets?key=private.png&inline=1"),
+          )
+        ).status,
+      ).toBe(404);
       expect(fetchImage).toHaveBeenCalledTimes(1);
       for (const rows of [[{ key: "image.png" }], [], []])
         mocks.db.select.mockImplementationOnce(() => chain(rows));
       mocks.presignAsset.mockResolvedValueOnce("https://storage.test/image");
-      fetchImage.mockResolvedValueOnce(new Response(new Uint8Array(5 * 1024 * 1024 + 1), {
-        headers: { "content-type": "image/png" },
-      }));
-      expect((await asset(request("https://shop.test/api/assets?key=image.png&inline=1"))).status).toBe(502);
+      fetchImage.mockResolvedValueOnce(
+        new Response(new Uint8Array(5 * 1024 * 1024 + 1), {
+          headers: { "content-type": "image/png" },
+        }),
+      );
+      expect(
+        (
+          await asset(
+            request("https://shop.test/api/assets?key=image.png&inline=1"),
+          )
+        ).status,
+      ).toBe(502);
     } finally {
       vi.unstubAllGlobals();
     }

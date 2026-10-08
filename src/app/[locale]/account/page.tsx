@@ -46,9 +46,7 @@ export default async function Account({
         <p className="eyebrow">{t("account.eyebrow")}</p>
         <h1>{session ? t("account.welcome") : t("account.guestIntro")}</h1>
         <p>
-          {session
-            ? t("account.sessionActive")
-            : t("account.sessionInactive")}
+          {session ? t("account.sessionActive") : t("account.sessionInactive")}
         </p>
       </div>
       <Card className="account-card auth-card">
@@ -60,7 +58,9 @@ export default async function Account({
                   {t("account.signedInAs")}
                 </p>
                 <p className="mt-2 font-medium">
-                  {account?.customer.name || session.user.name || (locale === "zh" ? "客户" : "Customer")}
+                  {account?.customer.name ||
+                    session.user.name ||
+                    (locale === "zh" ? "客户" : "Customer")}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {session.user.email}
@@ -147,11 +147,7 @@ export default async function Account({
           <Card>
             <CardContent>
               <h2>{t("account.orderHistory")}</h2>
-              {!account.orders.length && (
-                <p>
-                  {t("account.noOrders")}
-                </p>
-              )}
+              {!account.orders.length && <p>{t("account.noOrders")}</p>}
               {account.orders.map((order) => {
                 const terms = order.termsSnapshot as QuoteTerms;
                 return (
@@ -177,10 +173,18 @@ export default async function Account({
                 );
               })}
               <nav aria-label="Order history pages" className="flex gap-4 mt-4">
-                {page > 1 && <Link href={`?page=${page - 1}`}>{locale === "zh" ? "上一页" : "Previous"}</Link>}
-                <span>{locale === "zh" ? `第 ${page} 页` : `Page ${page}`}</span>
+                {page > 1 && (
+                  <Link href={`?page=${page - 1}`}>
+                    {locale === "zh" ? "上一页" : "Previous"}
+                  </Link>
+                )}
+                <span>
+                  {locale === "zh" ? `第 ${page} 页` : `Page ${page}`}
+                </span>
                 {account.hasNext && (
-                  <Link href={`?page=${page + 1}`}>{locale === "zh" ? "下一页" : "Next"}</Link>
+                  <Link href={`?page=${page + 1}`}>
+                    {locale === "zh" ? "下一页" : "Next"}
+                  </Link>
                 )}
               </nav>
             </CardContent>

@@ -17,9 +17,7 @@ import {
 } from "./provider-config";
 import { smtpFailure } from "./provider-errors";
 export interface EmailTransport {
-  sendMail(
-    options: Mail.Options,
-  ): Promise<{
+  sendMail(options: Mail.Options): Promise<{
     accepted?: (string | { address: string })[];
     rejected?: unknown[];
     messageId?: string;

@@ -19,7 +19,10 @@ import { computeReceiptProjection } from "@/domain/financial-projection/projecti
 import { lockCreditAccount, creditHash } from "./credit-operations";
 import { refundCreditSources } from "./credit-sources";
 import { reconcileOrderReward } from "./reward-operations";
-import { accumulateRewardComponentRefunds, type RewardComponentRefund } from "@/domain/rewards";
+import {
+  accumulateRewardComponentRefunds,
+  type RewardComponentRefund,
+} from "@/domain/rewards";
 import { acquireTransactionLocks } from "@/domain/locking/lock-order";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import {
@@ -36,14 +39,38 @@ import {
 
 function normalizeComponentRefunds(value?: readonly RewardComponentRefund[]) {
   if (value === undefined) return undefined;
-  if (!Array.isArray(value) || !value.length || value.length > 1000) throw new DomainError("Refund component allocations are required.");
-  return value.map(item => {
-    const componentId = parseActionRequiredText(item.componentId, "Refund component", 200);
-    const externalCents = parseActionInteger(item.externalCents, "Component external refund", 0, 2147483647);
-    const creditCents = parseActionInteger(item.creditCents, "Component credit refund", 0, 2147483647);
-    if (!externalCents && !creditCents) throw new DomainError("Refund components must have a positive amount.");
-    return {componentId, externalCents, creditCents};
-  }).sort((a, b) => a.componentId < b.componentId ? -1 : a.componentId > b.componentId ? 1 : 0);
+  if (!Array.isArray(value) || !value.length || value.length > 1000)
+    throw new DomainError("Refund component allocations are required.");
+  return value
+    .map((item) => {
+      const componentId = parseActionRequiredText(
+        item.componentId,
+        "Refund component",
+        200,
+      );
+      const externalCents = parseActionInteger(
+        item.externalCents,
+        "Component external refund",
+        0,
+        2147483647,
+      );
+      const creditCents = parseActionInteger(
+        item.creditCents,
+        "Component credit refund",
+        0,
+        2147483647,
+      );
+      if (!externalCents && !creditCents)
+        throw new DomainError("Refund components must have a positive amount.");
+      return { componentId, externalCents, creditCents };
+    })
+    .sort((a, b) =>
+      a.componentId < b.componentId
+        ? -1
+        : a.componentId > b.componentId
+          ? 1
+          : 0,
+    );
 }
 
 export async function refundPurchaseInTransaction(
@@ -76,8 +103,9 @@ export async function refundPurchaseInTransaction(
       retry.amountCents !== input.amountCents ||
       retry.authorizedByUserId !== input.ownerUserId ||
       retry.reason !== input.reason ||
-      retry.kind !== "purchase_refund"
-      || creditHash(retry.componentRefunds ?? null) !== creditHash(componentRefunds ?? null)
+      retry.kind !== "purchase_refund" ||
+      creditHash(retry.componentRefunds ?? null) !==
+        creditHash(componentRefunds ?? null)
     )
       throw new ConflictError(
         "Refund request key was already used with different input.",
@@ -173,30 +201,76 @@ export async function refundPurchaseInTransaction(
     }))
     .filter((s) => s.amount > 0);
   if (componentRefunds) {
-    if (!order.rewardSnapshot) throw new DomainError("This order has no component funding snapshot. Use the legacy amount-only refund.");
-    const desiredExternal = componentRefunds.reduce((sum, item) => sum + item.externalCents, 0);
-    const desiredCredit = componentRefunds.reduce((sum, item) => sum + item.creditCents, 0);
-    if (desiredExternal + desiredCredit !== input.amountCents) throw new DomainError("Component refunds must equal the authorized amount.");
-    const history = [...previous].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || (a.id < b.id ? -1 : 1)).map(a => ({
-      externalCents: oldAllocations.filter(item => item.refundAuthorizationId === a.id).reduce((sum, item) => sum + item.authorizedAmountCents, 0),
-      creditCents: oldCredit.filter(item => item.refundAuthorizationId === a.id).reduce((sum, item) => sum + item.amountCents, 0),
-      componentRefunds: a.componentRefunds,
-    }));
+    if (!order.rewardSnapshot)
+      throw new DomainError(
+        "This order has no component funding snapshot. Use the legacy amount-only refund.",
+      );
+    const desiredExternal = componentRefunds.reduce(
+      (sum, item) => sum + item.externalCents,
+      0,
+    );
+    const desiredCredit = componentRefunds.reduce(
+      (sum, item) => sum + item.creditCents,
+      0,
+    );
+    if (desiredExternal + desiredCredit !== input.amountCents)
+      throw new DomainError(
+        "Component refunds must equal the authorized amount.",
+      );
+    const history = [...previous]
+      .sort(
+        (a, b) =>
+          a.createdAt.getTime() - b.createdAt.getTime() ||
+          (a.id < b.id ? -1 : 1),
+      )
+      .map((a) => ({
+        externalCents: oldAllocations
+          .filter((item) => item.refundAuthorizationId === a.id)
+          .reduce((sum, item) => sum + item.authorizedAmountCents, 0),
+        creditCents: oldCredit
+          .filter((item) => item.refundAuthorizationId === a.id)
+          .reduce((sum, item) => sum + item.amountCents, 0),
+        componentRefunds: a.componentRefunds,
+      }));
     try {
-      accumulateRewardComponentRefunds(order.rewardSnapshot, [...history, {externalCents: desiredExternal, creditCents: desiredCredit, componentRefunds}]);
+      accumulateRewardComponentRefunds(order.rewardSnapshot, [
+        ...history,
+        {
+          externalCents: desiredExternal,
+          creditCents: desiredCredit,
+          componentRefunds,
+        },
+      ]);
     } catch (error) {
-      throw new DomainError(error instanceof Error ? error.message : "Invalid component refund.");
+      throw new DomainError(
+        error instanceof Error ? error.message : "Invalid component refund.",
+      );
     }
     splits = [];
-    for (const [isCredit, desired] of [[false, desiredExternal], [true, desiredCredit]] as const) {
+    for (const [isCredit, desired] of [
+      [false, desiredExternal],
+      [true, desiredCredit],
+    ] as const) {
       if (!desired) continue;
-      const available = funding.filter(item => Boolean(item.creditEntryId) === isCredit)
-        .map(item => ({id: item.id, fundedCents: item.fundedAmountCents - used.get(item.id)!})).filter(item => item.fundedCents > 0);
-      if (available.reduce((sum, item) => sum + item.fundedCents, 0) < desired) throw new DomainError("Component refund exceeds remaining original funding.");
+      const available = funding
+        .filter((item) => Boolean(item.creditEntryId) === isCredit)
+        .map((item) => ({
+          id: item.id,
+          fundedCents: item.fundedAmountCents - used.get(item.id)!,
+        }))
+        .filter((item) => item.fundedCents > 0);
+      if (available.reduce((sum, item) => sum + item.fundedCents, 0) < desired)
+        throw new DomainError(
+          "Component refund exceeds remaining original funding.",
+        );
       const allocated = allocateCumulativeRefund(desired, available);
       for (const source of available) {
         const amount = allocated.get(source.id)!;
-        if (amount) splits.push({funding: funding.find(item => item.id === source.id)!, amount});
+        if (amount)
+          splits.push({
+            funding: funding.find((item) => item.id === source.id)!,
+            amount,
+          });
       }
     }
   }
@@ -214,9 +288,18 @@ export async function refundPurchaseInTransaction(
   // Reward reversal uses the customer credit account even for cash-only refunds.
   // Acquire it before receipt locks to preserve the financial lock hierarchy.
   if (!account && order.customerId && order.rewardSnapshot) {
-    const [rewardAccount] = await tx.select().from(storeCreditAccounts).where(and(
-      eq(storeCreditAccounts.customerId, order.customerId),
-      eq(storeCreditAccounts.currency, (order.termsSnapshot as {currency: string}).currency)));
+    const [rewardAccount] = await tx
+      .select()
+      .from(storeCreditAccounts)
+      .where(
+        and(
+          eq(storeCreditAccounts.customerId, order.customerId),
+          eq(
+            storeCreditAccounts.currency,
+            (order.termsSnapshot as { currency: string }).currency,
+          ),
+        ),
+      );
     if (rewardAccount) await lockCreditAccount(tx, rewardAccount.id);
   }
   if (creditAmount && !account)
@@ -287,14 +370,12 @@ export async function refundPurchaseInTransaction(
     })
     .returning();
   for (const split of splits.filter((s) => s.funding.receiptId))
-    await tx
-      .insert(payoutAllocations)
-      .values({
-        refundAuthorizationId: authorization!.id,
-        receiptId: split.funding.receiptId!,
-        authorizedAmountCents: split.amount,
-        settledAmountCents: 0,
-      });
+    await tx.insert(payoutAllocations).values({
+      refundAuthorizationId: authorization!.id,
+      receiptId: split.funding.receiptId!,
+      authorizedAmountCents: split.amount,
+      settledAmountCents: 0,
+    });
   if (account && creditAmount) {
     if (account.balanceCents + creditAmount > 2147483647)
       throw new DomainError("Credit balance exceeds the supported limit.");
@@ -311,14 +392,24 @@ export async function refundPurchaseInTransaction(
         payloadHash: creditHash([order.id, input.amountCents, input.reason]),
       })
       .returning();
-    const recoveredCents = await refundCreditSources(tx, {accountId: account.id,
-      reservationId: hold!.id, capturedCents: hold!.amountCents,
-      amountCents: creditAmount, refundEntryId: entry!.id});
+    const recoveredCents = await refundCreditSources(tx, {
+      accountId: account.id,
+      reservationId: hold!.id,
+      capturedCents: hold!.amountCents,
+      amountCents: creditAmount,
+      refundEntryId: entry!.id,
+    });
     if (recoveredCents > 0) {
-      await tx.insert(storeCreditEntries).values({accountId: account.id, amountCents: -recoveredCents,
-        kind: "reversal", orderId: order.id, reason: "Restored revoked reward credit recovered",
-        actorId: input.ownerUserId, requestKey: `source-refund:${authorization!.id}`,
-        payloadHash: creditHash([authorization!.id, recoveredCents])});
+      await tx.insert(storeCreditEntries).values({
+        accountId: account.id,
+        amountCents: -recoveredCents,
+        kind: "reversal",
+        orderId: order.id,
+        reason: "Restored revoked reward credit recovered",
+        actorId: input.ownerUserId,
+        requestKey: `source-refund:${authorization!.id}`,
+        payloadHash: creditHash([authorization!.id, recoveredCents]),
+      });
     }
     await tx
       .update(storeCreditAccounts)
@@ -327,32 +418,33 @@ export async function refundPurchaseInTransaction(
         revision: account.revision + 1,
       })
       .where(eq(storeCreditAccounts.id, account.id));
-    await tx
-      .insert(storeCreditRefundSettlements)
-      .values({
-        refundAuthorizationId: authorization!.id,
-        creditEntryId: entry!.id,
-        amountCents: creditAmount,
-      });
-  }
-  await tx
-    .insert(auditRecords)
-    .values({
-      entityType: "refund_authorization",
-      entityId: authorization!.id,
-      actorId: input.ownerUserId,
-      action: "refund.sources_allocated",
-      reason: input.reason,
-      details: {
-        amountCents: input.amountCents,
-        creditCents: creditAmount,
-        sources: splits.map((s) => ({
-          fundingId: s.funding.id,
-          amountCents: s.amount,
-        })),
-      },
+    await tx.insert(storeCreditRefundSettlements).values({
+      refundAuthorizationId: authorization!.id,
+      creditEntryId: entry!.id,
+      amountCents: creditAmount,
     });
-  await reconcileOrderReward(tx, order.id, `reward:refund:${authorization!.id}`, input.ownerUserId);
+  }
+  await tx.insert(auditRecords).values({
+    entityType: "refund_authorization",
+    entityId: authorization!.id,
+    actorId: input.ownerUserId,
+    action: "refund.sources_allocated",
+    reason: input.reason,
+    details: {
+      amountCents: input.amountCents,
+      creditCents: creditAmount,
+      sources: splits.map((s) => ({
+        fundingId: s.funding.id,
+        amountCents: s.amount,
+      })),
+    },
+  });
+  await reconcileOrderReward(
+    tx,
+    order.id,
+    `reward:refund:${authorization!.id}`,
+    input.ownerUserId,
+  );
   return authorization!.id;
 }
 export async function refundPurchase(input: {

@@ -13,26 +13,43 @@ export async function GET(
   return apiResponse(async () => {
     const id = parseActionUuid((await context.params).id, "Order");
     const result = await trackOrder(id, await orderToken(id));
-    const shipmentRows = await db.select({
-      id: orderShipments.id,
-      carrier: orderShipments.carrier,
-      trackingNumber: orderShipments.trackingNumber,
-      status: orderShipments.status,
-      deliveredAt: orderShipments.deliveredAt,
-      orderItemId: shipmentItems.orderItemId,
-      quantity: shipmentItems.quantity,
-    }).from(orderShipments).innerJoin(shipmentItems, eq(shipmentItems.shipmentId, orderShipments.id)).where(eq(orderShipments.orderId, id));
-    const shipments = new Map<string, {
-      id: string; carrier: string; trackingNumber: string | null;
-      status: "dispatched" | "delivered"; deliveredAt: Date | null;
-      items: { orderItemId: string; quantity: number }[];
-    }>();
+    const shipmentRows = await db
+      .select({
+        id: orderShipments.id,
+        carrier: orderShipments.carrier,
+        trackingNumber: orderShipments.trackingNumber,
+        status: orderShipments.status,
+        deliveredAt: orderShipments.deliveredAt,
+        orderItemId: shipmentItems.orderItemId,
+        quantity: shipmentItems.quantity,
+      })
+      .from(orderShipments)
+      .innerJoin(shipmentItems, eq(shipmentItems.shipmentId, orderShipments.id))
+      .where(eq(orderShipments.orderId, id));
+    const shipments = new Map<
+      string,
+      {
+        id: string;
+        carrier: string;
+        trackingNumber: string | null;
+        status: "dispatched" | "delivered";
+        deliveredAt: Date | null;
+        items: { orderItemId: string; quantity: number }[];
+      }
+    >();
     for (const row of shipmentRows) {
       const shipment = shipments.get(row.id) ?? {
-        id: row.id, carrier: row.carrier, trackingNumber: row.trackingNumber,
-        status: row.status, deliveredAt: row.deliveredAt, items: [],
+        id: row.id,
+        carrier: row.carrier,
+        trackingNumber: row.trackingNumber,
+        status: row.status,
+        deliveredAt: row.deliveredAt,
+        items: [],
       };
-      shipment.items.push({ orderItemId: row.orderItemId, quantity: row.quantity });
+      shipment.items.push({
+        orderItemId: row.orderItemId,
+        quantity: row.quantity,
+      });
       shipments.set(row.id, shipment);
     }
     const o = result.order;

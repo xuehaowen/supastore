@@ -70,15 +70,13 @@ export async function claimGuestOrder(input: {
         .update(orders)
         .set({ customerId: customer.id, updatedAt: new Date() })
         .where(eq(orders.id, order.id));
-      await tx
-        .insert(auditRecords)
-        .values({
-          entityType: "order",
-          entityId: order.id,
-          actorId: input.userId,
-          action: "customer.claimed",
-          details: { customerId: customer.id },
-        });
+      await tx.insert(auditRecords).values({
+        entityType: "order",
+        entityId: order.id,
+        actorId: input.userId,
+        action: "customer.claimed",
+        details: { customerId: customer.id },
+      });
     }
   });
 }

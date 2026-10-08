@@ -13,7 +13,9 @@ export async function saveCommercePolicy(form: FormData) {
       commercePolicy: {
         guestCheckout: form.has("guestCheckout"),
         rewardsEnabled: form.has("rewardsEnabled"),
-        rewardEligibleCategoryIds: form.getAll("rewardEligibleCategoryIds").map(String),
+        rewardEligibleCategoryIds: form
+          .getAll("rewardEligibleCategoryIds")
+          .map(String),
         rewardsStartAt: String(form.get("rewardsStartAt") ?? "").trim() || null,
         rewardsEndAt: String(form.get("rewardsEndAt") ?? "").trim() || null,
         rewardRateBasisPoints: parseActionInteger(

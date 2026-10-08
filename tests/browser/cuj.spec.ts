@@ -550,10 +550,15 @@ test("M1/M2 setup profile, shipping, pickup, payment toggles and categories pers
     (await sql`select store_name from store_settings`)[0]!.store_name,
   ).toBe("CUJ Store");
   await admin.reload();
-  await admin.getByLabel("Zone name", { exact: true }).first().fill("CUJ Shipping");
+  await admin
+    .getByLabel("Zone name", { exact: true })
+    .first()
+    .fill("CUJ Shipping");
   await clickAction(
     admin,
-    admin.getByRole("button", { name: "Save shipping zone", exact: true }).first(),
+    admin
+      .getByRole("button", { name: "Save shipping zone", exact: true })
+      .first(),
   );
   expect((await sql`select name from shipping_zones`)[0]!.name).toBe(
     "CUJ Shipping",
@@ -571,9 +576,13 @@ test("M1/M2 setup profile, shipping, pickup, payment toggles and categories pers
     (await sql`select id from pickup_location where name='CUJ Pickup'`).length,
   ).toBe(1);
   await admin.reload();
-  await admin.getByLabel("Method name", { exact: true }).last().fill("CUJ Bank");
   await admin
-    .getByLabel("Receiving account and instructions").last()
+    .getByLabel("Method name", { exact: true })
+    .last()
+    .fill("CUJ Bank");
+  await admin
+    .getByLabel("Receiving account and instructions")
+    .last()
     .fill("SYNTHETIC-" + randomUUID());
   await clickAction(
     admin,

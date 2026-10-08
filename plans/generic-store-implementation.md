@@ -273,35 +273,35 @@ Every migration must pass clean-install and forward-upgrade tests against a rest
 
 ## Scope completion checklist
 
-| Request/checklist item | Delivery step |
-| --- | --- |
-| Customer login/register/profile/reset | 4 |
-| Configurable rewards, including 5% | 8 |
-| Variant stock and slot inventory/capacity | 5 |
-| Backend/storefront split | 2-3 |
-| Stripe/payment/refund integration | 7 |
-| Configurable tax and fulfillment policies | 6 |
-| Integration test/CI evidence | 1, 11 |
-| Performance budgets | 11 |
-| SEO/analytics | 10 |
-| Stable validation dependency | 1 |
-| SMS | 10, enabled according to launch decision |
-| Shipping zones/rates, pickup and local delivery | 6; live carrier rates and specialized cold-chain logistics deferred |
-| Sales reporting and optional merchant thresholds | 9 |
-| Optional merchant domain transfer | 12 operational runbook |
-| Stale docs and deployment limits | 1-3, 11 |
+| Request/checklist item                           | Delivery step                                                       |
+| ------------------------------------------------ | ------------------------------------------------------------------- |
+| Customer login/register/profile/reset            | 4                                                                   |
+| Configurable rewards, including 5%               | 8                                                                   |
+| Variant stock and slot inventory/capacity        | 5                                                                   |
+| Backend/storefront split                         | 2-3                                                                 |
+| Stripe/payment/refund integration                | 7                                                                   |
+| Configurable tax and fulfillment policies        | 6                                                                   |
+| Integration test/CI evidence                     | 1, 11                                                               |
+| Performance budgets                              | 11                                                                  |
+| SEO/analytics                                    | 10                                                                  |
+| Stable validation dependency                     | 1                                                                   |
+| SMS                                              | 10, enabled according to launch decision                            |
+| Shipping zones/rates, pickup and local delivery  | 6; live carrier rates and specialized cold-chain logistics deferred |
+| Sales reporting and optional merchant thresholds | 9                                                                   |
+| Optional merchant domain transfer                | 12 operational runbook                                              |
+| Stale docs and deployment limits                 | 1-3, 11                                                             |
 
 ## Generic acceptance matrix
 
-| Store configuration | Required acceptance |
-| --- | --- |
-| Shipping-only physical retailer | Tracked variant stock, destination rates/tax, card/manual payment, no pickup location or slot required, rewards off |
-| Pickup-only made-to-order merchant | Untracked global stock, optional variant slot quotas, preparation cutoff configured by merchant, 5% rewards enabled |
-| Mixed shipping/pickup merchant | Supported method/address/slot rules, variant eligibility and conflicting cart restrictions enforced on backend |
-| Scheduled local-delivery merchant | Service-area eligibility, delivery rate and timezone-aware capacity; ordinary shipping/pickup settings not required |
-| Configurable accounts and rewards | Guest allowed/account required, rewards disabled/alternate rate, verified ownership and currency-precision correctness |
-| Existing installation upgrade | Original IDs, balances, reservations and snapshots retained; existing fulfillment behavior remains compatible |
-| Neutral fresh installation | No bakery name, WA rate, permit cap, 5% reward requirement or industry shipping restriction appears unless configured |
+| Store configuration                | Required acceptance                                                                                                    |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Shipping-only physical retailer    | Tracked variant stock, destination rates/tax, card/manual payment, no pickup location or slot required, rewards off    |
+| Pickup-only made-to-order merchant | Untracked global stock, optional variant slot quotas, preparation cutoff configured by merchant, 5% rewards enabled    |
+| Mixed shipping/pickup merchant     | Supported method/address/slot rules, variant eligibility and conflicting cart restrictions enforced on backend         |
+| Scheduled local-delivery merchant  | Service-area eligibility, delivery rate and timezone-aware capacity; ordinary shipping/pickup settings not required    |
+| Configurable accounts and rewards  | Guest allowed/account required, rewards disabled/alternate rate, verified ownership and currency-precision correctness |
+| Existing installation upgrade      | Original IDs, balances, reservations and snapshots retained; existing fulfillment behavior remains compatible          |
+| Neutral fresh installation         | No bakery name, WA rate, permit cap, 5% reward requirement or industry shipping restriction appears unless configured  |
 
 These fixtures verify the documented supported store types. They do not certify universal tax compliance, digital goods, subscriptions, multi-warehouse inventory or multi-tenant operation.
 
@@ -309,19 +309,19 @@ These fixtures verify the documented supported store types. They do not certify 
 
 This section resolves the review findings against current source/specs. It is a design proposal, not implemented behavior. Inspection performed 2026-10-04; test suites were not run for this plan revision.
 
-| Current setup/spec | Consequence and implementation location |
-| --- | --- |
-| Root `package.json` owns one Next app; `pnpm-workspace.yaml` contains only build permissions, not package globs | Add `apps/*` and `packages/*` workspace globs, per-app manifests/tsconfig/Next/i18n configuration, shared contract package and root aggregate scripts. Keep backend domain/application/persistence together rather than expose them as storefront dependencies. |
-| `next.config.ts` uses a root i18n path and optional standalone output; Dockerfile copies root standalone artifacts | Give each app its own i18n/config/output; test monorepo standalone tracing and actual server/static paths. Split Docker targets/images and migration packaging. |
-| Compose has one `app` containing secrets and worker, plus PostgreSQL/storage; Adminer and RustFS both bind host port 9001 | Replace `app` with backend/storefront and explicit proxy routing. Resolve port conflict; make development inspection services optional. Storefront receives only its backend origin/public configuration. Backend receives DB/payment/storage/SMTP secrets. |
-| `docs/product-scope.md` excludes accounts/inventory/credit despite current implementations; `docs/transaction-contracts.md` extension section includes them | Update authoritative scope and remove contradictory workflow paragraphs. Plan is proposed direction; owner specs must be changed in step 1 before feature implementation. Do not add competing contracts only in the plan. |
-| `orders.ts` and `get-quote.ts` constrain fulfillment to shipping/pickup; fulfillment has a unique order ID | Add local_delivery consistently across schema, request validation, quote snapshots, admin, APIs and UI. Retain one method/fulfillment per order and explicitly retain one fulfillment method while supporting quantity shipments. |
-| `shipping.ts` canonical pickup slots require a pickup-location FK | Preserve old snapshots/FKs. Add additive generic fulfillment-slot/service-area storage or a reviewed compatible migration; a delivery area cannot be inserted into the old pickup-location FK. Prefer a separate generic capacity slot referencing legacy pickup slots uniquely where applicable, so existing order references remain valid. |
-| `fulfill-order.ts` currently consumes stock and immediately completes the order; pickup has separate ready/handoff operations | Split dispatch and completion contracts. Reuse terminal reservation states to prevent double consumption; pickup and local-delivery completion must call the same reward release helper. Update cancellation/refund eligibility for shipped-but-not-completed orders. |
-| `store-credit.ts` has aggregate balance/reservation counters and a single reversal link; `credit-operations.ts` holds/captures aggregate amounts | Add source lot/provenance and allocation tables with scoped FKs, uniqueness, nonnegative component checks and request identities. Keep append-only existing entries; do not attempt cumulative partial reward reversals through the existing one-reversal-per-entry mechanism. |
-| `purchase-refund.ts` restores original funding but has no issuance-lot restoration | Extend its original-source calculation to restore each consumed lot's provenance and capped amount; reward revocation/debt determines whether restored promotional value is spendable. Preserve total customer refund entitlement. |
-| `docs/transaction-contracts.md` says manual deadlines only prompt review; housekeeping has no unpaid-order expiry | Preserve manual behavior. Add a dedicated expiration use case and worker scheduling only for explicitly supported provider workflows; housekeeping must not release arbitrary unpaid orders. |
-| Lock helper includes sorted stock locks but no credit/slot targets, while transaction spec defines additional ranks | Audit all direct `FOR UPDATE` calls. Define one total order including slot, credit-lot/debt and provider-intent locks before implementation; update helper and callers together. Reward issuance/refunds must acquire credit locks before receipt locks, not call a lower-rank helper afterward. |
+| Current setup/spec                                                                                                                                          | Consequence and implementation location                                                                                                                                                                                                                                                                                                      |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Root `package.json` owns one Next app; `pnpm-workspace.yaml` contains only build permissions, not package globs                                             | Add `apps/*` and `packages/*` workspace globs, per-app manifests/tsconfig/Next/i18n configuration, shared contract package and root aggregate scripts. Keep backend domain/application/persistence together rather than expose them as storefront dependencies.                                                                              |
+| `next.config.ts` uses a root i18n path and optional standalone output; Dockerfile copies root standalone artifacts                                          | Give each app its own i18n/config/output; test monorepo standalone tracing and actual server/static paths. Split Docker targets/images and migration packaging.                                                                                                                                                                              |
+| Compose has one `app` containing secrets and worker, plus PostgreSQL/storage; Adminer and RustFS both bind host port 9001                                   | Replace `app` with backend/storefront and explicit proxy routing. Resolve port conflict; make development inspection services optional. Storefront receives only its backend origin/public configuration. Backend receives DB/payment/storage/SMTP secrets.                                                                                  |
+| `docs/product-scope.md` excludes accounts/inventory/credit despite current implementations; `docs/transaction-contracts.md` extension section includes them | Update authoritative scope and remove contradictory workflow paragraphs. Plan is proposed direction; owner specs must be changed in step 1 before feature implementation. Do not add competing contracts only in the plan.                                                                                                                   |
+| `orders.ts` and `get-quote.ts` constrain fulfillment to shipping/pickup; fulfillment has a unique order ID                                                  | Add local_delivery consistently across schema, request validation, quote snapshots, admin, APIs and UI. Retain one method/fulfillment per order and explicitly retain one fulfillment method while supporting quantity shipments.                                                                                                            |
+| `shipping.ts` canonical pickup slots require a pickup-location FK                                                                                           | Preserve old snapshots/FKs. Add additive generic fulfillment-slot/service-area storage or a reviewed compatible migration; a delivery area cannot be inserted into the old pickup-location FK. Prefer a separate generic capacity slot referencing legacy pickup slots uniquely where applicable, so existing order references remain valid. |
+| `fulfill-order.ts` currently consumes stock and immediately completes the order; pickup has separate ready/handoff operations                               | Split dispatch and completion contracts. Reuse terminal reservation states to prevent double consumption; pickup and local-delivery completion must call the same reward release helper. Update cancellation/refund eligibility for shipped-but-not-completed orders.                                                                        |
+| `store-credit.ts` has aggregate balance/reservation counters and a single reversal link; `credit-operations.ts` holds/captures aggregate amounts            | Add source lot/provenance and allocation tables with scoped FKs, uniqueness, nonnegative component checks and request identities. Keep append-only existing entries; do not attempt cumulative partial reward reversals through the existing one-reversal-per-entry mechanism.                                                               |
+| `purchase-refund.ts` restores original funding but has no issuance-lot restoration                                                                          | Extend its original-source calculation to restore each consumed lot's provenance and capped amount; reward revocation/debt determines whether restored promotional value is spendable. Preserve total customer refund entitlement.                                                                                                           |
+| `docs/transaction-contracts.md` says manual deadlines only prompt review; housekeeping has no unpaid-order expiry                                           | Preserve manual behavior. Add a dedicated expiration use case and worker scheduling only for explicitly supported provider workflows; housekeeping must not release arbitrary unpaid orders.                                                                                                                                                 |
+| Lock helper includes sorted stock locks but no credit/slot targets, while transaction spec defines additional ranks                                         | Audit all direct `FOR UPDATE` calls. Define one total order including slot, credit-lot/debt and provider-intent locks before implementation; update helper and callers together. Reward issuance/refunds must acquire credit locks before receipt locks, not call a lower-rank helper afterward.                                             |
 
 ### Exact reward basis and policy snapshot
 
@@ -334,14 +334,14 @@ This section resolves the review findings against current source/specs. It is a 
 
 Acceptance examples (two-decimal currency):
 
-| Accepted basket/funding | Expected reward at 5% |
-| --- | --- |
-| Eligible merchandise 40, no tax/fees, external 40 | 2.00 |
-| Eligible merchandise 40, credit 10, external 30 | 1.50 |
-| Eligible merchandise 40 + tax/fees 10, credit 10, external 40 | External merchandise basis 32; reward 1.60 |
-| Eligible merchandise 20 + ineligible merchandise 20, credit 20, external 20 | Eligible external basis 10; reward 0.50 |
+| Accepted basket/funding                                                         | Expected reward at 5%                                         |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Eligible merchandise 40, no tax/fees, external 40                               | 2.00                                                          |
+| Eligible merchandise 40, credit 10, external 30                                 | 1.50                                                          |
+| Eligible merchandise 40 + tax/fees 10, credit 10, external 40                   | External merchandise basis 32; reward 1.60                    |
+| Eligible merchandise 20 + ineligible merchandise 20, credit 20, external 20     | Eligible external basis 10; reward 0.50                       |
 | All external merchandise 40; cumulative eligible merchandise refunds 10 then 10 | Target reward 1.50 then 1.00; incremental reversals 0.50 each |
-| Accepted at 5%, then settings change to 10% before completion | Original 5% rate applies |
+| Accepted at 5%, then settings change to 10% before completion                   | Original 5% rate applies                                      |
 
 Add cent-level largest-remainder fixtures, inclusive/exclusive mixed tax, multiple payment receipts, zero-total orders and supported currency precisions.
 
@@ -366,16 +366,16 @@ Add cent-level largest-remainder fixtures, inclusive/exclusive mixed tax, multip
 
 ### Required specification updates before implementation
 
-| Owner document | Rule to change |
-| --- | --- |
-| `docs/product-scope.md` | Actual implemented commerce baseline; generic physical-store scope and deferred capabilities; two-service release boundary |
-| `docs/business-workflows.md` | Guest/account policy, delivery methods, dispatch/completion, manual review versus provider expiry, pending/released/reversed rewards and settings changes |
-| `docs/transaction-contracts.md` | Exact allocation/rounding, provenance/debt/refund recovery, total lock order, provider settlement/expiry and retry identities |
-| `docs/database-schema.md` | Additive fulfillment/service-area/slot capacity, reward policy snapshots, source lots/allocations/debt, provider inbox/intent storage and migration reconciliation |
-| `docs/api-events-spec.md` | Dispatch/delivery versus completion, payment inbox events and reward issuance/reversal events; preserve existing order sequence/deduplication |
-| `docs/architecture-overview.md` | API ownership, shared package limits, auth/proxy/SSR boundary, backend worker and migration execution |
-| `docs/critical-user-journeys.md` | Generic store matrix and financial/concurrency examples above |
-| Deployment guides, Compose/Docker and CI | Two images, neutral fixture onboarding, secret separation, restore/upgrade and measurable acceptance |
+| Owner document                           | Rule to change                                                                                                                                                     |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `docs/product-scope.md`                  | Actual implemented commerce baseline; generic physical-store scope and deferred capabilities; two-service release boundary                                         |
+| `docs/business-workflows.md`             | Guest/account policy, delivery methods, dispatch/completion, manual review versus provider expiry, pending/released/reversed rewards and settings changes          |
+| `docs/transaction-contracts.md`          | Exact allocation/rounding, provenance/debt/refund recovery, total lock order, provider settlement/expiry and retry identities                                      |
+| `docs/database-schema.md`                | Additive fulfillment/service-area/slot capacity, reward policy snapshots, source lots/allocations/debt, provider inbox/intent storage and migration reconciliation |
+| `docs/api-events-spec.md`                | Dispatch/delivery versus completion, payment inbox events and reward issuance/reversal events; preserve existing order sequence/deduplication                      |
+| `docs/architecture-overview.md`          | API ownership, shared package limits, auth/proxy/SSR boundary, backend worker and migration execution                                                              |
+| `docs/critical-user-journeys.md`         | Generic store matrix and financial/concurrency examples above                                                                                                      |
+| Deployment guides, Compose/Docker and CI | Two images, neutral fixture onboarding, secret separation, restore/upgrade and measurable acceptance                                                               |
 
 Resolve source/spec disagreements explicitly; neither stale docs nor current shortcuts automatically define the new contract. Implementation begins with owner-spec updates and targeted regression cases, followed by compatible migrations/use cases, then API/admin/storefront flows.
 

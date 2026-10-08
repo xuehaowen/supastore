@@ -1,4 +1,8 @@
-import { ledgerTimestamp, ledgerBoundary, type LedgerCursor } from "@/infrastructure/db/ledger-cursor";
+import {
+  ledgerTimestamp,
+  ledgerBoundary,
+  type LedgerCursor,
+} from "@/infrastructure/db/ledger-cursor";
 import { NextResponse } from "next/server";
 import { and, asc, eq, getTableColumns } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
@@ -56,9 +60,22 @@ export async function GET(
         const entries = await db.transaction(async (tx) => {
           await verifyStaffInTransaction(tx, staff);
           return tx
-            .select({ ...getTableColumns(storeCreditEntries), cursorTimestamp: ledgerTimestamp(storeCreditEntries.createdAt) })
+            .select({
+              ...getTableColumns(storeCreditEntries),
+              cursorTimestamp: ledgerTimestamp(storeCreditEntries.createdAt),
+            })
             .from(storeCreditEntries)
-            .where(and(eq(storeCreditEntries.accountId, id), ledgerBoundary(storeCreditEntries.createdAt, storeCreditEntries.id, cursor, true)))
+            .where(
+              and(
+                eq(storeCreditEntries.accountId, id),
+                ledgerBoundary(
+                  storeCreditEntries.createdAt,
+                  storeCreditEntries.id,
+                  cursor,
+                  true,
+                ),
+              ),
+            )
             .orderBy(
               asc(storeCreditEntries.createdAt),
               asc(storeCreditEntries.id),

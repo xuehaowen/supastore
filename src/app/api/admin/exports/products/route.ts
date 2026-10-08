@@ -15,9 +15,15 @@ export async function GET(_request: NextRequest) {
     await db.transaction((tx) => verifyStaffInTransaction(tx, session.user.id));
   } catch (error) {
     if (error instanceof ForbiddenError) {
-      return NextResponse.json({ error: "Staff access required" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Staff access required" },
+        { status: 403 },
+      );
     }
-    return NextResponse.json({ error: "Unable to verify access" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Unable to verify access" },
+      { status: 500 },
+    );
   }
 
   const filename = `products-${new Date().toISOString().slice(0, 10)}.csv`;

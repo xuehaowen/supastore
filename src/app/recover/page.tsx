@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { recoverOrder } from "@/app/actions";
 import { Field, Notice } from "@/app/components";
 import { Button } from "@/components/ui/button";
@@ -6,12 +7,12 @@ export const metadata = { robots: { index: false, follow: false } };
 export default async function Recover({
   searchParams,
 }: {
-  searchParams: Promise<{ sent?: string; error?: string }>;
+  searchParams: Promise<{ error?: string; sent?: string }>;
 }) {
   const q = await searchParams;
   return (
     <main className="mx-auto my-12 min-h-[50vh] max-w-xl">
-      <a href="/">← Shop</a>
+      <Link href="/">← Shop</Link>
       <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">
         Find your order
       </h1>

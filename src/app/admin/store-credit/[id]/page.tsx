@@ -1,4 +1,9 @@
-import { parseLedgerCursor, encodeLedgerCursor, ledgerTimestamp, ledgerBoundary } from "@/infrastructure/db/ledger-cursor";
+import {
+  parseLedgerCursor,
+  encodeLedgerCursor,
+  ledgerTimestamp,
+  ledgerBoundary,
+} from "@/infrastructure/db/ledger-cursor";
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
@@ -53,7 +58,16 @@ export default async function CreditDetail({
         reversed: sql<boolean>`exists(select 1 from store_credit_entries r where r.reversal_of_id = ${sql`${storeCreditEntries.id}`})`,
       })
       .from(storeCreditEntries)
-      .where(and(eq(storeCreditEntries.accountId, id), ledgerBoundary(storeCreditEntries.createdAt, storeCreditEntries.id, cursor)))
+      .where(
+        and(
+          eq(storeCreditEntries.accountId, id),
+          ledgerBoundary(
+            storeCreditEntries.createdAt,
+            storeCreditEntries.id,
+            cursor,
+          ),
+        ),
+      )
       .orderBy(desc(storeCreditEntries.createdAt), desc(storeCreditEntries.id))
       .limit(26);
     const [ledger] = await tx
@@ -175,7 +189,11 @@ export default async function CreditDetail({
         <nav className="pager" aria-label="Ledger pages">
           {cursor && <Link href="?">Latest entries</Link>}
           {data.entries.length > 25 && (
-            <Link href={`?after=${encodeLedgerCursor(data.entries[24]!.cursorTimestamp, data.entries[24]!.entry.id)}`}>Older entries</Link>
+            <Link
+              href={`?after=${encodeLedgerCursor(data.entries[24]!.cursorTimestamp, data.entries[24]!.entry.id)}`}
+            >
+              Older entries
+            </Link>
           )}
         </nav>
       </section>

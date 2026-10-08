@@ -46,14 +46,12 @@ export async function saveStoreContentAction(form: FormData) {
           updatedAt: new Date(),
         })
         .where(eq(storeSettings.id, store.id));
-      await tx
-        .insert(auditRecords)
-        .values({
-          entityType: "store_settings",
-          entityId: store.id,
-          actorId: staff,
-          action: "store.content_saved",
-        });
+      await tx.insert(auditRecords).values({
+        entityType: "store_settings",
+        entityId: store.id,
+        actorId: staff,
+        action: "store.content_saved",
+      });
     });
     revalidateTag("catalog");
     revalidatePath("/[locale]", "layout");

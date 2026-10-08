@@ -48,7 +48,9 @@ export default async function Products({
       </p>
       <div className="admin-page-actions">
         <Link href="/admin/products/new">Create draft product</Link>
-        <Link href="/admin/products/mapping">Review legacy option mappings</Link>
+        <Link href="/admin/products/mapping">
+          Review legacy option mappings
+        </Link>
         <AdminDialog
           trigger="Add product"
           title="Add product"

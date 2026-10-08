@@ -32,15 +32,13 @@ const acceptedSender = (
 async function seeded(recipient = "delivery@example.test") {
   const eventId = randomUUID(),
     id = randomUUID();
-  await db
-    .insert(outboxEvents)
-    .values({
-      id: eventId,
-      eventType: "order.confirmed",
-      aggregateType: "order",
-      aggregateId: randomUUID(),
-      payload: { referenceCode: "FIXTURE" },
-    });
+  await db.insert(outboxEvents).values({
+    id: eventId,
+    eventType: "order.confirmed",
+    aggregateType: "order",
+    aggregateId: randomUUID(),
+    payload: { referenceCode: "FIXTURE" },
+  });
   await db.insert(eventDeliveries).values({ id, eventId, recipient });
   return id;
 }
@@ -342,28 +340,69 @@ describe.skipIf(!enabled)("durable notification leases and callbacks", () => {
     ).toBe("awaiting");
   });
   it("retains uncertainty through a later 429 and never retries past the original guarantee", async () => {
-    await clear(); const id = await seeded();
+    await clear();
+    const id = await seeded();
     let calls = 0;
-    const sender: EmailSender = {...acceptedSender(), capabilities: {deliveryTracking: true, idempotencyWindowMs: 600000}, send: async message => {
-      calls++;
-      if (calls === 1) return {status: "unknown", code: "fixture_timeout"};
-      if (calls === 2) return {status: "rejected", code: "rate_limit", retryable: true, retryAfterMs: 3600000};
-      return {status: "accepted", providerMessageId: `unexpected-${message.deliveryId}`};
-    }};
-    await processOutboxBatch({providers: {email: sender}});
-    await db.update(eventDeliveries).set({retryAfter: new Date(0)}).where(eq(eventDeliveries.id, id));
+    const sender: EmailSender = {
+      ...acceptedSender(),
+      capabilities: { deliveryTracking: true, idempotencyWindowMs: 600000 },
+      send: async (message) => {
+        calls++;
+        if (calls === 1) return { status: "unknown", code: "fixture_timeout" };
+        if (calls === 2)
+          return {
+            status: "rejected",
+            code: "rate_limit",
+            retryable: true,
+            retryAfterMs: 3600000,
+          };
+        return {
+          status: "accepted",
+          providerMessageId: `unexpected-${message.deliveryId}`,
+        };
+      },
+    };
+    await processOutboxBatch({ providers: { email: sender } });
+    await db
+      .update(eventDeliveries)
+      .set({ retryAfter: new Date(0) })
+      .where(eq(eventDeliveries.id, id));
     const before = Date.now();
-    await processOutboxBatch({providers: {email: sender}});
-    const [review] = await db.select().from(eventDeliveries).where(eq(eventDeliveries.id, id));
-    expect(review).toMatchObject({status: "review", providerStatus: "unknown:rate_limit", attempts: 2});
-    expect(review!.retryAfter.getTime()).toBeGreaterThanOrEqual(before + 3600000);
-    const outcomes = await queryClient`select r.outcome from notification_attempt_results r join notification_attempts a on a.id=r.attempt_id where a.delivery_id=${id} order by a.attempt_number`;
-    expect(outcomes.map(row => row.outcome)).toEqual(["unknown", "rejected"]);
+    await processOutboxBatch({ providers: { email: sender } });
+    const [review] = await db
+      .select()
+      .from(eventDeliveries)
+      .where(eq(eventDeliveries.id, id));
+    expect(review).toMatchObject({
+      status: "review",
+      providerStatus: "unknown:rate_limit",
+      attempts: 2,
+    });
+    expect(review!.retryAfter.getTime()).toBeGreaterThanOrEqual(
+      before + 3600000,
+    );
+    const outcomes =
+      await queryClient`select r.outcome from notification_attempt_results r join notification_attempts a on a.id=r.attempt_id where a.delivery_id=${id} order by a.attempt_number`;
+    expect(outcomes.map((row) => row.outcome)).toEqual(["unknown", "rejected"]);
     // Even an operator requeue cannot erase the original uncertain request guarantee.
-    await db.update(eventDeliveries).set({status: "retrying", retryAfter: new Date(0), firstSubmittedAt: new Date(Date.now() - 600001)}).where(eq(eventDeliveries.id, id));
-    await processOutboxBatch({providers: {email: sender}});
+    await db
+      .update(eventDeliveries)
+      .set({
+        status: "retrying",
+        retryAfter: new Date(0),
+        firstSubmittedAt: new Date(Date.now() - 600001),
+      })
+      .where(eq(eventDeliveries.id, id));
+    await processOutboxBatch({ providers: { email: sender } });
     expect(calls).toBe(2);
-    expect((await db.select().from(eventDeliveries).where(eq(eventDeliveries.id, id)))[0]!.status).toBe("review");
+    expect(
+      (
+        await db
+          .select()
+          .from(eventDeliveries)
+          .where(eq(eventDeliveries.id, id))
+      )[0]!.status,
+    ).toBe("review");
   });
   it("records immutable starts/outcomes and cancels pending SMS on durable STOP without erasing acceptance", async () => {
     await clear();

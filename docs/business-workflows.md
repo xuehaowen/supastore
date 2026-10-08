@@ -12,13 +12,13 @@ An owner may resolve a reward funding-review flag only after every frozen origin
 
 Optional slots identify method/location or service area, local date/window and timezone. Capacity counts orders; quotas count variant units independently of global stock. Completed bookings consume their production window. Rescheduling acquires destination before releasing source under sorted locks; reductions cannot silently invalidate bookings. Reward pending/released/reversed states obey [transaction contracts](transaction-contracts.md). Feature configuration and neutral onboarding must pass browser acceptance before release; these contracts do not claim all milestones implemented.
 
-| Dimension | States and rules |
-| --- | --- |
-| Order | open -> confirmed -> completed; open/confirmed -> cancelled before shipment or pickup handoff |
-| Payment review | not_required, pending, needs_correction, verified; evidence review does not create a receipt |
-| Payment balance | Derived from effective receipts and settled excess returns: no_payment_due, unpaid, underpaid, paid, overpaid |
-| Fulfillment | unfulfilled -> preparing -> ready_for_pickup -> fulfilled, or preparing -> shipped -> fulfilled; eligible cancellation -> cancelled |
-| Refund/return | Authorized amount and settlement progress shown separately; pending, sending, partially_settled, settled or correction_reduced |
+| Dimension       | States and rules                                                                                                                    |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Order           | open -> confirmed -> completed; open/confirmed -> cancelled before shipment or pickup handoff                                       |
+| Payment review  | not_required, pending, needs_correction, verified; evidence review does not create a receipt                                        |
+| Payment balance | Derived from effective receipts and settled excess returns: no_payment_due, unpaid, underpaid, paid, overpaid                       |
+| Fulfillment     | unfulfilled -> preparing -> ready_for_pickup -> fulfilled, or preparing -> shipped -> fulfilled; eligible cancellation -> cancelled |
+| Refund/return   | Authorized amount and settlement progress shown separately; pending, sending, partially_settled, settled or correction_reduced      |
 
 Staff can record actual receipts, confirm payment and fulfill orders. Owner-only operations include price changes, cancellation, refunds, receipt corrections and payout execution. Customers cannot verify receipts, set prices or cancel orders. Every private use case checks the permission matrix in [architecture](architecture-overview.md).
 

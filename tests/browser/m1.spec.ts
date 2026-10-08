@@ -331,8 +331,13 @@ test("M2/C3/C7 publish variants, free pickup checkout and availability", async (
   await page.getByLabel("Select all variants", { exact: true }).check();
   await page.getByLabel("New availability").selectOption("false");
   await page.getByRole("button", { name: "Review bulk changes" }).click();
-  await clickAction(page, page.getByRole("button", { name: "Apply bulk changes" }));
-  await expect(page.getByRole("row", { name: "Default", exact: true })).toContainText("Unavailable");
+  await clickAction(
+    page,
+    page.getByRole("button", { name: "Apply bulk changes" }),
+  );
+  await expect(
+    page.getByRole("row", { name: "Default", exact: true }),
+  ).toContainText("Unavailable");
   await customer.goto("/en/products/" + handle);
   await expect(
     customer.getByRole("button", { name: "Currently unavailable" }),

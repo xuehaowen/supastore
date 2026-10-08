@@ -113,13 +113,11 @@ describe("frontend backend request contracts", () => {
   });
 
   it("surfaces an upload API error and does not continue the sequence", async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        new Response(JSON.stringify({ error: "Upload expired." }), {
-          status: 400,
-        }),
-      );
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: "Upload expired." }), {
+        status: 400,
+      }),
+    );
 
     await expect(
       uploadEvidence("order-1", new Blob(["x"], { type: "image/png" })),

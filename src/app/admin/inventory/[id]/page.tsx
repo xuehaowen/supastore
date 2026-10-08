@@ -1,4 +1,9 @@
-import { parseLedgerCursor, encodeLedgerCursor, ledgerTimestamp, ledgerBoundary } from "@/infrastructure/db/ledger-cursor";
+import {
+  parseLedgerCursor,
+  encodeLedgerCursor,
+  ledgerTimestamp,
+  ledgerBoundary,
+} from "@/infrastructure/db/ledger-cursor";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { and, desc, eq, getTableColumns } from "drizzle-orm";
@@ -48,9 +53,17 @@ export default async function StockHistory({
       .where(eq(productVariants.id, id));
     if (!row) return null;
     const movements = await tx
-      .select({ ...getTableColumns(stockMovements), cursorTimestamp: ledgerTimestamp(stockMovements.createdAt) })
+      .select({
+        ...getTableColumns(stockMovements),
+        cursorTimestamp: ledgerTimestamp(stockMovements.createdAt),
+      })
       .from(stockMovements)
-      .where(and(eq(stockMovements.variantId, id), ledgerBoundary(stockMovements.createdAt, stockMovements.id, cursor)))
+      .where(
+        and(
+          eq(stockMovements.variantId, id),
+          ledgerBoundary(stockMovements.createdAt, stockMovements.id, cursor),
+        ),
+      )
       .orderBy(desc(stockMovements.createdAt), desc(stockMovements.id))
       .limit(26);
     const reservations = await tx
@@ -104,7 +117,10 @@ export default async function StockHistory({
                 <TableCell>{m.reason}</TableCell>
                 <TableCell className="text-right">
                   {m.orderId ? (
-                    <Link href={`/admin/orders/${m.orderId}`} className="admin-edit-link">
+                    <Link
+                      href={`/admin/orders/${m.orderId}`}
+                      className="admin-edit-link"
+                    >
                       View order
                     </Link>
                   ) : (
@@ -115,7 +131,10 @@ export default async function StockHistory({
             ))}
             {!data.movements.length && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                <TableCell
+                  colSpan={4}
+                  className="text-center text-muted-foreground"
+                >
                   No stock movements.
                 </TableCell>
               </TableRow>
@@ -125,7 +144,11 @@ export default async function StockHistory({
         <nav className="pager" aria-label="Stock movement pages">
           {cursor && <Link href="?">Latest movements</Link>}
           {data.movements.length > 25 && (
-            <Link href={`?after=${encodeLedgerCursor(data.movements[24]!.cursorTimestamp, data.movements[24]!.id)}`}>Older movements</Link>
+            <Link
+              href={`?after=${encodeLedgerCursor(data.movements[24]!.cursorTimestamp, data.movements[24]!.id)}`}
+            >
+              Older movements
+            </Link>
           )}
         </nav>
       </section>

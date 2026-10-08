@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import * as v from "valibot";
-import { InvariantViolationError, UnauthorizedError } from "@/application/common/errors";
+import {
+  InvariantViolationError,
+  UnauthorizedError,
+} from "@/application/common/errors";
 
 describe("M2 Staff Governance & Security", () => {
   describe("Protected Owner Recovery Workflow (M5)", () => {
@@ -18,7 +21,7 @@ describe("M2 Staff Governance & Security", () => {
       const baseUrl = "https://shop.example.com";
       const recoveryUrl = `${baseUrl}/api/auth/recover-owner/redeem?token=${token}`;
       expect(recoveryUrl).toBe(
-        "https://shop.example.com/api/auth/recover-owner/redeem?token=" + token
+        "https://shop.example.com/api/auth/recover-owner/redeem?token=" + token,
       );
     });
 
@@ -50,18 +53,18 @@ describe("M2 Staff Governance & Security", () => {
     function simulateGuardCheck(
       activeOwners: { userId: string; role: string; isActive: boolean }[],
       targetUserId: string,
-      action: "deactivate" | "demote" | "delete"
+      action: "deactivate" | "demote" | "delete",
     ) {
       const target = activeOwners.find((o) => o.userId === targetUserId);
       if (!target) throw new Error("Target not found");
 
       if (target.role === "owner" && target.isActive) {
         const otherActiveOwners = activeOwners.filter(
-          (o) => o.userId !== targetUserId && o.role === "owner" && o.isActive
+          (o) => o.userId !== targetUserId && o.role === "owner" && o.isActive,
         );
         if (otherActiveOwners.length === 0) {
           throw new InvariantViolationError(
-            `Cannot ${action} the last remaining active owner membership. The store must always retain at least one active owner.`
+            `Cannot ${action} the last remaining active owner membership. The store must always retain at least one active owner.`,
           );
         }
       }
@@ -70,26 +73,26 @@ describe("M2 Staff Governance & Security", () => {
 
     it("prevents deactivating the sole active owner", () => {
       const owners = [{ userId: "owner-1", role: "owner", isActive: true }];
-      expect(() =>
-        simulateGuardCheck(owners, "owner-1", "deactivate")
-      ).toThrow(InvariantViolationError);
-      expect(() =>
-        simulateGuardCheck(owners, "owner-1", "deactivate")
-      ).toThrow(/last remaining active owner/i);
+      expect(() => simulateGuardCheck(owners, "owner-1", "deactivate")).toThrow(
+        InvariantViolationError,
+      );
+      expect(() => simulateGuardCheck(owners, "owner-1", "deactivate")).toThrow(
+        /last remaining active owner/i,
+      );
     });
 
     it("prevents demoting the sole active owner to staff", () => {
       const owners = [{ userId: "owner-1", role: "owner", isActive: true }];
-      expect(() =>
-        simulateGuardCheck(owners, "owner-1", "demote")
-      ).toThrow(InvariantViolationError);
+      expect(() => simulateGuardCheck(owners, "owner-1", "demote")).toThrow(
+        InvariantViolationError,
+      );
     });
 
     it("prevents deleting the sole active owner", () => {
       const owners = [{ userId: "owner-1", role: "owner", isActive: true }];
-      expect(() =>
-        simulateGuardCheck(owners, "owner-1", "delete")
-      ).toThrow(InvariantViolationError);
+      expect(() => simulateGuardCheck(owners, "owner-1", "delete")).toThrow(
+        InvariantViolationError,
+      );
     });
 
     it("allows deactivating or demoting an owner when another active owner exists", () => {

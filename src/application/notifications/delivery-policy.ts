@@ -50,8 +50,10 @@ export function deliveryOutcome(
       retryAfter: input.now,
       providerStatus: "accepted",
     };
-  const uncertain = result.status === "unknown" || Boolean(input.hadUncertainty);
-  const delay = result.status === "rejected" ? Math.max(0, result.retryAfterMs ?? 0) : 0;
+  const uncertain =
+    result.status === "unknown" || Boolean(input.hadUncertainty);
+  const delay =
+    result.status === "rejected" ? Math.max(0, result.retryAfterMs ?? 0) : 0;
   const providerRetryAfter = new Date(input.now.getTime() + delay);
   if (result.status === "rejected" && !result.retryable)
     return {

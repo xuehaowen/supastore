@@ -30,8 +30,7 @@ export function OrderActions({
           <h2>{m?.orderChange ?? "Order change"}</h2>
           <p>{proposal.reason}</p>
           <p>
-            {m?.proposedTotal ?? "Proposed order total"}:{" "}
-            {proposedTotalLabel}
+            {m?.proposedTotal ?? "Proposed order total"}: {proposedTotalLabel}
           </p>
           <button
             disabled={busy}
@@ -44,7 +43,9 @@ export function OrderActions({
                 window.location.reload();
               } catch (error) {
                 setMessage(
-                  error instanceof Error ? error.message : (m?.pleaseRetry ?? "Please retry"),
+                  error instanceof Error
+                    ? error.message
+                    : (m?.pleaseRetry ?? "Please retry"),
                 );
                 setBusy(false);
               }
@@ -73,7 +74,9 @@ export function OrderActions({
               window.location.assign(url.href);
             } catch (error) {
               setMessage(
-                error instanceof Error ? error.message : (m?.pleaseRetry ?? "Please retry"),
+                error instanceof Error
+                  ? error.message
+                  : (m?.pleaseRetry ?? "Please retry"),
               );
               setBusy(false);
             }
@@ -90,7 +93,11 @@ export function OrderActions({
             await request("v1/account/orders", { orderId: id }, "PUT");
             setMessage(m?.addedToAccount ?? "Added to your account.");
           } catch (e) {
-            setMessage(e instanceof Error ? e.message : (m?.pleaseRetry ?? "Please retry"));
+            setMessage(
+              e instanceof Error
+                ? e.message
+                : (m?.pleaseRetry ?? "Please retry"),
+            );
           } finally {
             setBusy(false);
           }
@@ -126,10 +133,15 @@ export function OrderActions({
                 "PATCH",
               );
               setMessage(
-                m?.evidenceSubmitted ?? "Payment evidence submitted for store review.",
+                m?.evidenceSubmitted ??
+                  "Payment evidence submitted for store review.",
               );
             } catch (e) {
-              setMessage(e instanceof Error ? e.message : (m?.pleaseRetry ?? "Please retry"));
+              setMessage(
+                e instanceof Error
+                  ? e.message
+                  : (m?.pleaseRetry ?? "Please retry"),
+              );
             } finally {
               setBusy(false);
             }
@@ -144,7 +156,9 @@ export function OrderActions({
               required
             />
           </label>
-          <button disabled={busy}>{m?.submitEvidence ?? "Submit evidence"}</button>
+          <button disabled={busy}>
+            {m?.submitEvidence ?? "Submit evidence"}
+          </button>
         </form>
       )}
       <p role="status">{message}</p>

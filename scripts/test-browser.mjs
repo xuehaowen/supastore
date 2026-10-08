@@ -18,7 +18,9 @@ const pg = new EmbeddedPostgres({
 });
 const database = "supastore_cuj_" + Date.now();
 const production = process.argv.includes("--production");
-const testArguments = process.argv.slice(2).filter((argument) => argument !== "--production");
+const testArguments = process.argv
+  .slice(2)
+  .filter((argument) => argument !== "--production");
 const env = {
   ...process.env,
   NEXT_DIST_DIR: ".next-cuj/" + database,
@@ -191,11 +193,7 @@ try {
   ]);
   await ready(env.APP_URL + "/api/health/live", server);
   await completed(
-    start([
-      "node_modules/@playwright/test/cli.js",
-      "test",
-      ...testArguments,
-    ]),
+    start(["node_modules/@playwright/test/cli.js", "test", ...testArguments]),
   );
 } catch (error) {
   console.error(

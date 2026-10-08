@@ -109,12 +109,21 @@ export async function salesReportInTransaction(
     }
   >();
   for (const row of refunds) {
-    if(Number(row.purchase_tax_cents)>0 && Number(row.purchase_total_cents)!==Number(row.quote_total_cents)) throw new DomainError("A historical taxable refund has revised prices without revised tax. Review its accepted tax before generating this report.");
+    if (
+      Number(row.purchase_tax_cents) > 0 &&
+      Number(row.purchase_total_cents) !== Number(row.quote_total_cents)
+    )
+      throw new DomainError(
+        "A historical taxable refund has revised prices without revised tax. Review its accepted tax before generating this report.",
+      );
     const orderId = String(row.order_id);
     const history = histories.get(orderId) ?? { amount: 0, tax: 0, source: [] };
-    const remainingPurchase = Math.max(0,Number(row.purchase_total_cents)-history.amount);
-    const amount = Math.min(Number(row.amount_cents),remainingPurchase);
-    if(!amount) continue; // Cancellation surplus is a payout, not refunded sales.
+    const remainingPurchase = Math.max(
+      0,
+      Number(row.purchase_total_cents) - history.amount,
+    );
+    const amount = Math.min(Number(row.amount_cents), remainingPurchase);
+    if (!amount) continue; // Cancellation surplus is a payout, not refunded sales.
     history.amount += amount;
     history.source.push({
       externalCents: Number(row.external_cents),
@@ -124,7 +133,13 @@ export async function salesReportInTransaction(
     const snapshot = row.reward_snapshot as RewardSnapshot | null;
     let cumulativeTax: number;
     if (row.kind === "cancellation_refund") {
-      cumulativeTax = history.tax + Number(BigInt(amount)*BigInt(Math.max(0,Number(row.purchase_tax_cents)-history.tax))/BigInt(remainingPurchase));
+      cumulativeTax =
+        history.tax +
+        Number(
+          (BigInt(amount) *
+            BigInt(Math.max(0, Number(row.purchase_tax_cents) - history.tax))) /
+            BigInt(remainingPurchase),
+        );
     } else if (snapshot) {
       const allocated = accumulateRewardComponentRefunds(
         snapshot,
@@ -328,29 +343,25 @@ export async function checkSalesThreshold(actorUserId?: string, date?: string) {
         ),
       );
     if (owners.length)
-      await tx
-        .insert(eventDeliveries)
-        .values(
-          owners.map((owner) => ({
-            eventId: event!.id,
-            recipient: owner.email,
-            channel: "email" as const,
-          })),
-        );
-    await tx
-      .insert(auditRecords)
-      .values({
-        entityType: "store",
-        entityId: store.id,
-        actorId: actorUserId ?? "sales-report-worker",
-        action: "sales.threshold_reached",
-        details: {
-          alertId: alert.id,
-          fiscalStart: period.start,
-          observedNetCents: report.totals.netSalesCents,
-          thresholdCents: policy.salesThresholdCents,
-        },
-      });
+      await tx.insert(eventDeliveries).values(
+        owners.map((owner) => ({
+          eventId: event!.id,
+          recipient: owner.email,
+          channel: "email" as const,
+        })),
+      );
+    await tx.insert(auditRecords).values({
+      entityType: "store",
+      entityId: store.id,
+      actorId: actorUserId ?? "sales-report-worker",
+      action: "sales.threshold_reached",
+      details: {
+        alertId: alert.id,
+        fiscalStart: period.start,
+        observedNetCents: report.totals.netSalesCents,
+        thresholdCents: policy.salesThresholdCents,
+      },
+    });
     return alert.id;
   });
 }
@@ -417,16 +428,14 @@ export async function recordOutsideSales(input: {
         payloadHash,
       })
       .returning();
-    await tx
-      .insert(auditRecords)
-      .values({
-        entityType: "outside_sales_adjustment",
-        entityId: adjustment!.id,
-        actorId: input.actorUserId,
-        action: "sales.outside_adjusted",
-        reason,
-        details: { saleDate, netCents, taxCents },
-      });
+    await tx.insert(auditRecords).values({
+      entityType: "outside_sales_adjustment",
+      entityId: adjustment!.id,
+      actorId: input.actorUserId,
+      action: "sales.outside_adjusted",
+      reason,
+      details: { saleDate, netCents, taxCents },
+    });
     return adjustment!.id;
   });
   await checkSalesThreshold(input.actorUserId, saleDate);

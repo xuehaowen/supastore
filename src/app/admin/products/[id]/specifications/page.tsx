@@ -103,7 +103,10 @@ export default async function Specifications({
                 <TableCell>{s.label}</TableCell>
                 <TableCell>{s.sortOrder}</TableCell>
                 <TableCell className="text-right">
-                  <form action={changeSpecificationAction} className="inline-flex items-center justify-end gap-2">
+                  <form
+                    action={changeSpecificationAction}
+                    className="inline-flex items-center justify-end gap-2"
+                  >
                     {identity}
                     <Hidden name="valueId" value={s.valueId} />
                     <Field
@@ -112,7 +115,9 @@ export default async function Specifications({
                       type="number"
                       value={s.sortOrder}
                     />
-                    <Button type="submit" size="sm">Save position</Button>
+                    <Button type="submit" size="sm">
+                      Save position
+                    </Button>
                     <Button
                       name="remove"
                       value="true"
@@ -128,7 +133,10 @@ export default async function Specifications({
             ))}
             {!specs.length && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                <TableCell
+                  colSpan={4}
+                  className="text-center text-muted-foreground"
+                >
                   No specifications yet.
                 </TableCell>
               </TableRow>

@@ -1,108 +1,245 @@
 import { randomUUID } from "node:crypto";
 import { test, expect, login, clickAction } from "./fixtures";
 
-test("merchant creates a draft, sells with mixed credit, receives a partial return and settles both refund sources", async ({ admin, page, sql }) => {
+test("merchant creates a draft, sells with mixed credit, receives a partial return and settles both refund sources", async ({
+  admin,
+  page,
+  sql,
+}) => {
   test.setTimeout(240000);
-  const code = randomUUID(), title = `Commerce journey ${code}`, handle = `journey-${code}`, sku = `JOURNEY-${code}`;
+  const code = randomUUID(),
+    title = `Commerce journey ${code}`,
+    handle = `journey-${code}`,
+    sku = `JOURNEY-${code}`;
   await admin.goto("/admin/products/new");
   await admin.getByLabel("Product title").fill(title);
   await admin.getByLabel("URL handle").fill(handle);
-  await clickAction(admin, admin.getByRole("button", { name: "Create draft", exact: true }));
+  await clickAction(
+    admin,
+    admin.getByRole("button", { name: "Create draft", exact: true }),
+  );
   const productId = new URL(admin.url()).pathname.split("/")[3]!;
-  await expect(admin.getByRole("button", { name: "Publish product", exact: true })).toBeDisabled();
+  await expect(
+    admin.getByRole("button", { name: "Publish product", exact: true }),
+  ).toBeDisabled();
   await admin.getByRole("button", { name: "Add variant", exact: true }).click();
-  const variant = admin.getByRole("dialog", { name: "Add variant", exact: true });
+  const variant = admin.getByRole("dialog", {
+    name: "Add variant",
+    exact: true,
+  });
   await variant.getByLabel("Variant name").fill("Default");
   await variant.getByLabel("SKU", { exact: true }).fill(sku);
   await variant.getByLabel("Price in minor units").fill("1000");
-  await clickAction(admin, variant.getByRole("button", { name: "Add variant", exact: true }));
-  await admin.getByLabel("Image file").setInputFiles({ name: "product.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAGUlEQVQokWN4+uI+SYhhVMOL0VB6OlyTBgCmaawfkFnzKAAAAABJRU5ErkJggg==", "base64") });
-  await admin.getByLabel("Image description", { exact: true }).fill("A product ready for shipping");
-  await admin.getByRole("button", { name: "Upload image", exact: true }).click();
-  await expect(admin.getByRole("status").filter({ hasText: "Image uploaded." })).toBeVisible({ timeout: 20000 });
+  await clickAction(
+    admin,
+    variant.getByRole("button", { name: "Add variant", exact: true }),
+  );
+  await admin.getByLabel("Image file").setInputFiles({
+    name: "product.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAGUlEQVQokWN4+uI+SYhhVMOL0VB6OlyTBgCmaawfkFnzKAAAAABJRU5ErkJggg==",
+      "base64",
+    ),
+  });
+  await admin
+    .getByLabel("Image description", { exact: true })
+    .fill("A product ready for shipping");
+  await admin
+    .getByRole("button", { name: "Upload image", exact: true })
+    .click();
+  await expect(
+    admin.getByRole("status").filter({ hasText: "Image uploaded." }),
+  ).toBeVisible({ timeout: 20000 });
   await admin.reload();
-  await clickAction(admin, admin.getByRole("button", { name: "Publish product", exact: true }));
+  await clickAction(
+    admin,
+    admin.getByRole("button", { name: "Publish product", exact: true }),
+  );
   await admin.goto(`/admin/inventory?q=${encodeURIComponent(sku)}`);
-  await admin.getByRole("button", { name: "Record count", exact: true }).click();
+  await admin
+    .getByRole("button", { name: "Record count", exact: true })
+    .click();
   const count = admin.getByRole("dialog", { name: `Stock count · ${sku}` });
   await count.getByLabel("Track stock").check();
   await count.getByLabel("Physical quantity").fill("2");
   await count.getByLabel("Count reason").fill("Opening count");
-  await clickAction(admin, count.getByRole("button", { name: "Save stock count" }));
+  await clickAction(
+    admin,
+    count.getByRole("button", { name: "Save stock count" }),
+  );
 
   // The seeded verified owner is also a customer in a separate browser session.
   await login(page);
   await page.goto("/en/account");
   await admin.goto("/admin/store-credit?q=owner%40example.test");
-  await admin.getByRole("button", { name: "Issue credit", exact: true }).click();
-  const issue = admin.getByRole("dialog", { name: "Issue store credit", exact: true });
-  await issue.getByRole("combobox", { name: "Customer", exact: true }).selectOption({ index: 1 });
+  await admin
+    .getByRole("button", { name: "Issue credit", exact: true })
+    .click();
+  const issue = admin.getByRole("dialog", {
+    name: "Issue store credit",
+    exact: true,
+  });
+  await issue
+    .getByRole("combobox", { name: "Customer", exact: true })
+    .selectOption({ index: 1 });
   await issue.getByLabel("Credit amount in minor units").fill("1000");
   await issue.getByLabel("Credit reason").fill("Journey credit");
-  await clickAction(admin, issue.getByRole("button", { name: "Issue store credit", exact: true }));
+  await clickAction(
+    admin,
+    issue.getByRole("button", { name: "Issue store credit", exact: true }),
+  );
   await expect(admin.getByRole("status")).toContainText("Credit entry posted");
   await page.goto(`/en/products/${handle}`);
-  await expect(page.getByText("Available quantity: 2", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Available quantity: 2", { exact: true }),
+  ).toBeVisible();
   await page.getByLabel("Quantity", { exact: true }).fill("2");
   await page.getByRole("button", { name: "Add to bag" }).click();
   await page.getByRole("link", { name: "Continue to checkout" }).click();
   await page.getByLabel("Street address").fill("1 Synthetic Street");
-  await page.getByLabel("Payment method").selectOption({ label: "Demo bank transfer" });
-  await clickAction(page, page.getByRole("button", { name: /Review your order/ }));
+  await page
+    .getByLabel("Payment method")
+    .selectOption({ label: "Demo bank transfer" });
+  await clickAction(
+    page,
+    page.getByRole("button", { name: /Review your order/ }),
+  );
   await page.getByLabel("Credit to apply").fill("10");
-  await expect(page.getByRole("status")).toContainText("External payment: $15.00");
+  await expect(page.getByRole("status")).toContainText(
+    "External payment: $15.00",
+  );
   await page.getByRole("checkbox").check();
-  await clickAction(page, page.getByRole("button", { name: /Accept total & place order/ }));
+  await clickAction(
+    page,
+    page.getByRole("button", { name: /Accept total & place order/ }),
+  );
   const orderId = new URL(page.url()).pathname.split("/").pop()!;
   await admin.goto(`/admin/orders/${orderId}`);
-  await admin.getByRole("button", { name: "Record payment", exact: true }).click();
+  await admin
+    .getByRole("button", { name: "Record payment", exact: true })
+    .click();
   const payment = admin.getByRole("dialog", { name: "Record actual payment" });
-  await payment.getByLabel("Actual received amount in minor units").fill("1500");
+  await payment
+    .getByLabel("Actual received amount in minor units")
+    .fill("1500");
   await payment.getByLabel("Actual payment reference").fill(randomUUID());
   await payment.getByRole("checkbox").check();
-  await clickAction(admin, payment.getByRole("button", { name: "Record receipt", exact: true }));
-  await clickAction(admin, admin.getByRole("button", { name: "Confirm exact payment", exact: true }));
-  await admin.getByRole("button", { name: "Dispatch shipment", exact: true }).click();
-  const dispatch = admin.getByRole("dialog", { name: "Dispatch shipment", exact: true });
-  await dispatch.getByLabel("Carrier or delivery method").fill("Synthetic delivery");
-  await clickAction(admin, dispatch.getByRole("button", { name: "Dispatch shipment", exact: true }));
-  await admin.getByRole("button", { name: "Record delivery", exact: true }).click();
-  const handoff = admin.getByRole("dialog", { name: "Record completed delivery", exact: true });
-  await handoff.getByLabel("Carrier or delivery method").fill("Synthetic delivery");
-  await clickAction(admin, handoff.getByRole("button", { name: "Record delivery", exact: true }));
+  await clickAction(
+    admin,
+    payment.getByRole("button", { name: "Record receipt", exact: true }),
+  );
+  await clickAction(
+    admin,
+    admin.getByRole("button", { name: "Confirm exact payment", exact: true }),
+  );
+  await admin
+    .getByRole("button", { name: "Dispatch shipment", exact: true })
+    .click();
+  const dispatch = admin.getByRole("dialog", {
+    name: "Dispatch shipment",
+    exact: true,
+  });
+  await dispatch
+    .getByLabel("Carrier or delivery method")
+    .fill("Synthetic delivery");
+  await clickAction(
+    admin,
+    dispatch.getByRole("button", { name: "Dispatch shipment", exact: true }),
+  );
+  await admin
+    .getByRole("button", { name: "Record delivery", exact: true })
+    .click();
+  const handoff = admin.getByRole("dialog", {
+    name: "Record completed delivery",
+    exact: true,
+  });
+  await handoff
+    .getByLabel("Carrier or delivery method")
+    .fill("Synthetic delivery");
+  await clickAction(
+    admin,
+    handoff.getByRole("button", { name: "Record delivery", exact: true }),
+  );
   await page.reload();
   await page.getByLabel(/up to 2 units/).fill("1");
   await page.getByLabel("Return reason").fill("One unit returned");
-  await clickAction(page, page.getByRole("button", { name: "Submit return request", exact: true }));
+  await clickAction(
+    page,
+    page.getByRole("button", { name: "Submit return request", exact: true }),
+  );
   await admin.reload();
-  await admin.getByRole("link", { name: "One unit returned · requested" }).click();
-  await admin.getByRole("combobox", { name: "Decision" }).selectOption("approved");
+  await admin
+    .getByRole("link", { name: "One unit returned · requested" })
+    .click();
+  await admin
+    .getByRole("combobox", { name: "Decision" })
+    .selectOption("approved");
   await admin.getByLabel("Review reason").fill("Return approved");
-  await clickAction(admin, admin.getByRole("button", { name: "Save decision" }));
+  await clickAction(
+    admin,
+    admin.getByRole("button", { name: "Save decision" }),
+  );
   await admin.getByLabel("Restockable units").fill("1");
-  await clickAction(admin, admin.getByRole("button", { name: "Record goods receipt" }));
+  await clickAction(
+    admin,
+    admin.getByRole("button", { name: "Record goods receipt" }),
+  );
   await admin.goto(`/admin/orders/${orderId}`);
-  await admin.getByRole("button", { name: "Refund purchase", exact: true }).click();
-  const refund = admin.getByRole("dialog", { name: "Authorize purchase refund" });
+  await admin
+    .getByRole("button", { name: "Refund purchase", exact: true })
+    .click();
+  const refund = admin.getByRole("dialog", {
+    name: "Authorize purchase refund",
+  });
   await refund.getByLabel("Refund amount in minor units").fill("1000");
   await refund.getByLabel("Refund reason").fill("One unit refunded");
-  await clickAction(admin, refund.getByRole("button", { name: "Authorize source-aware refund" }));
-  const [allocation] = await sql`select pa.id from payout_allocations pa join refund_authorizations ra on ra.id=pa.refund_authorization_id where ra.order_id=${orderId} and ra.reason='One unit refunded'`;
+  await clickAction(
+    admin,
+    refund.getByRole("button", { name: "Authorize source-aware refund" }),
+  );
+  const [allocation] =
+    await sql`select pa.id from payout_allocations pa join refund_authorizations ra on ra.id=pa.refund_authorization_id where ra.order_id=${orderId} and ra.reason='One unit refunded'`;
   await admin.goto("/admin/payments");
-  const payout = admin.locator("#payouts details").filter({ hasText: allocation!.id });
+  const payout = admin
+    .locator("#payouts details")
+    .filter({ hasText: allocation!.id });
   await payout.locator("summary").click();
   await payout.getByLabel("Claim amount (minor units)").fill("600");
-  await payout.getByLabel("Verified return destination").fill("SYNTHETIC-RETURN");
-  await clickAction(admin, payout.getByRole("button", { name: "Claim payout", exact: true }));
+  await payout
+    .getByLabel("Verified return destination")
+    .fill("SYNTHETIC-RETURN");
+  await clickAction(
+    admin,
+    payout.getByRole("button", { name: "Claim payout", exact: true }),
+  );
   await payout.locator("summary").click();
   await payout.getByLabel("Actual payout amount (minor units)").fill("600");
   await payout.getByLabel("Transfer reference").fill(randomUUID());
   await payout.getByLabel("Actual destination").fill("SYNTHETIC-RETURN");
-  await clickAction(admin, payout.getByRole("button", { name: "Reconcile payout", exact: true }));
+  await clickAction(
+    admin,
+    payout.getByRole("button", { name: "Reconcile payout", exact: true }),
+  );
   await page.reload();
-  await expect(page.getByText(/One unit refunded.*\$10.00 approved.*\$10.00 settled.*Complete/)).toBeVisible();
-  await expect.poll(async () => (await sql`select on_hand,reserved from variant_stock where variant_id=(select id from product_variants where product_id=${productId})`)[0]).toMatchObject({ on_hand: 1, reserved: 0 });
+  await expect(
+    page.getByText(
+      /One unit refunded.*\$10.00 approved.*\$10.00 settled.*Complete/,
+    ),
+  ).toBeVisible();
+  await expect
+    .poll(
+      async () =>
+        (
+          await sql`select on_hand,reserved from variant_stock where variant_id=(select id from product_variants where product_id=${productId})`
+        )[0],
+    )
+    .toMatchObject({ on_hand: 1, reserved: 0 });
   await admin.goto("/admin/reconciliation");
-  await expect(admin.getByText("No credit discrepancies.", { exact: true })).toBeVisible();
-  await expect(admin.getByText("No inventory discrepancies.", { exact: true })).toBeVisible();
+  await expect(
+    admin.getByText("No credit discrepancies.", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    admin.getByText("No inventory discrepancies.", { exact: true }),
+  ).toBeVisible();
 });

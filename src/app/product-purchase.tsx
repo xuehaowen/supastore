@@ -48,8 +48,9 @@ export function ProductPurchase({
     product.images.find((i) => i.variantId === null) ||
     product.images[0];
   const activeImage =
-    (activeImageKey ? product.images.find((i) => i.s3Key === activeImageKey) : null) ||
-    variantImage;
+    (activeImageKey
+      ? product.images.find((i) => i.s3Key === activeImageKey)
+      : null) || variantImage;
   const price = current
     ? new Intl.NumberFormat(locale, {
         style: "currency",
@@ -65,7 +66,7 @@ export function ProductPurchase({
   return (
     <div className="contents">
       <div className="flex flex-col gap-3 md:sticky md:top-6">
-        <div className="flex aspect-square items-center justify-center overflow-hidden rounded-[1.5rem] bg-[#e5e8df]">
+        <div className="flex aspect-square items-center justify-center overflow-hidden rounded-3xl bg-[#e5e8df]">
           {activeImage ? (
             <Image
               className="size-full object-cover transition-all duration-300"
@@ -87,10 +88,12 @@ export function ProductPurchase({
         {product.images.length > 1 && (
           <div
             className="flex gap-2.5 overflow-x-auto pb-1"
-            aria-label={locale === "zh" ? "商品图片预览" : "Product image gallery"}
+            aria-label={
+              locale === "zh" ? "商品图片预览" : "Product image gallery"
+            }
           >
             {product.images.map((img) => {
-              const isSelected = (activeImage?.s3Key === img.s3Key);
+              const isSelected = activeImage?.s3Key === img.s3Key;
               return (
                 <button
                   key={img.s3Key}

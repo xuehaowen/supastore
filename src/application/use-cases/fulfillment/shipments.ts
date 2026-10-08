@@ -143,15 +143,13 @@ export async function dispatchShipment(input: {
         updatedAt: new Date(),
       })
       .where(eq(orderFulfillments.orderId, id));
-    await tx
-      .insert(auditRecords)
-      .values({
-        entityType: "order",
-        entityId: id,
-        actorId: input.staffUserId,
-        action: "shipment.dispatched",
-        details: { shipmentId: shipment!.id, items: requested },
-      });
+    await tx.insert(auditRecords).values({
+      entityType: "order",
+      entityId: id,
+      actorId: input.staffUserId,
+      action: "shipment.dispatched",
+      details: { shipmentId: shipment!.id, items: requested },
+    });
     await emitOrderEvent(tx, id, "fulfillment.shipped", order.guestEmail, {
       orderId: id,
       referenceCode: order.referenceCode,
@@ -203,15 +201,13 @@ export async function finalizeDeliveredShipments(
     orderId,
     referenceCode: order.referenceCode,
   });
-  await tx
-    .insert(auditRecords)
-    .values({
-      entityType: "order",
-      entityId: orderId,
-      actorId,
-      action: "delivery.completed",
-      details: { shipmentIds: shipments.map((s) => s.id) },
-    });
+  await tx.insert(auditRecords).values({
+    entityType: "order",
+    entityId: orderId,
+    actorId,
+    action: "delivery.completed",
+    details: { shipmentIds: shipments.map((s) => s.id) },
+  });
 }
 export async function recordShipmentDelivered(input: {
   shipmentId: string;

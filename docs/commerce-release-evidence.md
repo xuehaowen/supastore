@@ -10,14 +10,14 @@ Existing manual payment and fulfillment workflows remain the launch payment path
 
 Evidence comes from disposable fixtures, not the configured store database.
 
-| Check | Result |
-| --- | --- |
-| Unit and synthetic lifecycle suite | 47 files, 478 tests passed |
-| PostgreSQL integration suite | 6 files, 39 tests passed; fresh migrations, concurrent reservations, identity, refunds, imports, bulk variants, immutable ledgers, and exact-microsecond cursor paging |
-| Full production browser suite | 53 tests passed against a freshly built production app using disposable PostgreSQL, S3, and SMTP fixtures |
-| Full commerce browser journey | Passed: create draft, upload image, publish, open stock, issue credit, mixed checkout, confirm bank payment, fulfill, return, restock, split refund, settle external payout, reconcile |
-| Production build | Passed without a running database; catalog pages generate on demand |
-| First-load JavaScript | Shared 102 kB; catalog/search 117 kB; product 128 kB; checkout 123 kB; account/order 128 kB; admin up to 132 kB |
+| Check                              | Result                                                                                                                                                                                 |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit and synthetic lifecycle suite | 47 files, 478 tests passed                                                                                                                                                             |
+| PostgreSQL integration suite       | 6 files, 39 tests passed; fresh migrations, concurrent reservations, identity, refunds, imports, bulk variants, immutable ledgers, and exact-microsecond cursor paging                 |
+| Full production browser suite      | 53 tests passed against a freshly built production app using disposable PostgreSQL, S3, and SMTP fixtures                                                                              |
+| Full commerce browser journey      | Passed: create draft, upload image, publish, open stock, issue credit, mixed checkout, confirm bank payment, fulfill, return, restock, split refund, settle external payout, reconcile |
+| Production build                   | Passed without a running database; catalog pages generate on demand                                                                                                                    |
+| First-load JavaScript              | Shared 102 kB; catalog/search 117 kB; product 128 kB; checkout 123 kB; account/order 128 kB; admin up to 132 kB                                                                        |
 
 Build sizes are Next.js output, not measured network transfer or performance guarantees. The complete browser regression suite passes in production mode. Run `node scripts/test-browser.mjs --production` to rebuild and verify an isolated synthetic store.
 

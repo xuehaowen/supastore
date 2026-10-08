@@ -61,7 +61,10 @@ describe("SMTP delivery", () => {
     vi.stubEnv("SMTP_FROM", "owner@example.test");
     vi.stubEnv("SMTP_PORT", "465");
     vi.stubEnv("SMTP_SECURE", undefined);
-    mail.createTransport.mockReturnValue({ sendMail: mail.sendMail, close: vi.fn() });
+    mail.createTransport.mockReturnValue({
+      sendMail: mail.sendMail,
+      close: vi.fn(),
+    });
     mail.sendMail.mockResolvedValue({
       accepted: ["owner@example.test"],
       messageId: "test",
@@ -81,7 +84,10 @@ describe("SMTP delivery", () => {
   it("does not report rejected recipients as successful", async () => {
     vi.stubEnv("SMTP_HOST", "127.0.0.1");
     vi.stubEnv("SMTP_FROM", "owner@example.test");
-    mail.createTransport.mockReturnValue({ sendMail: mail.sendMail, close: vi.fn() });
+    mail.createTransport.mockReturnValue({
+      sendMail: mail.sendMail,
+      close: vi.fn(),
+    });
     mail.sendMail.mockResolvedValue({
       accepted: [],
       rejected: ["owner@example.test"],

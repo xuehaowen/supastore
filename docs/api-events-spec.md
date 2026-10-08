@@ -18,24 +18,24 @@ Manual review-deadline events notify staff without cancelling reservations. Slot
 
 ## Event catalog
 
-| Event | Source | Recipient |
-| --- | --- | --- |
-| order.submitted | Durable order creation | Admin; customer acknowledgment/instructions unless immediately confirmed |
-| order.confirmed | Payment or valid zero-total confirmation | Customer |
-| order.change_proposed / order.change_accepted | Eligible unpaid-term proposal or acceptance | Customer |
-| order.change_invalidated | Receipt arrives while a proposal is pending | Owner; customer explanation |
-| order.unpaid_review_due | Unpaid deadline revision | Admin |
-| payment.correction_requested / payment.correction_overdue | Evidence review or expired correction deadline | Customer / admin respectively |
-| fulfillment.review_overdue | Pickup deadline revision | Admin |
-| fulfillment.rescheduled / fulfillment.address_updated | Audited agreed change | Customer |
-| fulfillment.ready_for_pickup / fulfillment.shipped | Fulfillment transition | Customer |
-| fulfillment.tracking_updated | Audited tracking correction | Customer |
-| order.completed | Handoff or manually recorded delivery | Customer if enabled |
-| order.cancelled | Owner cancellation | Customer |
-| refund.authorized / refund.settled | Purchase/cancellation refund obligation or final reconciliation | Customer |
-| payment_return.authorized / payment_return.settled | Excess, late or supplemental return obligation/completion | Customer |
-| receipt.correction_applied | Reviewed receipt and allocation corrections commit | Owner; customer if balance or promised return changed |
-| receipt.correction_dismissed | No-change investigation closes | Owner |
+| Event                                                     | Source                                                                                      | Recipient                                                                                                                |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| order.submitted                                           | Durable order creation                                                                      | Admin; customer acknowledgment/instructions unless immediately confirmed                                                 |
+| order.confirmed                                           | Payment or valid zero-total confirmation                                                    | Customer                                                                                                                 |
+| order.change_proposed / order.change_accepted             | Eligible unpaid-term proposal or acceptance                                                 | Customer                                                                                                                 |
+| order.change_invalidated                                  | Receipt arrives while a proposal is pending                                                 | Owner; customer explanation                                                                                              |
+| order.unpaid_review_due                                   | Unpaid deadline revision                                                                    | Admin                                                                                                                    |
+| payment.correction_requested / payment.correction_overdue | Evidence review or expired correction deadline                                              | Customer / admin respectively                                                                                            |
+| fulfillment.review_overdue                                | Pickup deadline revision                                                                    | Admin                                                                                                                    |
+| fulfillment.rescheduled / fulfillment.address_updated     | Audited agreed change                                                                       | Customer                                                                                                                 |
+| fulfillment.ready_for_pickup / fulfillment.shipped        | Fulfillment transition                                                                      | Customer                                                                                                                 |
+| fulfillment.tracking_updated                              | Audited tracking correction                                                                 | Customer                                                                                                                 |
+| order.completed                                           | Handoff or manually recorded delivery                                                       | Customer if enabled                                                                                                      |
+| order.cancelled                                           | Owner cancellation                                                                          | Customer                                                                                                                 |
+| refund.authorized / refund.settled                        | Purchase/cancellation refund obligation or final reconciliation                             | Customer                                                                                                                 |
+| payment_return.authorized / payment_return.settled        | Excess, late or supplemental return obligation/completion                                   | Customer                                                                                                                 |
+| receipt.correction_applied                                | Reviewed receipt and allocation corrections commit                                          | Owner; customer if balance or promised return changed                                                                    |
+| receipt.correction_dismissed                              | No-change investigation closes                                                              | Owner                                                                                                                    |
 | payout.discrepancy_recorded / payout.discrepancy_resolved | Monetary error, claim-limit breach or late-evidence review / owner completes reconciliation | Owner, including stop/reconcile instructions for affected replacements; customer only if their settlement status changes |
 
 Creation always emits order.submitted once, including owner-created and free orders. Immediate confirmation sends the admin submission message and one customer confirmation. Do not send a separate customer acknowledgment with payment instructions in that case. Cancellation messages link to existing refund/return status instead of implying that money has already been sent.

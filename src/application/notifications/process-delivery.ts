@@ -363,8 +363,11 @@ async function processSingleNotification(
             .set({
               status: "pending",
               retryAfter: quiet,
-              providerStatus: delivery.providerStatus === "dispatch_lease_expired" || delivery.providerStatus?.startsWith("unknown:")
-                ? delivery.providerStatus : "quiet_hours",
+              providerStatus:
+                delivery.providerStatus === "dispatch_lease_expired" ||
+                delivery.providerStatus?.startsWith("unknown:")
+                  ? delivery.providerStatus
+                  : "quiet_hours",
               leaseToken: null,
               leaseExpiresAt: null,
             })
@@ -373,18 +376,16 @@ async function processSingleNotification(
         }
       }
       claim.firstSubmittedAt = delivery.firstSubmittedAt ?? new Date();
-      await tx
-        .insert(notificationAttempts)
-        .values({
-          id: claim.attemptId,
-          deliveryId: claim.id,
-          requestId: claim.id,
-          attemptNumber: claim.attempts,
-          leaseToken: claim.leaseToken,
-          provider: claim.sender.identity.provider,
-          profile: claim.sender.identity.profile,
-          preparedMessage: claim.prepared,
-        });
+      await tx.insert(notificationAttempts).values({
+        id: claim.attemptId,
+        deliveryId: claim.id,
+        requestId: claim.id,
+        attemptNumber: claim.attempts,
+        leaseToken: claim.leaseToken,
+        provider: claim.sender.identity.provider,
+        profile: claim.sender.identity.profile,
+        preparedMessage: claim.prepared,
+      });
       await tx
         .update(eventDeliveries)
         .set({
@@ -435,7 +436,9 @@ async function processSingleNotification(
         )
         .for("update");
       if (!delivery) return;
-      const hadUncertainty = delivery.providerStatus === "dispatch_lease_expired" || Boolean(delivery.providerStatus?.startsWith("unknown:"));
+      const hadUncertainty =
+        delivery.providerStatus === "dispatch_lease_expired" ||
+        Boolean(delivery.providerStatus?.startsWith("unknown:"));
       const outcome = deliveryOutcome(result, {
         attempts: claim.attempts,
         firstSubmittedAt: claim.firstSubmittedAt,
@@ -454,7 +457,8 @@ async function processSingleNotification(
           status: outcome.status,
           retryAfter: outcome.retryAfter,
           providerStatus:
-            result.status === "unknown" || (hadUncertainty && result.status === "rejected")
+            result.status === "unknown" ||
+            (hadUncertainty && result.status === "rejected")
               ? `unknown:${result.code}`
               : outcome.providerStatus,
           providerMessageId:

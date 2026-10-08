@@ -162,9 +162,9 @@ export async function cancelOrder(
           0,
         );
         const corrections = await tx
-              .select()
-              .from(paymentReceiptCorrections)
-              .where(eq(paymentReceiptCorrections.receiptId, receipt.id));
+          .select()
+          .from(paymentReceiptCorrections)
+          .where(eq(paymentReceiptCorrections.receiptId, receipt.id));
         const availableCapacity = Math.max(
           0,
           receipt.amountCents +

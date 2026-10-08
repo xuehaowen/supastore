@@ -14,7 +14,11 @@ export default async function Reset({
   return (
     <>
       <h1>{m.auth.resetPassword}</h1>
-      <ResetPasswordClient locale={locale} messages={{ auth: m.auth }} {...query} />
+      <ResetPasswordClient
+        locale={locale}
+        messages={{ auth: m.auth }}
+        {...query}
+      />
     </>
   );
 }

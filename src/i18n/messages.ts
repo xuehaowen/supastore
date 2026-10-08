@@ -6,4 +6,3 @@ export type AppMessages = typeof en;
 export function textFor(locale: string): AppMessages {
   return messages[locale === "zh" ? "zh" : "en"];
 }
-

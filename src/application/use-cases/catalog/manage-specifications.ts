@@ -93,15 +93,13 @@ export async function changeSpecification(input: {
       .update(products)
       .set({ quoteVersion: product.quoteVersion + 1, updatedAt: new Date() })
       .where(eq(products.id, productId));
-    await tx
-      .insert(auditRecords)
-      .values({
-        entityType: "product",
-        entityId: productId,
-        actorId: input.staffUserId,
-        action: input.remove ? "specification.removed" : "specification.saved",
-        details: { valueId, sortOrder },
-      });
+    await tx.insert(auditRecords).values({
+      entityType: "product",
+      entityId: productId,
+      actorId: input.staffUserId,
+      action: input.remove ? "specification.removed" : "specification.saved",
+      details: { valueId, sortOrder },
+    });
   });
 }
 export async function listSpecifications(

@@ -11,7 +11,22 @@ import {
 export const storeSettings = pgTable("store_settings", {
   id: uuid("id").primaryKey().defaultRandom(),
   storeName: text("store_name").notNull(),
-  commercePolicy: jsonb("commerce_policy").$type<import("@/domain/commerce-policy").CommercePolicy>().notNull().default({ guestCheckout: true, rewardsEnabled: false, rewardRateBasisPoints: 500, shippingEnabled: true, pickupEnabled: true, deliveryEnabled: false, salesThresholdCents: null, fiscalYearStartMonth: 1, rewardEligibleCategoryIds: [], rewardsStartAt: null, rewardsEndAt: null }),
+  commercePolicy: jsonb("commerce_policy")
+    .$type<import("@/domain/commerce-policy").CommercePolicy>()
+    .notNull()
+    .default({
+      guestCheckout: true,
+      rewardsEnabled: false,
+      rewardRateBasisPoints: 500,
+      shippingEnabled: true,
+      pickupEnabled: true,
+      deliveryEnabled: false,
+      salesThresholdCents: null,
+      fiscalYearStartMonth: 1,
+      rewardEligibleCategoryIds: [],
+      rewardsStartAt: null,
+      rewardsEndAt: null,
+    }),
   logoKey: text("logo_key"),
   supportEmail: text("support_email").notNull().default(""),
   publicContent: jsonb("public_content")

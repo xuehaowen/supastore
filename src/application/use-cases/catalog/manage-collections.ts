@@ -119,11 +119,19 @@ export async function changeCollectionMember(input: {
       .select({ id: products.id })
       .from(products)
       .where(eq(products.id, productId));
-      if (!product) throw new NotFoundError("Product not found.");
-      if (!input.remove) {
-        const memberships = await tx.select().from(collectionMemberships).where(eq(collectionMemberships.productId, productId)).limit(21);
-        if (memberships.length >= 20 && !memberships.some(m => m.collectionId === collectionId)) throw new DomainError("A product can belong to up to 20 collections.");
-      }
+    if (!product) throw new NotFoundError("Product not found.");
+    if (!input.remove) {
+      const memberships = await tx
+        .select()
+        .from(collectionMemberships)
+        .where(eq(collectionMemberships.productId, productId))
+        .limit(21);
+      if (
+        memberships.length >= 20 &&
+        !memberships.some((m) => m.collectionId === collectionId)
+      )
+        throw new DomainError("A product can belong to up to 20 collections.");
+    }
     if (input.remove)
       await tx
         .delete(collectionMemberships)

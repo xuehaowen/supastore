@@ -32,11 +32,14 @@ describe("request validation helpers", () => {
   });
 
   it("rejects unknown enum values instead of defaulting", () => {
-    expect(parseActionEnum("pickup", "Fulfillment", ["shipping", "pickup"] as const)).toBe(
-      "pickup",
-    );
+    expect(
+      parseActionEnum("pickup", "Fulfillment", ["shipping", "pickup"] as const),
+    ).toBe("pickup");
     expect(() =>
-      parseActionEnum("courier", "Fulfillment", ["shipping", "pickup"] as const),
+      parseActionEnum("courier", "Fulfillment", [
+        "shipping",
+        "pickup",
+      ] as const),
     ).toThrow("Fulfillment is invalid.");
   });
 
@@ -46,9 +49,9 @@ describe("request validation helpers", () => {
     expect(() => parseActionBoolean("yes", "Verified")).toThrow(
       "Verified must be true or false.",
     );
-    expect(parseActionUuid("00000000-0000-0000-0000-000000000001", "Order")).toBe(
-      "00000000-0000-0000-0000-000000000001",
-    );
+    expect(
+      parseActionUuid("00000000-0000-0000-0000-000000000001", "Order"),
+    ).toBe("00000000-0000-0000-0000-000000000001");
     expect(() => parseActionUuid("not-an-id", "Order")).toThrow(
       "Order is invalid.",
     );

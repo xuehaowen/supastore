@@ -108,10 +108,7 @@ export default async function DeliverySettings({
             Require a delivery window
           </label>
           <label className="flex items-center gap-2">
-            <Checkbox
-              name="isActive"
-              defaultChecked={area?.isActive ?? true}
-            />
+            <Checkbox name="isActive" defaultChecked={area?.isActive ?? true} />
             Active
           </label>
           <Button type="submit">Save delivery area</Button>

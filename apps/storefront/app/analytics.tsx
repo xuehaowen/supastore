@@ -34,7 +34,8 @@ export function AnalyticsPreference({
   return (
     <aside>
       <p>
-        {m?.notice ?? "Optional store analytics records public page visits and purchase amounts without names, emails or order references."}
+        {m?.notice ??
+          "Optional store analytics records public page visits and purchase amounts without names, emails or order references."}
       </p>
       {choice === "pending" ? (
         <>

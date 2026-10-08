@@ -1,10 +1,11 @@
+import Image from "next/image";
+import { notFound } from "next/navigation";
 import {
   BackendApiError,
   readApi,
   type Product,
   type Store,
 } from "../../../../lib/api";
-import { notFound } from "next/navigation";
 import { AddToCart } from "../../../commerce";
 import { alternateLinks, publicOrigin, safeJsonLd } from "../../../../lib/seo";
 import { getStorefrontMessages } from "../../../../lib/i18n";
@@ -87,10 +88,14 @@ export default async function ProductPage({
       <div className="grid">
         <div>
           {product.images.map((i) => (
-            <img
+            <Image
               key={i.s3Key}
               src={`/api/assets?key=${encodeURIComponent(i.s3Key)}`}
               alt={i.altText || product.title}
+              width={600}
+              height={600}
+              unoptimized
+              style={{ width: "100%", height: "auto" }}
             />
           ))}
           <p>{product.description}</p>

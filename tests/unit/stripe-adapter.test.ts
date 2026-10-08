@@ -71,17 +71,15 @@ describe("Stripe REST adapter", () => {
     expect(network).not.toHaveBeenCalled();
   });
   it("creates original-payment refunds and distinguishes pending from succeeded", async () => {
-    const network = vi
-      .fn()
-      .mockResolvedValue(
-        Response.json({
-          id: "re_123",
-          amount: 400,
-          currency: "usd",
-          payment_intent: "pi_123",
-          status: "pending",
-        }),
-      );
+    const network = vi.fn().mockResolvedValue(
+      Response.json({
+        id: "re_123",
+        amount: 400,
+        currency: "usd",
+        payment_intent: "pi_123",
+        status: "pending",
+      }),
+    );
     const adapter = new StripeAdapter(
       "sk_test_example",
       "https://shop.example",

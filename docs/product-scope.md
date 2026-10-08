@@ -8,20 +8,20 @@ The audience sells physical goods through shipping, pickup or local delivery. Tr
 
 ## Release boundaries
 
-| First release | Deferred |
-| --- | --- |
-| One business and currency per deployment | Multi-currency and multiple businesses |
-| Storefront, admin and one configurable theme | Theme marketplace and plugin framework |
-| Products, variants, categories and optional tracked inventory | Multiple warehouses |
-| Guest/accounts, address books and proof-based order claiming | Multi-tenant identities |
-| Unpaid order before instructions; credit plus external funding | Installment schedules and transferable wallets |
-| Manual payments and online-payment adapter | General payment plugin framework |
-| Original-source refunds and configurable purchase rewards | Reward expiry, transfers and historical backfill |
-| Price changes only before any receipt is recorded | Post-payment price-change proposals |
-| Flat shipping rates and one optional pickup location | Carrier labels, calculated shipping and multiple pickup locations |
-| Configured tax rates and one rounding policy | Automatic global tax compliance |
-| Transactional email | Admin direct messages, SMS and WeChat |
-| Product CSV import; product/order export | Order import and general data round-trip tooling |
+| First release                                                  | Deferred                                                          |
+| -------------------------------------------------------------- | ----------------------------------------------------------------- |
+| One business and currency per deployment                       | Multi-currency and multiple businesses                            |
+| Storefront, admin and one configurable theme                   | Theme marketplace and plugin framework                            |
+| Products, variants, categories and optional tracked inventory  | Multiple warehouses                                               |
+| Guest/accounts, address books and proof-based order claiming   | Multi-tenant identities                                           |
+| Unpaid order before instructions; credit plus external funding | Installment schedules and transferable wallets                    |
+| Manual payments and online-payment adapter                     | General payment plugin framework                                  |
+| Original-source refunds and configurable purchase rewards      | Reward expiry, transfers and historical backfill                  |
+| Price changes only before any receipt is recorded              | Post-payment price-change proposals                               |
+| Flat shipping rates and one optional pickup location           | Carrier labels, calculated shipping and multiple pickup locations |
+| Configured tax rates and one rounding policy                   | Automatic global tax compliance                                   |
+| Transactional email                                            | Admin direct messages, SMS and WeChat                             |
+| Product CSV import; product/order export                       | Order import and general data round-trip tooling                  |
 
 Subscriptions, configurable products, marketplaces and arbitrary workflow builders are outside the product's initial direction. Deferred capabilities require separate designs before release.
 
@@ -49,17 +49,17 @@ Measure onboarding completion, time to the first test order, guest checkout comp
 
 This document controls scope. Business workflows control behavior and transitions. Transaction contracts control calculations, lock order and retry semantics. The data model describes storage responsibilities; journeys verify outcomes. Other documents link to those rules rather than introducing alternatives. Documents define intended contracts; expansion targets do not imply completed migrations or release acceptance.
 
-| Question | Authoritative document |
-| --- | --- |
-| Who is the product for, and what ships? | This document |
-| What can a user do, and when? | [Business workflows](business-workflows.md) |
-| How are money, locks and retries calculated? | [Transaction contracts](transaction-contracts.md) |
-| What is stored and constrained? | [Data model](database-schema.md) |
-| How are messages delivered and retained? | [Events](api-events-spec.md) |
-| Where do code and authorization responsibilities live? | [Architecture](architecture-overview.md) |
-| What demonstrates completion? | [User journeys](critical-user-journeys.md) |
-| In what order is it built? | [Roadmap](production-tasks-roadmap.md) |
-| How is it configured, deployed and recovered? | [Development and deployment](development-deployment.md) |
-| How does a merchant operate it? | [Merchant guide](merchant-operations.md), a reader-facing summary of workflows |
+| Question                                               | Authoritative document                                                         |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| Who is the product for, and what ships?                | This document                                                                  |
+| What can a user do, and when?                          | [Business workflows](business-workflows.md)                                    |
+| How are money, locks and retries calculated?           | [Transaction contracts](transaction-contracts.md)                              |
+| What is stored and constrained?                        | [Data model](database-schema.md)                                               |
+| How are messages delivered and retained?               | [Events](api-events-spec.md)                                                   |
+| Where do code and authorization responsibilities live? | [Architecture](architecture-overview.md)                                       |
+| What demonstrates completion?                          | [User journeys](critical-user-journeys.md)                                     |
+| In what order is it built?                             | [Roadmap](production-tasks-roadmap.md)                                         |
+| How is it configured, deployed and recovered?          | [Development and deployment](development-deployment.md)                        |
+| How does a merchant operate it?                        | [Merchant guide](merchant-operations.md), a reader-facing summary of workflows |
 
 Define each rule in its owner document. Elsewhere retain only the context needed by that audience and link to the rule. When changing behavior, update the owner first, then its acceptance coverage and roadmap references. Keep implementation suggestions distinct from requirements; summaries never override contracts. Milestone labels M0–M3 in the roadmap are distinct from merchant journey IDs M1–M6.

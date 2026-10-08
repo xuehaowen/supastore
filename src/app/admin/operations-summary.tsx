@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 type OperationsSummaryProps = {
   unpaidOrders: number;
   evidenceReviews: number;
@@ -13,20 +15,20 @@ export function OperationsSummary({
 }: OperationsSummaryProps) {
   return (
     <div className="metrics" aria-label="Operations summary">
-      <a href="/admin/orders?status=unpaid">
+      <Link href="/admin/orders?status=unpaid">
         <strong>{unpaidOrders}</strong>
         Unpaid orders
-      </a>
-      <a href="/admin/payments#evidence">
+      </Link>
+      <Link href="/admin/payments#evidence">
         <strong>{evidenceReviews}</strong>Evidence review
-      </a>
-      <a href="/admin/fulfillment#ready">
+      </Link>
+      <Link href="/admin/fulfillment#ready">
         <strong>{readyForFulfillment}</strong>
         Ready for fulfillment
-      </a>
-      <a href="/admin/activity">
+      </Link>
+      <Link href="/admin/activity">
         <strong>{failedEmails}</strong>Failed emails
-      </a>
+      </Link>
     </div>
   );
 }

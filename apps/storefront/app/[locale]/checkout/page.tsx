@@ -17,7 +17,12 @@ export default async function CheckoutPage({
     <>
       <h1>{m.checkout.title}</h1>
       {cart?.items.length ? (
-        <Checkout cart={cart} store={store} locale={locale} messages={m.checkout} />
+        <Checkout
+          cart={cart}
+          store={store}
+          locale={locale}
+          messages={m.checkout}
+        />
       ) : (
         <p>{m.checkout.addFirst}</p>
       )}

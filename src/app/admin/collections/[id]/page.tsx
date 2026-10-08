@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
 import { getCollectionAdmin } from "@/application/use-cases/catalog/manage-collections";
 import { staffIdentity } from "@/infrastructure/web";
@@ -73,11 +74,12 @@ export default async function CollectionDetail({
       <section className="panel">
         <h2>Collection image</h2>
         {collection.imageKey && (
-          <img
+          <Image
             src={`/api/admin/catalog-image?collectionId=${id}`}
             alt={collection.imageAlt || collection.title}
-            width="240"
-            height="160"
+            width={240}
+            height={160}
+            unoptimized
             className="rounded-lg object-cover"
           />
         )}

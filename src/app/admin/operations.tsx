@@ -1156,7 +1156,7 @@ export default async function Admin({
           <h2>Failed emails</h2>
           {failures.length === 0 && (
             <p className="admin-empty">
-              No failed email deliveries. You're all caught up.
+              No failed email deliveries. You&apos;re all caught up.
             </p>
           )}
           {failures.map((f) => (

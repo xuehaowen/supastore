@@ -42,16 +42,30 @@ export async function startStripeCheckout(
       throw new DomainError("Only unpaid orders can start payment.");
     const terms = order.termsSnapshot as QuoteTerms;
     const amountCents = order.purchaseTotalCents - order.creditAppliedCents;
-    const unitIssue = stripeCurrencyIssue(terms.currency, terms.precision, amountCents);
+    const unitIssue = stripeCurrencyIssue(
+      terms.currency,
+      terms.precision,
+      amountCents,
+    );
     if (unitIssue) throw new DomainError(unitIssue);
     const [existing] = await tx
       .select()
       .from(stripeCheckoutAttempts)
       .where(eq(stripeCheckoutAttempts.orderId, orderId));
     if (existing) {
-      const existingUnitIssue = stripeCurrencyIssue(existing.currency, terms.precision, existing.amountCents);
-      if (existingUnitIssue || existing.currency !== terms.currency.toLowerCase())
-        throw new DomainError(existingUnitIssue || "Existing payment currency requires merchant review.");
+      const existingUnitIssue = stripeCurrencyIssue(
+        existing.currency,
+        terms.precision,
+        existing.amountCents,
+      );
+      if (
+        existingUnitIssue ||
+        existing.currency !== terms.currency.toLowerCase()
+      )
+        throw new DomainError(
+          existingUnitIssue ||
+            "Existing payment currency requires merchant review.",
+        );
       if (["paid", "expired", "review"].includes(existing.status))
         throw new DomainError(
           "Payment requires merchant review; do not send another payment.",
@@ -308,9 +322,19 @@ export async function applyStripeEvent(
       return { accepted: true, status: "review" };
     };
     const terms = order.termsSnapshot as QuoteTerms;
-    const unitIssue = stripeCurrencyIssue(terms.currency, terms.precision, attempt.amountCents);
-    if (unitIssue || typeof terms.currency !== "string" || terms.currency.toLowerCase() !== attempt.currency)
-      return review(unitIssue || "Accepted order and provider currency units do not match.");
+    const unitIssue = stripeCurrencyIssue(
+      terms.currency,
+      terms.precision,
+      attempt.amountCents,
+    );
+    if (
+      unitIssue ||
+      typeof terms.currency !== "string" ||
+      terms.currency.toLowerCase() !== attempt.currency
+    )
+      return review(
+        unitIssue || "Accepted order and provider currency units do not match.",
+      );
     if (
       session.metadata.orderId !== order.id ||
       session.amount_total !== attempt.amountCents ||
@@ -329,8 +353,13 @@ export async function applyStripeEvent(
       return { accepted: true, status: "processed" };
     }
     if (session.status === "expired" && session.payment_status === "unpaid") {
-      if(order.lifecycleStatus === "unpaid" && order.financialRevision===attempt.financialRevision && order.purchaseTotalCents-order.creditAppliedCents===attempt.amountCents)
-        await expireProviderOrder(tx,order.id,providerActor);
+      if (
+        order.lifecycleStatus === "unpaid" &&
+        order.financialRevision === attempt.financialRevision &&
+        order.purchaseTotalCents - order.creditAppliedCents ===
+          attempt.amountCents
+      )
+        await expireProviderOrder(tx, order.id, providerActor);
       await tx
         .update(stripeCheckoutAttempts)
         .set({ status: "expired", updatedAt: new Date() })
@@ -436,14 +465,40 @@ export async function reconcileStripeInbox(limit = 25) {
     }
   }
   // Recover lost completion/expiration webhooks from authoritative session data.
-  const open = await db.select().from(stripeCheckoutAttempts).where(eq(stripeCheckoutAttempts.status,"open")).orderBy(asc(stripeCheckoutAttempts.updatedAt)).limit(Math.max(1,Math.min(100,limit)));
-  const adapter=stripeFromEnvironment();
-  for(const attempt of open) {
-    if(!attempt.sessionId) continue;
+  const open = await db
+    .select()
+    .from(stripeCheckoutAttempts)
+    .where(eq(stripeCheckoutAttempts.status, "open"))
+    .orderBy(asc(stripeCheckoutAttempts.updatedAt))
+    .limit(Math.max(1, Math.min(100, limit)));
+  const adapter = stripeFromEnvironment();
+  for (const attempt of open) {
+    if (!attempt.sessionId) continue;
     try {
-      const session=await adapter.retrieveCheckoutSession(attempt.sessionId);
-      if(session.status==="complete" || session.status==="expired") await acceptStripeEvent({id:`poll:${session.id}:${session.status}`,type:session.status==="expired"?"checkout.session.expired":"checkout.session.completed",livemode:process.env.STRIPE_SECRET_KEY!.startsWith("sk_live_"),data:{object:{id:session.id}}},adapter);
-      else await db.update(stripeCheckoutAttempts).set({updatedAt:new Date()}).where(eq(stripeCheckoutAttempts.id,attempt.id));
-    } catch(error) {console.error("Stripe session reconciliation pending",{attemptId:attempt.id,error});}
+      const session = await adapter.retrieveCheckoutSession(attempt.sessionId);
+      if (session.status === "complete" || session.status === "expired")
+        await acceptStripeEvent(
+          {
+            id: `poll:${session.id}:${session.status}`,
+            type:
+              session.status === "expired"
+                ? "checkout.session.expired"
+                : "checkout.session.completed",
+            livemode: process.env.STRIPE_SECRET_KEY!.startsWith("sk_live_"),
+            data: { object: { id: session.id } },
+          },
+          adapter,
+        );
+      else
+        await db
+          .update(stripeCheckoutAttempts)
+          .set({ updatedAt: new Date() })
+          .where(eq(stripeCheckoutAttempts.id, attempt.id));
+    } catch (error) {
+      console.error("Stripe session reconciliation pending", {
+        attemptId: attempt.id,
+        error,
+      });
+    }
   }
 }

@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { stripeConfiguredFor, stripeCurrencyIssue } from "@/domain/stripe-currency";
+import {
+  stripeConfiguredFor,
+  stripeCurrencyIssue,
+} from "@/domain/stripe-currency";
 afterEach(() => vi.unstubAllEnvs());
 describe("Stripe charge currency units", () => {
   it("fails closed for mismatched or unverified units without converting amounts", () => {
@@ -12,7 +15,9 @@ describe("Stripe charge currency units", () => {
     expect(stripeCurrencyIssue("jpy", 0, 100)).toBeNull();
     expect(stripeCurrencyIssue("HUF", 2, 101)).toBeNull();
     expect(stripeCurrencyIssue("TWD", 2, 101)).toBeNull();
-    for (const code of "BIF CLP DJF GNF JPY KMF KRW MGA PYG RWF VND VUV XAF XOF XPF".split(" ")) {
+    for (const code of "BIF CLP DJF GNF JPY KMF KRW MGA PYG RWF VND VUV XAF XOF XPF".split(
+      " ",
+    )) {
       expect(stripeCurrencyIssue(code, 0, 100)).toBeNull();
       expect(stripeCurrencyIssue(code, 2, 100)).toContain("precision 0");
     }

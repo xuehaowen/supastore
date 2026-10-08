@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
-import { sql } from 'drizzle-orm';
-import { db } from '@/infrastructure/db';
+import { NextResponse } from "next/server";
+import { sql } from "drizzle-orm";
+import { db } from "@/infrastructure/db";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
@@ -29,7 +29,7 @@ export async function GET() {
 
     if (Array.isArray(countsResult)) {
       for (const row of countsResult as any[]) {
-        if (row.status && typeof row.count === 'number') {
+        if (row.status && typeof row.count === "number") {
           counts[row.status] = row.count;
         }
       }
@@ -37,11 +37,14 @@ export async function GET() {
 
     const oldestDate = (oldestPendingResult as any)?.[0]?.oldest_pending;
     const oldestPendingAgeSeconds = oldestDate
-      ? Math.max(0, Math.floor((Date.now() - new Date(oldestDate).getTime()) / 1000))
+      ? Math.max(
+          0,
+          Math.floor((Date.now() - new Date(oldestDate).getTime()) / 1000),
+        )
       : 0;
 
     return NextResponse.json({
-      status: 'ok',
+      status: "ok",
       outbox: {
         pending: counts.pending,
         retrying: counts.retrying,
@@ -54,11 +57,11 @@ export async function GET() {
   } catch (error: any) {
     return NextResponse.json(
       {
-        status: 'unhealthy',
-        error: error?.message ?? 'Worker health check failed',
+        status: "unhealthy",
+        error: error?.message ?? "Worker health check failed",
         timestamp: new Date().toISOString(),
       },
-      { status: 503 }
+      { status: 503 },
     );
   }
 }

@@ -1,4 +1,4 @@
-import pino, { type Logger as PinoLogger } from 'pino';
+import pino, { type Logger as PinoLogger } from "pino";
 
 /**
  * Provider-neutral structured logging backed by Pino.
@@ -8,9 +8,10 @@ import pino, { type Logger as PinoLogger } from 'pino';
  * particular observability vendor.
  */
 
-const SENSITIVE_KEY_PATTERN = /password|secret|token|authorization|cookie|apiKey|card|session|credit/i;
+const SENSITIVE_KEY_PATTERN =
+  /password|secret|token|authorization|cookie|apiKey|card|session|credit/i;
 
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+export type LogLevel = "debug" | "info" | "warn" | "error";
 export type LogContext = Record<string, unknown>;
 
 const LOG_LEVEL_PRIORITY: Record<LogLevel, number> = {
@@ -45,14 +46,17 @@ export interface LoggerOptions {
 }
 
 export function sanitizeValue(key: string, value: any, depth = 0): any {
-  if (depth > 6) return '[MAX_DEPTH]';
+  if (depth > 6) return "[MAX_DEPTH]";
   if (value === null || value === undefined) return value;
 
-  if (SENSITIVE_KEY_PATTERN.test(key)) return '[REDACTED]';
+  if (SENSITIVE_KEY_PATTERN.test(key)) return "[REDACTED]";
 
-  if (typeof value === 'string') {
-    if (/^bearer\s+[a-zA-Z0-9_\-.]+/i.test(value) || /^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/.test(value)) {
-      return '[REDACTED_TOKEN]';
+  if (typeof value === "string") {
+    if (
+      /^bearer\s+[a-zA-Z0-9_\-.]+/i.test(value) ||
+      /^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/.test(value)
+    ) {
+      return "[REDACTED_TOKEN]";
     }
     return value;
   }
@@ -61,10 +65,14 @@ export function sanitizeValue(key: string, value: any, depth = 0): any {
     return value.map((item) => sanitizeValue(key, item, depth + 1));
   }
 
-  if (typeof value === 'object') {
+  if (typeof value === "object") {
     const sanitizedObj: Record<string, any> = {};
     for (const [nestedKey, nestedValue] of Object.entries(value)) {
-      sanitizedObj[nestedKey] = sanitizeValue(nestedKey, nestedValue, depth + 1);
+      sanitizedObj[nestedKey] = sanitizeValue(
+        nestedKey,
+        nestedValue,
+        depth + 1,
+      );
     }
     return sanitizedObj;
   }
@@ -73,38 +81,44 @@ export function sanitizeValue(key: string, value: any, depth = 0): any {
 }
 
 export function sanitizePayload(payload: any): any {
-  if (typeof payload !== 'object' || payload === null) return payload;
-  return sanitizeValue('root', payload, 0);
+  if (typeof payload !== "object" || payload === null) return payload;
+  return sanitizeValue("root", payload, 0);
 }
 
 function configuredLevel(): LogLevel {
   const value = process.env.LOG_LEVEL;
-  if (value === 'debug' || value === 'info' || value === 'warn' || value === 'error') return value;
-  return process.env.NODE_ENV === 'production' ? 'info' : 'debug';
+  if (
+    value === "debug" ||
+    value === "info" ||
+    value === "warn" ||
+    value === "error"
+  )
+    return value;
+  return process.env.NODE_ENV === "production" ? "info" : "debug";
 }
 
 const PinoRedactionPaths = [
-  'password',
-  'secret',
-  'token',
-  'authorization',
-  'cookie',
-  'apiKey',
-  'card',
-  'session',
-  'credit',
-  'data.password',
-  'data.secret',
-  'data.token',
-  'data.authorization',
-  'data.cookie',
-  'data.apiKey',
-  'data.card',
-  'data.session',
-  'data.credit',
-  'error.password',
-  'error.secret',
-  'error.token',
+  "password",
+  "secret",
+  "token",
+  "authorization",
+  "cookie",
+  "apiKey",
+  "card",
+  "session",
+  "credit",
+  "data.password",
+  "data.secret",
+  "data.token",
+  "data.authorization",
+  "data.cookie",
+  "data.apiKey",
+  "data.card",
+  "data.session",
+  "data.credit",
+  "error.password",
+  "error.secret",
+  "error.token",
 ];
 
 function createPinoLogger(level: LogLevel): PinoLogger {
@@ -114,7 +128,7 @@ function createPinoLogger(level: LogLevel): PinoLogger {
     timestamp: false,
     redact: {
       paths: PinoRedactionPaths,
-      censor: '[REDACTED]',
+      censor: "[REDACTED]",
     },
     formatters: {
       level: (label) => ({ level: label }),
@@ -131,7 +145,7 @@ export function createNativeLogSink(): LogSink {
   };
 }
 
-function errorDetails(error: unknown): LogEntry['error'] | undefined {
+function errorDetails(error: unknown): LogEntry["error"] | undefined {
   if (!error) return undefined;
   if (error instanceof Error) {
     return sanitizePayload({
@@ -140,7 +154,7 @@ function errorDetails(error: unknown): LogEntry['error'] | undefined {
       ...(error.stack ? { stack: error.stack } : {}),
     });
   }
-  return sanitizePayload({ name: 'UnknownError', message: String(error) });
+  return sanitizePayload({ name: "UnknownError", message: String(error) });
 }
 
 export function createLogger(options: LoggerOptions = {}) {
@@ -150,7 +164,12 @@ export function createLogger(options: LoggerOptions = {}) {
   const nativeLogger = native ? createPinoLogger(level) : undefined;
   const context = options.context ?? {};
 
-  function write(levelName: LogLevel, message: string, data?: unknown, error?: unknown): void {
+  function write(
+    levelName: LogLevel,
+    message: string,
+    data?: unknown,
+    error?: unknown,
+  ): void {
     if (LOG_LEVEL_PRIORITY[levelName] < LOG_LEVEL_PRIORITY[level]) return;
 
     const errorData = error !== undefined ? errorDetails(error) : undefined;
@@ -178,16 +197,18 @@ export function createLogger(options: LoggerOptions = {}) {
   }
 
   return {
-    info: (message: string, data?: unknown) => write('info', message, data),
-    warn: (message: string, data?: unknown) => write('warn', message, data),
-    error: (message: string, error?: unknown) => write('error', message, undefined, error),
-    debug: (message: string, data?: unknown) => write('debug', message, data),
-    child: (childContext: LogContext) => createLogger({
-      level,
-      context: { ...context, ...childContext },
-      sinks,
-      native,
-    }),
+    info: (message: string, data?: unknown) => write("info", message, data),
+    warn: (message: string, data?: unknown) => write("warn", message, data),
+    error: (message: string, error?: unknown) =>
+      write("error", message, undefined, error),
+    debug: (message: string, data?: unknown) => write("debug", message, data),
+    child: (childContext: LogContext) =>
+      createLogger({
+        level,
+        context: { ...context, ...childContext },
+        sinks,
+        native,
+      }),
   };
 }
 
@@ -211,7 +232,8 @@ export function createMemoryLogSink(maxEntries = 500): LogSink & {
 /** Recent events for an optional server-side enhanced log panel. */
 export const panelLogSink = createMemoryLogSink();
 
-const defaultSinks = process.env.LOG_PANEL_ENABLED === 'true' ? [panelLogSink] : undefined;
+const defaultSinks =
+  process.env.LOG_PANEL_ENABLED === "true" ? [panelLogSink] : undefined;
 
 const defaultLoggerOptions: LoggerOptions = { native: true };
 if (defaultSinks) defaultLoggerOptions.sinks = defaultSinks;

@@ -47,7 +47,12 @@ export default async function Checkout({
   const accounts = await db
     .select({ id: paymentAccounts.id, name: paymentAccounts.accountName })
     .from(paymentAccounts)
-    .where(and(eq(paymentAccounts.isActive, true), ne(paymentAccounts.accountType, "stripe")));
+    .where(
+      and(
+        eq(paymentAccounts.isActive, true),
+        ne(paymentAccounts.accountType, "stripe"),
+      ),
+    );
   const locations = await db
     .select()
     .from(pickupLocation)
@@ -72,7 +77,7 @@ export default async function Checkout({
         {t("eyebrowCheckout")}
       </p>
       <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">
-        {quote ? t("review") : (locale === "zh" ? "结账" : "Checkout")}
+        {quote ? t("review") : locale === "zh" ? "结账" : "Checkout"}
       </h1>
       <div className="mb-8 flex items-center gap-3">
         <div
@@ -100,9 +105,7 @@ export default async function Checkout({
           <span className="flex size-4 items-center justify-center rounded-full bg-background/20 font-bold">
             2
           </span>
-          <span>
-            {locale === "zh" ? "核对并下单" : "Review & Place Order"}
-          </span>
+          <span>{locale === "zh" ? "核对并下单" : "Review & Place Order"}</span>
         </div>
       </div>
       <Notice error={query.error} />

@@ -1,12 +1,22 @@
 import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
-import { products, productVariants, storeSettings, productOptions, auditRecords } from "@/infrastructure/db/schema";
+import {
+  products,
+  productVariants,
+  storeSettings,
+  productOptions,
+  auditRecords,
+} from "@/infrastructure/db/schema";
 import { importCatalogAssociations } from "./import-catalog-associations";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { InvariantViolationError } from "@/application/common/errors";
 import type { ProductCsvRow } from "@/domain/catalog/product-csv";
 export { parseProductCsv } from "@/domain/catalog/product-csv";
-export type { ProductCsvRow, CsvParseError, CsvPreview } from "@/domain/catalog/product-csv";
+export type {
+  ProductCsvRow,
+  CsvParseError,
+  CsvPreview,
+} from "@/domain/catalog/product-csv";
 export interface ImportProductsCsvInput {
   rows: ProductCsvRow[];
   staffUserId: string;
@@ -23,11 +33,37 @@ export async function importProductsCsv(
   if (input.rows.length === 0) {
     throw new InvariantViolationError("No rows to import.");
   }
-  if (input.rows.length > 100) throw new InvariantViolationError("Import at most 100 rows per batch. Use the import page for automatic bounded batches.");
-  if (new Set(input.rows.map(r => r.sku)).size !== input.rows.length) throw new InvariantViolationError("Import SKUs must be unique.");
+  if (input.rows.length > 100)
+    throw new InvariantViolationError(
+      "Import at most 100 rows per batch. Use the import page for automatic bounded batches.",
+    );
+  if (new Set(input.rows.map((r) => r.sku)).size !== input.rows.length)
+    throw new InvariantViolationError("Import SKUs must be unique.");
   const details = new Map<string, string>();
-  for (const row of input.rows) { const value = JSON.stringify([row.productTitle, row.description, row.isPublished]); if (details.has(row.handle) && details.get(row.handle) !== value) throw new InvariantViolationError(`Rows for ${row.handle} must agree on product title, description and publication.`); details.set(row.handle, value); }
-  for (const row of input.rows) if (!Number.isSafeInteger(row.priceCents) || row.priceCents < 0 || row.priceCents > 2147483647 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(row.handle) || !row.sku || row.sku.length > 200 || !row.productTitle || row.productTitle.length > 200) throw new InvariantViolationError("Invalid product import row.");
+  for (const row of input.rows) {
+    const value = JSON.stringify([
+      row.productTitle,
+      row.description,
+      row.isPublished,
+    ]);
+    if (details.has(row.handle) && details.get(row.handle) !== value)
+      throw new InvariantViolationError(
+        `Rows for ${row.handle} must agree on product title, description and publication.`,
+      );
+    details.set(row.handle, value);
+  }
+  for (const row of input.rows)
+    if (
+      !Number.isSafeInteger(row.priceCents) ||
+      row.priceCents < 0 ||
+      row.priceCents > 2147483647 ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(row.handle) ||
+      !row.sku ||
+      row.sku.length > 200 ||
+      !row.productTitle ||
+      row.productTitle.length > 200
+    )
+      throw new InvariantViolationError("Invalid product import row.");
 
   return await db.transaction(async (tx) => {
     await verifyStaffInTransaction(tx, input.staffUserId, "owner");
@@ -113,25 +149,55 @@ export async function importProductsCsv(
           })
           .where(eq(products.id, productId));
         updated++;
-        await importCatalogAssociations(tx, productId, existingVariant.id, row, false);
-      } else {
-        const [inserted] = await tx.insert(productVariants).values({
+        await importCatalogAssociations(
+          tx,
           productId,
-          sku: row.sku,
-          title: row.variantTitle,
-          priceCents: row.priceCents,
-          isAvailable: row.isAvailable,
-        }).returning();
+          existingVariant.id,
+          row,
+          false,
+        );
+      } else {
+        const [inserted] = await tx
+          .insert(productVariants)
+          .values({
+            productId,
+            sku: row.sku,
+            title: row.variantTitle,
+            priceCents: row.priceCents,
+            isAvailable: row.isAvailable,
+          })
+          .returning();
         await importCatalogAssociations(tx, productId, inserted!.id, row, true);
         created++;
       }
     }
     for (const product of productByHandle.values()) {
-      const variants = await tx.select().from(productVariants).where(eq(productVariants.productId, product.id));
-      if (variants.length > 50) throw new InvariantViolationError(`Product ${product.handle} exceeds 50 variants.`);
-      const options = await tx.select().from(productOptions).where(eq(productOptions.productId, product.id));
-      if (options.length && variants.some(v => !v.combinationKey)) throw new InvariantViolationError(`Product ${product.handle} has unmapped legacy variants. Supply explicit option_values for every legacy SKU before configuring options.`);
-      await tx.insert(auditRecords).values({ entityType: "product", entityId: product.id, actorId: input.staffUserId, action: "catalog.csv_imported", details: { rowCount: input.rows.filter(r => r.handle === product.handle).length } });
+      const variants = await tx
+        .select()
+        .from(productVariants)
+        .where(eq(productVariants.productId, product.id));
+      if (variants.length > 50)
+        throw new InvariantViolationError(
+          `Product ${product.handle} exceeds 50 variants.`,
+        );
+      const options = await tx
+        .select()
+        .from(productOptions)
+        .where(eq(productOptions.productId, product.id));
+      if (options.length && variants.some((v) => !v.combinationKey))
+        throw new InvariantViolationError(
+          `Product ${product.handle} has unmapped legacy variants. Supply explicit option_values for every legacy SKU before configuring options.`,
+        );
+      await tx.insert(auditRecords).values({
+        entityType: "product",
+        entityId: product.id,
+        actorId: input.staffUserId,
+        action: "catalog.csv_imported",
+        details: {
+          rowCount: input.rows.filter((r) => r.handle === product.handle)
+            .length,
+        },
+      });
     }
 
     return { created, updated };

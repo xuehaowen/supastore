@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { acquireTransactionLocks, sortUniqueUuids } from "@/domain/locking/lock-order";
+import {
+  acquireTransactionLocks,
+  sortUniqueUuids,
+} from "@/domain/locking/lock-order";
 
 describe("transaction lock ordering", () => {
   it("sorts and de-duplicates UUID targets while handling empty input", () => {

@@ -43,7 +43,7 @@ export const stockReservations = pgTable(
       .notNull()
       .references(() => productVariants.id, { onDelete: "restrict" }),
     quantity: integer("quantity").notNull(),
-    consumedQuantity:integer("consumed_quantity").notNull().default(0),
+    consumedQuantity: integer("consumed_quantity").notNull().default(0),
     status: text("status", { enum: ["active", "consumed", "released"] })
       .notNull()
       .default("active"),
@@ -54,7 +54,10 @@ export const stockReservations = pgTable(
   (t) => [
     index("idx_stock_reservation_order").on(t.orderId),
     check("stock_reservation_positive", sql`${t.quantity} > 0`),
-    check("stock_consumed_bounds",sql`${t.consumedQuantity}>=0 and ${t.consumedQuantity}<=${t.quantity}`),
+    check(
+      "stock_consumed_bounds",
+      sql`${t.consumedQuantity}>=0 and ${t.consumedQuantity}<=${t.quantity}`,
+    ),
   ],
 );
 export const stockMovements = pgTable(

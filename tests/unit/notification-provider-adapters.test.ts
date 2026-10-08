@@ -113,12 +113,10 @@ describe("Nodemailer transport", () => {
     "classifies definite SMTP %i responses without exposing server detail",
     async (responseCode, retryable) => {
       const sender = new NodemailerEmailSender(emailConfig, () => ({
-        sendMail: vi
-          .fn()
-          .mockRejectedValue({
-            responseCode,
-            message: "private credential/recipient detail",
-          }),
+        sendMail: vi.fn().mockRejectedValue({
+          responseCode,
+          message: "private credential/recipient detail",
+        }),
         close: vi.fn(),
       }));
       expect(await sender.send(email)).toEqual({

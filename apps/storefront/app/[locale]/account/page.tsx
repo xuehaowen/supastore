@@ -11,7 +11,10 @@ export default async function Account({
   return (
     <>
       <h1>{m.account.title}</h1>
-      <AccountClient locale={locale} messages={{ account: m.account, auth: m.auth, address: m.address }} />
+      <AccountClient
+        locale={locale}
+        messages={{ account: m.account, auth: m.auth, address: m.address }}
+      />
     </>
   );
 }

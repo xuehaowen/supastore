@@ -63,15 +63,31 @@ export async function correctReceipt(input: CorrectReceiptInput) {
     );
 
     // Resolve ownership before acquiring locks in order → receipt sequence.
-    const [reference] = await tx.select({ orderId: paymentReceipts.orderId })
-      .from(paymentReceipts).where(eq(paymentReceipts.id, input.receiptId)).limit(1);
-    if (!reference) throw new NotFoundError(`Receipt '${input.receiptId}' not found.`);
+    const [reference] = await tx
+      .select({ orderId: paymentReceipts.orderId })
+      .from(paymentReceipts)
+      .where(eq(paymentReceipts.id, input.receiptId))
+      .limit(1);
+    if (!reference)
+      throw new NotFoundError(`Receipt '${input.receiptId}' not found.`);
     await acquireTransactionLocks(tx, { orderIds: [reference.orderId] });
-    const [rewardOrder] = await tx.select().from(orders).where(eq(orders.id, reference.orderId));
+    const [rewardOrder] = await tx
+      .select()
+      .from(orders)
+      .where(eq(orders.id, reference.orderId));
     if (rewardOrder?.customerId && rewardOrder.rewardSnapshot) {
-      const [account] = await tx.select().from(storeCreditAccounts).where(and(
-        eq(storeCreditAccounts.customerId, rewardOrder.customerId),
-        eq(storeCreditAccounts.currency, (rewardOrder.termsSnapshot as {currency: string}).currency)));
+      const [account] = await tx
+        .select()
+        .from(storeCreditAccounts)
+        .where(
+          and(
+            eq(storeCreditAccounts.customerId, rewardOrder.customerId),
+            eq(
+              storeCreditAccounts.currency,
+              (rewardOrder.termsSnapshot as { currency: string }).currency,
+            ),
+          ),
+        );
       if (account) await lockCreditAccount(tx, account.id);
     }
     await acquireTransactionLocks(tx, { receiptIds: [input.receiptId] });
@@ -87,7 +103,9 @@ export async function correctReceipt(input: CorrectReceiptInput) {
     }
 
     if (receipt.orderId !== reference.orderId)
-      throw new InvariantViolationError("Receipt ownership changed during correction.");
+      throw new InvariantViolationError(
+        "Receipt ownership changed during correction.",
+      );
 
     const [order] = await tx
       .select()
@@ -136,17 +154,44 @@ export async function correctReceipt(input: CorrectReceiptInput) {
       .select()
       .from(confirmationFunding)
       .where(eq(confirmationFunding.orderId, order!.id));
-    if (order!.rewardSnapshot && allFunding.some(funding => funding.receiptId === receipt.id && funding.fundedAmountCents > newEffectiveAmount)) {
-      await tx.update(orders).set({rewardFundingReview: true}).where(eq(orders.id, order!.id));
-      await reconcileOrderReward(tx, order!.id, `reward:correction:${correction!.id}`, owner.userId);
+    if (
+      order!.rewardSnapshot &&
+      allFunding.some(
+        (funding) =>
+          funding.receiptId === receipt.id &&
+          funding.fundedAmountCents > newEffectiveAmount,
+      )
+    ) {
+      await tx
+        .update(orders)
+        .set({ rewardFundingReview: true })
+        .where(eq(orders.id, order!.id));
+      await reconcileOrderReward(
+        tx,
+        order!.id,
+        `reward:correction:${correction!.id}`,
+        owner.userId,
+      );
     }
 
     const allAllocations = await tx
       .select()
       .from(payoutAllocations)
-      .where(inArray(payoutAllocations.receiptId, allReceipts.map((r) => r.id)));
-    const allCorrections = await tx.select().from(paymentReceiptCorrections)
-      .where(inArray(paymentReceiptCorrections.receiptId, allReceipts.map((r) => r.id)));
+      .where(
+        inArray(
+          payoutAllocations.receiptId,
+          allReceipts.map((r) => r.id),
+        ),
+      );
+    const allCorrections = await tx
+      .select()
+      .from(paymentReceiptCorrections)
+      .where(
+        inArray(
+          paymentReceiptCorrections.receiptId,
+          allReceipts.map((r) => r.id),
+        ),
+      );
 
     const projection = computeOrderFinancialProjection({
       purchaseTotalCents: order!.purchaseTotalCents,
@@ -155,18 +200,29 @@ export async function correctReceipt(input: CorrectReceiptInput) {
         order!.lifecycleStatus === "confirmed" ||
         order!.lifecycleStatus === "completed",
       isCancelled: order!.lifecycleStatus === "cancelled",
-      wasConfirmedBeforeCancellation: order!.lifecycleStatus === "cancelled" && allFunding.length > 0,
+      wasConfirmedBeforeCancellation:
+        order!.lifecycleStatus === "cancelled" && allFunding.length > 0,
       receipts: allReceipts.map((r) => {
         const dispositions = allAllocations.filter((a) => a.receiptId === r.id);
-        const sum = (kind: "purchase" | "return", settled: boolean) => dispositions
-          .filter((a) => kind === "purchase" ? a.refundAuthorizationId : a.paymentReturnId)
-          .reduce((total, a) => total + (settled ? a.settledAmountCents : a.authorizedAmountCents), 0);
+        const sum = (kind: "purchase" | "return", settled: boolean) =>
+          dispositions
+            .filter((a) =>
+              kind === "purchase" ? a.refundAuthorizationId : a.paymentReturnId,
+            )
+            .reduce(
+              (total, a) =>
+                total +
+                (settled ? a.settledAmountCents : a.authorizedAmountCents),
+              0,
+            );
         return {
           id: r.id,
           originalAmountCents: r.amountCents,
-          appliedCorrectionsCents: allCorrections.filter((c) => c.receiptId === r.id)
+          appliedCorrectionsCents: allCorrections
+            .filter((c) => c.receiptId === r.id)
             .reduce((total, c) => total + c.deltaAmountCents, 0),
-          frozenPurchaseFundingCents: allFunding.filter((f) => f.receiptId === r.id)
+          frozenPurchaseFundingCents: allFunding
+            .filter((f) => f.receiptId === r.id)
             .reduce((total, f) => total + f.fundedAmountCents, 0),
           effectivePurchaseRefundAuthorizationsCents: sum("purchase", false),
           effectiveNonPurchaseReturnAuthorizationsCents: sum("return", false),
@@ -188,7 +244,14 @@ export async function correctReceipt(input: CorrectReceiptInput) {
         newEffectiveAmountCents: newEffectiveAmount,
         operationalFundingShortfallCents:
           projection.operationalFundingShortfallCents,
-        rewardFundingReview: Boolean(order!.rewardSnapshot && allFunding.some(funding => funding.receiptId === receipt.id && funding.fundedAmountCents > newEffectiveAmount)),
+        rewardFundingReview: Boolean(
+          order!.rewardSnapshot &&
+          allFunding.some(
+            (funding) =>
+              funding.receiptId === receipt.id &&
+              funding.fundedAmountCents > newEffectiveAmount,
+          ),
+        ),
       },
     });
 
@@ -250,7 +313,9 @@ export async function crossOrderTransferReceipt(
         `Target order '${input.targetOrderId}' not found.`,
       );
     if (sourceOrder.rewardSnapshot || targetOrder.rewardSnapshot) {
-      throw new InvariantViolationError("Reward-bearing receipt reassignment requires an explicit source-allocation repair; record an owner investigation instead.");
+      throw new InvariantViolationError(
+        "Reward-bearing receipt reassignment requires an explicit source-allocation repair; record an owner investigation instead.",
+      );
     }
 
     const [receipt] = await tx

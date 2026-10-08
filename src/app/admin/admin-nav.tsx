@@ -31,7 +31,11 @@ const links = [
   { href: "/admin/inventory", label: "Inventory", icon: Box },
   { href: "/admin/promotions", label: "Promotions", icon: Tag },
   { href: "/admin/fulfillment", label: "Fulfillment", icon: Truck },
-  { href: "/admin/fulfillment/shipments", label: "Shipments & booking", icon: Truck },
+  {
+    href: "/admin/fulfillment/shipments",
+    label: "Shipments & booking",
+    icon: Truck,
+  },
   { href: "/admin/returns", label: "Returns", icon: Box },
   { href: "/admin/customers", label: "Customers", icon: Users },
   { href: "/admin/translations", label: "Translations", icon: Languages },

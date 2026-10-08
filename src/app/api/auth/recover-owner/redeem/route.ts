@@ -26,17 +26,13 @@ export async function GET(request: NextRequest) {
 
     // Also set secure prefix cookie if running on HTTPS
     if (isSecure) {
-      response.cookies.set(
-        "__Secure-better-auth.session_token",
-        sessionToken,
-        {
-          httpOnly: true,
-          secure: true,
-          sameSite: "lax",
-          path: "/",
-          expires: expiresAt,
-        }
-      );
+      response.cookies.set("__Secure-better-auth.session_token", sessionToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        path: "/",
+        expires: expiresAt,
+      });
     }
 
     return response;
@@ -44,7 +40,7 @@ export async function GET(request: NextRequest) {
     const loginUrl = new URL("/admin/login", request.url);
     loginUrl.searchParams.set(
       "error",
-      error.message || "Failed to redeem recovery link."
+      error.message || "Failed to redeem recovery link.",
     );
     return NextResponse.redirect(loginUrl);
   }

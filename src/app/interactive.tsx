@@ -35,7 +35,8 @@ export function Uploader({ orderId }: { orderId: string }) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   return (
-    <form className="grid gap-4"
+    <form
+      className="grid gap-4"
       onSubmit={async (event) => {
         event.preventDefault();
         const form = event.currentTarget;
@@ -61,17 +62,24 @@ export function Uploader({ orderId }: { orderId: string }) {
       }}
     >
       <div className="grid gap-2">
-      <Label>
-        Payment image (JPEG, PNG, WebP, under 5 MB)
-        <Input
-          type="file"
-          name="file"
-          accept="image/jpeg,image/png,image/webp"
-          required
-        />
-      </Label></div>
-      <Button type="submit" disabled={busy}>{busy ? "Uploading…" : "Upload evidence"}</Button>
-      <p className="text-sm text-muted-foreground" role="status" aria-live="polite">
+        <Label>
+          Payment image (JPEG, PNG, WebP, under 5 MB)
+          <Input
+            type="file"
+            name="file"
+            accept="image/jpeg,image/png,image/webp"
+            required
+          />
+        </Label>
+      </div>
+      <Button type="submit" disabled={busy}>
+        {busy ? "Uploading…" : "Upload evidence"}
+      </Button>
+      <p
+        className="text-sm text-muted-foreground"
+        role="status"
+        aria-live="polite"
+      >
         {message}
       </p>
     </form>
@@ -103,7 +111,8 @@ export function AuthForm({
   const isCustomer = audience === "customer";
   const destination = isCustomer ? `/${locale}/account` : "/admin";
   return (
-    <form className="grid gap-4"
+    <form
+      className="grid gap-4"
       onSubmit={async (event) => {
         event.preventDefault();
         const form = event.currentTarget;
@@ -111,12 +120,16 @@ export function AuthForm({
         setBusy(true);
         setMessage("");
         try {
-          const payload = await authenticate(mode, {
-            name: fields.get("name"),
-            email: fields.get("email"),
-            password: fields.get("password"),
-            callbackURL: destination,
-          }, { customer: isCustomer });
+          const payload = await authenticate(
+            mode,
+            {
+              name: fields.get("name"),
+              email: fields.get("email"),
+              password: fields.get("password"),
+              callbackURL: destination,
+            },
+            { customer: isCustomer },
+          );
           if (mode === "sign-up") {
             setMessage(
               "Account created. Check your inbox to verify your email, then come back to sign in.",
@@ -151,25 +164,64 @@ export function AuthForm({
       }}
     >
       {isCustomer && (
-        <div className="grid grid-cols-2 rounded-lg bg-muted p-1" aria-label="Account action">
-          <Button type="button" variant={mode === "sign-in" ? "secondary" : "ghost"} onClick={() => { setMode("sign-in"); setMessage(""); }}>
+        <div
+          className="grid grid-cols-2 rounded-lg bg-muted p-1"
+          aria-label="Account action"
+        >
+          <Button
+            type="button"
+            variant={mode === "sign-in" ? "secondary" : "ghost"}
+            onClick={() => {
+              setMode("sign-in");
+              setMessage("");
+            }}
+          >
             Sign in
           </Button>
-          <Button type="button" variant={mode === "sign-up" ? "secondary" : "ghost"} onClick={() => { setMode("sign-up"); setMessage(""); }}>
+          <Button
+            type="button"
+            variant={mode === "sign-up" ? "secondary" : "ghost"}
+            onClick={() => {
+              setMode("sign-up");
+              setMessage("");
+            }}
+          >
             Create account
           </Button>
         </div>
       )}
       {mode === "sign-up" && (
         <div className="grid gap-2">
-          <Label htmlFor="name"><UserRound className="mr-1 inline size-3.5" />Name</Label>
+          <Label htmlFor="name">
+            <UserRound className="mr-1 inline size-3.5" />
+            Name
+          </Label>
           <Input id="name" name="name" required autoComplete="name" />
         </div>
       )}
-      <div className="grid gap-2"><Label className="auth-field-label" htmlFor="auth-email"><span><Mail className="mr-1 inline size-3.5" />Email</span></Label>
-        <Input id="auth-email" type="email" name="email" required autoComplete="email" placeholder="you@example.com" />
+      <div className="grid gap-2">
+        <Label className="auth-field-label" htmlFor="auth-email">
+          <span>
+            <Mail className="mr-1 inline size-3.5" />
+            Email
+          </span>
+        </Label>
+        <Input
+          id="auth-email"
+          type="email"
+          name="email"
+          required
+          autoComplete="email"
+          placeholder="you@example.com"
+        />
       </div>
-      <div className="grid gap-2"><Label className="auth-field-label" htmlFor="auth-password"><span><LockKeyhole className="mr-1 inline size-3.5" />Password</span></Label>
+      <div className="grid gap-2">
+        <Label className="auth-field-label" htmlFor="auth-password">
+          <span>
+            <LockKeyhole className="mr-1 inline size-3.5" />
+            Password
+          </span>
+        </Label>
         <Input
           id="auth-password"
           type="password"
@@ -181,14 +233,26 @@ export function AuthForm({
       </div>
       <Button type="submit" size="lg" disabled={busy}>
         {busy && <LoaderCircle className="animate-spin" />}
-        {busy ? "Please wait…" : mode === "sign-up" ? "Create account" : "Sign in securely"}
+        {busy
+          ? "Please wait…"
+          : mode === "sign-up"
+            ? "Create account"
+            : "Sign in securely"}
       </Button>
       {isCustomer && mode === "sign-in" && (
         <p className="text-xs leading-5 text-muted-foreground">
           For your security, only verified email addresses can sign in.
         </p>
       )}
-      {message && <Alert variant={message.startsWith("Account created") ? "default" : "destructive"}><AlertDescription>{message}</AlertDescription></Alert>}
+      {message && (
+        <Alert
+          variant={
+            message.startsWith("Account created") ? "default" : "destructive"
+          }
+        >
+          <AlertDescription>{message}</AlertDescription>
+        </Alert>
+      )}
     </form>
   );
 }
@@ -238,33 +302,47 @@ export function VariantFields() {
       {Array.from({ length: count }, (_, i) => (
         <fieldset className="grid gap-4 rounded-lg border p-4" key={i}>
           <legend>Variant {i + 1}</legend>
-          <div className="grid gap-2"><Label>
-            SKU
-            <Input name={"sku-" + i} required />
-          </Label></div>
-          <div className="grid gap-2"><Label>
-            Variant name
-            <Input name={"variantTitle-" + i} required defaultValue="Default" />
-          </Label></div>
-          <div className="grid gap-2"><Label>
-            Price in minor units
-            <Input
-              name={"price-" + i}
-              type="number"
-              min="0"
-              step="1"
-              required
-            />
-          </Label></div>
+          <div className="grid gap-2">
+            <Label>
+              SKU
+              <Input name={"sku-" + i} required />
+            </Label>
+          </div>
+          <div className="grid gap-2">
+            <Label>
+              Variant name
+              <Input
+                name={"variantTitle-" + i}
+                required
+                defaultValue="Default"
+              />
+            </Label>
+          </div>
+          <div className="grid gap-2">
+            <Label>
+              Price in minor units
+              <Input
+                name={"price-" + i}
+                type="number"
+                min="0"
+                step="1"
+                required
+              />
+            </Label>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2"><Label>
-              Color
-              <Input name={"color-" + i} />
-            </Label></div>
-            <div className="grid gap-2"><Label>
-              Size
-              <Input name={"size-" + i} />
-            </Label></div>
+            <div className="grid gap-2">
+              <Label>
+                Color
+                <Input name={"color-" + i} />
+              </Label>
+            </div>
+            <div className="grid gap-2">
+              <Label>
+                Size
+                <Input name={"size-" + i} />
+              </Label>
+            </div>
           </div>
         </fieldset>
       ))}

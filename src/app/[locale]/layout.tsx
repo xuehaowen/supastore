@@ -1,5 +1,6 @@
 import { LanguageLink } from "@/app/interactive";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { db } from "@/infrastructure/db";
 import { storeSettings } from "@/infrastructure/db/schema";
@@ -38,12 +39,13 @@ export default async function ShopLayout({
           href={"/" + locale}
         >
           {store?.logoKey && (
-            <img
+            <Image
               className="mr-2 inline-block size-10 object-contain align-middle"
               src={"/api/assets?key=" + encodeURIComponent(store.logoKey)}
               alt=""
-              width="40"
-              height="40"
+              width={40}
+              height={40}
+              unoptimized
             />
           )}
           {store?.storeName ?? "SupaStore"}

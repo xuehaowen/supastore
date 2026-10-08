@@ -20,7 +20,10 @@ export default async function CommerceSettings({
   );
   const [store] = await db.select().from(storeSettings).limit(1);
   const policy = commercePolicy(store?.commercePolicy);
-  const rewardCategories = await db.select().from(categories).orderBy(asc(categories.name));
+  const rewardCategories = await db
+    .select()
+    .from(categories)
+    .orderBy(asc(categories.name));
   const query = await searchParams;
   return (
     <main className="admin">
@@ -58,17 +61,41 @@ export default async function CommerceSettings({
           available after delivery or pickup handoff. Accepted orders retain
           their policy.
         </p>
-        <fieldset><legend>Eligible reward categories</legend>
-          <p>Leave all unchecked to include every category. Product reward exclusions always apply.</p>
-          {rewardCategories.map(category => (
+        <fieldset>
+          <legend>Eligible reward categories</legend>
+          <p>
+            Leave all unchecked to include every category. Product reward
+            exclusions always apply.
+          </p>
+          {rewardCategories.map((category) => (
             <label key={category.id} className="flex items-center gap-2">
-              <Checkbox name="rewardEligibleCategoryIds" value={category.id} defaultChecked={policy.rewardEligibleCategoryIds.includes(category.id)}/>{category.name}
+              <Checkbox
+                name="rewardEligibleCategoryIds"
+                value={category.id}
+                defaultChecked={policy.rewardEligibleCategoryIds.includes(
+                  category.id,
+                )}
+              />
+              {category.name}
             </label>
           ))}
         </fieldset>
-        <Field label="Reward start (UTC, e.g. 2026-10-01T00:00:00Z; optional)" name="rewardsStartAt" value={policy.rewardsStartAt ?? ""} required={false}/>
-        <Field label="Reward end, exclusive (UTC; optional)" name="rewardsEndAt" value={policy.rewardsEndAt ?? ""} required={false}/>
-        <p>Orders accepted at the start earn rewards; orders at or after the end do not. Existing orders keep their accepted rate and eligibility.</p>
+        <Field
+          label="Reward start (UTC, e.g. 2026-10-01T00:00:00Z; optional)"
+          name="rewardsStartAt"
+          value={policy.rewardsStartAt ?? ""}
+          required={false}
+        />
+        <Field
+          label="Reward end, exclusive (UTC; optional)"
+          name="rewardsEndAt"
+          value={policy.rewardsEndAt ?? ""}
+          required={false}
+        />
+        <p>
+          Orders accepted at the start earn rewards; orders at or after the end
+          do not. Existing orders keep their accepted rate and eligibility.
+        </p>
         <Field
           label="Optional sales warning threshold in minor units"
           name="salesThresholdCents"

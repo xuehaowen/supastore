@@ -55,9 +55,19 @@ export async function updateStoreSettings(input: UpdateStoreSettingsInput) {
       .limit(1);
     if (!settings) throw new NotFoundError("Complete owner bootstrap first.");
     if (parsed.commercePolicy?.rewardEligibleCategoryIds.length) {
-      const selected = await tx.select({id: categories.id}).from(categories)
-        .where(inArray(categories.id, parsed.commercePolicy.rewardEligibleCategoryIds));
-      if (selected.length !== parsed.commercePolicy.rewardEligibleCategoryIds.length)
+      const selected = await tx
+        .select({ id: categories.id })
+        .from(categories)
+        .where(
+          inArray(
+            categories.id,
+            parsed.commercePolicy.rewardEligibleCategoryIds,
+          ),
+        );
+      if (
+        selected.length !==
+        parsed.commercePolicy.rewardEligibleCategoryIds.length
+      )
         throw new InvariantViolationError("Choose existing reward categories.");
     }
     if (
@@ -80,8 +90,17 @@ export async function updateStoreSettings(input: UpdateStoreSettingsInput) {
         throw new InvariantViolationError(
           "Currency cannot change after the first order.",
         );
-      if ((await tx.select({id:outsideSalesAdjustments.id}).from(outsideSalesAdjustments).limit(1)).length)
-        throw new InvariantViolationError("Currency cannot change after recording outside sales.");
+      if (
+        (
+          await tx
+            .select({ id: outsideSalesAdjustments.id })
+            .from(outsideSalesAdjustments)
+            .limit(1)
+        ).length
+      )
+        throw new InvariantViolationError(
+          "Currency cannot change after recording outside sales.",
+        );
     }
     const [updated] = await tx
       .update(storeSettings)

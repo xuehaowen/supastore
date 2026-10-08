@@ -267,7 +267,9 @@ export default async function Catalog({
                     <Image
                       className="size-full object-cover transition-transform duration-300 motion-reduce:transition-none group-hover:scale-[1.02]"
                       src={
-                        "/api/assets?key=" + encodeURIComponent(p.coverImageKey) + "&inline=1"
+                        "/api/assets?key=" +
+                        encodeURIComponent(p.coverImageKey) +
+                        "&inline=1"
                       }
                       alt={p.title}
                       width={600}

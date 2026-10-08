@@ -42,12 +42,10 @@ describe("variant combination generation", () => {
     const original = buildVariantCombinations(options, "SHIRT")
       .map((c) => c.key)
       .sort();
-    const translated = options
-      .toReversed()
-      .map((o) => ({
-        ...o,
-        values: o.values.map((v) => ({ ...v, label: `Translated ${v.label}` })),
-      }));
+    const translated = options.toReversed().map((o) => ({
+      ...o,
+      values: o.values.map((v) => ({ ...v, label: `Translated ${v.label}` })),
+    }));
     expect(
       buildVariantCombinations(translated, "SHIRT")
         .map((c) => c.key)

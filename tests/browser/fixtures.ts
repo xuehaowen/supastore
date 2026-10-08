@@ -9,7 +9,9 @@ import { randomUUID } from "node:crypto";
 function clientHeaders() {
   const seed = randomUUID().replaceAll("-", "");
   // Independent synthetic customers must not share the production sign-in rate bucket.
-  return { "x-forwarded-for": `198.18.${Number.parseInt(seed.slice(0, 2), 16)}.${Number.parseInt(seed.slice(2, 4), 16)}` };
+  return {
+    "x-forwarded-for": `198.18.${Number.parseInt(seed.slice(0, 2), 16)}.${Number.parseInt(seed.slice(2, 4), 16)}`,
+  };
 }
 export const test = base.extend<{
   sql: ReturnType<typeof postgres>;
@@ -34,7 +36,9 @@ export const test = base.extend<{
     }
   },
   admin: async ({ browser }, use) => {
-    const context = await browser.newContext({ extraHTTPHeaders: clientHeaders() });
+    const context = await browser.newContext({
+      extraHTTPHeaders: clientHeaders(),
+    });
     const page = await context.newPage();
     await login(page);
     try {

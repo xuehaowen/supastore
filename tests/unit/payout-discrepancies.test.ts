@@ -20,10 +20,7 @@ describe("M2 Financial Refunds & Payout Settlement", () => {
       expect(areDestinationsEqual(destA, destA)).toBe(true);
       expect(areDestinationsEqual(destA, destB)).toBe(false);
       expect(
-        areDestinationsEqual(
-          { type: "cash" },
-          { type: "bank_account" }
-        )
+        areDestinationsEqual({ type: "cash" }, { type: "bank_account" }),
       ).toBe(false);
     });
   });
