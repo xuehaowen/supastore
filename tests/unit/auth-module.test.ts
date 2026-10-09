@@ -96,7 +96,6 @@ describe("Auth Module Configuration and Callbacks", () => {
 
       expect(sendEmailSpy).toHaveBeenCalledWith({
         recipient: "customer@example.com",
-        subject: "Verify your email address",
         template: "auth.email_verification",
         data: {
           verificationUrl:
@@ -134,7 +133,6 @@ describe("Auth Module Configuration and Callbacks", () => {
 
       expect(sendEmailSpy).toHaveBeenCalledWith({
         recipient: "reset-customer@example.com",
-        subject: "Reset your password",
         template: "auth.reset_password",
         data: {
           resetUrl:
