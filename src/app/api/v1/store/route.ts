@@ -47,6 +47,8 @@ export async function GET() {
             id: shippingZones.id,
             name: shippingZones.name,
             countryCodes: shippingZones.countryCodes,
+            regionCodes: shippingZones.regionCodes,
+            postalPrefixes: shippingZones.postalPrefixes,
             rateCents: shippingZones.rateCents,
             freeThresholdCents: shippingZones.freeThresholdCents,
           })

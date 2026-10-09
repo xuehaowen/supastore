@@ -2,20 +2,24 @@
 import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { textFor } from "@/i18n/messages";
 export function CheckoutCredit({
   availableCents,
   purchaseCents,
   currency,
   precision,
   locale,
+  defaultAmount = "0",
 }: {
   availableCents: number;
   purchaseCents: number;
   currency: string;
   precision: number;
   locale: string;
+  defaultAmount?: string;
 }) {
-  const [amount, setAmount] = useState("0");
+  const [amount, setAmount] = useState(defaultAmount);
+  const m = textFor(locale).checkoutDetails;
   const decimal = /^(\d+)(?:\.(\d+))?$/.exec(amount);
   const digits =
     decimal && (decimal[2]?.length || 0) <= precision
@@ -33,10 +37,12 @@ export function CheckoutCredit({
     }).format(cents / 10 ** precision);
   return (
     <fieldset className="grid gap-3 rounded-xl border p-4">
-      <legend>Store credit</legend>
-      <p>Available: {format(availableCents)}</p>
+      <legend>{m.credit}</legend>
+      <p>
+        {m.available}: {format(availableCents)}
+      </p>
       <Label>
-        Credit to apply
+        {m.creditToApply}
         <Input
           name="creditAmount"
           type="number"
@@ -54,13 +60,10 @@ export function CheckoutCredit({
       />
       <p role="status" aria-live="polite">
         {valid
-          ? `Credit applied: ${format(minor)} · External payment: ${format(purchaseCents - minor)}`
-          : "Enter an amount within your available credit and order total."}
+          ? `${m.creditApplied}: ${format(minor)} · ${m.externalPayment}: ${format(purchaseCents - minor)}`
+          : m.creditError}
       </p>
-      <p className="text-sm text-muted-foreground">
-        Credit funds the purchase; it does not change the merchandise price or
-        tax.
-      </p>
+      <p className="text-sm text-muted-foreground">{m.creditNotice}</p>
     </fieldset>
   );
 }

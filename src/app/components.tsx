@@ -2,13 +2,21 @@ import { useId } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { textFor } from "@/i18n/messages";
 
-export function Notice({ error }: { error?: string | undefined }) {
+export function Notice({
+  error,
+  locale = "en",
+}: {
+  error?: string | undefined;
+  locale?: string;
+}) {
+  const m = textFor(locale).checkoutDetails;
   return error ? (
     <Alert variant="destructive" className="mb-6">
       <AlertDescription>
-        <strong className="font-medium">We couldn’t complete that yet.</strong>{" "}
-        {error} Please review the details and try again.
+        <strong className="font-medium">{m.errorHeading}</strong> {error}{" "}
+        {m.errorRetry}
       </AlertDescription>
     </Alert>
   ) : null;

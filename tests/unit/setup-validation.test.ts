@@ -8,6 +8,21 @@ import { updateStoreSettings } from "@/application/use-cases/store/update-store-
 import { createProduct } from "@/application/use-cases/catalog/create-product";
 beforeEach(() => vi.resetAllMocks());
 describe("admin configuration validates before persistence", () => {
+  it.each([
+    { countryCodes: ["US"], regionCodes: ["ZZ"] },
+    { countryCodes: ["US"], regionCodes: ["CALIFORNIA"] },
+    { countryCodes: null, regionCodes: ["CA"] },
+    { countryCodes: ["US", "CA"], postalPrefixes: ["941"] },
+    { countryCodes: ["US"], postalPrefixes: ["94*"] },
+  ])("rejects invalid regional shipping rules %j", async (rule) => {
+    await expect(
+      configureShipping({
+        staffUserId: "owner",
+        zones: [{ name: "Region", rateCents: 800, ...rule }],
+      }),
+    ).rejects.toThrow();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
   it.each(["", " "])("rejects empty timezone %j", async (timezone) => {
     await expect(
       updateStoreSettings({ staffUserId: "owner", timezone }),

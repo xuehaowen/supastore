@@ -63,6 +63,14 @@ export function ProductPurchase({
     1,
     Math.min(999, availableQuantities[variantId] ?? 999),
   );
+  const selectedQuantity = Math.min(quantity, maxQty);
+  function selectVariant(id: string) {
+    setVariantId(id);
+    setQuantity((q) =>
+      Math.max(1, Math.min(q, 999, availableQuantities[id] ?? 999)),
+    );
+    setActiveImageKey(null);
+  }
   return (
     <div className="contents">
       <div className="flex flex-col gap-3 md:sticky md:top-6">
@@ -189,7 +197,7 @@ export function ProductPurchase({
                               selected.get(axis.code) === value.valueCode
                             }
                             disabled={!match}
-                            onClick={() => match && setVariantId(match.id)}
+                            onClick={() => match && selectVariant(match.id)}
                           >
                             {value.label}
                           </Button>
@@ -218,7 +226,7 @@ export function ProductPurchase({
                     disabled={!v.isAvailable}
                     required
                     checked={v.id === variantId}
-                    onChange={() => setVariantId(v.id)}
+                    onChange={() => selectVariant(v.id)}
                   />
                   <span>
                     {v.title}
@@ -246,24 +254,26 @@ export function ProductPurchase({
                 variant="ghost"
                 size="sm"
                 className="size-8 p-0"
-                disabled={quantity <= 1}
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                aria-label="Decrease quantity"
+                disabled={selectedQuantity <= 1}
+                onClick={() => setQuantity(Math.max(1, selectedQuantity - 1))}
+                aria-label={locale === "zh" ? "减少数量" : "Decrease quantity"}
               >
                 −
               </Button>
-              <input type="hidden" name="quantity" value={quantity} />
+              <input type="hidden" name="quantity" value={selectedQuantity} />
               <span className="w-12 text-center text-sm font-medium tabular-nums">
-                {quantity}
+                {selectedQuantity}
               </span>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 className="size-8 p-0"
-                disabled={quantity >= maxQty}
-                onClick={() => setQuantity((q) => Math.min(maxQty, q + 1))}
-                aria-label="Increase quantity"
+                disabled={selectedQuantity >= maxQty}
+                onClick={() =>
+                  setQuantity(Math.min(maxQty, selectedQuantity + 1))
+                }
+                aria-label={locale === "zh" ? "增加数量" : "Increase quantity"}
               >
                 +
               </Button>

@@ -73,7 +73,13 @@ export default async function ShopLayout({
             className="transition-colors hover:text-muted-foreground"
             href={"/" + locale + "/account"}
           >
-            {session ? "Account" : "Sign in"}
+            {session
+              ? locale === "zh"
+                ? "账户"
+                : "Account"
+              : locale === "zh"
+                ? "登录"
+                : "Sign in"}
           </Link>
           <Link
             className="rounded-md border px-3 py-1.5 font-medium no-underline transition-colors hover:bg-muted"

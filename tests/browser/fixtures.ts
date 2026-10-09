@@ -172,5 +172,5 @@ export async function clickAction(page: Page, button: Locator) {
         url.search === expected.search,
     );
     await page.goto(expected.href);
-  } else await page.reload();
+  }
 }

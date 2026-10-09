@@ -17,6 +17,8 @@ export async function createManualOrder(input: {
   customerEmail: string;
   country: string;
   address: string;
+  region?: string;
+  postalCode?: string;
   paymentAccountId: string;
   items: { variantId: string; quantity: number }[];
 }) {
@@ -71,7 +73,12 @@ export async function createManualOrder(input: {
     cartId: cart.id,
     guestSessionId,
     fulfillmentType: "shipping",
-    shippingAddress: { country, address },
+    shippingAddress: {
+      country,
+      address,
+      region: input.region?.trim().toUpperCase() ?? "",
+      postalCode: input.postalCode?.trim() ?? "",
+    },
     paymentAccountId,
   });
   const order = await createOrder({

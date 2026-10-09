@@ -142,9 +142,9 @@ export default async function PackingSlipPage({
           {(shipping?.address || shipping?.street) && (
             <p>{shipping.address || shipping.street}</p>
           )}
-          {(shipping?.city || shipping?.postalCode) && (
+          {(shipping?.city || shipping?.region || shipping?.postalCode) && (
             <p>
-              {shipping.city} {shipping.postalCode}
+              {shipping.city} {shipping.region} {shipping.postalCode}
             </p>
           )}
           {shipping?.country && <p>{shipping.country}</p>}

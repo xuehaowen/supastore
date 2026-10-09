@@ -426,7 +426,12 @@ const expectedPayloads: Record<string, unknown> = {
     guestSessionId: "guest-session",
     cartId: id,
     fulfillmentType: "shipping",
-    shippingAddress: { country: "US", address: "1 Test St" },
+    shippingAddress: {
+      country: "US",
+      address: "1 Test St",
+      region: "",
+      postalCode: "",
+    },
     paymentAccountId: id,
   },
   placeOrder: {
@@ -644,7 +649,13 @@ beforeEach(() => {
 describe("every server action request boundary", () => {
   it("requires a contract case for every exported action", () => {
     expect(Object.keys(actions).sort()).toEqual(
-      [...cases.map((c) => c[0]), "savePayment", "saveCategory"].sort(),
+      [
+        ...cases.map((c) => c[0]),
+        "savePayment",
+        "saveCategory",
+        "quoteCheckout",
+        "placeCheckout",
+      ].sort(),
     );
   });
   it.each(cases)("%s dispatches and redirects", async (name, command, path) => {
@@ -725,7 +736,11 @@ describe("every server action request boundary", () => {
     expect(mocks.setToken).toHaveBeenCalledWith(id, "new-token");
   });
 });
-const invalidCases: [keyof typeof actions, string, string][] = [
+const invalidCases: [
+  Exclude<keyof typeof actions, "quoteCheckout" | "placeCheckout">,
+  string,
+  string,
+][] = [
   ["addItem", "quantity", "0"],
   ["addItem", "variantId", "bad"],
   ["changeItem", "quantity", "-1"],
@@ -785,6 +800,82 @@ describe("malformed frontend requests", () => {
       expect(mocks.write).not.toHaveBeenCalled();
     },
   );
+});
+
+describe("checkout form actions", () => {
+  it("rejects malformed quotes without redirecting or dispatching", async () => {
+    const result = await actions.quoteCheckout({}, form({ cartId: "bad" }));
+    expect(result.error).toBeTruthy();
+    expect(mocks.commands.getQuote).not.toHaveBeenCalled();
+  });
+  it("requires a usable payment before guest order review", async () => {
+    mocks.commands.getQuote!.mockResolvedValue({
+      id,
+      totalPayableCents: 1000,
+      termsSnapshot: { payment: null, onlinePayment: false },
+    });
+    await expect(
+      actions.quoteCheckout({}, form({ paymentAccountId: null })),
+    ).resolves.toEqual({ error: "Choose an active payment method." });
+    expect(mocks.commands.createOrder).not.toHaveBeenCalled();
+  });
+  it.each([
+    {
+      totalPayableCents: 0,
+      termsSnapshot: { payment: null, onlinePayment: false },
+    },
+    {
+      totalPayableCents: 1000,
+      termsSnapshot: { payment: { id }, onlinePayment: false },
+    },
+    {
+      totalPayableCents: 1000,
+      termsSnapshot: { payment: null, onlinePayment: true },
+    },
+  ])("reviews a payable or free quote", async (quote) => {
+    mocks.commands.getQuote!.mockResolvedValue({ id, ...quote });
+    await expect(actions.quoteCheckout({}, form())).rejects.toThrow(
+      "REDIRECT:/en/checkout?quote=" + id,
+    );
+  });
+  it("returns localized quote failures without exposing unexpected errors", async () => {
+    mocks.commands.getQuote!.mockRejectedValue(
+      new DomainError("This promotion code is not active."),
+    );
+    await expect(
+      actions.quoteCheckout({}, form({ locale: "zh" })),
+    ).resolves.toEqual({ error: "此优惠码不可用。" });
+    mocks.commands.getQuote!.mockRejectedValue(
+      new Error("database credentials"),
+    );
+    const result = await actions.quoteCheckout({}, form());
+    expect(result.error).toBe(
+      "Unable to save. Check your entries and try again.",
+    );
+  });
+  it("returns consent errors on the current step", async () => {
+    await expect(
+      actions.placeCheckout({}, form({ accepted: null })),
+    ).resolves.toEqual({
+      error: "Accept the final total before placing an order.",
+    });
+    await expect(
+      actions.placeCheckout({}, form({ accepted: null, locale: "zh" })),
+    ).resolves.toEqual({ error: "请接受最终总价后再下单。" });
+    expect(mocks.commands.createOrder).not.toHaveBeenCalled();
+  });
+  it("rejects malformed order IDs before creating an order", async () => {
+    expect(
+      (await actions.placeCheckout({}, form({ quoteId: "bad" }))).error,
+    ).toBeTruthy();
+    expect(mocks.commands.createOrder).not.toHaveBeenCalled();
+  });
+  it("redirects successful orders only after setting their private token", async () => {
+    await expect(actions.placeCheckout({}, form())).rejects.toThrow(
+      "REDIRECT:/en/orders/" + id,
+    );
+    expect(mocks.setToken).toHaveBeenCalledWith(id, "new-token");
+  });
 });
 
 describe("optional and alternate action forms", () => {

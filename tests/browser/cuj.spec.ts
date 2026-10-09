@@ -35,18 +35,18 @@ test("C1/C2 search, empty results, category navigation and cart edit/remove acro
   await page.getByRole("button", { name: "Add to bag" }).click();
   await expect(page).toHaveURL(/\/en\/cart$/);
   await page.goto("/en/cart");
-  await page.locator('input[name="quantity"]').first().fill("2");
-  await page.locator('input[name="quantity"]').first().press("Tab");
-  await expect(page.locator('input[name="quantity"]').first()).toHaveValue("2");
   await clickAction(
     page,
-    page.getByRole("button", { name: "Update", exact: true }),
+    page.getByRole("button", {
+      name: "Increase quantity of Studio cup",
+      exact: true,
+    }),
   );
   await page.reload();
-  await expect(page.locator('input[name="quantity"]').first()).toHaveValue("2");
+  await expect(page.getByText("$48.00", { exact: true }).first()).toBeVisible();
   await page.getByRole("link", { name: "中文", exact: true }).click();
   await expect(page).toHaveURL(/\/zh\/cart/);
-  await expect(page.locator('input[name="quantity"]').first()).toHaveValue("2");
+  await expect(page.getByText("$48.00", { exact: true }).first()).toBeVisible();
   await page.getByRole("link", { name: "English", exact: true }).click();
   await page.getByRole("button", { name: "Remove", exact: true }).click();
   await expect(

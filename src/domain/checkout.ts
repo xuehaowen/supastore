@@ -1,21 +1,50 @@
 import { InvariantViolationError } from "@/application/common/errors";
+import { validShippingRegion } from "@/domain/shipping-destination";
 export function shippingPrice(
   zones: {
     countryCodes: string[] | null;
+    regionCodes?: string[];
+    postalPrefixes?: string[];
     rateCents: number;
     freeThresholdCents: number | null;
   }[],
   country: string,
   subtotal: number,
+  destination: { region?: string; postalCode?: string } = {},
 ) {
-  const zone =
-    zones.find((z) => z.countryCodes?.includes(country)) ??
-    zones.find((z) => z.countryCodes === null);
+  const candidates = zones.filter(
+    (z) => z.countryCodes === null || z.countryCodes.includes(country),
+  );
+  const region = destination.region?.trim().toUpperCase() ?? "";
+  const postal = normalizeShippingPostal(destination.postalCode ?? "");
+  if (region && !validShippingRegion(country, region))
+    throw new InvariantViolationError("Enter a valid state or region code.");
+  if (postal && !/^[A-Z0-9]{1,12}$/.test(postal))
+    throw new InvariantViolationError("Enter a valid ZIP or postal code.");
+  if (candidates.some((z) => z.regionCodes?.length) && !region)
+    throw new InvariantViolationError("Enter your state or region.");
+  if (candidates.some((z) => z.postalPrefixes?.length) && !postal)
+    throw new InvariantViolationError("Enter your ZIP or postal code.");
+  // More specific rules win. Equal specificity retains the configured order.
+  const matches = candidates.filter(
+    (z) =>
+      (!z.regionCodes?.length || z.regionCodes.includes(region)) &&
+      (!z.postalPrefixes?.length ||
+        z.postalPrefixes.some((p) => postal.startsWith(p))),
+  );
+  const specificity = (z: (typeof zones)[number]) =>
+    (z.postalPrefixes?.length ? 4 : 0) +
+    (z.regionCodes?.length ? 2 : 0) +
+    (z.countryCodes === null ? 0 : 1);
+  const zone = matches.sort((a, b) => specificity(b) - specificity(a))[0];
   if (!zone)
     throw new InvariantViolationError("We do not ship to this destination.");
   return zone.freeThresholdCents !== null && subtotal >= zone.freeThresholdCents
     ? 0
     : zone.rateCents;
+}
+export function normalizeShippingPostal(value: string) {
+  return value.trim().toUpperCase().replace(/[\s-]/g, "");
 }
 export function validatePickup(
   location: {

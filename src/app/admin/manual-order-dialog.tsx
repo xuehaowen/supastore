@@ -33,6 +33,16 @@ export function ManualOrderDialog({
         <div className="two-col">
           <Field name="country" label="Shipping country code" value="US" />
           <Field name="address" label="Shipping address" />
+          <Field
+            name="region"
+            label="Shipping state/region code (e.g. CA)"
+            required={false}
+          />
+          <Field
+            name="postalCode"
+            label="Shipping ZIP/postal code"
+            required={false}
+          />
         </div>
         <label>
           Payment method

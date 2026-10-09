@@ -25,6 +25,11 @@ export interface CustomerAccountDto {
 }
 
 export interface StoreDto {
+  commercePolicy?: {
+    shippingEnabled: boolean;
+    pickupEnabled: boolean;
+    deliveryEnabled: boolean;
+  };
   storeName: string;
   currency: string;
   precision: number;
@@ -42,7 +47,13 @@ export interface StoreDto {
     scheduleRequired: boolean;
     dates: { date: string; slots: { startTime: string; endTime: string }[] }[];
   }[];
-  shippingZones: { id: string; name: string }[];
+  shippingZones: {
+    id: string;
+    name: string;
+    countryCodes?: string[] | null;
+    regionCodes?: string[];
+    postalPrefixes?: string[];
+  }[];
   deliveryAreas?: {
     id: string;
     name: string;

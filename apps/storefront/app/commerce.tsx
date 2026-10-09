@@ -4,6 +4,12 @@ import { request } from "../lib/client";
 import { creditMinorUnits } from "../lib/amount";
 import { money, type Cart, type Product, type Store } from "../lib/types";
 import type { StorefrontMessages } from "../lib/i18n";
+import {
+  countryOptions,
+  usStates,
+  shippingRequiredFields,
+  availableFulfillment,
+} from "../../../packages/shipping/src/destination";
 
 export function AddToCart({
   product,
@@ -172,15 +178,27 @@ export function Checkout({
 }) {
   const m = messages;
   const [quote, setQuote] = useState<Quote | null>(null);
+  const methods = availableFulfillment(store.commercePolicy, {
+    shipping: store.shippingZones.length,
+    pickup: store.pickupLocations.length,
+    delivery: store.deliveryAreas?.length ?? 0,
+  });
+  const [country, setCountry] = useState("US");
+  const [region, setRegion] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const requiredShipping = shippingRequiredFields(
+    store.shippingZones.map((zone) => ({
+      countryCodes: zone.countryCodes ?? null,
+      regionCodes: zone.regionCodes ?? [],
+      postalPrefixes: zone.postalPrefixes ?? [],
+    })),
+    country,
+  );
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
-  const [method, setMethod] = useState(
-    store.shippingZones.length
-      ? "shipping"
-      : store.pickupLocations.length
-        ? "pickup"
-        : "local_delivery",
-  );
+  const [chosenMethod, setMethod] = useState("");
+  const method =
+    methods.find((item) => item === chosenMethod) ?? methods[0] ?? "";
   const [locationId, setLocationId] = useState(
     store.pickupLocations[0]?.id || "",
   );
@@ -217,6 +235,7 @@ export function Checkout({
               country: f.get("country") || "",
               address: f.get("address") || "",
               postalCode: f.get("postalCode") || "",
+              region: f.get("region") || "",
               ...(f.get("deliveryAreaId")
                 ? { deliveryAreaId: f.get("deliveryAreaId") }
                 : {}),
@@ -273,13 +292,13 @@ export function Checkout({
         value={method}
         onChange={(e) => setMethod(e.target.value)}
       >
-        {store.shippingZones.length > 0 && (
+        {methods.includes("shipping") && (
           <option value="shipping">{m?.shipping ?? "Shipping"}</option>
         )}
-        {store.pickupLocations.length > 0 && (
+        {methods.includes("pickup") && (
           <option value="pickup">{m?.pickup ?? "Pickup"}</option>
         )}
-        {!!store.deliveryAreas?.length && (
+        {methods.includes("local_delivery") && (
           <option value="local_delivery">
             {m?.localDelivery ?? "Local delivery"}
           </option>
@@ -287,17 +306,75 @@ export function Checkout({
       </select>
       {method === "shipping" || method === "local_delivery" ? (
         <>
-          <label htmlFor="checkout-country">
-            {m?.countryCode ?? "Country code"}
-          </label>
-          <input
+          <label htmlFor="checkout-country">{m?.country ?? "Country"}</label>
+          <select
             id="checkout-country"
             name="country"
-            maxLength={2}
-            minLength={2}
-            placeholder="US"
+            autoComplete="country"
+            value={country}
+            onChange={(event) => {
+              setCountry(event.target.value);
+              setRegion("");
+              setPostalCode("");
+            }}
             required
-          />
+          >
+            {countryOptions(locale).map((item) => (
+              <option key={item.code} value={item.code}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+          {method === "shipping" && (
+            <>
+              <label htmlFor="checkout-region">
+                {m?.region ?? "State / region"}
+              </label>
+              {country === "US" ? (
+                <select
+                  id="checkout-region"
+                  name="region"
+                  autoComplete="address-level1"
+                  value={region}
+                  required={requiredShipping.region}
+                  onChange={(event) => setRegion(event.target.value)}
+                >
+                  <option value="">
+                    {m?.chooseRegion ?? "Choose a state"}
+                  </option>
+                  {usStates.map(([code, name]) => (
+                    <option key={code} value={code}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  id="checkout-region"
+                  name="region"
+                  autoComplete="address-level1"
+                  maxLength={12}
+                  value={region}
+                  required={requiredShipping.region}
+                  onChange={(event) =>
+                    setRegion(event.target.value.toUpperCase())
+                  }
+                />
+              )}
+              <label htmlFor="checkout-shipping-postal">
+                {m?.postalCode ?? "ZIP / postal code"}
+              </label>
+              <input
+                id="checkout-shipping-postal"
+                name="postalCode"
+                value={postalCode}
+                onChange={(event) => setPostalCode(event.target.value)}
+                autoComplete="postal-code"
+                maxLength={40}
+                required={requiredShipping.postalCode}
+              />
+            </>
+          )}
           {method === "local_delivery" && (
             <>
               <label htmlFor="checkout-delivery-area">
@@ -333,6 +410,8 @@ export function Checkout({
               <input
                 id="checkout-postal-code"
                 name="postalCode"
+                value={postalCode}
+                onChange={(event) => setPostalCode(event.target.value)}
                 required
                 maxLength={20}
                 autoComplete="postal-code"
@@ -387,7 +466,7 @@ export function Checkout({
             autoComplete="street-address"
           />
         </>
-      ) : (
+      ) : method === "pickup" ? (
         <>
           <label htmlFor="checkout-pickup-location">
             {m?.pickupLocation ?? "Pickup location"}
@@ -449,6 +528,11 @@ export function Checkout({
             </>
           )}
         </>
+      ) : (
+        <p role="status">
+          {m?.noFulfillment ??
+            "No fulfillment methods are available. Please contact the store."}
+        </p>
       )}
       <label htmlFor="checkout-payment-method">
         {m?.paymentMethod ?? "Payment method"}
@@ -522,7 +606,11 @@ export function Checkout({
           </label>
         </div>
       )}
-      <button disabled={busy || store.isPaused || !store.isOrderingEnabled}>
+      <button
+        disabled={
+          busy || !methods.length || store.isPaused || !store.isOrderingEnabled
+        }
+      >
         {quote
           ? (m?.placeOrder ?? "Place order")
           : (m?.reviewTotal ?? "Review final total")}

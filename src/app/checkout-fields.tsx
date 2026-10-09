@@ -4,12 +4,30 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Input } from "@/components/ui/input";
+import { textFor } from "@/i18n/messages";
+import type { CheckoutDefaults } from "@/app/checkout-state";
+import {
+  countryOptions,
+  usStates,
+  shippingRequiredFields,
+  type ShippingDestinationRule,
+  type FulfillmentMethod,
+} from "@/domain/shipping-destination";
 
 export type PickupOption = {
   id: string;
   name: string;
   address: string;
   dates: { date: string; slots: { startTime: string; endTime: string }[] }[];
+  scheduleRequired?: boolean;
+};
+export type DeliveryOption = {
+  id: string;
+  name: string;
+  countryCodes: string[];
+  postalPrefixes: string[];
+  scheduleRequired: boolean;
+  dates: PickupOption["dates"];
 };
 
 function parseDateKey(str: string): Date {
@@ -24,31 +42,23 @@ function formatDateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTH_NAMES = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
 function PickupCalendar({
   availableDates,
   selectedDate,
   onSelectDate,
+  locale,
 }: {
   availableDates: string[];
   selectedDate: string;
   onSelectDate: (date: string) => void;
+  locale: string;
 }) {
+  const m = textFor(locale).checkoutDetails;
+  const weekdays = Array.from({ length: 7 }, (_, index) =>
+    new Intl.DateTimeFormat(locale, { weekday: "short" }).format(
+      new Date(2026, 0, 4 + index),
+    ),
+  );
   const [viewMode, setViewMode] = useState<"week" | "month">("week");
   const availableSet = useMemo(() => new Set(availableDates), [availableDates]);
 
@@ -108,21 +118,30 @@ function PickupCalendar({
 
   const headerTitle = useMemo(() => {
     if (viewMode === "month") {
-      return `${MONTH_NAMES[month]} ${year}`;
+      return new Intl.DateTimeFormat(locale, {
+        month: "long",
+        year: "numeric",
+      }).format(viewDate);
     }
     const start = weekDays[0]!;
     const end = weekDays[6]!;
     if (start.getMonth() === end.getMonth()) {
-      return `${MONTH_NAMES[start.getMonth()]} ${start.getFullYear()}`;
+      return new Intl.DateTimeFormat(locale, {
+        month: "long",
+        year: "numeric",
+      }).format(start);
     }
-    return `${MONTH_NAMES[start.getMonth()].slice(0, 3)} – ${MONTH_NAMES[end.getMonth()].slice(0, 3)} ${end.getFullYear()}`;
-  }, [viewMode, month, year, weekDays]);
+    return new Intl.DateTimeFormat(locale, {
+      month: "short",
+      year: "numeric",
+    }).formatRange(start, end);
+  }, [viewMode, viewDate, locale, weekDays]);
 
   const selectedDateFormatted = useMemo(() => {
     if (!selectedDate) return null;
     const d = parseDateKey(selectedDate);
-    return `${WEEKDAYS[d.getDay()]}, ${MONTH_NAMES[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
-  }, [selectedDate]);
+    return new Intl.DateTimeFormat(locale, { dateStyle: "full" }).format(d);
+  }, [selectedDate, locale]);
 
   return (
     <div className="pickup-calendar-container">
@@ -132,9 +151,7 @@ function PickupCalendar({
             type="button"
             className="secondary pickup-calendar-nav-btn"
             onClick={handlePrev}
-            aria-label={
-              viewMode === "week" ? "Previous week" : "Previous month"
-            }
+            aria-label={viewMode === "week" ? m.previousWeek : m.previousMonth}
           >
             ‹
           </Button>
@@ -143,7 +160,7 @@ function PickupCalendar({
             type="button"
             className="secondary pickup-calendar-nav-btn"
             onClick={handleNext}
-            aria-label={viewMode === "week" ? "Next week" : "Next month"}
+            aria-label={viewMode === "week" ? m.nextWeek : m.nextMonth}
           >
             ›
           </Button>
@@ -153,12 +170,12 @@ function PickupCalendar({
           className="secondary pickup-calendar-toggle-btn"
           onClick={() => setViewMode(viewMode === "week" ? "month" : "week")}
         >
-          {viewMode === "week" ? "Monthly view 📅" : "Weekly view 📅"}
+          {viewMode === "week" ? m.monthlyView : m.weeklyView}
         </Button>
       </div>
 
       <div className="pickup-calendar-weekdays-row">
-        {WEEKDAYS.map((name) => (
+        {weekdays.map((name) => (
           <span key={name} className="pickup-calendar-weekday-header">
             {name}
           </span>
@@ -176,6 +193,7 @@ function PickupCalendar({
                 type="button"
                 key={key}
                 disabled={!isAvailable}
+                aria-pressed={isSelected}
                 className={`pickup-calendar-day-btn ${isSelected ? "selected" : ""} ${!isAvailable ? "disabled" : ""}`}
                 onClick={() => isAvailable && onSelectDate(key)}
               >
@@ -204,6 +222,7 @@ function PickupCalendar({
                 type="button"
                 key={key}
                 disabled={!isAvailable}
+                aria-pressed={isSelected}
                 className={`pickup-calendar-day-btn ${isSelected ? "selected" : ""} ${!isAvailable ? "disabled" : ""}`}
                 onClick={() => isAvailable && onSelectDate(key)}
               >
@@ -218,12 +237,10 @@ function PickupCalendar({
       <div className="pickup-calendar-status">
         {selectedDateFormatted ? (
           <span className="pickup-calendar-selected-label">
-            Selected date: <strong>{selectedDateFormatted}</strong>
+            {m.selectedDate}: <strong>{selectedDateFormatted}</strong>
           </span>
         ) : (
-          <span className="pickup-calendar-hint">
-            Please choose an available date from the calendar
-          </span>
+          <span className="pickup-calendar-hint">{m.dateHint}</span>
         )}
       </div>
       <input type="hidden" name="pickupDate" value={selectedDate} required />
@@ -235,16 +252,54 @@ export function CheckoutFields({
   locations,
   timezone,
   addresses = [],
+  locale = "en",
+  initial = {},
+  shippingRules = [],
+  methods,
+  deliveryAreas = [],
 }: {
   locations: PickupOption[];
   timezone: string;
   addresses?: { id: string; label: string; address: Record<string, string> }[];
+  locale?: string;
+  initial?: CheckoutDefaults;
+  shippingRules?: ShippingDestinationRule[];
+  methods: FulfillmentMethod[];
+  deliveryAreas?: DeliveryOption[];
 }) {
-  const [method, setMethod] = useState("shipping");
-  const [locationId, setLocationId] = useState(locations[0]?.id ?? "");
-  const [date, setDate] = useState("");
-  const [street, setStreet] = useState("");
-  const [country, setCountry] = useState("US");
+  const labels = textFor(locale);
+  const m = labels.checkoutDetails;
+  const [chosenMethod, setMethod] = useState(initial.fulfillmentType ?? "");
+  const method =
+    methods.find((item) => item === chosenMethod) ?? methods[0] ?? "";
+  const [deliveryAreaId, setDeliveryAreaId] = useState(
+    deliveryAreas.find((item) => item.id === initial.deliveryAreaId)?.id ||
+      deliveryAreas[0]?.id ||
+      "",
+  );
+  const area = deliveryAreas.find((item) => item.id === deliveryAreaId);
+  const [locationId, setLocationId] = useState(
+    locations.find((item) => item.id === initial.pickupLocationId)?.id ||
+      locations[0]?.id ||
+      "",
+  );
+  const retainSchedule =
+    method === initial.fulfillmentType &&
+    (method === "local_delivery"
+      ? deliveryAreas.some((item) => item.id === initial.deliveryAreaId)
+      : method === "pickup" &&
+        locations.some((item) => item.id === initial.pickupLocationId));
+  const [date, setDate] = useState(
+    retainSchedule ? (initial.pickupDate ?? "") : "",
+  );
+  const [time, setTime] = useState(
+    retainSchedule ? (initial.pickupTime ?? "") : "",
+  );
+  const [street, setStreet] = useState(initial.address ?? "");
+  const [country, setCountry] = useState(initial.country || "US");
+  const [region, setRegion] = useState(initial.region ?? "");
+  const [postalCode, setPostalCode] = useState(initial.postalCode ?? "");
+  const requiredFields = shippingRequiredFields(shippingRules, country);
   const location = locations.find((item) => item.id === locationId);
   const availableDateKeys = useMemo(
     () => location?.dates.map((item) => item.date) ?? [],
@@ -255,30 +310,34 @@ export function CheckoutFields({
   return (
     <>
       <fieldset>
-        <legend>Fulfillment</legend>
-        {[
-          { value: "shipping", label: "Shipping" },
-          ...(locations.length
-            ? [{ value: "pickup", label: "Local pickup" }]
-            : []),
-        ].map((item) => (
-          <label className="check" key={item.value}>
-            <Input
+        <legend>{m.fulfillment}</legend>
+        {methods.map((value) => (
+          <label className="check" key={value}>
+            <input
+              className="size-4 shrink-0"
               type="radio"
               name="fulfillmentType"
-              value={item.value}
-              checked={method === item.value}
-              onChange={() => setMethod(item.value)}
+              value={value}
+              checked={method === value}
+              onChange={() => {
+                setMethod(value);
+                setDate("");
+                setTime("");
+              }}
             />
-            {item.label}
+            {value === "shipping"
+              ? labels.shipping
+              : value === "pickup"
+                ? labels.pickup
+                : m.localDelivery}
           </label>
         ))}
       </fieldset>
-      {method === "shipping" ? (
+      {method === "shipping" || method === "local_delivery" ? (
         <>
           {addresses.length > 0 && (
             <label>
-              Saved address
+              {m.savedAddress}
               <NativeSelect
                 defaultValue=""
                 onChange={(event) => {
@@ -299,13 +358,17 @@ export function CheckoutFields({
                         .join(", "),
                     );
                     setCountry(saved.address.country || "US");
+                    setRegion(saved.address.region || "");
+                    setPostalCode(saved.address.postalCode || "");
                   } else {
                     setStreet("");
                     setCountry("US");
+                    setRegion("");
+                    setPostalCode("");
                   }
                 }}
               >
-                <option value="">Enter a new address</option>
+                <option value="">{m.newAddress}</option>
                 {addresses.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.label}
@@ -315,7 +378,7 @@ export function CheckoutFields({
             </label>
           )}
           <label>
-            Street address
+            {labels.streetAddress}
             <Input
               name="address"
               required
@@ -325,23 +388,157 @@ export function CheckoutFields({
             />
           </label>
           <label>
-            Country code
-            <Input
+            {labels.country}
+            <NativeSelect
               name="country"
+              aria-label={labels.country}
               required
               value={country}
-              onChange={(event) => setCountry(event.target.value)}
-              pattern="[A-Za-z]{2}"
+              onChange={(event) => {
+                setCountry(event.target.value);
+                setRegion("");
+                setPostalCode("");
+              }}
               autoComplete="country"
+            >
+              {countryOptions(locale).map((item) => (
+                <option key={item.code} value={item.code}>
+                  {item.name}
+                </option>
+              ))}
+            </NativeSelect>
+          </label>
+          <label>
+            {m.region}
+            {country === "US" ? (
+              <NativeSelect
+                name="region"
+                aria-label={m.region}
+                autoComplete="address-level1"
+                value={region}
+                required={method === "shipping" && requiredFields.region}
+                onChange={(event) => setRegion(event.target.value)}
+              >
+                <option value="">{m.chooseRegion}</option>
+                {usStates.map(([code, name]) => (
+                  <option key={code} value={code}>
+                    {name}
+                  </option>
+                ))}
+              </NativeSelect>
+            ) : (
+              <Input
+                name="region"
+                autoComplete="address-level1"
+                maxLength={12}
+                value={region}
+                required={method === "shipping" && requiredFields.region}
+                onChange={(event) =>
+                  setRegion(event.target.value.toUpperCase())
+                }
+              />
+            )}
+          </label>
+          <label>
+            {m.postalCode}
+            <Input
+              name="postalCode"
+              autoComplete="postal-code"
+              maxLength={40}
+              value={postalCode}
+              required={
+                method === "local_delivery" || requiredFields.postalCode
+              }
+              onChange={(event) => setPostalCode(event.target.value)}
             />
           </label>
+          {method === "local_delivery" && (
+            <>
+              <label>
+                {m.deliveryArea}
+                <NativeSelect
+                  aria-label={m.deliveryArea}
+                  name="deliveryAreaId"
+                  required
+                  value={deliveryAreaId}
+                  onChange={(event) => {
+                    setDeliveryAreaId(event.target.value);
+                    setDate("");
+                    setTime("");
+                  }}
+                >
+                  {deliveryAreas.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </label>
+              {area && (
+                <p className="muted">
+                  {area.countryCodes
+                    .map(
+                      (code) =>
+                        countryOptions(locale).find((c) => c.code === code)
+                          ?.name ?? code,
+                    )
+                    .join(", ")}
+                  {area.postalPrefixes.length
+                    ? ` · ${area.postalPrefixes.join(", ")}`
+                    : ""}
+                </p>
+              )}
+              {area?.scheduleRequired && (
+                <>
+                  <label className="pickup-calendar-label">
+                    {m.deliveryDate}
+                  </label>
+                  <PickupCalendar
+                    key={deliveryAreaId}
+                    locale={locale}
+                    availableDates={area.dates.map((item) => item.date)}
+                    selectedDate={date}
+                    onSelectDate={(value) => {
+                      setDate(value);
+                      setTime("");
+                    }}
+                  />
+                  <label>
+                    {m.deliveryWindow}
+                    <NativeSelect
+                      name="pickupTime"
+                      aria-label={m.deliveryWindow}
+                      required
+                      value={time}
+                      disabled={!date}
+                      onChange={(event) => setTime(event.target.value)}
+                    >
+                      <option value="">{m.chooseWindow}</option>
+                      {area.dates
+                        .find((item) => item.date === date)
+                        ?.slots.map((slot) => (
+                          <option key={slot.startTime} value={slot.startTime}>
+                            {slot.startTime} – {slot.endTime}
+                          </option>
+                        ))}
+                    </NativeSelect>
+                  </label>
+                  {!area.dates.length && <p role="status">{m.noWindows}</p>}
+                  <p className="muted">
+                    {m.timezone.replace("{timezone}", timezone)}
+                  </p>
+                </>
+              )}
+            </>
+          )}
         </>
-      ) : (
+      ) : method === "pickup" ? (
         <fieldset>
-          <legend>Pickup details</legend>
+          <legend>{m.pickupDetails}</legend>
           {locations.map((item) => (
             <label className="check" key={item.id}>
-              <Input
+              <input
+                className="size-4 shrink-0"
                 type="radio"
                 name="pickupLocationId"
                 value={item.id}
@@ -349,6 +546,7 @@ export function CheckoutFields({
                 onChange={() => {
                   setLocationId(item.id);
                   setDate("");
+                  setTime("");
                 }}
               />
               <span>
@@ -359,45 +557,51 @@ export function CheckoutFields({
             </label>
           ))}
 
-          <div className="pickup-date-selection-group">
-            <label className="pickup-calendar-label">Pickup date</label>
-            <PickupCalendar
-              availableDates={availableDateKeys}
-              selectedDate={date}
-              onSelectDate={(newDate) => setDate(newDate)}
-            />
-          </div>
+          {location?.scheduleRequired !== false && (
+            <>
+              <div className="pickup-date-selection-group">
+                <label className="pickup-calendar-label">{m.pickupDate}</label>
+                <PickupCalendar
+                  key={locationId}
+                  locale={locale}
+                  availableDates={availableDateKeys}
+                  selectedDate={date}
+                  onSelectDate={(newDate) => {
+                    setDate(newDate);
+                    setTime("");
+                  }}
+                />
+              </div>
 
-          <label>
-            Pickup window
-            <NativeSelect
-              name="pickupTime"
-              required
-              key={locationId + date}
-              defaultValue=""
-              disabled={!day}
-            >
-              <option value="">
-                {day ? "Choose a pickup window" : "Select a date above first"}
-              </option>
-              {day?.slots.map((slot) => (
-                <option key={slot.startTime} value={slot.startTime}>
-                  {slot.startTime} – {slot.endTime}
-                </option>
-              ))}
-            </NativeSelect>
-          </label>
-          {!location?.dates.length && (
-            <p role="status">
-              No pickup windows are available in the next 90 days. Choose
-              another location or shipping.
-            </p>
+              <label>
+                {m.pickupWindow}
+                <NativeSelect
+                  name="pickupTime"
+                  required
+                  key={locationId + date}
+                  value={time}
+                  onChange={(event) => setTime(event.target.value)}
+                  disabled={!day}
+                >
+                  <option value="">
+                    {day ? m.chooseWindow : m.chooseDateFirst}
+                  </option>
+                  {day?.slots.map((slot) => (
+                    <option key={slot.startTime} value={slot.startTime}>
+                      {slot.startTime} – {slot.endTime}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </label>
+              {!location?.dates.length && <p role="status">{m.noWindows}</p>}
+              <p className="muted">
+                {m.timezone.replace("{timezone}", timezone)}
+              </p>
+            </>
           )}
-          <p className="muted">
-            Times are in {timezone}. Only dates and windows that allow
-            preparation time are shown.
-          </p>
         </fieldset>
+      ) : (
+        <p role="status">{m.noFulfillment}</p>
       )}
     </>
   );

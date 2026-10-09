@@ -22,6 +22,11 @@ export const shippingZones = pgTable("shipping_zones", {
   // JSON array of ISO-3166-1 alpha-2 country codes this zone covers.
   // Null means the zone is a catch-all (matches any destination).
   countryCodes: jsonb("country_codes").$type<string[] | null>(),
+  regionCodes: jsonb("region_codes").$type<string[]>().notNull().default([]),
+  postalPrefixes: jsonb("postal_prefixes")
+    .$type<string[]>()
+    .notNull()
+    .default([]),
   rateCents: integer("rate_cents").notNull(), // CHECK (rate_cents >= 0)
   // Free shipping when order subtotal >= this value. Null = no free threshold.
   freeThresholdCents: integer("free_threshold_cents"),

@@ -25,6 +25,7 @@ export async function POST(request: Request) {
         country: apiText(b, "country", 2, true).toUpperCase(),
         address: apiText(b, "address", 2000, true),
         postalCode: apiText(b, "postalCode", 40, true),
+        region: apiText(b, "region", 12, true).trim().toUpperCase(),
       },
       pickupDate: apiText(b, "pickupDate", 10, true),
       pickupTime: apiText(b, "pickupTime", 20, true),

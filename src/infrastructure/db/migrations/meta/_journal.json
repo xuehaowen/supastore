@@ -246,6 +246,13 @@
       "when": 1791167400012,
       "tag": "0034_sms_verification_provider",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1791167400013,
+      "tag": "0035_regional_shipping",
+      "breakpoints": true
     }
   ]
 }

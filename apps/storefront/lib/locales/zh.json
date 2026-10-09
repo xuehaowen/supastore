@@ -85,6 +85,10 @@
     "pleaseRetry": "请重试"
   },
   "checkout": {
+    "noFulfillment": "暂无可用的配送或自提方式，请联系商店。",
+    "country": "国家 / 地区",
+    "region": "州 / 省",
+    "chooseRegion": "请选择州",
     "title": "结账",
     "addFirst": "请先添加商品",
     "name": "姓名",

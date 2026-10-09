@@ -85,6 +85,10 @@
     "pleaseRetry": "Please retry"
   },
   "checkout": {
+    "noFulfillment": "No fulfillment methods are available. Please contact the store.",
+    "country": "Country",
+    "region": "State / region",
+    "chooseRegion": "Choose a state",
     "title": "Checkout",
     "addFirst": "Add products to your cart first.",
     "name": "Name",

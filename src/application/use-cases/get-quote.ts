@@ -38,7 +38,12 @@ export interface GetQuoteInput {
   cartId: string;
   guestSessionId: string;
   fulfillmentType: "shipping" | "pickup" | "local_delivery";
-  shippingAddress: { country: string; address: string; postalCode?: string };
+  shippingAddress: {
+    country: string;
+    address: string;
+    region?: string;
+    postalCode?: string;
+  };
   deliveryAreaId?: string;
   pickupDate?: string;
   pickupLocationId?: string;
@@ -153,9 +158,13 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
         "Enter your shipping address and country.",
       );
     shippingCents = shippingPrice(
-      await tx.select().from(shippingZones).orderBy(shippingZones.sortOrder),
+      await tx
+        .select()
+        .from(shippingZones)
+        .orderBy(shippingZones.sortOrder, shippingZones.id),
       input.shippingAddress.country,
       subtotal,
+      input.shippingAddress,
     );
   } else if (input.fulfillmentType === "local_delivery") {
     if (!input.shippingAddress.address.trim())

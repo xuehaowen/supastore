@@ -134,6 +134,14 @@ export default async function Setup({
         </section>
         <section className="panel">
           <h2>02 / Shipping</h2>
+          <p>
+            Regional zones require one country. Use state codes (CA, OR, WA) or
+            ZIP/postal prefixes, comma separated. If both are set, both must
+            match. Postal rules take priority, then state rules, then country
+            rates. For equal specificity, lower priority numbers win; use
+            distinct numbers for overlapping rules. Keep a country-only zone for
+            other destinations.
+          </p>
           {zones.map((zone) => (
             <form
               action={saveShipping}
@@ -155,6 +163,24 @@ export default async function Setup({
                 value={zone.rateCents}
               />
               <Field
+                label="State/region codes, comma separated; blank for all"
+                name="regions"
+                value={zone.regionCodes.join(", ")}
+                required={false}
+              />
+              <Field
+                label="ZIP/postal prefixes, comma separated; blank for all"
+                name="postalPrefixes"
+                value={zone.postalPrefixes.join(", ")}
+                required={false}
+              />
+              <Field
+                label="Priority (lower wins for equally specific zones)"
+                name="sortOrder"
+                type="number"
+                value={zone.sortOrder}
+              />
+              <Field
                 label="Free shipping threshold (minor units)"
                 name="freeThreshold"
                 type="number"
@@ -169,6 +195,22 @@ export default async function Setup({
           <h3>Add shipping zone</h3>
           <form action={saveShipping}>
             <Field label="Zone name" name="zoneName" />
+            <Field
+              label="Priority (lower wins for equally specific zones)"
+              name="sortOrder"
+              type="number"
+              value="0"
+            />
+            <Field
+              label="State/region codes, comma separated; blank for all"
+              name="regions"
+              required={false}
+            />
+            <Field
+              label="ZIP/postal prefixes, comma separated; blank for all"
+              name="postalPrefixes"
+              required={false}
+            />
             <Field
               label="Country codes, comma separated; blank for all"
               name="countries"

@@ -6,18 +6,21 @@ import {
   paymentAccounts,
   pickupLocation,
   storeSettings,
+  shippingZones,
+  deliveryAreas,
 } from "@/infrastructure/db/schema";
 import { guestIdentity, customerIdentity, money } from "@/infrastructure/web";
 import { customerAccount } from "@/application/use-cases/customers/customer-ownership";
-import { CheckoutCredit } from "@/app/checkout-credit";
 import { getCart } from "@/application/use-cases/cart/get-cart";
 import type { QuoteTerms } from "@/application/use-cases/get-quote";
-import { quoteCart, placeOrder } from "@/app/actions";
-import { Field, Hidden, Notice } from "@/app/components";
-import { CheckoutFields } from "@/app/checkout-fields";
+import { Notice } from "@/app/components";
+import { CheckoutDetailsForm, CheckoutOrderForm } from "@/app/checkout-forms";
 import { pickupAvailability } from "@/domain/pickup-availability";
 import { getTranslations } from "next-intl/server";
-import { Button } from "@/components/ui/button";
+import { stripeConfiguredFor } from "@/domain/stripe-currency";
+import { ShippingAddress } from "@/app/shipping-address";
+import { commercePolicy } from "@/domain/commerce-policy";
+import { availableFulfillment } from "@/domain/shipping-destination";
 import {
   Card,
   CardContent,
@@ -25,16 +28,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { NativeSelect } from "@/components/ui/native-select";
 export const metadata = { robots: { index: false, follow: false } };
 export default async function Checkout({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ quote?: string; error?: string }>;
+  searchParams: Promise<{ quote?: string; edit?: string; error?: string }>;
 }) {
   const { locale } = await params;
   const query = await searchParams;
@@ -44,6 +44,13 @@ export default async function Checkout({
     ? await getCart({ guestSessionId: identity, locale })
     : null;
   const [store] = await db.select().from(storeSettings).limit(1);
+  const shippingRules = await db
+    .select({
+      countryCodes: shippingZones.countryCodes,
+      regionCodes: shippingZones.regionCodes,
+      postalPrefixes: shippingZones.postalPrefixes,
+    })
+    .from(shippingZones);
   const accounts = await db
     .select({ id: paymentAccounts.id, name: paymentAccounts.accountName })
     .from(paymentAccounts)
@@ -57,6 +64,16 @@ export default async function Checkout({
     .select()
     .from(pickupLocation)
     .orderBy(pickupLocation.name);
+  const delivery = await db
+    .select()
+    .from(deliveryAreas)
+    .where(eq(deliveryAreas.isActive, true))
+    .orderBy(deliveryAreas.name);
+  const methods = availableFulfillment(commercePolicy(store?.commercePolicy), {
+    shipping: shippingRules.length,
+    pickup: locations.length,
+    delivery: delivery.length,
+  });
   const [ownedQuote] = query.quote
     ? await db
         .select({ quote: quotes })
@@ -66,7 +83,9 @@ export default async function Checkout({
           and(eq(quotes.id, query.quote), eq(carts.guestSessionId, identity)),
         )
     : [];
-  const quote = ownedQuote?.quote;
+  const savedQuote = ownedQuote?.quote;
+  const quote = query.edit === "1" ? undefined : savedQuote;
+  const initial = savedQuote?.termsSnapshot as QuoteTerms | undefined;
   const customerUserId = await customerIdentity();
   const customer = customerUserId
     ? await customerAccount(customerUserId)
@@ -108,7 +127,7 @@ export default async function Checkout({
           <span>{locale === "zh" ? "核对并下单" : "Review & Place Order"}</span>
         </div>
       </div>
-      <Notice error={query.error} />
+      <Notice error={query.error} locale={locale} />
       {quote ? (
         <div className="grid gap-8 md:grid-cols-2">
           <Card>
@@ -116,12 +135,17 @@ export default async function Checkout({
               <CardTitle>{t("finalOrderTotal")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <a href={"/" + locale + "/checkout"}>{t("editFulfillment")}</a>
+              <a href={`/${locale}/checkout?quote=${quote.id}&edit=1`}>
+                {t("editFulfillment")}
+              </a>
               <p>
                 {(quote.termsSnapshot as QuoteTerms).fulfillmentType ===
                 "shipping"
                   ? t("shipping")
-                  : t("pickup")}
+                  : (quote.termsSnapshot as QuoteTerms).fulfillmentType ===
+                      "local_delivery"
+                    ? t("checkoutDetails.localDelivery")
+                    : t("pickup")}
               </p>
               {(quote.termsSnapshot as QuoteTerms).pickup && (
                 <p>
@@ -133,11 +157,19 @@ export default async function Checkout({
                   {store?.timezone})
                 </p>
               )}
-              {(quote.termsSnapshot as QuoteTerms).fulfillmentType ===
-                "shipping" && (
+              {(quote.termsSnapshot as QuoteTerms).fulfillmentType !==
+                "pickup" && (
+                <ShippingAddress
+                  address={(quote.termsSnapshot as QuoteTerms).shippingAddress}
+                  locale={locale}
+                />
+              )}
+              {(quote.termsSnapshot as QuoteTerms).delivery && (
                 <p>
-                  {(quote.termsSnapshot as QuoteTerms).shippingAddress.address},{" "}
-                  {(quote.termsSnapshot as QuoteTerms).shippingAddress.country}
+                  {(quote.termsSnapshot as QuoteTerms).delivery!.name}{" "}
+                  {(quote.termsSnapshot as QuoteTerms).delivery!.date}{" "}
+                  {(quote.termsSnapshot as QuoteTerms).delivery!.startTime}{" "}
+                  {(quote.termsSnapshot as QuoteTerms).delivery!.endTime}
                 </p>
               )}
               <dl className="grid grid-cols-2 gap-4 border-t pt-5">
@@ -169,7 +201,7 @@ export default async function Checkout({
                 </dd>
                 {quote.discountCents > 0 && (
                   <>
-                    <dt>Promotion</dt>
+                    <dt>{t("checkoutDetails.promotion")}</dt>
                     <dd className="m-0 text-right">
                       −
                       {money(
@@ -198,44 +230,28 @@ export default async function Checkout({
           </Card>
           <Card>
             <CardContent>
-              <form className="grid gap-4" action={placeOrder}>
-                <Hidden name="locale" value={locale} />
-                <Hidden name="quoteId" value={quote.id} />
-                <Field
-                  label={t("name")}
-                  name="name"
-                  value={customer?.customer.name}
-                />
-                <Field
-                  label={t("email")}
-                  name="email"
-                  type="email"
-                  value={customer?.customer.email}
-                />
-                {customer?.credit?.reconciled && (
-                  <CheckoutCredit
-                    availableCents={
-                      customer.credit.account.balanceCents -
-                      customer.credit.account.reservedCents
-                    }
-                    purchaseCents={quote.totalPayableCents}
-                    currency={customer.credit.account.currency}
-                    precision={customer.credit.account.precision}
-                    locale={locale}
-                  />
-                )}
-                <Label className="flex items-start gap-3 font-normal">
-                  <Input
-                    className="mt-0.5 size-4 shrink-0"
-                    type="checkbox"
-                    name="accepted"
-                    value="yes"
-                    required
-                  />
-                  {t("acceptTerms")}
-                </Label>
-                <Button type="submit">{t("place")}</Button>
-              </form>
+              <CheckoutOrderForm
+                key={quote.id}
+                quoteId={quote.id}
+                locale={locale}
+                customerName={customer?.customer.name}
+                customerEmail={customer?.customer.email}
+                credit={
+                  customer?.credit?.reconciled
+                    ? {
+                        availableCents:
+                          customer.credit.account.balanceCents -
+                          customer.credit.account.reservedCents,
+                        purchaseCents: quote.totalPayableCents,
+                        currency: customer.credit.account.currency,
+                        precision: customer.credit.account.precision,
+                        payInFull:
+                          !(quote.termsSnapshot as QuoteTerms).payment &&
+                          !(quote.termsSnapshot as QuoteTerms).onlinePayment,
+                      }
+                    : undefined
+                }
+              />
             </CardContent>
           </Card>
         </div>
@@ -243,60 +259,65 @@ export default async function Checkout({
         <div className="checkout-layout">
           <Card className="checkout-form-card">
             <CardHeader>
-              <CardTitle>How should we get it to you?</CardTitle>
+              <CardTitle>{t("checkoutDetails.heading")}</CardTitle>
               <CardDescription>
-                Choose delivery or a local pickup window. We’ll confirm the
-                final total next.
+                {t("checkoutDetails.description")}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form className="grid gap-5" action={quoteCart}>
-                <Hidden name="locale" value={locale} />
-                <Hidden name="cartId" value={cart.id} />
-                <CheckoutFields
-                  addresses={customer?.addresses ?? []}
-                  timezone={store?.timezone ?? "UTC"}
-                  locations={locations.map((location) => ({
-                    id: location.id,
-                    name: location.name,
-                    address: location.address,
-                    dates: pickupAvailability(
-                      location,
-                      store?.timezone ?? "UTC",
-                    ),
-                  }))}
-                />
-                <Field
-                  label="Promotion code"
-                  name="promotionCode"
-                  required={false}
-                />
-                <div className="grid gap-2">
-                  <Label>
-                    {t("payment")}
-                    <NativeSelect name="paymentAccountId">
-                      <option value="">
-                        {locale === "zh"
-                          ? "全额使用余额或免费订单"
-                          : "Store credit in full or free order"}
-                      </option>
-                      {accounts.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.name}
-                        </option>
-                      ))}
-                    </NativeSelect>
-                  </Label>
-                </div>
-                <Button type="submit" size="lg">
-                  {t("review")} →
-                </Button>
-              </form>
+              <CheckoutDetailsForm
+                key={savedQuote?.id ?? cart.id}
+                cartId={cart.id}
+                locale={locale}
+                shippingRules={shippingRules}
+                methods={methods}
+                deliveryAreas={delivery.map((area) => ({
+                  id: area.id,
+                  name: area.name,
+                  countryCodes: area.countryCodes,
+                  postalPrefixes: area.postalPrefixes,
+                  scheduleRequired: area.scheduleRequired,
+                  dates: area.scheduleRequired
+                    ? pickupAvailability(
+                        { ...area, blackoutDates: [] },
+                        store?.timezone ?? "UTC",
+                      )
+                    : [],
+                }))}
+                accounts={accounts}
+                onlinePayment={stripeConfiguredFor(store)}
+                canBeFree={cart.subtotalCents === 0}
+                canUseCredit={Boolean(
+                  customer?.credit?.reconciled &&
+                  customer.credit.account.balanceCents >
+                    customer.credit.account.reservedCents,
+                )}
+                initial={
+                  initial
+                    ? {
+                        ...initial.input,
+                        address: initial.shippingAddress.address,
+                        country: initial.shippingAddress.country,
+                        region: initial.shippingAddress.region ?? "",
+                        postalCode: initial.shippingAddress.postalCode ?? "",
+                      }
+                    : undefined
+                }
+                addresses={customer?.addresses ?? []}
+                timezone={store?.timezone ?? "UTC"}
+                locations={locations.map((location) => ({
+                  id: location.id,
+                  name: location.name,
+                  address: location.address,
+                  scheduleRequired: location.scheduleRequired,
+                  dates: pickupAvailability(location, store?.timezone ?? "UTC"),
+                }))}
+              />
             </CardContent>
           </Card>
           <Card className="checkout-summary-card">
             <CardHeader>
-              <CardTitle>Your bag</CardTitle>
+              <CardTitle>{t("cart")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {cart.items.map((item) => (
@@ -317,7 +338,7 @@ export default async function Checkout({
                 </div>
               ))}
               <div className="flex justify-between border-t pt-4 font-medium">
-                <span>Subtotal</span>
+                <span>{t("checkoutDetails.subtotal")}</span>
                 <span className="tabular-nums">
                   {money(cart.subtotalCents, store?.currency, store?.precision)}
                 </span>

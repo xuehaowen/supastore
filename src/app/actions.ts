@@ -74,6 +74,9 @@ import {
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { DomainError } from "@/application/common/errors";
 import { ValiError } from "valibot";
+import type { QuoteTerms } from "@/application/use-cases/get-quote";
+import { customerAccount } from "@/application/use-cases/customers/customer-ownership";
+import type { CheckoutActionState } from "@/app/checkout-state";
 import {
   parseActionBoolean,
   parseActionEnum,
@@ -143,65 +146,151 @@ export async function changeItem(form: FormData) {
 export async function quoteCart(form: FormData) {
   const locale = localeOf(field(form, "locale"));
   return perform("/" + locale + "/checkout", async () => {
-    const quote = await getQuote({
-      cartId: parseActionUuid(field(form, "cartId"), "Cart"),
-      guestSessionId: await guestIdentity(),
-      fulfillmentType: parseActionEnum(
-        field(form, "fulfillmentType"),
-        "Fulfillment",
-        ["shipping", "pickup"] as const,
-      ),
-      shippingAddress: {
-        country: field(form, "country").toUpperCase(),
-        address: field(form, "address"),
-      },
-      pickupDate: field(form, "pickupDate"),
-      ...(field(form, "pickupLocationId")
-        ? {
-            pickupLocationId: parseActionUuid(
-              field(form, "pickupLocationId"),
-              "Pickup location",
-            ),
-          }
-        : {}),
-      pickupTime: field(form, "pickupTime"),
-      promotionCode: field(form, "promotionCode"),
-      ...(field(form, "paymentAccountId")
-        ? {
-            paymentAccountId: parseActionUuid(
-              field(form, "paymentAccountId"),
-              "Payment account",
-            ),
-          }
-        : {}),
-    });
+    const quote = await quoteFromForm(form);
     return "/" + locale + "/checkout?quote=" + quote.id;
+  });
+}
+async function quoteFromForm(form: FormData) {
+  return getQuote({
+    cartId: parseActionUuid(field(form, "cartId"), "Cart"),
+    guestSessionId: await guestIdentity(),
+    fulfillmentType: parseActionEnum(
+      field(form, "fulfillmentType"),
+      "Fulfillment",
+      ["shipping", "pickup", "local_delivery"] as const,
+    ),
+    shippingAddress: {
+      country: field(form, "country").toUpperCase(),
+      address: field(form, "address"),
+      region: field(form, "region").trim().toUpperCase(),
+      postalCode: field(form, "postalCode"),
+    },
+    pickupDate: field(form, "pickupDate"),
+    ...(field(form, "pickupLocationId")
+      ? {
+          pickupLocationId: parseActionUuid(
+            field(form, "pickupLocationId"),
+            "Pickup location",
+          ),
+        }
+      : {}),
+    pickupTime: field(form, "pickupTime"),
+    ...(field(form, "deliveryAreaId")
+      ? {
+          deliveryAreaId: parseActionUuid(
+            field(form, "deliveryAreaId"),
+            "Delivery area",
+          ),
+        }
+      : {}),
+    promotionCode: field(form, "promotionCode"),
+    ...(field(form, "paymentAccountId")
+      ? {
+          paymentAccountId: parseActionUuid(
+            field(form, "paymentAccountId"),
+            "Payment account",
+          ),
+        }
+      : {}),
   });
 }
 export async function placeOrder(form: FormData) {
   const locale = localeOf(field(form, "locale"));
-  return perform("/" + locale + "/checkout", async () => {
-    if (field(form, "accepted") !== "yes")
-      throw new DomainError("Accept the final total before placing an order.");
-    if (!allowRequest("checkout:" + (await guestIdentity()), 20))
-      throw new DomainError("Please wait a minute before retrying.");
-    const customerUserId = await customerIdentity();
-    const order = await createOrder({
-      quoteId: parseActionUuid(field(form, "quoteId"), "Quote"),
-      guestSessionId: await guestIdentity(),
-      guestName: field(form, "name"),
-      guestEmail: field(form, "email"),
-      ...(customerUserId ? { customerUserId } : {}),
-      creditAppliedCents: parseActionInteger(
-        field(form, "creditAppliedCents") || "0",
-        "Store credit",
-        0,
-        2147483647,
-      ),
-    });
-    await setOrderToken(order.id, order.sessionToken);
-    return "/" + locale + "/orders/" + order.id;
+  return perform("/" + locale + "/checkout", () => orderFromForm(form));
+}
+async function orderFromForm(form: FormData) {
+  const locale = localeOf(field(form, "locale"));
+  if (field(form, "accepted") !== "yes")
+    throw new DomainError("Accept the final total before placing an order.");
+  if (!allowRequest("checkout:" + (await guestIdentity()), 20))
+    throw new DomainError("Please wait a minute before retrying.");
+  const customerUserId = await customerIdentity();
+  const order = await createOrder({
+    quoteId: parseActionUuid(field(form, "quoteId"), "Quote"),
+    guestSessionId: await guestIdentity(),
+    guestName: field(form, "name"),
+    guestEmail: field(form, "email"),
+    ...(customerUserId ? { customerUserId } : {}),
+    creditAppliedCents: parseActionInteger(
+      field(form, "creditAppliedCents") || "0",
+      "Store credit",
+      0,
+      2147483647,
+    ),
   });
+  await setOrderToken(order.id, order.sessionToken);
+  return "/" + locale + "/orders/" + order.id;
+}
+
+function checkoutError(error: unknown, locale: string): CheckoutActionState {
+  const message =
+    error instanceof DomainError || error instanceof ValiError
+      ? error.message
+      : "Unable to save. Check your entries and try again.";
+  if (locale !== "zh") return { error: message };
+  const translations: Record<string, string> = {
+    "Accept the final total before placing an order.":
+      "请接受最终总价后再下单。",
+    "Please wait a minute before retrying.": "请稍等一分钟后再试。",
+    "Enter your shipping address and country.": "请填写配送地址和国家。",
+    "Enter your state or region.": "请填写州或省。",
+    "Enter your ZIP or postal code.": "请填写邮政编码。",
+    "Enter a valid state or region code.": "请填写有效的州或省代码。",
+    "Enter a valid ZIP or postal code.": "请填写有效的邮政编码。",
+    "This promotion code is not active.": "此优惠码不可用。",
+    "Your checkout changed or expired. Review the final total again before ordering.":
+      "结账信息已变更或过期，请重新核对总价后下单。",
+    "The store is currently paused. Please check back soon.":
+      "商店暂时停止接单，请稍后再试。",
+    "Choose a payment method for the amount remaining after store credit. Edit checkout and review again.":
+      "请选择用于支付余额抵扣后剩余金额的付款方式，并重新核对订单。",
+    "Choose an active payment method.": "请选择可用的付款方式。",
+  };
+  return {
+    error:
+      translations[message] ??
+      "无法完成操作，请检查填写的信息后重试，或联系商店。",
+  };
+}
+
+export async function quoteCheckout(
+  _previous: CheckoutActionState,
+  form: FormData,
+): Promise<CheckoutActionState> {
+  const locale = localeOf(field(form, "locale"));
+  let id: string;
+  try {
+    const quote = await quoteFromForm(form);
+    const terms = quote.termsSnapshot as QuoteTerms;
+    if (quote.totalPayableCents > 0 && !terms.payment && !terms.onlinePayment) {
+      const userId = await customerIdentity();
+      const customer = userId ? await customerAccount(userId) : null;
+      const availableCredit = customer?.credit?.reconciled
+        ? customer.credit.account.balanceCents -
+          customer.credit.account.reservedCents
+        : 0;
+      if (availableCredit < quote.totalPayableCents) {
+        throw new DomainError("Choose an active payment method.");
+      }
+    }
+    id = quote.id;
+  } catch (error) {
+    return checkoutError(error, locale);
+  }
+  redirect("/" + locale + "/checkout?quote=" + id);
+}
+
+export async function placeCheckout(
+  _previous: CheckoutActionState,
+  form: FormData,
+): Promise<CheckoutActionState> {
+  let destination: string;
+  try {
+    destination = await orderFromForm(form);
+  } catch (error) {
+    return checkoutError(error, localeOf(field(form, "locale")));
+  }
+  redirect(destination);
 }
 
 export async function createManualOrderAction(form: FormData) {
@@ -218,6 +307,8 @@ export async function createManualOrderAction(form: FormData) {
       customerEmail: field(form, "customerEmail"),
       country: field(form, "country"),
       address: field(form, "address"),
+      region: field(form, "region"),
+      postalCode: field(form, "postalCode"),
       paymentAccountId: field(form, "paymentAccountId"),
       items: Array.from({ length: itemCount }, (_, index) => ({
         variantId: field(form, `variantId-${index}`),
@@ -324,6 +415,22 @@ export async function saveShipping(form: FormData) {
             ? { id: parseActionUuid(field(form, "zoneId"), "Shipping zone") }
             : {}),
           name: field(form, "zoneName"),
+          sortOrder: field(form, "sortOrder")
+            ? parseActionInteger(
+                field(form, "sortOrder"),
+                "Shipping priority",
+                0,
+                2147483647,
+              )
+            : 0,
+          regionCodes: field(form, "regions")
+            .split(",")
+            .map((s) => s.trim().toUpperCase())
+            .filter(Boolean),
+          postalPrefixes: field(form, "postalPrefixes")
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
           countryCodes: field(form, "countries")
             ? field(form, "countries")
                 .split(",")
