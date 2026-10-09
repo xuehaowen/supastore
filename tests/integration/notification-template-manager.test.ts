@@ -5,6 +5,8 @@ import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { db } from "@/infrastructure/db";
 import { staffMemberships, outboxEvents, eventDeliveries } from "@/infrastructure/db/schema";
 import { processOutboxBatch } from "@/infrastructure/worker/outbox";
+import { getLaunchReadiness } from "@/application/use-cases/store/get-launch-readiness";
+import { notificationTemplates } from "@/infrastructure/db/schema";
 import { listTemplates, saveTemplateDraft, publishTemplate, rollbackTemplate, prepareNotification } from "@/application/notifications/template-manager";
 import { requiredTemplates, templateKey } from "@/application/notifications/templates";
 const enabled = !!process.env.DATABASE_URL?.includes("supastore");
@@ -58,5 +60,13 @@ describe.skipIf(!enabled)("published notification templates", () => {
     expect(message?.text).not.toContain("purchaseTotalCents:");
     const [delivery] = await db.select().from(eventDeliveries).where(eq(eventDeliveries.id, deliveryId));
     expect(delivery!.templateVersionId).toBeTruthy();
+  });
+  it("blocks launch readiness when a required email template is unpublished", async () => {
+    const row = (await listTemplates(ownerId)).find((item) => item.event === "auth.reset_password" && item.locale === "zh")!;
+    await db.update(notificationTemplates).set({ publishedVersion: null }).where(eq(notificationTemplates.id, row.id));
+    try {
+      const readiness = await getLaunchReadiness();
+      expect(readiness.checklist.find((item) => item.key === "templates")?.isReady).toBe(false);
+    } finally { await db.update(notificationTemplates).set({ publishedVersion: row.publishedVersion }).where(eq(notificationTemplates.id, row.id)); }
   });
 });
