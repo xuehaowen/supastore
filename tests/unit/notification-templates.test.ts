@@ -115,4 +115,11 @@ describe("notification template contracts", () => {
       ),
     ).toThrow();
   });
+  it("renders action links as clickable escaped anchors and rejects unsafe schemes", () => {
+    const key = { event: "auth.reset_password", channel: "email", audience: "customer", locale: "en" } as const;
+    const content = { subject: "Reset", body: "{{action.url}}" };
+    const safe = renderTemplate(key, content, { "action.url": "https://store.example/reset?token=one&locale=en" }, "delivery", "buyer@example.test");
+    expect("html" in safe && safe.html).toContain('<a href="https://store.example/reset?token=one&amp;locale=en"');
+    expect(() => renderTemplate(key, content, { "action.url": "javascript:alert(1)" }, "delivery", "buyer@example.test")).toThrow();
+  });
 });
