@@ -28,7 +28,7 @@ export default async function Account({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ error?: string; page?: string }>;
+  searchParams: Promise<{ error?: string; page?: string; reference?: string }>;
 }) {
   const { locale } = await params;
   const t = await getTranslations({ locale });
@@ -39,7 +39,10 @@ export default async function Account({
     10000,
     Math.max(1, Number.parseInt(query.page || "1", 10) || 1),
   );
-  const account = session ? await customerAccount(session.user.id, page) : null;
+  const reference = (query.reference || "").trim().slice(0, 100);
+  const account = session
+    ? await customerAccount(session.user.id, page, reference)
+    : null;
 
   return (
     <section className="account-shell">
@@ -154,6 +157,19 @@ export default async function Account({
           <Card>
             <CardContent>
               <h2>{t("account.orderHistory")}</h2>
+              <form method="get">
+                <label>
+                  {locale === "zh" ? "订单编号" : "Order reference"}
+                  <input
+                    name="reference"
+                    defaultValue={reference}
+                    maxLength={100}
+                  />
+                </label>
+                <Button type="submit">
+                  {locale === "zh" ? "查找订单" : "Search orders"}
+                </Button>
+              </form>
               {!account.orders.length && <p>{t("account.noOrders")}</p>}
               {account.orders.map((order) => {
                 const terms = order.termsSnapshot as QuoteTerms;
@@ -186,7 +202,9 @@ export default async function Account({
                 className="flex gap-4 mt-4"
               >
                 {page > 1 && (
-                  <Link href={`?page=${page - 1}`}>
+                  <Link
+                    href={`?page=${page - 1}&reference=${encodeURIComponent(reference)}`}
+                  >
                     {textFor(locale).ui.previous}
                   </Link>
                 )}
@@ -194,7 +212,9 @@ export default async function Account({
                   {textFor(locale).common.page.replace("{count}", String(page))}
                 </span>
                 {account.hasNext && (
-                  <Link href={`?page=${page + 1}`}>
+                  <Link
+                    href={`?page=${page + 1}&reference=${encodeURIComponent(reference)}`}
+                  >
                     {textFor(locale).ui.next}
                   </Link>
                 )}

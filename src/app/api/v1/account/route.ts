@@ -17,9 +17,11 @@ export async function PATCH(request: Request) {
 export async function GET(request: Request) {
   return apiResponse(async () => {
     const page = new URL(request.url).searchParams.get("page");
+    const reference = new URL(request.url).searchParams.get("reference") || "";
     const a = await customerAccount(
       await customerIdentity(),
       apiInteger({ page: page ? Number(page) : 1 }, "page", 1, 10000),
+      reference,
     );
     return {
       customer: {
@@ -45,10 +47,12 @@ export async function GET(request: Request) {
             precision: a.credit.account.precision,
             balanceCents: a.credit.account.balanceCents,
             reservedCents: a.credit.account.reservedCents,
+            reconciled: a.credit.reconciled,
             entries: a.credit.entries.map((e) => ({
               id: e.id,
               amountCents: e.amountCents,
               kind: e.kind,
+              reason: e.reason,
               createdAt: e.createdAt.toISOString(),
             })),
           }

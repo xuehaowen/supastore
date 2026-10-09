@@ -4,8 +4,9 @@ import {
   formatLocalDate,
 } from "../../../packages/i18n/src/customer";
 import { getStorefrontMessages } from "../lib/i18n";
-import { useState } from "react";
-import { request } from "../lib/client";
+import { useEffect, useState } from "react";
+import { ApiError, request } from "../lib/client";
+import type { CustomerAccountDto } from "@supastore/contracts";
 import { creditMinorUnits } from "../lib/amount";
 import { money, type Cart, type Product, type Store } from "../lib/types";
 import type { StorefrontMessages } from "../lib/i18n";
@@ -182,6 +183,38 @@ export function Checkout({
 }) {
   const m = messages ?? getStorefrontMessages(locale).checkout;
   const [quote, setQuote] = useState<Quote | null>(null);
+  const [account, setAccount] = useState<CustomerAccountDto | null>(null);
+  const [creditAmount, setCreditAmount] = useState("0");
+  const [address, setAddress] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  useEffect(() => {
+    let active = true;
+    request<CustomerAccountDto>("v1/account", undefined, "GET")
+      .then((value) => {
+        if (!active) return;
+        setAccount(value);
+        setCustomerName(value.customer.name);
+        setCustomerEmail(value.customer.email);
+      })
+      .catch((error) => {
+        if (active && !(error instanceof ApiError && error.status === 401))
+          setMsg(customerError(error, locale));
+      });
+    return () => {
+      active = false;
+    };
+  }, [locale]);
+  const availableCredit =
+    account?.credit && account.credit.reconciled !== false
+      ? Math.max(0, account.credit.balanceCents - account.credit.reservedCents)
+      : 0;
+  let appliedCredit = 0;
+  try {
+    appliedCredit = creditMinorUnits(creditAmount, store.precision);
+  } catch {
+    /* Submission presents validation feedback. */
+  }
   const methods = availableFulfillment(store.commercePolicy, {
     shipping: store.shippingZones.length,
     pickup: store.pickupLocations.length,
@@ -253,36 +286,73 @@ export function Checkout({
                 : {}),
               promotionCode: f.get("promotionCode") || "",
             });
+            const credit = creditMinorUnits(
+              String(f.get("creditAmount") || "0"),
+              store.precision,
+            );
+            if (credit > availableCredit || credit > q.totalPayableCents)
+              throw new Error(m.creditInvalid);
+            if (
+              credit < q.totalPayableCents &&
+              !f.get("paymentAccountId") &&
+              !store.stripeConfigured
+            )
+              throw new Error(m.paymentRequired);
             setQuote(q);
           } else {
             if (!f.has("accepted")) throw new Error(m.acceptTotalError);
+            const credit = creditMinorUnits(
+              String(f.get("creditAmount") || "0"),
+              store.precision,
+            );
+            if (credit > availableCredit || credit > quote.totalPayableCents)
+              throw new Error(m.creditInvalid);
+            if (
+              credit < quote.totalPayableCents &&
+              !f.get("paymentAccountId") &&
+              !store.stripeConfigured
+            )
+              throw new Error(m.paymentRequired);
             const order = await request<{ id: string }>("v1/orders", {
               locale,
               quoteId: quote.id,
               name: f.get("name"),
               email: f.get("email"),
               accepted: true,
-              creditAppliedCents: creditMinorUnits(
-                String(f.get("creditAmount") || "0"),
-                store.precision,
-              ),
+              creditAppliedCents: credit,
             });
             window.location.assign(`/${locale}/orders/${order.id}`);
           }
         } catch (e) {
-          setMsg(customerError(e, locale));
+          setMsg(
+            e instanceof Error &&
+              [m.creditInvalid, m.paymentRequired, m.acceptTotalError].includes(
+                e.message,
+              )
+              ? e.message
+              : customerError(e, locale),
+          );
         } finally {
           setBusy(false);
         }
       }}
     >
       <label htmlFor="checkout-name">{m.name}</label>
-      <input id="checkout-name" name="name" required autoComplete="name" />
+      <input
+        id="checkout-name"
+        name="name"
+        required
+        autoComplete="name"
+        value={customerName}
+        onChange={(e) => setCustomerName(e.target.value)}
+      />
       <label htmlFor="checkout-email">{m.email}</label>
       <input
         id="checkout-email"
         name="email"
         type="email"
+        value={customerEmail}
+        onChange={(e) => setCustomerEmail(e.target.value)}
         required
         autoComplete="email"
       />
@@ -443,10 +513,48 @@ export function Checkout({
               )}
             </>
           )}
+          {!!account?.addresses.length && (
+            <label htmlFor="checkout-saved-address">
+              {m.savedAddress}
+              <select
+                id="checkout-saved-address"
+                aria-label={m.savedAddress}
+                defaultValue=""
+                onChange={(e) => {
+                  const saved = account.addresses.find(
+                    (a) => a.id === e.target.value,
+                  );
+                  if (!saved) return;
+                  setAddress(
+                    [
+                      saved.address.line1,
+                      saved.address.line2,
+                      saved.address.city,
+                    ]
+                      .filter(Boolean)
+                      .join(", "),
+                  );
+                  setCountry(saved.address.country || "");
+                  setRegion(saved.address.region || "");
+                  setPostalCode(saved.address.postalCode || "");
+                  setCustomerName(saved.address.name || account.customer.name);
+                }}
+              >
+                <option value="">{m.enterAddress}</option>
+                {account.addresses.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label htmlFor="checkout-address">{m.fullShippingAddress}</label>
           <textarea
             id="checkout-address"
             name="address"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
             maxLength={2000}
             required
             autoComplete="street-address"
@@ -515,11 +623,14 @@ export function Checkout({
       <select
         id="checkout-payment-method"
         name="paymentAccountId"
-        required={!store.stripeConfigured}
+        defaultValue={
+          store.stripeConfigured ? "" : store.paymentMethods[0]?.id || ""
+        }
       >
         {store.stripeConfigured && (
           <option value="">{m.onlineCardPayment}</option>
         )}
+        {!store.stripeConfigured && <option value="">{m.creditOnly}</option>}
         {store.paymentMethods.map((p) => (
           <option key={p.id} value={p.id}>
             {p.name}
@@ -535,10 +646,16 @@ export function Checkout({
         id="checkout-credit-amount"
         name="creditAmount"
         type="number"
-        defaultValue="0"
+        value={creditAmount}
+        onChange={(e) => setCreditAmount(e.target.value)}
+        max={availableCredit / 10 ** store.precision}
         min="0"
         step={10 ** -store.precision}
       />
+      <p>
+        {m.availableCredit}:{" "}
+        {money(availableCredit, store.currency, store.precision, locale)}
+      </p>
       {quote && (
         <div className="notice">
           <p>
@@ -579,6 +696,19 @@ export function Checkout({
           </strong>
           <p>
             {m.quoteExpires}: {new Date(quote.expiresAt).toLocaleString(locale)}
+          </p>
+          <p>
+            {m.creditApplied}:{" "}
+            {money(appliedCredit, store.currency, store.precision, locale)}
+          </p>
+          <p>
+            {m.remainingPayment}:{" "}
+            {money(
+              Math.max(0, quote.totalPayableCents - appliedCredit),
+              store.currency,
+              store.precision,
+              locale,
+            )}
           </p>
           <label htmlFor="checkout-accepted" className="check">
             <input

@@ -156,10 +156,37 @@ test("separate storefront owns catalog/cart checkout and private order cookies",
   ).toBe(true);
   const privateOrder = await page.request.get(`/api/v1/orders/${id}`);
   expect(privateOrder.ok()).toBe(true);
+  const support = page.getByRole("link", {
+    name: "Contact support about this order",
+  });
+  await expect(support).toHaveAttribute("href", /mailto:.*subject=Order/);
+  await expect(page.getByText(/Remaining payment:/)).toBeVisible();
   await page.screenshot({
     path: test.info().outputPath("cross-service-order.png"),
     fullPage: true,
   });
+  await sql`update order_fulfillments set status='fulfilled' where order_id=${id}`;
+  await sql`update orders set lifecycle_status='completed' where id=${id}`;
+  await page.reload();
+  await page
+    .getByLabel(/Return quantity/)
+    .first()
+    .fill("1");
+  await page
+    .getByLabel("Return reason", { exact: true })
+    .fill("Synthetic return request");
+  await page
+    .getByRole("button", { name: "Request a return", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toContainText(
+    "Return request submitted",
+  );
+  await expect(
+    page.getByRole("heading", { name: "Returns", exact: true }),
+  ).toBeVisible();
+  const [goodsReturn] =
+    await sql`select status from order_returns where order_id=${id}`;
+  expect(goodsReturn.status).toBe("requested");
 });
 test("customer registration/login/profile mutation stays behind the backend API", async ({
   page,
@@ -193,12 +220,64 @@ test("customer registration/login/profile mutation stays behind the backend API"
     await sql`select name,phone from customers where email=${email}`;
   expect(customer.name).toBe("Updated Customer");
   expect(customer.phone).toBe("+1 555 0100");
+  await page
+    .getByLabel("Current password", { exact: true })
+    .fill("SyntheticCustomerPassword123!");
+  await page
+    .getByLabel("New password", { exact: true })
+    .fill("SyntheticChangedPassword123!");
+  await page
+    .getByLabel("Confirm password", { exact: true })
+    .fill("SyntheticChangedPassword123!");
+  await page
+    .getByRole("button", { name: "Update password", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toContainText("Password updated");
   await page.screenshot({
     path: test.info().outputPath("cross-service-account.png"),
     fullPage: true,
   });
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page.getByLabel("Account action")).toBeVisible();
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("SyntheticChangedPassword123!");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Save profile" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await page.getByLabel("Account action").selectOption("forgot");
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("check your inbox");
+  const [reset] =
+    await sql`select v.identifier from verification v join "user" u on v.value=u.id where u.email=${email} and v.identifier like 'reset-password:%' order by v.created_at desc limit 1`;
+  expect(reset).toBeTruthy();
+  const resetToken = reset.identifier.slice("reset-password:".length);
+  await page.goto(
+    `/en/account/reset-password?token=${encodeURIComponent(resetToken)}`,
+  );
+  await page
+    .getByLabel("New password", { exact: true })
+    .fill("SyntheticResetPassword123!");
+  await page
+    .getByLabel("Confirm password", { exact: true })
+    .fill("SyntheticResetPassword123!");
+  await page
+    .getByRole("button", { name: "Update password", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/en\/account$/);
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("SyntheticResetPassword123!");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Save profile" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await page.getByRole("link", { name: "中文", exact: true }).click();
   await expect(
     page.getByRole("link", { name: "购物车", exact: true }),

@@ -4,7 +4,10 @@ export default defineConfig({
   testIgnore:
     process.env.STOREFRONT_TESTS === "true"
       ? []
-      : ["**/cross-service-storefront.spec.ts"],
+      : [
+          "**/cross-service-storefront.spec.ts",
+          "**/storefront-journey-updates.spec.ts",
+        ],
   fullyParallel: false,
   workers: 1,
   timeout: 60_000, // Complete multi-step journeys, including cold route compilation.

@@ -20,6 +20,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTranslations } from "next-intl/server";
+import { db } from "@/infrastructure/db";
+import {
+  storeSettings,
+  stripeCheckoutAttempts,
+} from "@/infrastructure/db/schema";
+import { eq } from "drizzle-orm";
+import { stripeConfiguredFor } from "@/domain/stripe-currency";
+import { getStorefrontMessages } from "../../../../../apps/storefront/lib/i18n";
+import { OrderPayment } from "@/app/order-payment";
 export default async function OrderPage({
   params,
   searchParams,
@@ -64,6 +73,13 @@ export default async function OrderPage({
     }),
   );
   const terms = order.termsSnapshot as QuoteTerms;
+  const [store] = await db.select().from(storeSettings).limit(1);
+  const [paymentAttempt] = await db
+    .select({ status: stripeCheckoutAttempts.status })
+    .from(stripeCheckoutAttempts)
+    .where(eq(stripeCheckoutAttempts.orderId, id))
+    .limit(1);
+  const support = getStorefrontMessages(locale).order;
   return (
     <section className="mx-auto my-12 min-h-[50vh] max-w-3xl">
       <p className="mb-6 text-[10px] font-bold tracking-[0.2em]">
@@ -73,6 +89,24 @@ export default async function OrderPage({
         {order.referenceCode}
       </h1>
       <Notice error={query.error} locale={locale} />
+      {store?.supportEmail && (
+        <section className="mb-6">
+          <a
+            href={`mailto:${store.supportEmail}?subject=${encodeURIComponent(`Order ${order.referenceCode}`)}`}
+          >
+            {support.contactSupport}
+          </a>
+          <p>{support.supportHelp}</p>
+        </section>
+      )}
+      {order.lifecycleStatus === "unpaid" && !proposal && (
+        <OrderPayment
+          id={id}
+          locale={locale}
+          status={paymentAttempt?.status || null}
+          enabled={Boolean(store && stripeConfiguredFor(store))}
+        />
+      )}
 
       {/* Visual Order Lifecycle Stepper */}
       {order.lifecycleStatus === "cancelled" ? (
@@ -322,7 +356,7 @@ export default async function OrderPage({
         </Alert>
       ) : order.purchaseTotalCents > 0 &&
         order.lifecycleStatus === "unpaid" &&
-        terms.payment ? (
+        terms.payment && !paymentAttempt ? (
         <Card className="mt-6">
           <CardHeader>
             <CardTitle>{t("order.paymentInstructions")}</CardTitle>
@@ -361,18 +395,21 @@ export default async function OrderPage({
       {order.purchaseTotalCents === 0 && (
         <p>{textFor(locale).common.noPaymentRequired}</p>
       )}
-      {order.purchaseTotalCents > 0 && (
-        <section className="mt-8">
-          <h2>{textFor(locale).common.paymentEvidence}</h2>
-          <p>
-            {textFor(locale).common.evidenceCount.replace(
-              "{count}",
-              String(evidence.length),
-            )}
-          </p>
-          <Uploader orderId={id} locale={locale} />
-        </section>
-      )}
+      {order.lifecycleStatus === "unpaid" &&
+        !proposal &&
+        !paymentAttempt &&
+        order.purchaseTotalCents > order.creditAppliedCents && (
+          <section className="mt-8">
+            <h2>{textFor(locale).common.paymentEvidence}</h2>
+            <p>
+              {textFor(locale).common.evidenceCount.replace(
+                "{count}",
+                String(evidence.length),
+              )}
+            </p>
+            <Uploader orderId={id} locale={locale} />
+          </section>
+        )}
       <p className="mt-8 text-sm text-muted-foreground">
         {t("order.bookmarkHint")}
       </p>

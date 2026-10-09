@@ -14,10 +14,12 @@ export interface CustomerAccountDto {
     reservedCents: number;
     currency: string;
     precision: number;
+    reconciled?: boolean;
     entries: {
       id: string;
       amountCents: number;
       kind: string;
+      reason?: string;
       createdAt: string;
     }[];
   };

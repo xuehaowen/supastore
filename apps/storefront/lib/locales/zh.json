@@ -10,7 +10,16 @@
     "profileSaved": "已保存",
     "saveProfile": "保存资料",
     "name": "姓名",
-    "phone": "电话"
+    "phone": "电话",
+    "reservedCredit": "已预留余额",
+    "recentActivity": "最近余额记录",
+    "creditHelp": "如需充值或查询余额，请联系商店。",
+    "findOrder": "通过订单编号查找订单",
+    "noOrders": "本页暂无订单。",
+    "previous": "上一页",
+    "next": "下一页",
+    "orderReference": "订单编号",
+    "searchOrders": "查找订单"
   },
   "auth": {
     "accountAction": "账户操作",
@@ -121,7 +130,15 @@
     "acceptTotalError": "请接受最终金额",
     "placeOrder": "下单",
     "reviewTotal": "核对最终金额",
-    "pleaseRetry": "请重试"
+    "pleaseRetry": "请重试",
+    "savedAddress": "已保存的地址",
+    "enterAddress": "输入新地址",
+    "availableCredit": "可用余额",
+    "creditApplied": "使用余额",
+    "remainingPayment": "剩余应付金额",
+    "creditOnly": "余额全额支付或免费订单",
+    "creditInvalid": "使用金额不得超过可用余额或订单总额。",
+    "paymentRequired": "请选择支付剩余金额的方式。"
   },
   "order": {
     "title": "订单",
@@ -140,7 +157,24 @@
     "paymentEvidence": "付款凭证",
     "submitEvidence": "提交凭证",
     "evidenceSubmitted": "付款凭证已提交，等待商店审核",
-    "pleaseRetry": "请重试"
+    "pleaseRetry": "请重试",
+    "contactSupport": "联系订单客服",
+    "supportHelp": "如需取消、更改订单、改期或拒绝订单变更，请联系客户支持并提供订单编号。",
+    "creditApplied": "使用余额",
+    "remainingPayment": "剩余应付金额",
+    "refreshStatus": "刷新订单状态",
+    "processingPayment": "如果已完成付款，确认可能需要一些时间。如需继续，请使用支付按钮返回同一支付会话；请勿通过其他方式重复付款。",
+    "paymentReview": "付款需要商店审核。再次付款前请联系客服。",
+    "paymentExpired": "支付会话已过期。请联系客服或重新下单。",
+    "returns": "退货",
+    "refunds": "退款",
+    "requestReturn": "申请退货",
+    "returnReason": "退货原因",
+    "returnQuantity": "退货数量",
+    "returnSubmitted": "退货申请已提交商店审核。",
+    "returnNotice": "提交退货申请不代表退款已获批准。",
+    "settledRefund": "已退款金额",
+    "pickupDetails": "取货地点和时间"
   },
   "product": {
     "variant": "款式",

@@ -2,7 +2,10 @@
 import { OrderActions } from "../../../order-client";
 import { PurchaseAnalytics } from "../../../analytics";
 import { getStorefrontMessages } from "../../../../lib/i18n";
-import { statusLabel } from "../../../../../../packages/i18n/src/customer";
+import {
+  statusLabel,
+  formatLocalDate,
+} from "../../../../../../packages/i18n/src/customer";
 export const metadata = { robots: { index: false, follow: false } };
 interface OrderDetail {
   order: {
@@ -13,10 +16,25 @@ interface OrderDetail {
     terms: {
       currency: string;
       precision: number;
+      pickup?: {
+        address: string;
+        date: string;
+        startTime: string;
+        endTime: string;
+      } | null;
       payment: { name: string; instructions: string } | null;
     };
   };
   receivedCents: number;
+  paymentStatus: string | null;
+  refunds: {
+    id: string;
+    amountCents: number;
+    settledCents: number;
+    reason: string;
+  }[];
+  returns: { id: string; status: string; reason: string }[];
+  returnableItems: { id: string; quantity: number }[];
   shipments?: {
     id: string;
     carrier: string;
@@ -60,6 +78,14 @@ export default async function OrderPage({
         {m.order.title} {order.referenceCode}
       </h1>
       <p>{statusLabel(order.lifecycleStatus, locale)}</p>
+      <section>
+        <a
+          href={`mailto:${store.supportEmail}?subject=${encodeURIComponent(`Order ${order.referenceCode}`)}`}
+        >
+          {m.order.contactSupport}
+        </a>
+        <p>{m.order.supportHelp}</p>
+      </section>
       {result.items.map((i) => (
         <p key={i.id}>
           {i.catalog.productTitle || i.catalog.title} · {i.catalog.variantTitle}{" "}
@@ -97,6 +123,70 @@ export default async function OrderPage({
           <p>{m.order.includeReference}</p>
         </section>
       )}
+      <p>
+        {m.order.creditApplied}:{" "}
+        {money(
+          order.creditAppliedCents,
+          order.terms.currency,
+          order.terms.precision,
+          locale,
+        )}
+      </p>
+      <p>
+        {m.order.remainingPayment}:{" "}
+        {money(
+          Math.max(
+            0,
+            order.purchaseTotalCents -
+              order.creditAppliedCents -
+              result.receivedCents,
+          ),
+          order.terms.currency,
+          order.terms.precision,
+          locale,
+        )}
+      </p>
+      {order.terms.pickup && (
+        <p>
+          {m.order.pickupDetails}: {order.terms.pickup.address} ·{" "}
+          {formatLocalDate(order.terms.pickup.date, locale)}{" "}
+          {order.terms.pickup.startTime}–{order.terms.pickup.endTime}
+        </p>
+      )}
+      {!!result.returns?.length && (
+        <section>
+          <h2>{m.order.returns}</h2>
+          {result.returns.map((r) => (
+            <p key={r.id}>
+              {statusLabel(r.status, locale)} · {r.reason}
+            </p>
+          ))}
+          <p>{m.order.returnNotice}</p>
+        </section>
+      )}
+      {!!result.refunds?.length && (
+        <section>
+          <h2>{m.order.refunds}</h2>
+          {result.refunds.map((r) => (
+            <p key={r.id}>
+              {r.reason} ·{" "}
+              {money(
+                r.amountCents,
+                order.terms.currency,
+                order.terms.precision,
+                locale,
+              )}{" "}
+              · {m.order.settledRefund}:{" "}
+              {money(
+                r.settledCents,
+                order.terms.currency,
+                order.terms.precision,
+                locale,
+              )}
+            </p>
+          ))}
+        </section>
+      )}
       {result.fulfillment && (
         <p>
           {statusLabel(result.fulfillment.status, locale)} ·{" "}
@@ -120,6 +210,14 @@ export default async function OrderPage({
         unpaid={order.lifecycleStatus === "unpaid" && !result.proposal}
         proposal={result.proposal || null}
         stripeConfigured={Boolean(store.stripeConfigured)}
+        paymentStatus={result.paymentStatus}
+        returnableItems={(result.returnableItems || []).map((item) => ({
+          ...item,
+          title:
+            result.items.find((i) => i.id === item.id)?.catalog.productTitle ||
+            result.items.find((i) => i.id === item.id)?.catalog.title ||
+            item.id,
+        }))}
       />
       {!!result.shipments?.length && (
         <section>

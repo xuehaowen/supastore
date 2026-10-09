@@ -80,13 +80,27 @@ export async function claimGuestOrder(input: {
     }
   });
 }
-export async function customerAccount(userId: string, page = 1) {
+export async function customerAccount(
+  userId: string,
+  page = 1,
+  reference = "",
+) {
+  const searchReference = reference.trim();
+  if (searchReference.length > 100)
+    throw new DomainError("Order reference is too long.");
   return db.transaction(async (tx) => {
     const customer = await verifiedCustomer(tx, userId);
     const history = await tx
       .select()
       .from(orders)
-      .where(eq(orders.customerId, customer.id))
+      .where(
+        and(
+          eq(orders.customerId, customer.id),
+          searchReference
+            ? eq(orders.referenceCode, searchReference)
+            : undefined,
+        ),
+      )
       .orderBy(desc(orders.createdAt), desc(orders.id))
       .limit(26)
       .offset((Math.min(10000, Math.max(1, Math.floor(page) || 1)) - 1) * 25);

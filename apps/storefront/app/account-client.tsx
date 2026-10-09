@@ -3,6 +3,7 @@ import {
   customerError,
   statusLabel,
   formatMoney,
+  activityLabel,
 } from "../../../packages/i18n/src/customer";
 import { useEffect, useState } from "react";
 import { ApiError, request } from "../lib/client";
@@ -25,8 +26,28 @@ export function AccountClient({
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState("sign-in");
-  async function load() {
-    setAccount(await request<Account>("v1/account", undefined, "GET"));
+  const [page, setPage] = useState(1);
+  const [reference, setReference] = useState("");
+  const [searchReference, setSearchReference] = useState("");
+  async function load(nextPage = page, filter = searchReference) {
+    const value = await request<Account>(
+      `v1/account?page=${nextPage}&reference=${encodeURIComponent(filter)}`,
+      undefined,
+      "GET",
+    );
+    setAccount(value);
+    setPage(nextPage);
+    setSearchReference(filter);
+  }
+  async function changePage(nextPage: number) {
+    setBusy(true);
+    try {
+      await load(nextPage);
+    } catch (error) {
+      setMessage(customerError(error, locale));
+    } finally {
+      setBusy(false);
+    }
   }
   useEffect(() => {
     let active = true;
@@ -103,17 +124,70 @@ export function AccountClient({
             <button disabled={busy}>{m.account.saveProfile}</button>
           </form>
           {account.credit && (
-            <p>
-              {m.account.availableCredit}:{" "}
-              {formatMoney(
-                account.credit.balanceCents - account.credit.reservedCents,
-                account.credit.currency,
-                account.credit.precision,
-                locale,
-              )}
-            </p>
+            <section>
+              <p>
+                {m.account.availableCredit}:{" "}
+                {formatMoney(
+                  account.credit.balanceCents - account.credit.reservedCents,
+                  account.credit.currency,
+                  account.credit.precision,
+                  locale,
+                )}
+              </p>
+              <p>
+                {m.account.reservedCredit}:{" "}
+                {formatMoney(
+                  account.credit.reservedCents,
+                  account.credit.currency,
+                  account.credit.precision,
+                  locale,
+                )}
+              </p>
+              <h3>{m.account.recentActivity}</h3>
+              {account.credit.entries.map((entry) => (
+                <p key={entry.id}>
+                  {new Date(entry.createdAt).toLocaleDateString(locale)} ·{" "}
+                  {entry.reason
+                    ? activityLabel(entry.reason, locale)
+                    : m.account.recentActivity}{" "}
+                  ·{" "}
+                  {formatMoney(
+                    entry.amountCents,
+                    account.credit!.currency,
+                    account.credit!.precision,
+                    locale,
+                  )}
+                </p>
+              ))}
+              <p>{m.account.creditHelp}</p>
+            </section>
           )}
           <h2>{m.account.orderHistory}</h2>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setBusy(true);
+              try {
+                await load(1, reference.trim());
+              } catch (error) {
+                setMessage(customerError(error, locale));
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            <label>
+              {m.account.orderReference}
+              <input
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                maxLength={100}
+              />
+            </label>
+            <button disabled={busy}>{m.account.searchOrders}</button>
+          </form>
+          <a href={`/${locale}/recover`}>{m.account.findOrder}</a>
+          {!account.orders.length && <p>{m.account.noOrders}</p>}
           {account.orders.map((o) => (
             <button
               key={o.id}
@@ -129,6 +203,21 @@ export function AccountClient({
               {o.referenceCode} · {statusLabel(o.lifecycleStatus, locale)}
             </button>
           ))}
+          <nav aria-label={m.account.orderHistory}>
+            <button
+              disabled={busy || page === 1}
+              onClick={() => changePage(page - 1)}
+            >
+              {m.account.previous}
+            </button>
+            <span> {page} </span>
+            <button
+              disabled={busy || !account.hasNext}
+              onClick={() => changePage(page + 1)}
+            >
+              {m.account.next}
+            </button>
+          </nav>
           <PasswordForm
             locale={locale}
             messages={m.auth}
@@ -142,7 +231,7 @@ export function AccountClient({
                 key={address.id}
                 address={address}
                 messages={m.address}
-                onSaved={load}
+                onSaved={() => load()}
                 onMessage={setMessage}
               />
             ),

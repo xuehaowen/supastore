@@ -5,7 +5,11 @@ import { parseActionUuid } from "@/application/common/request-validation";
 import type { QuoteTerms } from "@/application/use-cases/get-quote";
 import { eq } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
-import { orderShipments, shipmentItems } from "@/infrastructure/db/schema";
+import {
+  orderShipments,
+  shipmentItems,
+  stripeCheckoutAttempts,
+} from "@/infrastructure/db/schema";
 export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> },
@@ -13,6 +17,11 @@ export async function GET(
   return apiResponse(async () => {
     const id = parseActionUuid((await context.params).id, "Order");
     const result = await trackOrder(id, await orderToken(id));
+    const [paymentAttempt] = await db
+      .select({ status: stripeCheckoutAttempts.status })
+      .from(stripeCheckoutAttempts)
+      .where(eq(stripeCheckoutAttempts.orderId, id))
+      .limit(1);
     const shipmentRows = await db
       .select({
         id: orderShipments.id,
@@ -59,7 +68,10 @@ export async function GET(
       precision: terms.precision,
       pickup: terms.pickup,
       payment:
-        !result.proposal && o.lifecycleStatus === "unpaid" && terms.payment
+        !result.proposal &&
+        !paymentAttempt &&
+        o.lifecycleStatus === "unpaid" &&
+        terms.payment
           ? {
               name: terms.payment.name,
               instructions: terms.payment.instructions,
@@ -101,6 +113,35 @@ export async function GET(
           }
         : null,
       refunds: result.refunds,
+      paymentStatus: paymentAttempt?.status ?? null,
+      returns: result.goodsReturns.map((r) => ({
+        id: r.id,
+        status: r.status,
+        reason: r.reason,
+      })),
+      returnableItems:
+        result.fulfillment?.status === "fulfilled"
+          ? result.items
+              .map((item) => ({
+                id: item.id,
+                quantity:
+                  item.quantity -
+                  result.returnItems
+                    .filter(
+                      (ri) =>
+                        ri.orderItemId === item.id &&
+                        result.goodsReturns.some(
+                          (r) =>
+                            r.id === ri.returnId &&
+                            ["requested", "approved", "received"].includes(
+                              r.status,
+                            ),
+                        ),
+                    )
+                    .reduce((sum, ri) => sum + ri.quantity, 0),
+              }))
+              .filter((item) => item.quantity > 0)
+          : [],
       shipments: [...shipments.values()],
       evidence: result.evidence,
     };
