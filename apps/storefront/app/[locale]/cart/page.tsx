@@ -25,7 +25,9 @@ export default async function CartPage({
             store={store}
             messages={m.cart}
           />
-          <p>{money(cart.subtotalCents, store.currency, store.precision)}</p>
+          <p>
+            {money(cart.subtotalCents, store.currency, store.precision, locale)}
+          </p>
           <Link href={`/${locale}/checkout`}>{m.cart.checkout}</Link>
         </>
       ) : (

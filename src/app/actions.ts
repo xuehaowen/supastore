@@ -73,6 +73,7 @@ import {
 } from "@/infrastructure/db/schema";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { DomainError } from "@/application/common/errors";
+import { customerError } from "@/i18n/customer";
 import { ValiError } from "valibot";
 import type { QuoteTerms } from "@/application/use-cases/get-quote";
 import { customerAccount } from "@/application/use-cases/customers/customer-ownership";
@@ -227,30 +228,7 @@ function checkoutError(error: unknown, locale: string): CheckoutActionState {
     error instanceof DomainError || error instanceof ValiError
       ? error.message
       : "Unable to save. Check your entries and try again.";
-  if (locale !== "zh") return { error: message };
-  const translations: Record<string, string> = {
-    "Accept the final total before placing an order.":
-      "请接受最终总价后再下单。",
-    "Please wait a minute before retrying.": "请稍等一分钟后再试。",
-    "Enter your shipping address and country.": "请填写配送地址和国家。",
-    "Enter your state or region.": "请填写州或省。",
-    "Enter your ZIP or postal code.": "请填写邮政编码。",
-    "Enter a valid state or region code.": "请填写有效的州或省代码。",
-    "Enter a valid ZIP or postal code.": "请填写有效的邮政编码。",
-    "This promotion code is not active.": "此优惠码不可用。",
-    "Your checkout changed or expired. Review the final total again before ordering.":
-      "结账信息已变更或过期，请重新核对总价后下单。",
-    "The store is currently paused. Please check back soon.":
-      "商店暂时停止接单，请稍后再试。",
-    "Choose a payment method for the amount remaining after store credit. Edit checkout and review again.":
-      "请选择用于支付余额抵扣后剩余金额的付款方式，并重新核对订单。",
-    "Choose an active payment method.": "请选择可用的付款方式。",
-  };
-  return {
-    error:
-      translations[message] ??
-      "无法完成操作，请检查填写的信息后重试，或联系商店。",
-  };
+  return { error: customerError(message, locale) };
 }
 
 export async function quoteCheckout(
@@ -325,29 +303,40 @@ export async function createManualOrderAction(form: FormData) {
   });
 }
 export async function recoverOrder(form: FormData) {
-  return perform("/recover", async () => {
+  const locale = localeOf(field(form, "locale"));
+  const path = locale === "zh" ? "/recover?locale=zh" : "/recover";
+  return perform(path, async () => {
     await requestTrackingLink({
       email: field(form, "email"),
       referenceCode: field(form, "reference"),
+      locale,
     });
-    return "/recover?sent=1";
+    return path + (path.includes("?") ? "&" : "?") + "sent=1";
   });
 }
 export async function exchangeLink(form: FormData) {
-  return perform("/recover", async () => {
-    const result = await verifyTrackingLink({
-      recoveryToken: field(form, "token"),
-    });
-    await setOrderToken(result.orderId, result.sessionToken);
-    return "/en/orders/" + result.orderId;
-  });
+  const locale = localeOf(field(form, "locale"));
+  return perform(
+    locale === "zh" ? "/recover?locale=zh" : "/recover",
+    async () => {
+      const result = await verifyTrackingLink({
+        recoveryToken: field(form, "token"),
+      });
+      await setOrderToken(result.orderId, result.sessionToken);
+      return "/" + locale + "/orders/" + result.orderId;
+    },
+  );
 }
 export async function acceptProposal(form: FormData) {
   const rawId = field(form, "orderId");
   const locale = localeOf(field(form, "locale"));
   const validId = /^[0-9a-f-]{36}$/i.test(rawId);
   return perform(
-    validId ? "/" + locale + "/orders/" + rawId : "/recover",
+    validId
+      ? "/" + locale + "/orders/" + rawId
+      : locale === "zh"
+        ? "/recover?locale=zh"
+        : "/recover",
     async () => {
       const id = parseActionUuid(rawId, "Order");
       await acceptOrderChange({

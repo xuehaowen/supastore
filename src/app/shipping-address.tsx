@@ -1,4 +1,4 @@
-import { countryOptions, usStates } from "@/domain/shipping-destination";
+import { countryOptions, stateOptions } from "@/domain/shipping-destination";
 
 export function ShippingAddress({
   address,
@@ -17,7 +17,7 @@ export function ShippingAddress({
       ?.name ?? address.country;
   const region =
     address.country === "US"
-      ? (usStates.find(([code]) => code === address.region)?.[1] ??
+      ? (stateOptions(locale).find(([code]) => code === address.region)?.[1] ??
         address.region)
       : address.region;
   return (

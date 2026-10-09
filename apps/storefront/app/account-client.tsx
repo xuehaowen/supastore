@@ -1,4 +1,9 @@
 "use client";
+import {
+  customerError,
+  statusLabel,
+  formatMoney,
+} from "../../../packages/i18n/src/customer";
 import { useEffect, useState } from "react";
 import { ApiError, request } from "../lib/client";
 import type { CustomerAccountDto as Account } from "@supastore/contracts";
@@ -71,9 +76,7 @@ export function AccountClient({
                 await load();
                 setMessage(m.account.profileSaved);
               } catch (e) {
-                setMessage(
-                  e instanceof Error ? e.message : m.account.profileSaved,
-                );
+                setMessage(customerError(e, locale));
               } finally {
                 setBusy(false);
               }
@@ -102,9 +105,12 @@ export function AccountClient({
           {account.credit && (
             <p>
               {m.account.availableCredit}:{" "}
-              {(account.credit.balanceCents - account.credit.reservedCents) /
-                10 ** account.credit.precision}{" "}
-              {account.credit.currency}
+              {formatMoney(
+                account.credit.balanceCents - account.credit.reservedCents,
+                account.credit.currency,
+                account.credit.precision,
+                locale,
+              )}
             </p>
           )}
           <h2>{m.account.orderHistory}</h2>
@@ -116,13 +122,11 @@ export function AccountClient({
                   await request("v1/account/orders", { orderId: o.id });
                   window.location.assign(`/${locale}/orders/${o.id}`);
                 } catch (e) {
-                  setMessage(
-                    e instanceof Error ? e.message : m.account.profileSaved,
-                  );
+                  setMessage(customerError(e, locale));
                 }
               }}
             >
-              {o.referenceCode} · {o.lifecycleStatus}
+              {o.referenceCode} · {statusLabel(o.lifecycleStatus, locale)}
             </button>
           ))}
           <PasswordForm
@@ -134,6 +138,7 @@ export function AccountClient({
           {[...account.addresses, { id: "", label: "", address: {} }].map(
             (address) => (
               <AddressForm
+                locale={locale}
                 key={address.id}
                 address={address}
                 messages={m.address}
@@ -148,9 +153,7 @@ export function AccountClient({
                 await request("auth/sign-out", {});
                 window.location.reload();
               } catch (e) {
-                setMessage(
-                  e instanceof Error ? e.message : m.account.profileSaved,
-                );
+                setMessage(customerError(e, locale));
               }
             }}
           >
@@ -192,9 +195,7 @@ export function AccountClient({
                 setMessage(
                   mode === "forgot" || mode === "verify"
                     ? m.auth.unableToSendLink
-                    : e instanceof Error
-                      ? e.message
-                      : m.auth.unableToSendLink,
+                    : customerError(e, locale),
                 );
               } finally {
                 setBusy(false);
@@ -238,11 +239,13 @@ export function AccountClient({
   );
 }
 function AddressForm({
+  locale,
   address,
   messages,
   onSaved,
   onMessage,
 }: {
+  locale: string;
   address: { id: string; label: string; address: Record<string, string> };
   messages: StorefrontMessages["address"];
   onSaved: () => Promise<void>;
@@ -280,7 +283,7 @@ function AddressForm({
             await onSaved();
             onMessage(isRemove ? m.removed : m.saved);
           } catch (error) {
-            onMessage(error instanceof Error ? error.message : m.saved);
+            onMessage(customerError(error, locale));
           } finally {
             setBusy(false);
           }
@@ -351,7 +354,7 @@ function PasswordForm({
           onMessage(m.passwordUpdated);
           if (token) window.location.assign(`/${locale}/account`);
         } catch (e) {
-          onMessage(e instanceof Error ? e.message : m.passwordsDoNotMatch);
+          onMessage(customerError(e, locale));
         } finally {
           setBusy(false);
         }
@@ -451,14 +454,14 @@ export function RecoveryClient({
             );
             window.location.assign(`/${locale}/orders/${result.orderId}`);
           } else {
-            await request(
-              "v1/recovery",
-              Object.fromEntries(new FormData(e.currentTarget)),
-            );
+            await request("v1/recovery", {
+              ...Object.fromEntries(new FormData(e.currentTarget)),
+              locale,
+            });
             setMessage(m.checkEmailNotice);
           }
         } catch (e) {
-          setMessage(e instanceof Error ? e.message : m.checkEmailNotice);
+          setMessage(customerError(e, locale));
         } finally {
           setBusy(false);
         }

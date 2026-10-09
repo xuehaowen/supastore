@@ -101,7 +101,12 @@ export default async function Catalog({
             <p className="muted">{p.description.slice(0, 150)}</p>
             {p.lowestPriceCents !== null && (
               <p>
-                {money(p.lowestPriceCents, store.currency, store.precision)}
+                {money(
+                  p.lowestPriceCents,
+                  store.currency,
+                  store.precision,
+                  locale,
+                )}
               </p>
             )}
           </article>

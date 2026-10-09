@@ -1,3 +1,4 @@
+import { textFor } from "@/i18n/messages";
 import { CustomerAuthTools } from "@/app/customer-auth";
 export const metadata = { robots: { index: false, follow: false } };
 export default async function ResetPassword({
@@ -11,7 +12,7 @@ export default async function ResetPassword({
   const query = await searchParams;
   return (
     <section className="account-shell">
-      <h1>{locale === "zh" ? "重置密码" : "Reset password"}</h1>
+      <h1>{textFor(locale).auth.resetPassword}</h1>
       <CustomerAuthTools
         locale={locale}
         reset

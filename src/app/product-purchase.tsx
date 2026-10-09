@@ -1,4 +1,5 @@
 "use client";
+import { textFor } from "@/i18n/messages";
 import { useState } from "react";
 import Image from "next/image";
 import type { ProductDetail } from "@/application/use-cases/catalog/get-product";
@@ -96,9 +97,7 @@ export function ProductPurchase({
         {product.images.length > 1 && (
           <div
             className="flex gap-2.5 overflow-x-auto pb-1"
-            aria-label={
-              locale === "zh" ? "商品图片预览" : "Product image gallery"
-            }
+            aria-label={textFor(locale).ui.productImageGallery}
           >
             {product.images.map((img) => {
               const isSelected = activeImage?.s3Key === img.s3Key;
@@ -211,7 +210,7 @@ export function ProductPurchase({
           ) : (
             <fieldset className="grid gap-3 rounded-xl border bg-card p-4">
               <legend className="px-2 text-sm font-medium">
-                {locale === "zh" ? "款式" : "Variant"}
+                {textFor(locale).ui.variant}
               </legend>
               {product.variants.map((v) => (
                 <Label
@@ -242,7 +241,7 @@ export function ProductPurchase({
           </p>
           {availableQuantities[variantId] !== undefined && (
             <p className="text-sm text-muted-foreground">
-              {locale === "zh" ? "可购数量" : "Available quantity"}:{" "}
+              {textFor(locale).ui.availableQuantity}:{" "}
               {availableQuantities[variantId]}
             </p>
           )}
@@ -256,7 +255,7 @@ export function ProductPurchase({
                 className="size-8 p-0"
                 disabled={selectedQuantity <= 1}
                 onClick={() => setQuantity(Math.max(1, selectedQuantity - 1))}
-                aria-label={locale === "zh" ? "减少数量" : "Decrease quantity"}
+                aria-label={textFor(locale).ui.decreaseQuantity}
               >
                 −
               </Button>
@@ -273,7 +272,7 @@ export function ProductPurchase({
                 onClick={() =>
                   setQuantity(Math.min(maxQty, selectedQuantity + 1))
                 }
-                aria-label={locale === "zh" ? "增加数量" : "Increase quantity"}
+                aria-label={textFor(locale).ui.increaseQuantity}
               >
                 +
               </Button>
@@ -290,9 +289,10 @@ export function ProductPurchase({
           </Button>
         </form>
         <aside className="mt-8 border-t pt-5 text-sm leading-6 text-muted-foreground">
-          {locale === "zh"
-            ? "配送和到店自提选项将在结账时确认。"
-            : "Shipping and local pickup options are confirmed at checkout."}
+          {
+            textFor(locale).ui
+              .shippingAndLocalPickupOptionsAreConfirmedAtCheckout
+          }
         </aside>
       </div>
     </div>

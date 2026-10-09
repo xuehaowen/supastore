@@ -1,3 +1,5 @@
+import { textFor } from "@/i18n/messages";
+import { formatLocalDate } from "@/i18n/customer";
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
@@ -96,7 +98,7 @@ export default async function Checkout({
         {t("eyebrowCheckout")}
       </p>
       <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">
-        {quote ? t("review") : locale === "zh" ? "结账" : "Checkout"}
+        {quote ? t("review") : textFor(locale).ui.checkout}
       </h1>
       <div className="mb-8 flex items-center gap-3">
         <div
@@ -109,9 +111,7 @@ export default async function Checkout({
           <span className="flex size-4 items-center justify-center rounded-full bg-background/20 font-bold">
             1
           </span>
-          <span>
-            {locale === "zh" ? "配送与信息" : "Fulfillment & Details"}
-          </span>
+          <span>{textFor(locale).ui.fulfillmentDetails}</span>
         </div>
         <div className="h-px w-6 bg-border" aria-hidden="true" />
         <div
@@ -124,7 +124,7 @@ export default async function Checkout({
           <span className="flex size-4 items-center justify-center rounded-full bg-background/20 font-bold">
             2
           </span>
-          <span>{locale === "zh" ? "核对并下单" : "Review & Place Order"}</span>
+          <span>{textFor(locale).ui.reviewPlaceOrder}</span>
         </div>
       </div>
       <Notice error={query.error} locale={locale} />
@@ -151,8 +151,11 @@ export default async function Checkout({
                 <p>
                   {(quote.termsSnapshot as QuoteTerms).pickup!.address}
                   <br />
-                  {(quote.termsSnapshot as QuoteTerms).pickup!.date} ·{" "}
-                  {(quote.termsSnapshot as QuoteTerms).pickup!.startTime} –{" "}
+                  {formatLocalDate(
+                    (quote.termsSnapshot as QuoteTerms).pickup!.date,
+                    locale,
+                  )}{" "}
+                  · {(quote.termsSnapshot as QuoteTerms).pickup!.startTime} –{" "}
                   {(quote.termsSnapshot as QuoteTerms).pickup!.endTime} (
                   {store?.timezone})
                 </p>
@@ -167,7 +170,10 @@ export default async function Checkout({
               {(quote.termsSnapshot as QuoteTerms).delivery && (
                 <p>
                   {(quote.termsSnapshot as QuoteTerms).delivery!.name}{" "}
-                  {(quote.termsSnapshot as QuoteTerms).delivery!.date}{" "}
+                  {formatLocalDate(
+                    (quote.termsSnapshot as QuoteTerms).delivery!.date ?? "",
+                    locale,
+                  )}{" "}
                   {(quote.termsSnapshot as QuoteTerms).delivery!.startTime}{" "}
                   {(quote.termsSnapshot as QuoteTerms).delivery!.endTime}
                 </p>
@@ -179,16 +185,18 @@ export default async function Checkout({
                     quote.merchandiseSubtotalCents,
                     store?.currency,
                     store?.precision,
+                    locale,
                   )}
                 </dd>
                 <dt>{t("delivery")}</dt>
                 <dd className="m-0 text-right">
                   {quote.shippingCents === 0
-                    ? money(0, store?.currency, store?.precision)
+                    ? money(0, store?.currency, store?.precision, locale)
                     : money(
                         quote.shippingCents,
                         store?.currency,
                         store?.precision,
+                        locale,
                       )}
                 </dd>
                 <dt>{t("tax")}</dt>
@@ -197,6 +205,7 @@ export default async function Checkout({
                     quote.exclusiveTaxCents + quote.inclusiveTaxCents,
                     store?.currency,
                     store?.precision,
+                    locale,
                   )}
                 </dd>
                 {quote.discountCents > 0 && (
@@ -208,6 +217,7 @@ export default async function Checkout({
                         quote.discountCents,
                         store?.currency,
                         store?.precision,
+                        locale,
                       )}
                     </dd>
                   </>
@@ -219,6 +229,7 @@ export default async function Checkout({
                       quote.totalPayableCents,
                       store?.currency,
                       store?.precision,
+                      locale,
                     )}
                   </strong>
                 </dd>
@@ -333,6 +344,7 @@ export default async function Checkout({
                       item.lineTotalCents,
                       store?.currency,
                       store?.precision,
+                      locale,
                     )}
                   </span>
                 </div>
@@ -340,7 +352,12 @@ export default async function Checkout({
               <div className="flex justify-between border-t pt-4 font-medium">
                 <span>{t("checkoutDetails.subtotal")}</span>
                 <span className="tabular-nums">
-                  {money(cart.subtotalCents, store?.currency, store?.precision)}
+                  {money(
+                    cart.subtotalCents,
+                    store?.currency,
+                    store?.precision,
+                    locale,
+                  )}
                 </span>
               </div>
             </CardContent>

@@ -1,7 +1,9 @@
 "use client";
+import { textFor } from "@/i18n/messages";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { customerError } from "@/i18n/customer";
 import { LoaderCircle, LockKeyhole, Mail, UserRound } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -12,7 +14,15 @@ import {
   signOutSession,
   uploadEvidence,
 } from "@/app/client-requests";
-export function CopyButton({ value, label }: { value: string; label: string }) {
+export function CopyButton({
+  value,
+  label,
+  locale = "en",
+}: {
+  value: string;
+  label: string;
+  locale?: string;
+}) {
   const [copied, setCopied] = useState(false);
   return (
     <Button
@@ -27,11 +37,17 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
         }
       }}
     >
-      {copied ? "Copied" : label}
+      {copied ? textFor(locale).common.copied : label}
     </Button>
   );
 }
-export function Uploader({ orderId }: { orderId: string }) {
+export function Uploader({
+  orderId,
+  locale = "en",
+}: {
+  orderId: string;
+  locale?: string;
+}) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   return (
@@ -41,21 +57,17 @@ export function Uploader({ orderId }: { orderId: string }) {
         event.preventDefault();
         const form = event.currentTarget;
         setBusy(true);
-        setMessage("Uploading…");
+        setMessage(textFor(locale).common.uploading);
         try {
           const fileValue = new FormData(form).get("file");
           if (!(fileValue instanceof File) || fileValue.size === 0) {
             throw new Error("Choose an image to upload.");
           }
           await uploadEvidence(orderId, fileValue);
-          setMessage("Evidence received. This is not a payment receipt.");
+          setMessage(textFor(locale).common.evidenceReceived);
           form.reset();
         } catch (error) {
-          setMessage(
-            error instanceof Error
-              ? error.message
-              : "Upload failed. Please retry.",
-          );
+          setMessage(customerError(error, locale));
         } finally {
           setBusy(false);
         }
@@ -63,7 +75,7 @@ export function Uploader({ orderId }: { orderId: string }) {
     >
       <div className="grid gap-2">
         <Label>
-          Payment image (JPEG, PNG, WebP, under 5 MB)
+          {textFor(locale).common.paymentImage}
           <Input
             type="file"
             name="file"
@@ -73,7 +85,9 @@ export function Uploader({ orderId }: { orderId: string }) {
         </Label>
       </div>
       <Button type="submit" disabled={busy}>
-        {busy ? "Uploading…" : "Upload evidence"}
+        {busy
+          ? textFor(locale).common.uploading
+          : textFor(locale).common.uploadEvidence}
       </Button>
       <p
         className="text-sm text-muted-foreground"
@@ -131,9 +145,7 @@ export function AuthForm({
             { customer: isCustomer },
           );
           if (mode === "sign-up") {
-            setMessage(
-              "Account created. Check your inbox to verify your email, then come back to sign in.",
-            );
+            setMessage(textFor(locale).common.accountCreated);
             setMode("sign-in");
             form.reset();
             return;
@@ -147,16 +159,16 @@ export function AuthForm({
             payload.user.emailVerified === false
           ) {
             await signOutSession();
-            throw new Error(
-              "Please verify your email before signing in. Check your inbox or spam folder for the verification link.",
-            );
+            throw new Error(textFor(locale).errors.verifyEmail);
           }
           window.location.assign(destination);
         } catch (error) {
           setMessage(
-            error instanceof Error
-              ? error.message
-              : "Something went wrong. Please try again in a moment.",
+            isCustomer
+              ? customerError(error, locale)
+              : error instanceof Error
+                ? error.message
+                : textFor(locale).errors.generic,
           );
         } finally {
           setBusy(false);
@@ -166,7 +178,7 @@ export function AuthForm({
       {isCustomer && (
         <div
           className="grid grid-cols-2 rounded-lg bg-muted p-1"
-          aria-label="Account action"
+          aria-label={textFor(locale).common.accountAction}
         >
           <Button
             type="button"
@@ -176,7 +188,7 @@ export function AuthForm({
               setMessage("");
             }}
           >
-            Sign in
+            {textFor(locale).auth.signIn}
           </Button>
           <Button
             type="button"
@@ -186,7 +198,7 @@ export function AuthForm({
               setMessage("");
             }}
           >
-            Create account
+            {textFor(locale).common.createAccount}
           </Button>
         </div>
       )}
@@ -194,7 +206,7 @@ export function AuthForm({
         <div className="grid gap-2">
           <Label htmlFor="name">
             <UserRound className="mr-1 inline size-3.5" />
-            Name
+            {textFor(locale).profile.name}
           </Label>
           <Input id="name" name="name" required autoComplete="name" />
         </div>
@@ -203,7 +215,7 @@ export function AuthForm({
         <Label className="auth-field-label" htmlFor="auth-email">
           <span>
             <Mail className="mr-1 inline size-3.5" />
-            Email
+            {textFor(locale).auth.email}
           </span>
         </Label>
         <Input
@@ -212,14 +224,14 @@ export function AuthForm({
           name="email"
           required
           autoComplete="email"
-          placeholder="you@example.com"
+          placeholder={textFor(locale).common.emailPlaceholder}
         />
       </div>
       <div className="grid gap-2">
         <Label className="auth-field-label" htmlFor="auth-password">
           <span>
             <LockKeyhole className="mr-1 inline size-3.5" />
-            Password
+            {textFor(locale).auth.password}
           </span>
         </Label>
         <Input
@@ -234,20 +246,22 @@ export function AuthForm({
       <Button type="submit" size="lg" disabled={busy}>
         {busy && <LoaderCircle className="animate-spin" />}
         {busy
-          ? "Please wait…"
+          ? textFor(locale).common.wait
           : mode === "sign-up"
-            ? "Create account"
-            : "Sign in securely"}
+            ? textFor(locale).common.createAccount
+            : textFor(locale).common.signInSecurely}
       </Button>
       {isCustomer && mode === "sign-in" && (
         <p className="text-xs leading-5 text-muted-foreground">
-          For your security, only verified email addresses can sign in.
+          {textFor(locale).common.verifiedNotice}
         </p>
       )}
       {message && (
         <Alert
           variant={
-            message.startsWith("Account created") ? "default" : "destructive"
+            message === textFor(locale).common.accountCreated
+              ? "default"
+              : "destructive"
           }
         >
           <AlertDescription>{message}</AlertDescription>
@@ -275,21 +289,26 @@ export function SignOutButton({ locale }: { locale: string }) {
         }
       }}
     >
-      {busy ? "Signing out…" : "Sign out"}
+      {busy
+        ? textFor(locale).common.signingOut
+        : textFor(locale).account.signOut}
     </Button>
   );
 }
 
 export function LanguageLink({ locale }: { locale: string }) {
   const pathname = usePathname();
+  const query = useSearchParams().toString();
   return (
     <Link
-      href={pathname.replace(
-        /^\/(en|zh)(?=\/|$)/,
-        locale === "en" ? "/zh" : "/en",
-      )}
+      href={
+        pathname.replace(
+          /^\/(en|zh)(?=\/|$)/,
+          locale === "en" ? "/zh" : "/en",
+        ) + (query ? `?${query}` : "")
+      }
     >
-      {locale === "en" ? "中文" : "English"}
+      {textFor(locale).common.languageName}
     </Link>
   );
 }

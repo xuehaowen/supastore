@@ -3,6 +3,7 @@ export {
   type FulfillmentMethod,
   countryOptions,
   usStates,
+  stateOptions,
   validShippingRegion,
   shippingRequiredFields,
   type ShippingDestinationRule,

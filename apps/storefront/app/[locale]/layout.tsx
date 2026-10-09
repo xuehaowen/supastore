@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { readApi, type Store } from "../../lib/api";
 import { AnalyticsPreference } from "../analytics";
 import { getStorefrontMessages } from "../../lib/i18n";
+import { LanguageLink } from "../language-link";
+import { DocumentLanguage } from "../../../../packages/i18n/src/document-language";
 export default async function Layout({
   children,
   params,
@@ -16,15 +18,16 @@ export default async function Layout({
   const m = getStorefrontMessages(locale);
   return (
     <div lang={locale}>
+      <DocumentLanguage locale={locale} />
       <header>
-        <Link href={`/${locale}`}>{store?.storeName || "Store"}</Link>
+        <Link href={`/${locale}`}>
+          {store?.storeName || m.common.storeTitle}
+        </Link>
         <nav>
           <Link href={`/${locale}/cart`}>{m.nav.cart}</Link>
           <Link href={`/${locale}/account`}>{m.nav.account}</Link>
           <Link href={`/${locale}/recover`}>{m.nav.findOrder}</Link>
-          <Link href={`/${locale === "zh" ? "en" : "zh"}`}>
-            {locale === "zh" ? "English" : "中文"}
-          </Link>
+          <LanguageLink locale={locale} />
         </nav>
       </header>
       <main>

@@ -1,20 +1,25 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { headers } from "next/headers";
+import { textFor } from "@/i18n/messages";
 
-export const metadata: Metadata = {
-  title: "SupaStore",
-  description:
-    "Self-hosted, single-merchant online store with manual availability and upfront payment.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = (await headers()).get("x-store-locale") ?? "en";
+  return {
+    title: "SupaStore",
+    description: textFor(locale).common.storeDescription,
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = (await headers()).get("x-store-locale") === "zh" ? "zh" : "en";
   return (
-    <html lang="en" className="font-sans">
+    <html lang={locale} className="font-sans">
       <body>
         {children}
         <Toaster theme="light" />

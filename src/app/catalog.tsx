@@ -1,3 +1,4 @@
+import { textFor } from "@/i18n/messages";
 import { localizeCategories } from "@/application/use-cases/catalog/localize";
 import Link from "next/link";
 import Image from "next/image";
@@ -122,7 +123,7 @@ export default async function Catalog({
     <>
       <section className="relative min-h-[480px] border-b py-18 pr-[48%] max-sm:min-h-[580px] max-sm:py-10 max-sm:pr-0">
         <p className="mb-7 text-[10px] font-bold tracking-[0.2em]">
-          THE EVERYDAY COLLECTION / 01
+          {textFor(locale).common.collectionEyebrow}
         </p>
         <h1 className="mb-7 font-serif text-5xl leading-none tracking-[-0.045em] md:text-7xl">
           {t("intro")}
@@ -143,7 +144,7 @@ export default async function Catalog({
           <div className="absolute bottom-[15%] left-[20%] h-[50%] w-[37%] rounded-[30%_30%_42%_42%] bg-[#bc8962] shadow-xl" />
           <div className="absolute right-[7%] bottom-[22%] aspect-square w-[34%] rounded-full bg-[radial-gradient(circle_at_35%_30%,#f3eed2,#b3b89b)] shadow-xl" />
           <span className="absolute right-6 bottom-5 text-[9px] tracking-[0.22em]">
-            LESS, BUT BETTER.
+            {textFor(locale).common.lessButBetter}
           </span>
         </div>
       </section>
@@ -151,7 +152,7 @@ export default async function Catalog({
         {collections.length > 0 && (
           <nav
             className="my-7 flex flex-wrap gap-3"
-            aria-label={locale === "zh" ? "商品系列" : "Collections"}
+            aria-label={textFor(locale).ui.collections}
           >
             {collections.map((collection) => (
               <Link
@@ -184,16 +185,14 @@ export default async function Catalog({
               <input type="hidden" name="category" value={query.category} />
             )}
             <label className="grid gap-2">
-              {locale === "zh" ? "排序" : "Sort"}
+              {textFor(locale).ui.sort}
               <NativeSelect name="sort" defaultValue={query.sort || "newest"}>
-                <option value="newest">
-                  {locale === "zh" ? "最新商品" : "Newest"}
-                </option>
+                <option value="newest">{textFor(locale).ui.newest}</option>
                 <option value="price-low">
-                  {locale === "zh" ? "价格从低到高" : "Price: low to high"}
+                  {textFor(locale).ui.priceLowToHigh}
                 </option>
                 <option value="price-high">
-                  {locale === "zh" ? "价格从高到低" : "Price: high to low"}
+                  {textFor(locale).ui.priceHighToLow}
                 </option>
               </NativeSelect>
             </label>
@@ -220,7 +219,10 @@ export default async function Catalog({
             <Button type="submit">{t("searchButton")}</Button>
           </form>
         </div>
-        <nav className="my-7 flex flex-wrap gap-2" aria-label="Categories">
+        <nav
+          className="my-7 flex flex-wrap gap-2"
+          aria-label={textFor(locale).common.categories}
+        >
           <Link
             className={
               "rounded-full border px-3 py-1.5 no-underline transition-colors " +
@@ -292,6 +294,7 @@ export default async function Catalog({
                       p.lowestPriceCents ?? 0,
                       store?.currency,
                       store?.precision,
+                      locale,
                     )}
                   </span>
                 </div>
@@ -301,15 +304,21 @@ export default async function Catalog({
         </div>
         {!result.items.length && (
           <Alert>
-            <AlertDescription>No products found.</AlertDescription>
+            <AlertDescription>
+              {textFor(locale).common.noProducts}
+            </AlertDescription>
           </Alert>
         )}
         <div className="flex justify-between py-7">
           {result.page > 1 && (
-            <Link href={pageHref(result.page - 1)}>← Previous</Link>
+            <Link href={pageHref(result.page - 1)}>
+              ← {textFor(locale).common.previous}
+            </Link>
           )}
           {result.page * result.pageSize < result.total && (
-            <Link href={pageHref(result.page + 1)}>Next →</Link>
+            <Link href={pageHref(result.page + 1)}>
+              {textFor(locale).common.next} →
+            </Link>
           )}
         </div>
       </section>

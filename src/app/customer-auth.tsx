@@ -1,10 +1,12 @@
 "use client";
+import { textFor } from "@/i18n/messages";
 import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { customerAuthRequest } from "./customer-auth-requests";
 import { saveProfileAction } from "./customer-actions";
+import { customerError } from "@/i18n/customer";
 
 export function CustomerAuthTools({
   locale,
@@ -21,7 +23,6 @@ export function CustomerAuthTools({
   invalidToken?: boolean;
   reset?: boolean;
 }) {
-  const zh = locale === "zh";
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [done, setDone] = useState(false);
@@ -40,9 +41,7 @@ export function CustomerAuthTools({
         (operation === "change" || operation === "reset") &&
         password !== data.get("confirmation")
       ) {
-        throw new Error(
-          zh ? "两次输入的密码不一致。" : "Passwords do not match.",
-        );
+        throw new Error(textFor(locale).auth.passwordsDoNotMatch);
       }
       if (operation === "profile") await saveProfileAction(data);
       if (operation === "change")
@@ -63,11 +62,7 @@ export function CustomerAuthTools({
         });
       if (operation === "reset") {
         if (!token || invalidToken)
-          throw new Error(
-            zh
-              ? "链接已失效，请重新申请。"
-              : "This link is invalid. Request a new one.",
-          );
+          throw new Error(textFor(locale).ui.thisLinkIsInvalidRequestANewOne);
         await customerAuthRequest("reset-password", {
           token,
           newPassword: password,
@@ -76,22 +71,12 @@ export function CustomerAuthTools({
       }
       setMessage(
         operation === "forgot" || operation === "verify"
-          ? zh
-            ? "如果邮箱符合条件，我们会发送邮件。请检查收件箱。"
-            : "If this email is eligible, we will send a link. Check your inbox."
-          : zh
-            ? "已保存。"
-            : "Saved.",
+          ? textFor(locale).auth.linkSent
+          : textFor(locale).auth.saved,
       );
       if (operation === "profile") window.location.reload();
     } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : zh
-            ? "无法完成请求。请检查信息，或重新申请链接。"
-            : "Unable to complete this request. Check your details or request a new link.",
-      );
+      setMessage(customerError(error, locale));
     } finally {
       setBusy(false);
     }
@@ -99,7 +84,7 @@ export function CustomerAuthTools({
   const passwords = (
     <>
       <label>
-        {zh ? "新密码" : "New password"}
+        {textFor(locale).auth.newPassword}
         <Input
           name="password"
           type="password"
@@ -110,7 +95,7 @@ export function CustomerAuthTools({
         />
       </label>
       <label>
-        {zh ? "确认密码" : "Confirm password"}
+        {textFor(locale).auth.confirmPassword}
         <Input
           name="confirmation"
           type="password"
@@ -129,28 +114,26 @@ export function CustomerAuthTools({
         <>
           {(!token || invalidToken) && (
             <p role="alert">
-              {zh
-                ? "重置链接已失效。"
-                : "This reset link is invalid or expired."}
+              {textFor(locale).ui.thisResetLinkIsInvalidOrExpired}
             </p>
           )}
           {token && !invalidToken && !done && (
             <form className="grid gap-3" onSubmit={(e) => submit(e, "reset")}>
               {passwords}
               <Button type="submit" disabled={busy}>
-                {zh ? "重置密码" : "Reset password"}
+                {textFor(locale).auth.resetPassword}
               </Button>
             </form>
           )}
           <Link href={`/${locale}/account`}>
-            {zh ? "返回登录" : "Return to sign in"}
+            {textFor(locale).auth.returnToSignIn}
           </Link>
         </>
       ) : name !== undefined ? (
         <>
           <form className="grid gap-3" onSubmit={(e) => submit(e, "profile")}>
             <label>
-              {zh ? "姓名" : "Name"}
+              {textFor(locale).profile.name}
               <Input
                 name="name"
                 required
@@ -160,7 +143,7 @@ export function CustomerAuthTools({
               />
             </label>
             <label>
-              {zh ? "电话（可选）" : "Phone (optional)"}
+              {textFor(locale).profile.phone}
               <Input
                 name="phone"
                 type="tel"
@@ -170,17 +153,17 @@ export function CustomerAuthTools({
               />
             </label>
             <Button type="submit" disabled={busy}>
-              {zh ? "保存个人资料" : "Save profile"}
+              {textFor(locale).profile.saveProfile}
             </Button>
           </form>
           <details>
-            <summary>{zh ? "修改密码" : "Change password"}</summary>
+            <summary>{textFor(locale).auth.changePassword}</summary>
             <form
               className="grid gap-3 mt-3"
               onSubmit={(e) => submit(e, "change")}
             >
               <label>
-                {zh ? "当前密码" : "Current password"}
+                {textFor(locale).auth.currentPassword}
                 <Input
                   name="currentPassword"
                   type="password"
@@ -190,7 +173,7 @@ export function CustomerAuthTools({
               </label>
               {passwords}
               <Button type="submit" disabled={busy}>
-                {zh ? "修改密码" : "Change password"}
+                {textFor(locale).auth.changePassword}
               </Button>
             </form>
           </details>
@@ -201,12 +184,8 @@ export function CustomerAuthTools({
             <details key={operation}>
               <summary>
                 {operation === "forgot"
-                  ? zh
-                    ? "忘记密码？"
-                    : "Forgot password?"
-                  : zh
-                    ? "重新发送验证邮件"
-                    : "Resend verification email"}
+                  ? textFor(locale).auth.forgotPassword
+                  : textFor(locale).auth.resendVerification}
               </summary>
               <form
                 className="grid gap-3 mt-3"
@@ -214,12 +193,8 @@ export function CustomerAuthTools({
               >
                 <label>
                   {operation === "forgot"
-                    ? zh
-                      ? "重置密码邮箱"
-                      : "Email for password reset"
-                    : zh
-                      ? "验证邮箱"
-                      : "Email for verification"}
+                    ? textFor(locale).ui.emailForPasswordReset
+                    : textFor(locale).ui.emailForVerification}
                   <Input
                     name="email"
                     type="email"
@@ -228,7 +203,7 @@ export function CustomerAuthTools({
                   />
                 </label>
                 <Button type="submit" disabled={busy}>
-                  {zh ? "发送链接" : "Send link"}
+                  {textFor(locale).auth.sendLink}
                 </Button>
               </form>
             </details>

@@ -8,7 +8,7 @@ import { textFor } from "@/i18n/messages";
 import type { CheckoutDefaults } from "@/app/checkout-state";
 import {
   countryOptions,
-  usStates,
+  stateOptions,
   shippingRequiredFields,
   type ShippingDestinationRule,
   type FulfillmentMethod,
@@ -420,7 +420,7 @@ export function CheckoutFields({
                 onChange={(event) => setRegion(event.target.value)}
               >
                 <option value="">{m.chooseRegion}</option>
-                {usStates.map(([code, name]) => (
+                {stateOptions(locale).map(([code, name]) => (
                   <option key={code} value={code}>
                     {name}
                   </option>
@@ -513,7 +513,9 @@ export function CheckoutFields({
                       disabled={!date}
                       onChange={(event) => setTime(event.target.value)}
                     >
-                      <option value="">{m.chooseWindow}</option>
+                      <option value="">
+                        {textFor(locale).common.chooseDeliveryWindow}
+                      </option>
                       {area.dates
                         .find((item) => item.date === date)
                         ?.slots.map((slot) => (
@@ -523,7 +525,11 @@ export function CheckoutFields({
                         ))}
                     </NativeSelect>
                   </label>
-                  {!area.dates.length && <p role="status">{m.noWindows}</p>}
+                  {!area.dates.length && (
+                    <p role="status">
+                      {textFor(locale).common.noDeliveryWindows}
+                    </p>
+                  )}
                   <p className="muted">
                     {m.timezone.replace("{timezone}", timezone)}
                   </p>

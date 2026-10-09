@@ -48,8 +48,13 @@ export async function setOrderToken(id: string, token: string) {
 export function localeOf(value: unknown) {
   return value === "zh" ? "zh" : "en";
 }
-export function money(amount: number, currency = "USD", precision = 2) {
-  return new Intl.NumberFormat("en", {
+export function money(
+  amount: number,
+  currency = "USD",
+  precision = 2,
+  locale = "en",
+) {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     minimumFractionDigits: precision,

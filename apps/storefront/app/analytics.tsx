@@ -1,4 +1,5 @@
 "use client";
+import { getStorefrontMessages } from "../lib/i18n";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
@@ -16,7 +17,7 @@ export function AnalyticsPreference({
 }) {
   const path = usePathname();
   const [choice, setChoice] = useState<string | null>(null);
-  const m = messages;
+  const m = messages ?? getStorefrontMessages(locale).analytics;
   useEffect(() => {
     try {
       setChoice(localStorage.getItem("store-analytics-consent") || "pending");
@@ -33,10 +34,7 @@ export function AnalyticsPreference({
   if (!analyticsEndpoint()) return null;
   return (
     <aside>
-      <p>
-        {m?.notice ??
-          "Optional store analytics records public page visits and purchase amounts without names, emails or order references."}
-      </p>
+      <p>{m.notice}</p>
       {choice === "pending" ? (
         <>
           <button
@@ -49,7 +47,7 @@ export function AnalyticsPreference({
               }
             }}
           >
-            {m?.allow ?? "Allow analytics"}
+            {m.allow}
           </button>
           <button
             onClick={() => {
@@ -59,7 +57,7 @@ export function AnalyticsPreference({
               setChoice("no");
             }}
           >
-            {m?.decline ?? "Decline"}
+            {m.decline}
           </button>
         </>
       ) : (
@@ -71,7 +69,7 @@ export function AnalyticsPreference({
             setChoice("pending");
           }}
         >
-          {m?.changePreference ?? "Change analytics preference"}
+          {m.changePreference}
         </button>
       )}
     </aside>

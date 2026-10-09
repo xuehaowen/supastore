@@ -3,20 +3,21 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { textFor } from "@/i18n/messages";
+import { customerError } from "@/i18n/customer";
 
 export function Notice({
   error,
-  locale = "en",
+  locale,
 }: {
   error?: string | undefined;
   locale?: string;
 }) {
-  const m = textFor(locale).checkoutDetails;
+  const m = textFor(locale ?? "en").checkoutDetails;
   return error ? (
     <Alert variant="destructive" className="mb-6">
       <AlertDescription>
-        <strong className="font-medium">{m.errorHeading}</strong> {error}{" "}
-        {m.errorRetry}
+        <strong className="font-medium">{m.errorHeading}</strong>{" "}
+        {locale ? customerError(error, locale) : error} {m.errorRetry}
       </AlertDescription>
     </Alert>
   ) : null;

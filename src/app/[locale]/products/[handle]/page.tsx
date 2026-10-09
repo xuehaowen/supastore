@@ -1,3 +1,4 @@
+import { textFor } from "@/i18n/messages";
 import { unstable_cache } from "next/cache";
 import { notFound } from "next/navigation";
 import { getProduct } from "@/application/use-cases/catalog/get-product";
@@ -101,7 +102,7 @@ export default async function Product({
       {specs.length > 0 && (
         <section className="md:col-span-2">
           <h2 className="mb-4 text-lg font-medium">
-            {locale === "zh" ? "商品规格" : "Specifications"}
+            {textFor(locale).ui.specifications}
           </h2>
           <dl className="grid gap-3">
             {specs.map((s) => (
@@ -130,7 +131,7 @@ export async function generateMetadata({
     "",
   );
   return {
-    title: p?.title || "Product not found",
+    title: p?.title || textFor(locale).common.productNotFound,
     description: p?.description.slice(0, 160),
     alternates: {
       canonical: `${base}/${locale}/products/${encodeURIComponent(handle)}`,

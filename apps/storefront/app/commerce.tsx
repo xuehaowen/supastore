@@ -1,4 +1,9 @@
 ﻿"use client";
+import {
+  customerError,
+  formatLocalDate,
+} from "../../../packages/i18n/src/customer";
+import { getStorefrontMessages } from "../lib/i18n";
 import { useState } from "react";
 import { request } from "../lib/client";
 import { creditMinorUnits } from "../lib/amount";
@@ -6,7 +11,7 @@ import { money, type Cart, type Product, type Store } from "../lib/types";
 import type { StorefrontMessages } from "../lib/i18n";
 import {
   countryOptions,
-  usStates,
+  stateOptions,
   shippingRequiredFields,
   availableFulfillment,
 } from "../../../packages/shipping/src/destination";
@@ -24,7 +29,7 @@ export function AddToCart({
 }) {
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
-  const m = messages;
+  const m = messages ?? getStorefrontMessages(locale).product;
   return (
     <form
       onSubmit={async (e) => {
@@ -39,29 +44,27 @@ export function AddToCart({
           });
           window.location.assign(`/${locale}/cart`);
         } catch (e) {
-          setMsg(
-            e instanceof Error ? e.message : (m?.pleaseRetry ?? "Please retry"),
-          );
+          setMsg(customerError(e, locale));
         } finally {
           setBusy(false);
         }
       }}
     >
       <label>
-        {m?.variant ?? "Variant"}
+        {m.variant}
         <select name="variantId">
           {product.variants
             .filter((v) => v.isAvailable)
             .map((v) => (
               <option key={v.id} value={v.id}>
                 {v.title} —{" "}
-                {money(v.priceCents, store.currency, store.precision)}
+                {money(v.priceCents, store.currency, store.precision, locale)}
               </option>
             ))}
         </select>
       </label>
       <label>
-        {m?.quantity ?? "Quantity"}
+        {m.quantity}
         <input
           name="quantity"
           type="number"
@@ -79,7 +82,7 @@ export function AddToCart({
           !store.isOrderingEnabled
         }
       >
-        {m?.addToCart ?? "Add to cart"}
+        {m.addToCart}
       </button>
       <p role="status">{msg}</p>
     </form>
@@ -98,7 +101,7 @@ export function CartEditor({
 }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
-  const m = messages;
+  const m = messages ?? getStorefrontMessages(locale).cart;
   return (
     <div className="stack">
       {cart.items.map((item) => (
@@ -121,11 +124,7 @@ export function CartEditor({
               );
               window.location.reload();
             } catch (e) {
-              setMsg(
-                e instanceof Error
-                  ? e.message
-                  : (m?.pleaseRetry ?? "Please retry"),
-              );
+              setMsg(customerError(e, locale));
             } finally {
               setBusy(false);
             }
@@ -134,12 +133,17 @@ export function CartEditor({
           <h2>
             {item.productTitle} · {item.title}
           </h2>
-          <p>{money(item.lineTotalCents, store.currency, store.precision)}</p>
-          {!item.isAvailable && (
-            <p>{m?.unavailable ?? "This item is unavailable"}</p>
-          )}
+          <p>
+            {money(
+              item.lineTotalCents,
+              store.currency,
+              store.precision,
+              locale,
+            )}
+          </p>
+          {!item.isAvailable && <p>{m.unavailable}</p>}
           <label>
-            {m?.quantityLabel ?? "Quantity (0 removes item)"}
+            {m.quantityLabel}
             <input
               name="quantity"
               type="number"
@@ -149,7 +153,7 @@ export function CartEditor({
               required
             />
           </label>
-          <button disabled={busy}>{m?.update ?? "Update"}</button>
+          <button disabled={busy}>{m.update}</button>
         </form>
       ))}
       <p role="status">{msg}</p>
@@ -176,7 +180,7 @@ export function Checkout({
   store: Store;
   messages?: StorefrontMessages["checkout"];
 }) {
-  const m = messages;
+  const m = messages ?? getStorefrontMessages(locale).checkout;
   const [quote, setQuote] = useState<Quote | null>(null);
   const methods = availableFulfillment(store.commercePolicy, {
     shipping: store.shippingZones.length,
@@ -251,8 +255,7 @@ export function Checkout({
             });
             setQuote(q);
           } else {
-            if (!f.has("accepted"))
-              throw new Error(m?.acceptTotalError ?? "Accept the final total");
+            if (!f.has("accepted")) throw new Error(m.acceptTotalError);
             const order = await request<{ id: string }>("v1/orders", {
               quoteId: quote.id,
               name: f.get("name"),
@@ -266,17 +269,15 @@ export function Checkout({
             window.location.assign(`/${locale}/orders/${order.id}`);
           }
         } catch (e) {
-          setMsg(
-            e instanceof Error ? e.message : (m?.pleaseRetry ?? "Please retry"),
-          );
+          setMsg(customerError(e, locale));
         } finally {
           setBusy(false);
         }
       }}
     >
-      <label htmlFor="checkout-name">{m?.name ?? "Name"}</label>
+      <label htmlFor="checkout-name">{m.name}</label>
       <input id="checkout-name" name="name" required autoComplete="name" />
-      <label htmlFor="checkout-email">{m?.email ?? "Email"}</label>
+      <label htmlFor="checkout-email">{m.email}</label>
       <input
         id="checkout-email"
         name="email"
@@ -284,29 +285,25 @@ export function Checkout({
         required
         autoComplete="email"
       />
-      <label htmlFor="checkout-fulfillment">
-        {m?.fulfillment ?? "Fulfillment"}
-      </label>
+      <label htmlFor="checkout-fulfillment">{m.fulfillment}</label>
       <select
         id="checkout-fulfillment"
         value={method}
         onChange={(e) => setMethod(e.target.value)}
       >
         {methods.includes("shipping") && (
-          <option value="shipping">{m?.shipping ?? "Shipping"}</option>
+          <option value="shipping">{m.shipping}</option>
         )}
         {methods.includes("pickup") && (
-          <option value="pickup">{m?.pickup ?? "Pickup"}</option>
+          <option value="pickup">{m.pickup}</option>
         )}
         {methods.includes("local_delivery") && (
-          <option value="local_delivery">
-            {m?.localDelivery ?? "Local delivery"}
-          </option>
+          <option value="local_delivery">{m.localDelivery}</option>
         )}
       </select>
       {method === "shipping" || method === "local_delivery" ? (
         <>
-          <label htmlFor="checkout-country">{m?.country ?? "Country"}</label>
+          <label htmlFor="checkout-country">{m.country}</label>
           <select
             id="checkout-country"
             name="country"
@@ -327,9 +324,7 @@ export function Checkout({
           </select>
           {method === "shipping" && (
             <>
-              <label htmlFor="checkout-region">
-                {m?.region ?? "State / region"}
-              </label>
+              <label htmlFor="checkout-region">{m.region}</label>
               {country === "US" ? (
                 <select
                   id="checkout-region"
@@ -339,10 +334,8 @@ export function Checkout({
                   required={requiredShipping.region}
                   onChange={(event) => setRegion(event.target.value)}
                 >
-                  <option value="">
-                    {m?.chooseRegion ?? "Choose a state"}
-                  </option>
-                  {usStates.map(([code, name]) => (
+                  <option value="">{m.chooseRegion}</option>
+                  {stateOptions(locale).map(([code, name]) => (
                     <option key={code} value={code}>
                       {name}
                     </option>
@@ -361,9 +354,7 @@ export function Checkout({
                   }
                 />
               )}
-              <label htmlFor="checkout-shipping-postal">
-                {m?.postalCode ?? "ZIP / postal code"}
-              </label>
+              <label htmlFor="checkout-shipping-postal">{m.postalCode}</label>
               <input
                 id="checkout-shipping-postal"
                 name="postalCode"
@@ -377,9 +368,7 @@ export function Checkout({
           )}
           {method === "local_delivery" && (
             <>
-              <label htmlFor="checkout-delivery-area">
-                {m?.deliveryArea ?? "Delivery area"}
-              </label>
+              <label htmlFor="checkout-delivery-area">{m.deliveryArea}</label>
               <select
                 id="checkout-delivery-area"
                 name="deliveryAreaId"
@@ -404,9 +393,7 @@ export function Checkout({
                   </option>
                 ))}
               </select>
-              <label htmlFor="checkout-postal-code">
-                {m?.postalCode ?? "Postal code"}
-              </label>
+              <label htmlFor="checkout-postal-code">{m.postalCode}</label>
               <input
                 id="checkout-postal-code"
                 name="postalCode"
@@ -419,7 +406,7 @@ export function Checkout({
               {deliveryArea?.scheduleRequired && (
                 <>
                   <label htmlFor="checkout-delivery-date">
-                    {m?.deliveryDate ?? "Delivery date"}
+                    {m.deliveryDate}
                   </label>
                   <select
                     id="checkout-delivery-date"
@@ -428,15 +415,15 @@ export function Checkout({
                     value={deliveryDate}
                     onChange={(e) => setDeliveryDate(e.target.value)}
                   >
-                    <option value="">{m?.chooseDate ?? "Choose date"}</option>
+                    <option value="">{m.chooseDate}</option>
                     {deliveryArea.dates.map((date) => (
                       <option key={date.date} value={date.date}>
-                        {date.date}
+                        {formatLocalDate(date.date, locale)}
                       </option>
                     ))}
                   </select>
                   <label htmlFor="checkout-delivery-time">
-                    {m?.deliveryWindow ?? "Delivery window"}
+                    {m.deliveryWindow}
                   </label>
                   <select
                     id="checkout-delivery-time"
@@ -444,7 +431,7 @@ export function Checkout({
                     required
                     key={`${deliveryAreaId}-${deliveryDate}`}
                   >
-                    <option value="">{m?.chooseTime ?? "Choose time"}</option>
+                    <option value="">{m.chooseTime}</option>
                     {deliverySlots.map((slot) => (
                       <option key={slot.startTime} value={slot.startTime}>
                         {slot.startTime}–{slot.endTime}
@@ -455,9 +442,7 @@ export function Checkout({
               )}
             </>
           )}
-          <label htmlFor="checkout-address">
-            {m?.fullShippingAddress ?? "Full shipping address"}
-          </label>
+          <label htmlFor="checkout-address">{m.fullShippingAddress}</label>
           <textarea
             id="checkout-address"
             name="address"
@@ -468,9 +453,7 @@ export function Checkout({
         </>
       ) : method === "pickup" ? (
         <>
-          <label htmlFor="checkout-pickup-location">
-            {m?.pickupLocation ?? "Pickup location"}
-          </label>
+          <label htmlFor="checkout-pickup-location">{m.pickupLocation}</label>
           <select
             id="checkout-pickup-location"
             name="pickupLocationId"
@@ -492,9 +475,7 @@ export function Checkout({
           </select>
           {location?.scheduleRequired !== false && (
             <>
-              <label htmlFor="checkout-pickup-date">
-                {m?.pickupDate ?? "Pickup date"}
-              </label>
+              <label htmlFor="checkout-pickup-date">{m.pickupDate}</label>
               <select
                 id="checkout-pickup-date"
                 name="pickupDate"
@@ -502,23 +483,21 @@ export function Checkout({
                 onChange={(e) => setPickupDate(e.target.value)}
                 required
               >
-                <option value="">{m?.chooseDate ?? "Choose date"}</option>
+                <option value="">{m.chooseDate}</option>
                 {location?.dates.map((d) => (
                   <option key={d.date} value={d.date}>
-                    {d.date}
+                    {formatLocalDate(d.date, locale)}
                   </option>
                 ))}
               </select>
-              <label htmlFor="checkout-pickup-time">
-                {m?.pickupTime ?? "Pickup time"}
-              </label>
+              <label htmlFor="checkout-pickup-time">{m.pickupTime}</label>
               <select
                 id="checkout-pickup-time"
                 name="pickupTime"
                 required
                 key={`${locationId}-${pickupDate}`}
               >
-                <option value="">{m?.chooseTime ?? "Choose time"}</option>
+                <option value="">{m.chooseTime}</option>
                 {slots.map((s) => (
                   <option key={s.startTime} value={s.startTime}>
                     {s.startTime}–{s.endTime}
@@ -529,23 +508,16 @@ export function Checkout({
           )}
         </>
       ) : (
-        <p role="status">
-          {m?.noFulfillment ??
-            "No fulfillment methods are available. Please contact the store."}
-        </p>
+        <p role="status">{m.noFulfillment}</p>
       )}
-      <label htmlFor="checkout-payment-method">
-        {m?.paymentMethod ?? "Payment method"}
-      </label>
+      <label htmlFor="checkout-payment-method">{m.paymentMethod}</label>
       <select
         id="checkout-payment-method"
         name="paymentAccountId"
         required={!store.stripeConfigured}
       >
         {store.stripeConfigured && (
-          <option value="">
-            {m?.onlineCardPayment ?? "Online card payment"}
-          </option>
+          <option value="">{m.onlineCardPayment}</option>
         )}
         {store.paymentMethods.map((p) => (
           <option key={p.id} value={p.id}>
@@ -553,12 +525,10 @@ export function Checkout({
           </option>
         ))}
       </select>
-      <label htmlFor="checkout-promo-code">
-        {m?.promoCode ?? "Promotion code"}
-      </label>
+      <label htmlFor="checkout-promo-code">{m.promoCode}</label>
       <input id="checkout-promo-code" name="promotionCode" maxLength={100} />
       <label htmlFor="checkout-credit-amount">
-        {m?.creditToApply ?? "Account credit to apply"} ({store.currency})
+        {m.creditToApply} ({store.currency})
       </label>
       <input
         id="checkout-credit-amount"
@@ -571,28 +541,43 @@ export function Checkout({
       {quote && (
         <div className="notice">
           <p>
-            {m?.shippingCost ?? "Shipping"}:{" "}
-            {money(quote.shippingCents, store.currency, store.precision)}
+            {m.shippingCost}:{" "}
+            {money(
+              quote.shippingCents,
+              store.currency,
+              store.precision,
+              locale,
+            )}
           </p>
           <p>
-            {m?.tax ?? "Tax"}:{" "}
+            {m.tax}:{" "}
             {money(
               quote.exclusiveTaxCents + quote.inclusiveTaxCents,
               store.currency,
               store.precision,
+              locale,
             )}
           </p>
           <p>
-            {m?.discount ?? "Discount"}:{" "}
-            {money(quote.discountCents, store.currency, store.precision)}
+            {m.discount}:{" "}
+            {money(
+              quote.discountCents,
+              store.currency,
+              store.precision,
+              locale,
+            )}
           </p>
           <strong>
-            {m?.orderTotal ?? "Order total"}:{" "}
-            {money(quote.totalPayableCents, store.currency, store.precision)}
+            {m.orderTotal}:{" "}
+            {money(
+              quote.totalPayableCents,
+              store.currency,
+              store.precision,
+              locale,
+            )}
           </strong>
           <p>
-            {m?.quoteExpires ?? "Quote expires"}:{" "}
-            {new Date(quote.expiresAt).toLocaleString(locale)}
+            {m.quoteExpires}: {new Date(quote.expiresAt).toLocaleString(locale)}
           </p>
           <label htmlFor="checkout-accepted" className="check">
             <input
@@ -602,7 +587,7 @@ export function Checkout({
               required
               onChange={(e) => e.stopPropagation()}
             />
-            {m?.acceptTotal ?? "I accept this final total"}
+            {m.acceptTotal}
           </label>
         </div>
       )}
@@ -611,9 +596,7 @@ export function Checkout({
           busy || !methods.length || store.isPaused || !store.isOrderingEnabled
         }
       >
-        {quote
-          ? (m?.placeOrder ?? "Place order")
-          : (m?.reviewTotal ?? "Review final total")}
+        {quote ? m.placeOrder : m.reviewTotal}
       </button>
       <p role="status">{msg}</p>
     </form>

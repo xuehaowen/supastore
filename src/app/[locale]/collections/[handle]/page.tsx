@@ -1,3 +1,4 @@
+import { textFor } from "@/i18n/messages";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -45,9 +46,7 @@ export default async function Collection({
   });
   return (
     <>
-      <Link href={`/${locale}`}>
-        ← {locale === "zh" ? "所有商品" : "All products"}
-      </Link>
+      <Link href={`/${locale}`}>← {textFor(locale).all}</Link>
       <h1>{translated?.title ?? collection.title}</h1>
       <p>{translated?.description ?? collection.description}</p>
       {collection.imageKey && (
@@ -62,7 +61,7 @@ export default async function Collection({
       )}
       <section
         className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
-        aria-label={locale === "zh" ? "商品" : "Products"}
+        aria-label={textFor(locale).ui.products}
       >
         {result.items.map((product) => (
           <article key={product.id}>
@@ -87,19 +86,19 @@ export default async function Collection({
                     product.lowestPriceCents,
                     store?.currency,
                     store?.precision,
+                    locale,
                   )}
             </p>
           </article>
         ))}
         {!result.items.length && (
-          <p>
-            {locale === "zh"
-              ? "暂无商品。"
-              : "No products in this collection yet."}
-          </p>
+          <p>{textFor(locale).ui.noProductsInThisCollectionYet}</p>
         )}
       </section>
-      <nav className="my-6 flex justify-between" aria-label="Collection pages">
+      <nav
+        className="my-6 flex justify-between"
+        aria-label={textFor(locale).common.collectionPages}
+      >
         {result.page > 1 ? (
           <Link href={`?page=${result.page - 1}`}>←</Link>
         ) : (

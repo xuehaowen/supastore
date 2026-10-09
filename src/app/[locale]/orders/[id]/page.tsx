@@ -1,3 +1,5 @@
+import { textFor } from "@/i18n/messages";
+import { statusLabel, formatLocalDate } from "@/i18n/customer";
 import { trackOrder } from "@/application/use-cases/tracking";
 import { orderToken, money } from "@/infrastructure/web";
 import { UnauthorizedError } from "@/application/common/errors";
@@ -29,7 +31,8 @@ export default async function OrderPage({
   const query = await searchParams;
   const t = await getTranslations({ locale });
   const result = await trackOrder(id, await orderToken(id)).catch((error) => {
-    if (error instanceof UnauthorizedError) redirect("/recover");
+    if (error instanceof UnauthorizedError)
+      redirect(`/recover?locale=${locale}`);
     throw error;
   });
   const {
@@ -69,7 +72,7 @@ export default async function OrderPage({
       <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">
         {order.referenceCode}
       </h1>
-      <Notice error={query.error} />
+      <Notice error={query.error} locale={locale} />
 
       {/* Visual Order Lifecycle Stepper */}
       {order.lifecycleStatus === "cancelled" ? (
@@ -150,22 +153,33 @@ export default async function OrderPage({
         </form>
       )}
       <Badge variant="secondary" className="mb-6">
-        {order.lifecycleStatus} · {fulfillment?.status.replaceAll("_", " ")}
+        {statusLabel(order.lifecycleStatus, locale)} ·{" "}
+        {statusLabel(fulfillment?.status, locale)}
       </Badge>
       <dl className="grid grid-cols-2 gap-4 border-t pt-5">
         <dt>{t("order.total")}</dt>
         <dd className="m-0 text-right">
-          {money(order.purchaseTotalCents, terms.currency, terms.precision)}
+          {money(
+            order.purchaseTotalCents,
+            terms.currency,
+            terms.precision,
+            locale,
+          )}
         </dd>
         <dt>{t("order.received")}</dt>
         <dd className="m-0 text-right">
-          {money(receivedCents, terms.currency, terms.precision)}
+          {money(receivedCents, terms.currency, terms.precision, locale)}
         </dd>
         {order.creditAppliedCents > 0 && (
           <>
             <dt>{t("order.creditApplied")}</dt>
             <dd className="m-0 text-right">
-              {money(order.creditAppliedCents, terms.currency, terms.precision)}
+              {money(
+                order.creditAppliedCents,
+                terms.currency,
+                terms.precision,
+                locale,
+              )}
             </dd>
           </>
         )}
@@ -182,6 +196,7 @@ export default async function OrderPage({
               : 0,
             terms.currency,
             terms.precision,
+            locale,
           )}
         </dd>
       </dl>
@@ -193,7 +208,12 @@ export default async function OrderPage({
           {items.map((item) => (
             <p key={item.id}>
               {orderItemName(item, quoteItems)} · {item.quantity} ×{" "}
-              {money(item.unitPriceCents, terms.currency, terms.precision)}
+              {money(
+                item.unitPriceCents,
+                terms.currency,
+                terms.precision,
+                locale,
+              )}
             </p>
           ))}
         </CardContent>
@@ -207,12 +227,13 @@ export default async function OrderPage({
             {result.refunds.map((r) => (
               <p key={r.id}>
                 {r.reason} ·{" "}
-                {money(r.amountCents, terms.currency, terms.precision)} approved
-                · {money(r.settledCents, terms.currency, terms.precision)}{" "}
-                settled
+                {money(r.amountCents, terms.currency, terms.precision, locale)}{" "}
+                {textFor(locale).common.approved}·{" "}
+                {money(r.settledCents, terms.currency, terms.precision, locale)}{" "}
+                {textFor(locale).common.settled}
                 {r.settledCents < r.amountCents
-                  ? " · External settlement pending"
-                  : " · Complete"}
+                  ? ` · ${textFor(locale).common.settlementPending}`
+                  : ` · ${textFor(locale).common.complete}`}
               </p>
             ))}
           </CardContent>
@@ -226,14 +247,11 @@ export default async function OrderPage({
           <CardContent>
             {goodsReturns.map((r) => (
               <p key={r.id}>
-                {r.reason} · {r.status}
+                {r.reason} · {statusLabel(r.status, locale)}
                 {r.reviewReason ? ` · ${r.reviewReason}` : ""}
               </p>
             ))}
-            <p>
-              Goods receipt and refund settlement are separate. The store will
-              review the refund against original payment sources.
-            </p>
+            <p>{textFor(locale).common.returnSettlementNotice}</p>
           </CardContent>
         </Card>
       )}
@@ -253,8 +271,11 @@ export default async function OrderPage({
                   return available > 0 ? (
                     <label key={item.id}>
                       <Hidden name="itemIds" value={item.id} />
-                      {orderItemName(item, quoteItems)} · up to {available}{" "}
-                      units
+                      {orderItemName(item, quoteItems)} ·{" "}
+                      {textFor(locale).common.returnLimit.replace(
+                        "{count}",
+                        String(available),
+                      )}
                       <Input
                         name={`quantity.${item.id}`}
                         type="number"
@@ -274,25 +295,28 @@ export default async function OrderPage({
         )}
       {proposal ? (
         <Alert className="mt-6">
-          <AlertTitle>Order Terms Updated</AlertTitle>
+          <AlertTitle>{textFor(locale).common.termsUpdated}</AlertTitle>
           <AlertDescription>
             <p>{proposal.reason}</p>
             <p>
-              New total:{" "}
+              {textFor(locale).common.newTotal}:{" "}
               <strong>
                 {money(
                   proposal.proposedTotalCents,
                   terms.currency,
                   terms.precision,
+                  locale,
                 )}
               </strong>
             </p>
-            <p>Payment instructions are paused until you accept.</p>
+            <p>{textFor(locale).common.paymentPaused}</p>
             <form action={acceptProposal}>
               <Hidden name="locale" value={locale} />
               <Hidden name="orderId" value={id} />
               <Hidden name="proposalId" value={proposal.id} />
-              <Button type="submit">Accept New Total</Button>
+              <Button type="submit">
+                {textFor(locale).common.acceptNewTotal}
+              </Button>
             </form>
           </AlertDescription>
         </Alert>
@@ -310,6 +334,7 @@ export default async function OrderPage({
             </p>
             <div className="flex flex-wrap gap-3">
               <CopyButton
+                locale={locale}
                 value={(
                   (order.purchaseTotalCents - order.creditAppliedCents) /
                   10 ** terms.precision
@@ -317,34 +342,35 @@ export default async function OrderPage({
                 label={t("order.copyAmount")}
               />
               <CopyButton
+                locale={locale}
                 value={order.referenceCode}
                 label={t("order.copyRef")}
               />
             </div>
-            <p>
-              Use this reference for your payment. If you already paid, wait for
-              the store to verify it; do not send a second payment.
-            </p>
+            <p>{textFor(locale).common.paymentReferenceNotice}</p>
           </CardContent>
         </Card>
       ) : null}
       {terms.pickup && (
         <p>
-          Pickup: {terms.pickup.address} · {terms.pickup.date}{" "}
-          {terms.pickup.startTime}–{terms.pickup.endTime}
+          {t("pickup")}: {terms.pickup.address} ·{" "}
+          {formatLocalDate(terms.pickup.date, locale)} {terms.pickup.startTime}–
+          {terms.pickup.endTime}
         </p>
       )}
       {order.purchaseTotalCents === 0 && (
-        <p>No payment or payment evidence is required.</p>
+        <p>{textFor(locale).common.noPaymentRequired}</p>
       )}
       {order.purchaseTotalCents > 0 && (
         <section className="mt-8">
-          <h2>Payment evidence</h2>
+          <h2>{textFor(locale).common.paymentEvidence}</h2>
           <p>
-            {evidence.length} image(s) received. Evidence does not confirm
-            payment.
+            {textFor(locale).common.evidenceCount.replace(
+              "{count}",
+              String(evidence.length),
+            )}
           </p>
-          <Uploader orderId={id} />
+          <Uploader orderId={id} locale={locale} />
         </section>
       )}
       <p className="mt-8 text-sm text-muted-foreground">

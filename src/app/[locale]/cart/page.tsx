@@ -1,3 +1,4 @@
+import { textFor } from "@/i18n/messages";
 import Link from "next/link";
 import { getCart } from "@/application/use-cases/cart/get-cart";
 import { guestIdentity, money } from "@/infrastructure/web";
@@ -31,12 +32,12 @@ export default async function Cart({
   return (
     <section className="mx-auto my-12 min-h-[50vh] max-w-5xl">
       <p className="mb-6 text-[10px] font-bold tracking-[0.2em]">
-        YOUR SELECTION
+        {textFor(locale).common.selection}
       </p>
       <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">
         {t("cart")}
       </h1>
-      <Notice error={error} />
+      <Notice error={error} locale={locale} />
       {cart?.items.length ? (
         <>
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
@@ -70,7 +71,12 @@ export default async function Cart({
                           variant="ghost"
                           size="sm"
                           className="size-7 p-0"
-                          aria-label={`Decrease quantity of ${item.productTitle}`}
+                          aria-label={textFor(
+                            locale,
+                          ).common.decreaseQuantityFor.replace(
+                            "{name}",
+                            item.productTitle,
+                          )}
                         >
                           −
                         </Button>
@@ -91,7 +97,12 @@ export default async function Cart({
                           size="sm"
                           className="size-7 p-0"
                           disabled={item.quantity >= 999}
-                          aria-label={`Increase quantity of ${item.productTitle}`}
+                          aria-label={textFor(
+                            locale,
+                          ).common.increaseQuantityFor.replace(
+                            "{name}",
+                            item.productTitle,
+                          )}
                         >
                           +
                         </Button>
@@ -102,6 +113,7 @@ export default async function Cart({
                         item.lineTotalCents,
                         store?.currency,
                         store?.precision,
+                        locale,
                       )}
                     </strong>
                     <form action={changeItem}>
@@ -121,22 +133,28 @@ export default async function Cart({
               ))}
             </div>
             <aside
-              aria-label="Order summary"
+              aria-label={textFor(locale).common.summary}
               className="rounded-xl border bg-card p-5 lg:sticky lg:top-6"
             >
               <p className="text-sm font-medium text-muted-foreground">
-                {locale === "zh" ? "订单摘要" : "Order summary"}
+                {textFor(locale).ui.orderSummary}
               </p>
               <div className="mt-5 flex justify-between border-t pt-5 text-xl">
-                <span>{locale === "zh" ? "商品小计" : "Subtotal"}</span>
+                <span>{textFor(locale).checkoutDetails.subtotal}</span>
                 <strong className="tabular-nums">
-                  {money(cart.subtotalCents, store?.currency, store?.precision)}
+                  {money(
+                    cart.subtotalCents,
+                    store?.currency,
+                    store?.precision,
+                    locale,
+                  )}
                 </strong>
               </div>
               <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                {locale === "zh"
-                  ? "运费、税费及履约方式将在结账时最终确认。"
-                  : "Shipping, tax, and fulfillment options are confirmed at checkout."}
+                {
+                  textFor(locale).ui
+                    .shippingTaxAndFulfillmentOptionsAreConfirmedAtCheckout
+                }
               </p>
               <Link
                 className={cn(
@@ -160,9 +178,10 @@ export default async function Cart({
           </div>
           <h2 className="mb-2 font-serif text-2xl font-medium">{t("empty")}</h2>
           <p className="mb-6 max-w-sm text-sm text-muted-foreground">
-            {locale === "zh"
-              ? "您的购物袋还是空的，快去挑选心仪的商品吧。"
-              : "Your shopping bag is empty. Explore our collection of carefully curated everyday goods."}
+            {
+              textFor(locale).ui
+                .yourShoppingBagIsEmptyExploreOurCollectionOfCarefullyCuratedEverydayGoods
+            }
           </p>
           <Link
             className={cn(buttonVariants({ size: "lg" }), "no-underline")}

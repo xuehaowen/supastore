@@ -15,12 +15,12 @@ async function perform(path: string, work: () => Promise<void>) {
   let destination = path;
   try {
     await work();
-    destination += "?saved=1";
+    destination += (destination.includes("?") ? "&" : "?") + "saved=1";
     revalidatePath("/admin", "layout");
     revalidatePath("/[locale]/orders/[id]", "page");
     revalidateTag("catalog");
   } catch (e) {
-    destination += `?error=${encodeURIComponent(e instanceof DomainError ? e.message : "Unable to save return.")}`;
+    destination += `${destination.includes("?") ? "&" : "?"}error=${encodeURIComponent(e instanceof DomainError ? e.message : "Unable to save return.")}`;
   }
   redirect(destination);
 }
@@ -29,7 +29,9 @@ export async function requestReturnAction(form: FormData) {
     locale = localeOf(form.get("locale"));
   const path = /^[0-9a-f-]{36}$/i.test(id)
     ? `/${locale}/orders/${id}`
-    : "/recover";
+    : locale === "zh"
+      ? "/recover?locale=zh"
+      : "/recover";
   return perform(path, async () => {
     const items = form
       .getAll("itemIds")

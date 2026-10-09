@@ -1,4 +1,7 @@
+import { textFor } from "@/i18n/messages";
+import { DocumentLanguage } from "../../../../packages/i18n/src/document-language";
 import { exchangeLink } from "@/app/actions";
+import { localeOf } from "@/infrastructure/web";
 import { Hidden } from "@/app/components";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,20 +9,25 @@ export const metadata = { robots: { index: false, follow: false } };
 export default async function Exchange({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ token?: string; locale?: string }>;
 }) {
-  const { token } = await searchParams;
+  const { token, locale: requestedLocale } = await searchParams;
+  const locale = localeOf(requestedLocale);
   return (
     <main className="mx-auto my-12 min-h-[50vh] max-w-xl">
+      <DocumentLanguage locale={locale} />
       <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">
-        Open your order
+        {textFor(locale).common.openOrder}
       </h1>
-      <p>This link can be used once. Continue to securely open your order.</p>
+      <p>{textFor(locale).common.exchangeNotice}</p>
       <Card>
         <CardContent>
           <form className="grid gap-4" action={exchangeLink}>
             <Hidden name="token" value={token ?? ""} />
-            <Button type="submit">Continue to order</Button>
+            <Hidden name="locale" value={locale} />
+            <Button type="submit">
+              {textFor(locale).common.continueToOrder}
+            </Button>
           </form>
         </CardContent>
       </Card>

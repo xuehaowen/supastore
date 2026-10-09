@@ -38,7 +38,9 @@ describe("frontend visual foundations", () => {
     );
 
     expect(shopLayout).toContain('role="contentinfo"');
-    expect(shopLayout).toContain('aria-label="Customer support"');
+    expect(shopLayout).toContain(
+      "aria-label={textFor(locale).common.customerSupport}",
+    );
   });
 
   it("marks the active catalog filter for assistive technology", async () => {
@@ -70,7 +72,7 @@ describe("frontend visual foundations", () => {
       "utf8",
     );
 
-    expect(cartPage).toContain('aria-label="Order summary"');
+    expect(cartPage).toContain("aria-label={textFor(locale).common.summary}");
   });
 
   it("offers the order CSV export from the order management page", async () => {

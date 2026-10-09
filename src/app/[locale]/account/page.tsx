@@ -1,3 +1,5 @@
+import { statusLabel, activityLabel } from "@/i18n/customer";
+import { textFor } from "@/i18n/messages";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { auth } from "@/infrastructure/auth";
@@ -41,7 +43,7 @@ export default async function Account({
 
   return (
     <section className="account-shell">
-      <Notice error={query.error} />
+      <Notice error={query.error} locale={locale} />
       <div className="account-heading">
         <p className="eyebrow">{t("account.eyebrow")}</p>
         <h1>{session ? t("account.welcome") : t("account.guestIntro")}</h1>
@@ -60,16 +62,17 @@ export default async function Account({
                 <p className="mt-2 font-medium">
                   {account?.customer.name ||
                     session.user.name ||
-                    (locale === "zh" ? "客户" : "Customer")}
+                    textFor(locale).ui.customer}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {session.user.email}
                 </p>
               </div>
               <p className="text-sm leading-6 text-muted-foreground">
-                {locale === "zh"
-                  ? "以访客身份下的订单将保密于其专属订单链接中。您随时可以通过查找订单页面找回。"
-                  : "Orders placed as a guest remain private to their order link. You can always find one from the recovery page."}
+                {
+                  textFor(locale).ui
+                    .ordersPlacedAsAGuestRemainPrivateToTheirOrderLinkYouCanAlwaysFindOneFromTheRecoveryPage
+                }
               </p>
               <CustomerAuthTools
                 locale={locale}
@@ -80,7 +83,7 @@ export default async function Account({
                 <SignOutButton locale={locale} />
                 <Link
                   className="inline-flex h-8 items-center rounded-lg px-2.5 text-sm font-medium hover:bg-muted"
-                  href="/recover"
+                  href={`/recover?locale=${locale}`}
                 >
                   {t("account.findOrder")}
                 </Link>
@@ -109,6 +112,7 @@ export default async function Account({
                         account.credit.account.reservedCents,
                       account.credit.account.currency,
                       account.credit.account.precision,
+                      locale,
                     )}
                   </p>
                   <p>
@@ -117,24 +121,27 @@ export default async function Account({
                       account.credit.account.reservedCents,
                       account.credit.account.currency,
                       account.credit.account.precision,
+                      locale,
                     )}
                   </p>
                   {!account.credit.reconciled && (
                     <p>
-                      {locale === "zh"
-                        ? "账户余额正在核对中。使用余额前请联系客服。"
-                        : "Balance reconciliation needs store review. Contact support before applying credit."}
+                      {
+                        textFor(locale).ui
+                          .balanceReconciliationNeedsStoreReviewContactSupportBeforeApplyingCredit
+                      }
                     </p>
                   )}
-                  <h3>{locale === "zh" ? "近期明细" : "Recent activity"}</h3>
+                  <h3>{textFor(locale).ui.recentActivity}</h3>
                   {account.credit.entries.map((entry) => (
                     <p key={entry.id}>
                       {entry.createdAt.toLocaleDateString(locale)} ·{" "}
-                      {entry.reason} ·{" "}
+                      {activityLabel(entry.reason, locale)} ·{" "}
                       {money(
                         entry.amountCents,
                         account.credit!.account.currency,
                         account.credit!.account.precision,
+                        locale,
                       )}
                     </p>
                   ))}
@@ -159,11 +166,13 @@ export default async function Account({
                     <Hidden name="locale" value={locale} />
                     <Hidden name="orderId" value={order.id} />
                     <span>
-                      {order.referenceCode} · {order.lifecycleStatus} ·{" "}
+                      {order.referenceCode} ·{" "}
+                      {statusLabel(order.lifecycleStatus, locale)} ·{" "}
                       {money(
                         order.purchaseTotalCents,
                         terms.currency,
                         terms.precision,
+                        locale,
                       )}
                     </span>
                     <Button type="submit" variant="outline">
@@ -172,18 +181,21 @@ export default async function Account({
                   </form>
                 );
               })}
-              <nav aria-label="Order history pages" className="flex gap-4 mt-4">
+              <nav
+                aria-label={textFor(locale).common.orderPages}
+                className="flex gap-4 mt-4"
+              >
                 {page > 1 && (
                   <Link href={`?page=${page - 1}`}>
-                    {locale === "zh" ? "上一页" : "Previous"}
+                    {textFor(locale).ui.previous}
                   </Link>
                 )}
                 <span>
-                  {locale === "zh" ? `第 ${page} 页` : `Page ${page}`}
+                  {textFor(locale).common.page.replace("{count}", String(page))}
                 </span>
                 {account.hasNext && (
                   <Link href={`?page=${page + 1}`}>
-                    {locale === "zh" ? "下一页" : "Next"}
+                    {textFor(locale).ui.next}
                   </Link>
                 )}
               </nav>

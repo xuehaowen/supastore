@@ -12,6 +12,7 @@ export async function POST(request: Request) {
     await requestTrackingLink({
       email: apiText(b, "email", 254),
       referenceCode: apiText(b, "reference", 100),
+      locale: apiText(b, "locale", 2, true) === "zh" ? "zh" : "en",
     });
     return { sent: true };
   });

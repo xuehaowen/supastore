@@ -1,11 +1,12 @@
+import { textFor } from "@/i18n/messages";
 import { notFound } from "next/navigation";
 import { db } from "@/infrastructure/db";
 import { storeSettings } from "@/infrastructure/db/schema";
 const titles = {
-  about: ["About us", "关于我们"],
-  shipping: ["Shipping & pickup", "配送与自提"],
-  returns: ["Returns policy", "退货政策"],
-  privacy: ["Privacy policy", "隐私政策"],
+  about: "about",
+  shipping: "shippingPolicy",
+  returns: "returnsPolicy",
+  privacy: "privacyPolicy",
 };
 export default async function StorePage({
   params,
@@ -23,7 +24,12 @@ export default async function StorePage({
   return (
     <article className="mx-auto max-w-3xl py-14">
       <h1 className="mb-8 font-serif text-4xl">
-        {titles[key][locale === "zh" ? 1 : 0]}
+        {
+          textFor(locale).common[
+            titles[key] as
+              "about" | "shippingPolicy" | "returnsPolicy" | "privacyPolicy"
+          ]
+        }
       </h1>
       <p className="whitespace-pre-line leading-8">{content}</p>
     </article>

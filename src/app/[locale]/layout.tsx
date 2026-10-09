@@ -1,4 +1,6 @@
+import { textFor } from "@/i18n/messages";
 import { LanguageLink } from "@/app/interactive";
+import { DocumentLanguage } from "../../../packages/i18n/src/document-language";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -27,11 +29,12 @@ export default async function ShopLayout({
       className="mx-auto flex min-h-screen max-w-375 flex-col px-[6%]"
       lang={locale}
     >
+      <DocumentLanguage locale={locale} />
       <a
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded focus:bg-background focus:p-4"
         href="#main"
       >
-        Skip to content
+        {textFor(locale).common.skipToContent}
       </a>
       <header className="flex items-center justify-between gap-6 border-b py-6 max-sm:items-start">
         <Link
@@ -50,12 +53,12 @@ export default async function ShopLayout({
           )}
           {store?.storeName ?? "SupaStore"}
           <span className="mt-1 block font-sans text-[9px] tracking-[0.16em]">
-            EVERYDAY / WELL CHOSEN
+            {textFor(locale).common.storeTagline}
           </span>
         </Link>
         <nav
           className="flex flex-wrap items-center justify-end gap-x-5 gap-y-3 text-sm max-sm:max-w-52 max-sm:gap-x-3"
-          aria-label="Shop"
+          aria-label={textFor(locale).shop}
         >
           <Link
             className="transition-colors hover:text-muted-foreground"
@@ -65,7 +68,7 @@ export default async function ShopLayout({
           </Link>
           <Link
             className="transition-colors hover:text-muted-foreground"
-            href="/recover"
+            href={`/recover?locale=${locale}`}
           >
             {t("recover")}
           </Link>
@@ -73,13 +76,7 @@ export default async function ShopLayout({
             className="transition-colors hover:text-muted-foreground"
             href={"/" + locale + "/account"}
           >
-            {session
-              ? locale === "zh"
-                ? "账户"
-                : "Account"
-              : locale === "zh"
-                ? "登录"
-                : "Sign in"}
+            {session ? textFor(locale).ui.account : textFor(locale).auth.signIn}
           </Link>
           <Link
             className="rounded-md border px-3 py-1.5 font-medium no-underline transition-colors hover:bg-muted"
@@ -103,7 +100,7 @@ export default async function ShopLayout({
         className="mt-12 flex justify-between gap-6 border-t py-8 text-xs text-muted-foreground max-sm:flex-col"
       >
         <nav
-          aria-label={locale === "zh" ? "商店信息" : "Store information"}
+          aria-label={textFor(locale).ui.storeInformation}
           className="flex flex-wrap gap-4"
         >
           {(["about", "shipping", "returns", "privacy"] as const)
@@ -115,12 +112,16 @@ export default async function ShopLayout({
             .map((key) => (
               <Link key={key} href={`/${locale}/pages/${key}`}>
                 {
-                  {
-                    about: ["About", "关于我们"],
-                    shipping: ["Shipping & pickup", "配送与自提"],
-                    returns: ["Returns", "退货政策"],
-                    privacy: ["Privacy", "隐私政策"],
-                  }[key][locale === "zh" ? 1 : 0]
+                  textFor(locale).common[
+                    (
+                      {
+                        about: "about",
+                        shipping: "shippingPolicy",
+                        returns: "returnsPolicy",
+                        privacy: "privacyPolicy",
+                      } as const
+                    )[key]
+                  ]
                 }
               </Link>
             ))}
@@ -133,7 +134,7 @@ export default async function ShopLayout({
         </div>
         {store?.supportEmail && (
           <a
-            aria-label="Customer support"
+            aria-label={textFor(locale).common.customerSupport}
             className="self-start font-medium text-foreground"
             href={"mailto:" + store.supportEmail}
           >

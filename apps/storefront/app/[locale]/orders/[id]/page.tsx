@@ -2,6 +2,7 @@
 import { OrderActions } from "../../../order-client";
 import { PurchaseAnalytics } from "../../../analytics";
 import { getStorefrontMessages } from "../../../../lib/i18n";
+import { statusLabel } from "../../../../../../packages/i18n/src/customer";
 export const metadata = { robots: { index: false, follow: false } };
 interface OrderDetail {
   order: {
@@ -58,12 +59,17 @@ export default async function OrderPage({
       <h1>
         {m.order.title} {order.referenceCode}
       </h1>
-      <p>{order.lifecycleStatus}</p>
+      <p>{statusLabel(order.lifecycleStatus, locale)}</p>
       {result.items.map((i) => (
         <p key={i.id}>
           {i.catalog.productTitle || i.catalog.title} · {i.catalog.variantTitle}{" "}
           × {i.quantity} —{" "}
-          {money(i.lineTotalCents, order.terms.currency, order.terms.precision)}
+          {money(
+            i.lineTotalCents,
+            order.terms.currency,
+            order.terms.precision,
+            locale,
+          )}
         </p>
       ))}
       <p>
@@ -72,6 +78,7 @@ export default async function OrderPage({
           order.purchaseTotalCents,
           order.terms.currency,
           order.terms.precision,
+          locale,
         )}
       </p>
       <p>
@@ -80,6 +87,7 @@ export default async function OrderPage({
           result.receivedCents,
           order.terms.currency,
           order.terms.precision,
+          locale,
         )}
       </p>
       {order.terms.payment && (
@@ -91,8 +99,8 @@ export default async function OrderPage({
       )}
       {result.fulfillment && (
         <p>
-          {result.fulfillment.status} · {result.fulfillment.carrier}{" "}
-          {result.fulfillment.trackingNumber}
+          {statusLabel(result.fulfillment.status, locale)} ·{" "}
+          {result.fulfillment.carrier} {result.fulfillment.trackingNumber}
         </p>
       )}
       <OrderActions
@@ -102,6 +110,7 @@ export default async function OrderPage({
                 result.proposal.proposedTotalCents,
                 order.terms.currency,
                 order.terms.precision,
+                locale,
               )
             : ""
         }
@@ -119,7 +128,7 @@ export default async function OrderPage({
             <article key={shipment.id} className="card">
               <h3>{shipment.carrier}</h3>
               <p>
-                {shipment.status} ·{" "}
+                {statusLabel(shipment.status, locale)} ·{" "}
                 {shipment.trackingNumber || m.order.noTracking}
               </p>
               <p>
