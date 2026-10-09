@@ -40,6 +40,11 @@ const links = [
   { href: "/admin/customers", label: "Customers", icon: Users },
   { href: "/admin/translations", label: "Translations", icon: Languages },
   { href: "/admin/setup", label: "Settings", icon: Settings2 },
+  {
+    href: "/admin/settings/notifications",
+    label: "Notifications",
+    icon: Settings2,
+  },
   { href: "/admin/activity", label: "Activity", icon: ScrollText },
 ];
 

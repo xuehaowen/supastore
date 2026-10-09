@@ -2,8 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   validSmsPhone,
   smsQuietUntil,
-  smsText,
 } from "@/application/notifications/sms-policy";
+import {
+  defaultTemplate,
+  renderTemplate,
+  previewValues,
+} from "@/application/notifications/templates";
 import { liveSmsAuthorized } from "@/infrastructure/bootstrap/notification-providers";
 import { POST as retiredTwilioCallback } from "@/app/api/notifications/twilio/route";
 afterEach(() => vi.unstubAllEnvs());
@@ -32,8 +36,29 @@ describe("optional SMS safety contracts", () => {
     ).not.toBeNull();
   });
   it("limits templates to order status/reference and supports locale", () => {
-    expect(smsText("order.confirmed", "ABC123", "en")).toContain("ABC123");
-    expect(smsText("order.confirmed", "ABC123", "zh")).toContain("已确认");
-    expect(() => smsText("reward.earned", "ABC123", "en")).toThrow();
+    for (const locale of ["en", "zh"] as const) {
+      const key = {
+        event: "order.confirmed",
+        channel: "sms",
+        audience: "customer",
+        locale,
+      } as const;
+      const message = renderTemplate(
+        key,
+        defaultTemplate(key),
+        { ...previewValues(), "order.reference": "ABC123" },
+        "delivery",
+        "+12025550123",
+      );
+      expect(message.text).toContain(locale === "zh" ? "已确认" : "ABC123");
+    }
+    expect(() =>
+      defaultTemplate({
+        event: "reward.earned",
+        channel: "sms",
+        audience: "customer",
+        locale: "en",
+      }),
+    ).toThrow();
   });
 });

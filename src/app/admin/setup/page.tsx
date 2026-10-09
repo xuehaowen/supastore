@@ -71,6 +71,9 @@ export default async function Setup({
       <Link href="/admin/settings/content">
         Store information & customer policies
       </Link>
+      <Link href="/admin/settings/notifications">
+        Email &amp; SMS notification templates
+      </Link>
       <p className="admin-description">
         Configure your store, payment methods, fulfillment, and team access.
       </p>

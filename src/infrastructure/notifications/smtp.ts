@@ -16,10 +16,25 @@ export const smtpAdapter: NotificationAdapter = {
     if (typeof link === "string") {
       const url = new URL(link);
       const callback = url.searchParams.get("callbackURL");
-      if (/\/(zh)(?:\/|$)/.test(url.pathname) || (callback && /\/zh(?:\/|$)/.test(new URL(callback, url).pathname))) locale = "zh";
+      if (
+        /\/(zh)(?:\/|$)/.test(url.pathname) ||
+        (callback && /\/zh(?:\/|$)/.test(new URL(callback, url).pathname))
+      )
+        locale = "zh";
     }
-    const prepared = await db.transaction((tx) => prepareNotification(tx, { event: payload.template, channel: "email", audience: "customer", locale, deliveryId: randomUUID(), recipient: payload.recipient, payload: payload.data }));
-    if (!("subject" in prepared.message)) throw new Error("Email template required.");
+    const prepared = await db.transaction((tx) =>
+      prepareNotification(tx, {
+        event: payload.template,
+        channel: "email",
+        audience: "customer",
+        locale,
+        deliveryId: randomUUID(),
+        recipient: payload.recipient,
+        payload: payload.data,
+      }),
+    );
+    if (!("subject" in prepared.message))
+      throw new Error("Email template required.");
     const message = prepared.message;
     const result = await trackInFlight(() => sender.send(message));
     return result.status === "accepted"

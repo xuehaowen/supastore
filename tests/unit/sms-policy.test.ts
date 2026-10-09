@@ -2,8 +2,12 @@ import { expect, it } from "vitest";
 import {
   smsDeliveryAllowed,
   smsQuietUntil,
-  renderOrderSms,
 } from "@/application/notifications/sms-policy";
+import {
+  defaultTemplate,
+  renderTemplate,
+  previewValues,
+} from "@/application/notifications/templates";
 it("rejects obsolete consent and recipient phone changes", () => {
   const preference = {
     phone: "+12025550123",
@@ -45,12 +49,23 @@ it("handles quiet hours and invalid timezone conservatively", () => {
   ).not.toBeNull();
 });
 it("renders only status/reference and supports Chinese", () => {
-  const message = renderOrderSms(
+  const key = {
+    event: "order.confirmed",
+    channel: "sms",
+    audience: "customer",
+    locale: "zh",
+  } as const;
+  const message = renderTemplate(
+    key,
+    defaultTemplate(key),
+    {
+      ...previewValues(),
+      "order.reference": "ORDER123",
+      total: "999",
+      orderToken: "secret",
+    },
     "delivery",
     "+12025550123",
-    "order.confirmed",
-    { referenceCode: "ORDER123", total: 999, orderToken: "secret" },
-    "zh",
   );
   expect(message.text).toContain("已确认");
   expect(message.text).not.toContain("999");

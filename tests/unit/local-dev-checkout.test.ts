@@ -8,6 +8,22 @@ const mail = vi.hoisted(() => ({
 vi.mock("nodemailer", () => ({
   default: { createTransport: mail.createTransport },
 }));
+vi.mock("@/infrastructure/db", () => ({
+  db: {
+    transaction: async (work: (tx: unknown) => Promise<unknown>) => work({}),
+  },
+}));
+vi.mock("@/application/notifications/template-manager", () => ({
+  prepareNotification: async () => ({
+    versionId: "published-test-version",
+    message: {
+      deliveryId: "test",
+      to: "owner@example.test",
+      subject: "Published test",
+      text: "Published content",
+    },
+  }),
+}));
 import { smtpAdapter } from "@/infrastructure/notifications/smtp";
 import { closeNotificationProviders } from "@/infrastructure/bootstrap/notification-providers";
 

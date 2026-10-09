@@ -25,16 +25,24 @@ export async function requestEmailVerification(
     return staff.email;
   });
   try {
-    const prepared = await db.transaction((tx) => prepareNotification(tx, {
-        deliveryId: randomUUID(), recipient, event: "store.email_verification", channel: "email", audience: "staff", locale: "en",
+    const prepared = await db.transaction((tx) =>
+      prepareNotification(tx, {
+        deliveryId: randomUUID(),
+        recipient,
+        event: "store.email_verification",
+        channel: "email",
+        audience: "staff",
+        locale: "en",
         payload: {
           verificationUrl:
             (process.env.BETTER_AUTH_URL ?? "http://localhost:3000") +
             "/admin/setup/verify-email?token=" +
             token,
         },
-      }));
-    if (!("subject" in prepared.message)) throw new Error("Email template required.");
+      }),
+    );
+    if (!("subject" in prepared.message))
+      throw new Error("Email template required.");
     const result = await sender.send(prepared.message);
     if (result.status !== "accepted") throw new Error("Delivery not accepted");
   } catch {

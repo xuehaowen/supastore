@@ -12,6 +12,7 @@ import {
 } from "@/infrastructure/db/schema";
 import { commercePolicy } from "@/domain/commerce-policy";
 import { stripeConfiguredFor } from "@/domain/stripe-currency";
+import { publishedTemplateCoverage } from "@/application/notifications/template-manager";
 export async function getLaunchReadiness(tx: Transaction | typeof db = db) {
   const [settings] = await tx.select().from(storeSettings).limit(1);
   const available = await tx
@@ -36,7 +37,15 @@ export async function getLaunchReadiness(tx: Transaction | typeof db = db) {
     .from(deliveryAreas)
     .where(eq(deliveryAreas.isActive, true));
   const policy = commercePolicy(settings?.commercePolicy);
+  const missingEmailTemplates = (await publishedTemplateCoverage(tx)).filter(
+    (key) => key.channel === "email",
+  );
   const checklist = [
+    {
+      key: "templates",
+      label: "Required email notification templates published",
+      isReady: missingEmailTemplates.length === 0,
+    },
     {
       key: "settings",
       label: "Store profile complete",

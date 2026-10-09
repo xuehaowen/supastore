@@ -257,6 +257,7 @@ export function Checkout({
           } else {
             if (!f.has("accepted")) throw new Error(m.acceptTotalError);
             const order = await request<{ id: string }>("v1/orders", {
+              locale,
               quoteId: quote.id,
               name: f.get("name"),
               email: f.get("email"),

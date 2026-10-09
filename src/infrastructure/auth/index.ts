@@ -29,7 +29,6 @@ export const auth = betterAuth({
       try {
         const result = await smtpAdapter.sendEmail({
           recipient: user.email,
-          subject: "Reset your password",
           template: "auth.reset_password",
           data: {
             resetUrl: url,
@@ -53,7 +52,6 @@ export const auth = betterAuth({
       try {
         const result = await smtpAdapter.sendEmail({
           recipient: user.email,
-          subject: "Verify your email address",
           template: "auth.email_verification",
           data: {
             verificationUrl: url,

@@ -243,15 +243,23 @@ export function renderTemplate(
   if (subject.length > 200 || /[\r\n\u0000-\u001f\u007f]/.test(subject))
     throw new DomainError("Rendered email subject is invalid.");
   const storeName = values["store.name"] || "";
-  const htmlBody = escapeHtml(content.body).replace(/\{\{\s*([a-z][a-zA-Z0-9]*\.[a-z][a-zA-Z0-9]*)\s*\}\}/g, (_match, variable: string) => {
-    const value = values[variable]!;
-    if (["action.url", "order.url", "sales.url"].includes(variable)) {
-      const url = new URL(value);
-      if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) throw new DomainError("Notification link is invalid.");
-      return `<a href="${escapeHtml(url.href)}" style="color:#1d4ed8;word-break:break-all">${escapeHtml(value)}</a>`;
-    }
-    return escapeHtml(value);
-  });
+  const htmlBody = escapeHtml(content.body).replace(
+    /\{\{\s*([a-z][a-zA-Z0-9]*\.[a-z][a-zA-Z0-9]*)\s*\}\}/g,
+    (_match, variable: string) => {
+      const value = values[variable]!;
+      if (["action.url", "order.url", "sales.url"].includes(variable)) {
+        const url = new URL(value);
+        if (
+          !["http:", "https:"].includes(url.protocol) ||
+          url.username ||
+          url.password
+        )
+          throw new DomainError("Notification link is invalid.");
+        return `<a href="${escapeHtml(url.href)}" style="color:#1d4ed8;word-break:break-all">${escapeHtml(value)}</a>`;
+      }
+      return escapeHtml(value);
+    },
+  );
   return {
     deliveryId,
     to: recipient,

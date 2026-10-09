@@ -1,46 +1,64 @@
 import { describe, expect, it } from "vitest";
 import {
-  renderEmail,
-  renderOrderEmail,
-} from "@/application/notifications/render-message";
+  defaultTemplate,
+  previewValues,
+  renderTemplate,
+} from "@/application/notifications/templates";
 describe("provider-independent email content", () => {
   it("renders allowed fields without leaking arbitrary event payload data", () => {
-    const result = renderEmail({
-      deliveryId: "delivery-1",
-      recipient: "buyer@example.test",
-      subject: "Order update",
-      template: "order.confirmed",
-      data: {
-        referenceCode: "ABC",
-        purchaseTotalCents: 1234,
+    const key = {
+      event: "order.confirmed",
+      channel: "email",
+      audience: "customer",
+      locale: "en",
+    } as const;
+    const result = renderTemplate(
+      key,
+      defaultTemplate(key),
+      {
+        ...previewValues(),
+        "order.reference": "ABC",
+        "order.total": "$12.34",
         secret: "private-provider-token",
-        nested: { password: "private" },
       },
-    });
-    expect(result.text).toContain("purchaseTotalCents: 1234");
-    expect(result.text).toContain("referenceCode: ABC");
+      "delivery-1",
+      "buyer@example.test",
+    );
+    expect(result.text).toContain("$12.34");
+    expect(result.text).toContain("ABC");
     expect(result.text).not.toContain("private");
     expect(result.to).toBe("buyer@example.test");
   });
   it("preserves return subjects and renders verification links as prepared content", () => {
-    expect(
-      renderOrderEmail("id", "buyer@example.test", "return.received", {
-        referenceCode: "ABC",
-      }).subject,
-    ).toBe("Product return update · ABC");
-    const result = renderEmail({
-      deliveryId: "id",
-      recipient: "buyer@example.test",
-      subject: "Verify",
-      template: "auth.verification",
-      data: {
-        verificationUrl: "https://store.example/verify?token=test",
+    const key = {
+      event: "return.received",
+      channel: "email",
+      audience: "customer",
+      locale: "en",
+    } as const;
+    const returned = renderTemplate(
+      key,
+      defaultTemplate(key),
+      { ...previewValues(), "order.reference": "ABC" },
+      "id",
+      "buyer@example.test",
+    );
+    expect("subject" in returned && returned.subject).toBe(
+      "Returned goods received · ABC",
+    );
+    const authKey = { ...key, event: "auth.email_verification" };
+    const result = renderTemplate(
+      authKey,
+      defaultTemplate(authKey),
+      {
+        ...previewValues(),
+        "action.url": "https://store.example/verify?token=test",
         token: "hidden",
       },
-    });
-    expect(result.text).toContain(
-      "verificationUrl: https://store.example/verify?token=test",
+      "id",
+      "buyer@example.test",
     );
+    expect(result.text).toContain("https://store.example/verify?token=test");
     expect(result.text).not.toContain("token: hidden");
   });
 });

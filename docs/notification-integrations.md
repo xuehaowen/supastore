@@ -1,5 +1,10 @@
 # Notification integration structure
 
+Database-backed template management was added on 2026-10-09. See
+[Notification template management](notification-template-manager.md) for editing,
+publication, completeness checks, migration 0036, and retry version pinning.
+The provider/delivery controls below remain in effect.
+
 Implemented 2026-10-06. Live SMS and phone-verification sending remain disabled;
 tests use injected fakes and local SMTP. No production provider request was made.
 

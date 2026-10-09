@@ -59,7 +59,10 @@ export async function emitOrderEvent(
       eventId: event!.id,
       recipient,
       channel: "email" as const,
-      audience: recipient.toLowerCase() === customerRecipient.toLowerCase() ? "customer" as const : "staff" as const,
+      audience:
+        recipient.toLowerCase() === customerRecipient.toLowerCase()
+          ? ("customer" as const)
+          : ("staff" as const),
       status: "pending" as const,
       retryAfter: new Date(),
     })),

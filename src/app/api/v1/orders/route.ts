@@ -23,6 +23,7 @@ export async function POST(request: Request) {
       throw new DomainError("Please wait before retrying.");
     const customerUserId = await customerIdentity();
     const order = await createOrder({
+      locale: body.locale === "zh" ? "zh" : "en",
       quoteId: parseActionUuid(apiText(body, "quoteId"), "Quote"),
       guestSessionId,
       guestName: apiText(body, "name", 200),

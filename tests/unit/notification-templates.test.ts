@@ -6,9 +6,24 @@ import {
   validateTemplate,
   renderTemplate,
   templateCoverage,
+  previewValues,
 } from "@/application/notifications/templates";
 
 describe("notification template contracts", () => {
+  it("renders every seeded template with sample values in its own language/channel", () => {
+    for (const key of requiredTemplates()) {
+      const message = renderTemplate(
+        key,
+        defaultTemplate(key),
+        previewValues(),
+        "preview",
+        "preview@example.test",
+      );
+      expect(message.text).not.toContain("{{");
+      expect(message.text.length).toBeGreaterThan(10);
+      expect("subject" in message).toBe(key.channel === "email");
+    }
+  });
   it("provides valid English and Chinese defaults for every required event/channel/audience", () => {
     for (const key of requiredTemplates())
       expect(() => validateTemplate(key, defaultTemplate(key))).not.toThrow();
@@ -116,10 +131,116 @@ describe("notification template contracts", () => {
     ).toThrow();
   });
   it("renders action links as clickable escaped anchors and rejects unsafe schemes", () => {
-    const key = { event: "auth.reset_password", channel: "email", audience: "customer", locale: "en" } as const;
+    const key = {
+      event: "auth.reset_password",
+      channel: "email",
+      audience: "customer",
+      locale: "en",
+    } as const;
     const content = { subject: "Reset", body: "{{action.url}}" };
-    const safe = renderTemplate(key, content, { "action.url": "https://store.example/reset?token=one&locale=en" }, "delivery", "buyer@example.test");
-    expect("html" in safe && safe.html).toContain('<a href="https://store.example/reset?token=one&amp;locale=en"');
-    expect(() => renderTemplate(key, content, { "action.url": "javascript:alert(1)" }, "delivery", "buyer@example.test")).toThrow();
+    const safe = renderTemplate(
+      key,
+      content,
+      { "action.url": "https://store.example/reset?token=one&locale=en" },
+      "delivery",
+      "buyer@example.test",
+    );
+    expect("html" in safe && safe.html).toContain(
+      '<a href="https://store.example/reset?token=one&amp;locale=en"',
+    );
+    expect(() =>
+      renderTemplate(
+        key,
+        content,
+        { "action.url": "javascript:alert(1)" },
+        "delivery",
+        "buyer@example.test",
+      ),
+    ).toThrow();
+  });
+  it("rejects unsupported combinations and oversized or empty copy", () => {
+    const key = {
+      event: "order.confirmed",
+      channel: "email",
+      audience: "customer",
+      locale: "en",
+    } as const;
+    expect(() => defaultTemplate({ ...key, event: "unknown.event" })).toThrow();
+    expect(() => defaultTemplate({ ...key, audience: "staff" })).toThrow();
+    expect(() =>
+      validateTemplate(key, {
+        subject: "",
+        body: "{{order.reference}} {{order.url}}",
+      }),
+    ).toThrow();
+    expect(() =>
+      validateTemplate(key, {
+        subject: "a".repeat(201),
+        body: "{{order.reference}} {{order.url}}",
+      }),
+    ).toThrow();
+    expect(() =>
+      validateTemplate(key, { subject: "Order", body: "a".repeat(12001) }),
+    ).toThrow();
+    expect(() =>
+      validateTemplate(key, { subject: "Order", body: " " }),
+    ).toThrow();
+    expect(() =>
+      validateTemplate(
+        { ...key, channel: "sms" },
+        { subject: "SMS subject", body: "{{order.reference}} STOP" },
+      ),
+    ).toThrow();
+  });
+  it("rejects rendered SMS/subject overflow, line breaks and credential-bearing links", () => {
+    const key = {
+      event: "order.confirmed",
+      channel: "email",
+      audience: "customer",
+      locale: "en",
+    } as const;
+    const content = {
+      subject: "{{store.name}}",
+      body: "{{order.reference}} {{order.url}}",
+    };
+    expect(() =>
+      renderTemplate(
+        key,
+        content,
+        { ...previewValues(), "store.name": "bad\nsubject" },
+        "id",
+        "buyer@example.test",
+      ),
+    ).toThrow();
+    expect(() =>
+      renderTemplate(
+        key,
+        content,
+        { ...previewValues(), "store.name": "a".repeat(201) },
+        "id",
+        "buyer@example.test",
+      ),
+    ).toThrow();
+    expect(() =>
+      renderTemplate(
+        key,
+        content,
+        {
+          ...previewValues(),
+          "order.url": "https://user:password@store.example/order",
+        },
+        "id",
+        "buyer@example.test",
+      ),
+    ).toThrow();
+    expect(() =>
+      renderTemplate(
+        { ...key, channel: "sms" },
+        { subject: "", body: "{{order.reference}} STOP" },
+        { "order.reference": "a".repeat(500) },
+        "id",
+        "+15550100000",
+      ),
+    ).toThrow();
   });
 });

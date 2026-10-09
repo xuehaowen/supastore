@@ -177,11 +177,11 @@ test("Account registration requires verification, retries sign-in, denies admin 
   ).json();
   const message = messages.find(
     (message) =>
-      message.includes(email) && message.includes("verificationUrl:"),
+      message.includes(email) && message.includes("/api/auth/verify-email"),
   )!;
   const verificationUrl = message.match(
-    /verificationUrl: (https?:\/\/\S+)/,
-  )![1]!;
+    /https?:\/\/[^\s<>"']*\/api\/auth\/verify-email\?[^\s<>"']+/,
+  )![0]!;
   await page.goto(verificationUrl);
   await expect(
     page.getByRole("heading", { name: "Good to see you." }),
@@ -270,10 +270,12 @@ test("customer profile and emailed password reset persist and reject the old pas
     await page.request.get("http://127.0.0.1:9010")
   ).json();
   const message = messages.find(
-    (text) => text.includes(email) && text.includes("resetUrl:"),
+    (text) => text.includes(email) && text.includes("reset-password"),
   );
   expect(message).toBeTruthy();
-  await page.goto(message!.match(/resetUrl: (https?:\/\/\S+)/)![1]!);
+  await page.goto(
+    message!.match(/https?:\/\/[^\s<>"']*reset-password[^\s<>"']*/)![0]!,
+  );
   await page.getByLabel("New password", { exact: true }).fill(newPassword);
   await page.getByLabel("Confirm password", { exact: true }).fill(newPassword);
   await page
@@ -304,16 +306,18 @@ test("M1 store email verification sends a local test link and rejects reuse", as
     admin,
     admin.getByRole("button", { name: "Send verification email", exact: true }),
   );
-  await expect(admin.getByRole("status")).toContainText(
-    "accepted by the mail server",
-  );
+  await expect(
+    admin.getByRole("alert").filter({ hasText: "accepted by the mail server" }),
+  ).toContainText("accepted by the mail server");
   const messages: string[] = await (
     await admin.request.get("http://127.0.0.1:9010")
   ).json();
   const message = messages
-    .filter((message) => message.includes("Verify store email delivery"))
+    .filter((message) => message.includes("/admin/setup/verify-email?"))
     .at(-1)!;
-  const url = message.match(/verificationUrl: (https?:\/\/\S+)/)![1]!;
+  const url = message.match(
+    /https?:\/\/[^\s<>"']*\/admin\/setup\/verify-email\?[^\s<>"']+/,
+  )![0]!;
   await admin.goto(url);
   await clickAction(
     admin,

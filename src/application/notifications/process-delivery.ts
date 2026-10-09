@@ -16,11 +16,7 @@ import type {
   SmsSender,
 } from "@/application/ports/notifications";
 import { prepareNotification } from "./template-manager";
-import {
-  SMS_EVENTS,
-  smsDeliveryAllowed,
-  smsQuietUntil,
-} from "./sms-policy";
+import { SMS_EVENTS, smsDeliveryAllowed, smsQuietUntil } from "./sms-policy";
 import { deliveryOutcome } from "./delivery-policy";
 import {
   processNotificationInboxBatch,
@@ -225,14 +221,26 @@ async function processSingleNotification(
         }
       }
       let prepared = row.prepared_message as EmailMessage | SmsMessage | null;
-      let templateVersionId = row.template_version_id ? String(row.template_version_id) : null;
+      let templateVersionId = row.template_version_id
+        ? String(row.template_version_id)
+        : null;
       if (!prepared) {
         try {
           const payload = row.payload as Record<string, unknown>;
           const output = await prepareNotification(tx, {
-            event: String(row.event_type), channel, audience: row.audience === "staff" ? "staff" : "customer",
-            locale: (channel === "sms" ? preference!.locale : payload.locale || row.notification_locale) === "zh" ? "zh" : "en",
-            deliveryId: id, recipient, payload, ...(row.order_id ? { orderId: String(row.order_id) } : {}),
+            event: String(row.event_type),
+            channel,
+            audience: row.audience === "staff" ? "staff" : "customer",
+            locale:
+              (channel === "sms"
+                ? preference!.locale
+                : payload.locale || row.notification_locale) === "zh"
+                ? "zh"
+                : "en",
+            deliveryId: id,
+            recipient,
+            payload,
+            ...(row.order_id ? { orderId: String(row.order_id) } : {}),
           });
           prepared = output.message;
           templateVersionId = output.versionId;
