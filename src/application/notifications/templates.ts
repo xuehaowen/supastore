@@ -243,12 +243,21 @@ export function renderTemplate(
   if (subject.length > 200 || /[\r\n\u0000-\u001f\u007f]/.test(subject))
     throw new DomainError("Rendered email subject is invalid.");
   const storeName = values["store.name"] || "";
+  const htmlBody = escapeHtml(content.body).replace(/\{\{\s*([a-z][a-zA-Z0-9]*\.[a-z][a-zA-Z0-9]*)\s*\}\}/g, (_match, variable: string) => {
+    const value = values[variable]!;
+    if (["action.url", "order.url", "sales.url"].includes(variable)) {
+      const url = new URL(value);
+      if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) throw new DomainError("Notification link is invalid.");
+      return `<a href="${escapeHtml(url.href)}" style="color:#1d4ed8;word-break:break-all">${escapeHtml(value)}</a>`;
+    }
+    return escapeHtml(value);
+  });
   return {
     deliveryId,
     to: recipient,
     subject,
     text,
-    html: `<!doctype html><html lang="${key.locale}"><head><meta charset="utf-8"></head><body style="margin:0;background:#f5f5f4;font-family:Arial,sans-serif;color:#1c1917"><main style="max-width:600px;margin:32px auto;background:#fff;padding:32px"><p style="font-size:14px">${escapeHtml(storeName)}</p><h1 style="font-size:24px">${escapeHtml(subject)}</h1><div style="white-space:pre-wrap;line-height:1.6">${escapeHtml(text)}</div></main></body></html>`,
+    html: `<!doctype html><html lang="${key.locale}"><head><meta charset="utf-8"></head><body style="margin:0;background:#f5f5f4;font-family:Arial,sans-serif;color:#1c1917"><main style="max-width:600px;margin:32px auto;background:#fff;padding:32px"><p style="font-size:14px">${escapeHtml(storeName)}</p><h1 style="font-size:24px">${escapeHtml(subject)}</h1><div style="white-space:pre-wrap;line-height:1.6">${htmlBody}</div></main></body></html>`,
   };
 }
 export function previewValues(): Record<string, string> {
