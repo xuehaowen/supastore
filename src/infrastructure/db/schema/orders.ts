@@ -38,6 +38,7 @@ export const orders = pgTable(
     creditAppliedCents: integer("credit_applied_cents").notNull().default(0),
     guestEmail: text("guest_email").notNull(),
     guestName: text("guest_name").notNull(),
+    notificationLocale: text("notification_locale", { enum: ["en", "zh"] }).notNull().default("en"),
     customerId: uuid("customer_id").references(() => customers.id, {
       onDelete: "restrict",
     }),

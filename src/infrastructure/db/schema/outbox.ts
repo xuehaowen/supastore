@@ -10,6 +10,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import { notificationTemplateVersions } from "./notification-templates";
 
 export const outboxEvents = pgTable("outbox_events", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -64,6 +65,8 @@ export const eventDeliveries = pgTable(
       | import("@/application/ports/notifications").SmsMessage
       | null
     >(),
+    audience: text("audience", { enum: ["customer", "staff"] }).notNull().default("customer"),
+    templateVersionId: uuid("template_version_id").references(() => notificationTemplateVersions.id, { onDelete: "restrict" }),
     lastAttemptId: uuid("last_attempt_id"),
     providerEventAt: timestamp("provider_event_at", { withTimezone: true }),
     leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),

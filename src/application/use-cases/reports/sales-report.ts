@@ -328,6 +328,7 @@ export async function checkSalesThreshold(actorUserId?: string, date?: string) {
           thresholdCents: policy.salesThresholdCents,
           observedNetCents: report.totals.netSalesCents,
           currency: store.currency,
+          precision: store.precision,
           basis:
             "Confirmed net sales excluding tax, less authorized purchase refunds, plus outside adjustments",
         },
@@ -348,6 +349,7 @@ export async function checkSalesThreshold(actorUserId?: string, date?: string) {
           eventId: event!.id,
           recipient: owner.email,
           channel: "email" as const,
+          audience: "staff" as const,
         })),
       );
     await tx.insert(auditRecords).values({

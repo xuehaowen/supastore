@@ -253,6 +253,13 @@
       "when": 1791167400013,
       "tag": "0035_regional_shipping",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1791167400014,
+      "tag": "0036_notification_templates",
+      "breakpoints": true
     }
   ]
 }

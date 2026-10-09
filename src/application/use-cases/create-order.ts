@@ -51,6 +51,7 @@ export interface CreateOrderInput {
   manualItemCount?: number;
   customerUserId?: string;
   creditAppliedCents?: number;
+  locale?: "en" | "zh";
 }
 export async function createOrder(input: CreateOrderInput) {
   const email = v.parse(
@@ -239,6 +240,7 @@ export async function createOrder(input: CreateOrderInput) {
           discountCents: quote.discountCents,
           guestEmail: email,
           guestName: name,
+          notificationLocale: input.locale === "zh" ? "zh" : "en",
           customerId: customer?.id ?? null,
           fulfillmentType: terms.fulfillmentType,
           shippingAddressSnapshot: terms.shippingAddress,

@@ -15,10 +15,9 @@ import type {
   EmailSender,
   SmsSender,
 } from "@/application/ports/notifications";
-import { renderOrderEmail } from "./render-message";
+import { prepareNotification } from "./template-manager";
 import {
   SMS_EVENTS,
-  renderOrderSms,
   smsDeliveryAllowed,
   smsQuietUntil,
 } from "./sms-policy";
@@ -150,7 +149,7 @@ async function processSingleNotification(
   let handled = 0;
   const claims = await db.transaction(async (tx) => {
     const rows = await tx.execute(sql`
-      SELECT d.*,e.event_type,e.payload,e.created_at AS event_created_at,o.customer_id
+      SELECT d.*,e.event_type,e.payload,e.created_at AS event_created_at,o.customer_id,o.id AS order_id,o.notification_locale
       FROM event_deliveries d JOIN outbox_events e ON e.id=d.event_id
       LEFT JOIN orders o ON e.aggregate_type='order' AND o.id=e.aggregate_id
       WHERE d.channel=${channel} AND d.status IN ('pending','retrying') AND d.retry_after <= now()
@@ -226,29 +225,23 @@ async function processSingleNotification(
         }
       }
       let prepared = row.prepared_message as EmailMessage | SmsMessage | null;
+      let templateVersionId = row.template_version_id ? String(row.template_version_id) : null;
       if (!prepared) {
         try {
-          prepared =
-            channel === "email"
-              ? renderOrderEmail(
-                  id,
-                  recipient,
-                  String(row.event_type),
-                  row.payload as Record<string, unknown>,
-                )
-              : renderOrderSms(
-                  id,
-                  recipient,
-                  String(row.event_type),
-                  row.payload as Record<string, unknown>,
-                  preference!.locale,
-                );
+          const payload = row.payload as Record<string, unknown>;
+          const output = await prepareNotification(tx, {
+            event: String(row.event_type), channel, audience: row.audience === "staff" ? "staff" : "customer",
+            locale: (channel === "sms" ? preference!.locale : payload.locale || row.notification_locale) === "zh" ? "zh" : "en",
+            deliveryId: id, recipient, payload, ...(row.order_id ? { orderId: String(row.order_id) } : {}),
+          });
+          prepared = output.message;
+          templateVersionId = output.versionId;
         } catch {
           await tx
             .update(eventDeliveries)
             .set({
               status: "review",
-              providerStatus: "message_preparation_failed",
+              providerStatus: "template_preparation_failed",
             })
             .where(eq(eventDeliveries.id, id));
           continue;
@@ -294,6 +287,7 @@ async function processSingleNotification(
           leaseToken,
           leaseExpiresAt: new Date(Date.now() + leaseDurationMs),
           preparedMessage: prepared,
+          templateVersionId,
           providerName: sender.identity.provider,
           providerProfile: sender.identity.profile,
           deliveryTracking: capabilities.deliveryTracking,

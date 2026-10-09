@@ -51,6 +51,7 @@ export async function requestTrackingLink(input: {
         referenceCode: order.referenceCode,
         recoveryUrl: `${process.env.BETTER_AUTH_URL ?? "http://localhost:3000"}/recover/exchange?token=${token}&locale=${input.locale === "zh" ? "zh" : "en"}`,
         expiresAt: expiresAt.toISOString(),
+        locale: input.locale === "zh" ? "zh" : "en",
       },
     );
   });

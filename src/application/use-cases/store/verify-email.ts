@@ -5,7 +5,7 @@ import { verification, storeSettings } from "@/infrastructure/db/schema";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { hashToken } from "@/application/common/guest-access";
 import type { EmailSender } from "@/application/ports/notifications";
-import { renderEmail } from "@/application/notifications/render-message";
+import { prepareNotification } from "@/application/notifications/template-manager";
 import { InvariantViolationError } from "@/application/common/errors";
 export async function requestEmailVerification(
   staffUserId: string,
@@ -25,20 +25,17 @@ export async function requestEmailVerification(
     return staff.email;
   });
   try {
-    const result = await sender.send(
-      renderEmail({
-        deliveryId: randomUUID(),
-        recipient,
-        subject: "Verify store email delivery",
-        template: "store.email_verification",
-        data: {
+    const prepared = await db.transaction((tx) => prepareNotification(tx, {
+        deliveryId: randomUUID(), recipient, event: "store.email_verification", channel: "email", audience: "staff", locale: "en",
+        payload: {
           verificationUrl:
             (process.env.BETTER_AUTH_URL ?? "http://localhost:3000") +
             "/admin/setup/verify-email?token=" +
             token,
         },
-      }),
-    );
+      }));
+    if (!("subject" in prepared.message)) throw new Error("Email template required.");
+    const result = await sender.send(prepared.message);
     if (result.status !== "accepted") throw new Error("Delivery not accepted");
   } catch {
     throw new InvariantViolationError(

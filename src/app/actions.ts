@@ -207,6 +207,7 @@ async function orderFromForm(form: FormData) {
     throw new DomainError("Please wait a minute before retrying.");
   const customerUserId = await customerIdentity();
   const order = await createOrder({
+    locale,
     quoteId: parseActionUuid(field(form, "quoteId"), "Quote"),
     guestSessionId: await guestIdentity(),
     guestName: field(form, "name"),

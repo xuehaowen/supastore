@@ -26,3 +26,4 @@ export * from "./online-payments";
 export * from "./shipments";
 export * from "./sales-reporting";
 export * from "./sms";
+export * from "./notification-templates";
