@@ -1,4 +1,5 @@
-/** Serializable HTTP DTOs only. No server code, secrets, database or runtime dependencies. */
+/** Serializable HTTP DTOs and pure validation. No server code or external dependencies. */
+export * from "./checkout";
 export interface CustomerAccountDto {
   customer: { name: string; email: string; phone: string | null };
   orders: {
