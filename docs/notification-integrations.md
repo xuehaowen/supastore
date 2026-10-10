@@ -24,6 +24,52 @@ compatibility shim for existing authentication hooks, backed by the same registr
 
 ## Delivery facts and retries
 
+Provider selection uses separate typed capability registries. See
+[adapter extension guide](provider-adapters.md) for configuration, registration,
+payment boundaries and contract tests.
+
+### Gmail OAuth 2 email
+
+Choose `EMAIL_PROVIDER=nodemailer-oauth2` for the OAuth email adapter, or
+`EMAIL_PROVIDER=nodemailer` for the existing password/relay SMTP adapter. Both use
+stable unique handles in the typed `email-adapters.ts` registry. Adapter creation
+and authentication strategies are selected by registry lookup. Both use
+the same bounded SMTP pool, send deadline, uncertainty handling and shutdown
+behavior. Restart the backend after switching providers or rotating credentials.
+Provider identities differ, so existing prepared deliveries cannot silently switch
+authentication profiles; reconcile pending/review deliveries before a switch.
+
+Configure the backend environment (Docker Compose forwards these settings only to
+the backend):
+
+```dotenv
+EMAIL_PROVIDER=nodemailer-oauth2
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=your-account@gmail.com
+SMTP_FROM=your-account@gmail.com
+SMTP_OAUTH_CLIENT_ID=your-client-id.apps.googleusercontent.com
+SMTP_OAUTH_CLIENT_SECRET=your-client-secret
+SMTP_OAUTH_REFRESH_TOKEN=your-refresh-token
+ENABLE_OUTBOX_WORKER=true
+```
+
+`SMTP_PASSWORD` is ignored in OAuth mode. Obtain the refresh token by authorizing
+the sending account with your Google OAuth client, offline access and the SMTP
+scope `https://mail.google.com/`. Nodemailer refreshes access tokens automatically;
+no manually maintained access token is required. Use the authorized mailbox or a
+Gmail-approved sending alias for `SMTP_FROM`. External Google OAuth apps in Testing
+mode issue seven-day refresh tokens for this scope; configure the appropriate
+production consent status before launch. See [Nodemailer OAuth](https://nodemailer.com/smtp/oauth2)
+and [Google OAuth token rules](https://developers.google.com/identity/protocols/oauth2).
+
+`node scripts/check-release-services.mjs --connect` uses the selected authentication
+mode to verify connectivity without sending email. A successful probe still needs
+a receipt test for verification/reset/order emails on the actual deployment.
+OAuth credentials remain backend secrets and are excluded from delivery identity
+profiles and service-check output.
+
 - `accepted` means transport/provider acceptance, not confirmed delivery. SMTP
   remains accepted because it has no delivery webhook here. Historical email
   successes migrate to unconfirmed acceptance without resending.

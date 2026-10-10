@@ -1,6 +1,11 @@
 import { existsSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import nodemailer from "nodemailer";
+import {
+  parseSmtpConfig,
+  emailAuthentication,
+  smtpRequiresTls,
+} from "../src/infrastructure/notifications/smtp-settings.mjs";
 
 // Read-only probes: no payment, notification, database mutation or secret output.
 /** @param {Record<string, string | undefined>} env
@@ -42,26 +47,34 @@ export async function checkReleaseServices(
       results[0].connection = "unreachable";
     }
   }
-  const smtpConfigured = Boolean(env.SMTP_HOST && env.SMTP_FROM);
+  const emailProvider =
+    env.EMAIL_PROVIDER ?? (env.SMTP_HOST ? "nodemailer" : "disabled");
+  let emailConfig;
+  if (emailProvider !== "disabled") {
+    try {
+      emailConfig = parseSmtpConfig(env, emailProvider);
+    } catch {
+      /* Report missing/invalid config without exposing credentials. */
+    }
+  }
+  const smtpConfigured = Boolean(emailConfig);
   results.push({
     service: "smtp",
     configured: smtpConfigured,
+    mode: emailProvider,
     connection: "not checked",
   });
-  if (connect && smtpConfigured) {
+  if (connect && emailConfig) {
+    const auth = emailAuthentication(emailConfig);
     const transport = transportFactory({
-      host: env.SMTP_HOST,
-      port: Number(env.SMTP_PORT || 587),
-      secure:
-        env.SMTP_SECURE === undefined
-          ? Number(env.SMTP_PORT || 587) === 465
-          : env.SMTP_SECURE === "true",
+      host: emailConfig.host,
+      port: emailConfig.port,
+      secure: emailConfig.secure,
+      requireTLS: smtpRequiresTls(emailConfig),
       connectionTimeout: 10000,
       greetingTimeout: 10000,
       socketTimeout: 10000,
-      ...(env.SMTP_USER
-        ? { auth: { user: env.SMTP_USER, pass: env.SMTP_PASSWORD } }
-        : {}),
+      ...(auth ? { auth } : {}),
     });
     let timeout;
     try {

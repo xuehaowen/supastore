@@ -1,3 +1,8 @@
+import type {
+  PaymentProvider,
+  PaymentCheckoutSession,
+} from "@/application/ports/payments";
+import { paymentProviderFromEnvironment } from "@/infrastructure/payments/payment-adapters";
 import { and, eq, asc } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
@@ -12,12 +17,7 @@ import {
 import { verifyOrderAccess } from "@/application/common/guest-access";
 import { acquireTransactionLocks } from "@/domain/locking/lock-order";
 import { DomainError, NotFoundError } from "@/application/common/errors";
-import {
-  stripeFromEnvironment,
-  type StripeAdapter,
-  type StripeEvent,
-  type StripeSession,
-} from "@/infrastructure/payments/stripe";
+import { type StripeEvent } from "@/infrastructure/payments/stripe";
 import { confirmOrderInTransaction } from "@/application/use-cases/confirm-order";
 import { expireProviderOrder } from "./expire-provider-order";
 import type { QuoteTerms } from "@/application/use-cases/get-quote";
@@ -28,8 +28,12 @@ const providerActor = "provider:stripe";
 /** Accept and persist intent first. Provider IO deliberately happens after commit. */
 export async function startStripeCheckout(
   input: { orderId: string; sessionToken: string; locale?: string },
-  adapter: StripeAdapter = stripeFromEnvironment(),
+  adapter: PaymentProvider = paymentProviderFromEnvironment("stripe"),
 ) {
+  if (adapter.provider !== "stripe")
+    throw new DomainError(
+      "This payment operation requires its original Stripe provider.",
+    );
   const orderId = parseActionUuid(input.orderId, "Order");
   const attempt = await db.transaction(async (tx) => {
     await acquireTransactionLocks(tx, { orderIds: [orderId] });
@@ -144,7 +148,7 @@ export async function startStripeCheckout(
   });
   if (
     session.metadata.orderId !== orderId ||
-    session.amount_total !== attempt.amountCents ||
+    session.amountCents !== attempt.amountCents ||
     session.currency !== attempt.currency ||
     !session.url
   )
@@ -164,7 +168,7 @@ export async function startStripeCheckout(
         .set({
           sessionId: session.id,
           checkoutUrl: session.url,
-          paymentIntentId: session.payment_intent,
+          paymentIntentId: session.paymentId,
           status: "open",
           updatedAt: new Date(),
         })
@@ -176,8 +180,12 @@ export async function startStripeCheckout(
 /** Signed events are durably accepted before network retrieval or settlement. */
 export async function acceptStripeEvent(
   event: StripeEvent,
-  adapter: StripeAdapter = stripeFromEnvironment(),
+  adapter: PaymentProvider = paymentProviderFromEnvironment("stripe"),
 ) {
+  if (adapter.provider !== "stripe")
+    throw new DomainError(
+      "This payment operation requires its original Stripe provider.",
+    );
   const expectedLive =
     process.env.STRIPE_SECRET_KEY?.startsWith("sk_live_") ?? false;
   if (event.livemode !== expectedLive)
@@ -218,7 +226,7 @@ export async function acceptStripeEvent(
 
 export async function applyStripeEvent(
   eventId: string,
-  session: StripeSession,
+  session: PaymentCheckoutSession,
 ) {
   let [found] = await db
     .select()
@@ -236,7 +244,7 @@ export async function applyStripeEvent(
       candidate &&
       !candidate.sessionId &&
       candidate.status === "creating" &&
-      candidate.amountCents === session.amount_total &&
+      candidate.amountCents === session.amountCents &&
       candidate.currency === session.currency
     ) {
       await db.transaction(async (tx) => {
@@ -252,7 +260,7 @@ export async function applyStripeEvent(
             .set({
               sessionId: session.id,
               checkoutUrl: session.url,
-              paymentIntentId: session.payment_intent,
+              paymentIntentId: session.paymentId,
               status: "open",
               updatedAt: new Date(),
             })
@@ -337,10 +345,9 @@ export async function applyStripeEvent(
       );
     if (
       session.metadata.orderId !== order.id ||
-      session.amount_total !== attempt.amountCents ||
+      session.amountCents !== attempt.amountCents ||
       session.currency !== attempt.currency ||
-      (attempt.paymentIntentId &&
-        session.payment_intent !== attempt.paymentIntentId)
+      (attempt.paymentIntentId && session.paymentId !== attempt.paymentIntentId)
     )
       return review(
         "Provider session amount, currency or order identity mismatch.",
@@ -352,7 +359,7 @@ export async function applyStripeEvent(
         .where(eq(stripeWebhookInbox.eventId, eventId));
       return { accepted: true, status: "processed" };
     }
-    if (session.status === "expired" && session.payment_status === "unpaid") {
+    if (session.status === "expired" && session.paymentStatus === "unpaid") {
       if (
         order.lifecycleStatus === "unpaid" &&
         order.financialRevision === attempt.financialRevision &&
@@ -373,8 +380,8 @@ export async function applyStripeEvent(
     }
     if (
       session.status !== "complete" ||
-      session.payment_status !== "paid" ||
-      !session.payment_intent
+      session.paymentStatus !== "paid" ||
+      !session.paymentId
     )
       return review("Session is not a settled payment.");
     if (
@@ -405,8 +412,8 @@ export async function applyStripeEvent(
         orderId: order.id,
         paymentAccountId: account!.id,
         amountCents: attempt.amountCents,
-        rawReference: session.payment_intent,
-        normalizedReference: session.payment_intent,
+        rawReference: session.paymentId,
+        normalizedReference: session.paymentId,
         recordedByUserId: providerActor,
       })
       .returning();
@@ -425,7 +432,7 @@ export async function applyStripeEvent(
       .set({
         status: "paid",
         receiptId: receipt!.id,
-        paymentIntentId: session.payment_intent,
+        paymentIntentId: session.paymentId,
         updatedAt: new Date(),
       })
       .where(eq(stripeCheckoutAttempts.id, attempt.id));
@@ -471,7 +478,7 @@ export async function reconcileStripeInbox(limit = 25) {
     .where(eq(stripeCheckoutAttempts.status, "open"))
     .orderBy(asc(stripeCheckoutAttempts.updatedAt))
     .limit(Math.max(1, Math.min(100, limit)));
-  const adapter = stripeFromEnvironment();
+  const adapter = paymentProviderFromEnvironment("stripe");
   for (const attempt of open) {
     if (!attempt.sessionId) continue;
     try {

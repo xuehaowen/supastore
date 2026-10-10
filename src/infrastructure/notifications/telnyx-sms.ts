@@ -7,9 +7,9 @@ import {
   telnyxSmsIdentity,
   validPhone,
   validUuid,
-  validateNotificationConfig,
+  validateBuiltinNotificationConfig as validateNotificationConfig,
   type TelnyxSmsConfig,
-} from "./provider-config";
+} from "./notification-config";
 import { httpFailure } from "./provider-errors";
 import { discardTelnyxResponse, telnyxData, telnyxPost } from "./telnyx-http";
 export interface TelnyxDependencies {

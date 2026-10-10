@@ -72,6 +72,48 @@ describe("evidence upload boundary", () => {
     expect(req.bodyUsed).toBe(false);
     expect(mocks.put).not.toHaveBeenCalled();
   });
+  it("accepts a configured storefront upload while preserving scoped order authorization", async () => {
+    vi.stubEnv("STOREFRONT_ORIGIN", "http://storefront.test");
+    try {
+      expect(
+        (
+          await PUT(
+            request("png", {
+              origin: "http://storefront.test",
+              "sec-fetch-site": "same-origin",
+            }),
+          )
+        ).status,
+      ).toBe(200);
+      expect(mocks.access).toHaveBeenCalledWith(
+        expect.any(Object),
+        id,
+        "session",
+      );
+      expect(mocks.put).toHaveBeenCalledOnce();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+  it.each([
+    { origin: "http://storefront.test", "sec-fetch-site": "cross-site" },
+    { origin: "" },
+    { origin: "http://attacker.test" },
+  ])(
+    "rejects unsafe proxied origins before reading upload bytes: %j",
+    async (headers) => {
+      vi.stubEnv("STOREFRONT_ORIGIN", "http://storefront.test");
+      try {
+        const req = request("png", headers);
+        expect((await PUT(req)).status).toBe(403);
+        expect(req.bodyUsed).toBe(false);
+        expect(mocks.access).not.toHaveBeenCalled();
+        expect(mocks.put).not.toHaveBeenCalled();
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    },
+  );
   it.each(["expired", "finalized", "changed size", "changed mime"])(
     "rejects %s intents",
     async (variant) => {

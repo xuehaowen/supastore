@@ -120,6 +120,46 @@ describe.skipIf(!server)("Stripe durable payment lifecycle", () => {
     ).toHaveLength(0);
     expect(f.network).not.toHaveBeenCalled();
   });
+  it("rejects replacement providers before checkout, inbox or refund side effects", async () => {
+    const f = await fixture();
+    const replacement = new Proxy(f.adapter, {
+      get(target, property, receiver) {
+        if (property === "provider") return "replacement-provider";
+        return Reflect.get(target, property, receiver);
+      },
+    });
+    await expect(
+      startStripeCheckout(
+        { orderId: f.id, sessionToken: f.token },
+        replacement,
+      ),
+    ).rejects.toThrow("original Stripe provider");
+    await expect(
+      sendStripeRefund(
+        { allocationId: randomUUID(), ownerUserId: owner },
+        replacement,
+      ),
+    ).rejects.toThrow("original Stripe provider");
+    const eventId = `evt_${randomUUID().replaceAll("-", "")}`;
+    await expect(
+      acceptStripeEvent(
+        {
+          id: eventId,
+          type: "checkout.session.completed",
+          livemode: false,
+          data: { object: {} },
+        },
+        replacement,
+      ),
+    ).rejects.toThrow("original Stripe provider");
+    expect(f.network).not.toHaveBeenCalled();
+    expect(
+      await client`select id from stripe_checkout_attempts where order_id=${f.id}`,
+    ).toHaveLength(0);
+    expect(
+      await client`select event_id from stripe_webhook_inbox where event_id=${eventId}`,
+    ).toHaveLength(0);
+  });
   it("rejects mismatched new and existing card intents before network activity", async () => {
     for (const [currency, precision] of [
       ["USD", 0],

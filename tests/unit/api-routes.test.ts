@@ -172,7 +172,9 @@ describe("API route boundaries", () => {
     );
 
     expect(response.status).toBe(403);
-    expect(await response.json()).toEqual({ error: "Invalid origin" });
+    expect(await response.json()).toEqual({
+      error: "Untrusted request origin.",
+    });
     expect(mocks.createUploadIntent).not.toHaveBeenCalled();
   });
 
@@ -214,4 +216,67 @@ describe("API route boundaries", () => {
       intentId: "00000000-0000-0000-0000-000000000001",
     });
   });
+
+  it.each(["POST", "PATCH"])(
+    "accepts evidence %s from the configured storefront origin",
+    async (method) => {
+      vi.stubEnv("STOREFRONT_ORIGIN", "https://storefront.test");
+      mocks.orderToken.mockResolvedValue("scoped-order-token");
+      mocks.createUploadIntent.mockResolvedValue({ intentId: "intent" });
+      mocks.finalizeUpload.mockResolvedValue(undefined);
+      try {
+        const handler =
+          method === "POST" ? createEvidenceIntent : finalizeEvidence;
+        const response = await handler(
+          request("https://backend.test/api/evidence", {
+            method,
+            headers: {
+              origin: "https://storefront.test",
+              "content-type": "application/json",
+              "sec-fetch-site": "same-origin",
+            },
+            body: JSON.stringify({
+              orderId: "00000000-0000-0000-0000-000000000001",
+              intentId: "00000000-0000-0000-0000-000000000002",
+              mime: "image/png",
+              size: 10,
+            }),
+          }),
+        );
+        expect(response.status).toBe(200);
+        expect(mocks.orderToken).toHaveBeenCalledWith(
+          "00000000-0000-0000-0000-000000000001",
+        );
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    },
+  );
+
+  it.each(["POST", "PATCH"])(
+    "rejects cross-site evidence %s even with a configured origin",
+    async (method) => {
+      vi.stubEnv("STOREFRONT_ORIGIN", "https://storefront.test");
+      try {
+        const req = request("https://backend.test/api/evidence", {
+          method,
+          headers: {
+            origin: "https://storefront.test",
+            "sec-fetch-site": "cross-site",
+          },
+          body: "unread",
+        });
+        expect(
+          (
+            await (method === "POST" ? createEvidenceIntent : finalizeEvidence)(
+              req,
+            )
+          ).status,
+        ).toBe(403);
+        expect(req.bodyUsed).toBe(false);
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    },
+  );
 });

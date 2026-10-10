@@ -86,7 +86,7 @@ describe("Stripe REST adapter", () => {
       network,
     );
     const result = await adapter.createRefund({
-      paymentIntentId: "pi_123",
+      paymentId: "pi_123",
       amountCents: 400,
       idempotencyKey: "refund:authorized-1",
     });

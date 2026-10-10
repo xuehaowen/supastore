@@ -10,6 +10,7 @@ import {
 import { orderToken } from "@/infrastructure/web";
 import { parseActionUuid } from "@/application/common/request-validation";
 import { putUpload } from "@/infrastructure/storage";
+import { assertMutationOrigin } from "@/infrastructure/http/commerce-api";
 import {
   ALLOWED_EVIDENCE_MIME_TYPES,
   MAX_EVIDENCE_SIZE_BYTES,
@@ -17,8 +18,7 @@ import {
 
 export async function PUT(request: NextRequest) {
   try {
-    if (request.headers.get("origin") !== request.nextUrl.origin)
-      return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
+    assertMutationOrigin(request);
     const orderId = parseActionUuid(
       request.nextUrl.searchParams.get("orderId"),
       "Order",
@@ -93,7 +93,9 @@ export async function PUT(request: NextRequest) {
         status:
           error instanceof DomainError && error.code === "UNAUTHORIZED"
             ? 401
-            : 400,
+            : error instanceof DomainError && error.code === "FORBIDDEN"
+              ? 403
+              : 400,
       },
     );
   }

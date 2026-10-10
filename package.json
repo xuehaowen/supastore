@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "vitest run tests/unit tests/e2e",
+    "test": "vitest run tests/unit",
     "test:unit": "vitest run tests/unit",
     "test:integration": "node scripts/test-integration.mjs",
     "test:browser": "node scripts/test-browser.mjs",

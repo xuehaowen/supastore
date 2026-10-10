@@ -6,11 +6,18 @@ import {
 } from "@playwright/test";
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
-function clientHeaders() {
+export function clientHeaders() {
   const seed = randomUUID().replaceAll("-", "");
+  const ip = `198.18.${Number.parseInt(seed.slice(0, 2), 16)}.${Number.parseInt(seed.slice(2, 4), 16)}`;
   // Independent synthetic customers must not share the production sign-in rate bucket.
   return {
-    "x-forwarded-for": `198.18.${Number.parseInt(seed.slice(0, 2), 16)}.${Number.parseInt(seed.slice(2, 4), 16)}`,
+    "x-forwarded-for": ip,
+    ...(process.env.STOREFRONT_TESTS === "true" && process.env.EDGE_PROXY_SECRET
+      ? {
+          "x-supastore-edge-token": process.env.EDGE_PROXY_SECRET,
+          "x-supastore-client-ip": ip,
+        }
+      : {}),
   };
 }
 export const test = base.extend<{
@@ -35,8 +42,9 @@ export const test = base.extend<{
       await sql.end();
     }
   },
-  admin: async ({ browser }, use) => {
+  admin: async ({ browser, baseURL }, use) => {
     const context = await browser.newContext({
+      baseURL: process.env.ADMIN_BASE_URL ?? baseURL ?? "http://localhost:3000",
       extraHTTPHeaders: clientHeaders(),
     });
     const page = await context.newPage();
@@ -49,6 +57,25 @@ export const test = base.extend<{
   },
 });
 export { expect };
+export async function deliveredLink(page: Page, email: string, path: string) {
+  let link = "";
+  await expect
+    .poll(async () => {
+      const response = await page.request.get("http://127.0.0.1:9010");
+      expect(response.ok()).toBe(true);
+      const messages: string[] = await response.json();
+      const message = [...messages]
+        .reverse()
+        .find((text) => text.includes(email) && text.includes(path));
+      link =
+        message
+          ?.match(/https?:\/\/[^\s<>"']+/g)
+          ?.find((url) => new URL(url).pathname.includes(path)) ?? "";
+      return Boolean(link);
+    })
+    .toBe(true);
+  return link;
+}
 export async function login(page: Page, email = "owner@example.test") {
   await page.goto("/admin/login");
   await page.getByLabel("Email", { exact: true }).fill(email);

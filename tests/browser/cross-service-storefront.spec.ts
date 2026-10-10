@@ -1,4 +1,11 @@
-import { test, expect } from "./fixtures";
+import { randomUUID } from "node:crypto";
+import {
+  test,
+  expect,
+  clickAction,
+  deliveredLink,
+  clientHeaders,
+} from "./fixtures";
 for (const mode of ["shipping", "pickup", "local_delivery", "none"] as const) {
   test(`separate storefront honors ${mode}-only fulfillment policy`, async ({
     page,
@@ -111,10 +118,12 @@ test("separate storefront applies regional shipping through the quote API", asyn
     await sql`update store_settings set quote_version=quote_version+1`;
   }
 });
-test("separate storefront owns catalog/cart checkout and private order cookies", async ({
+test("separate storefront completes guest checkout, payment evidence, delivery, return and refund", async ({
   page,
   sql,
+  admin,
 }) => {
+  test.setTimeout(180000);
   await page.goto("/en");
   await expect(page.locator("article h2 a").first()).toBeVisible();
   await page.locator("article h2 a").first().click();
@@ -142,7 +151,7 @@ test("separate storefront owns catalog/cart checkout and private order cookies",
   await expect(page).toHaveURL(/\/en\/orders\/[a-f0-9-]+$/);
   const id = page.url().split("/").at(-1)!;
   const [order] =
-    await sql`select id,guest_email,fulfillment_type from orders where id=${id}`;
+    await sql`select id,guest_email,fulfillment_type,purchase_total_cents from orders where id=${id}`;
   expect(order.guest_email).toBe("cross-service@example.test");
   expect(order.fulfillment_type).toBe("shipping");
   const cookies = await page.context().cookies();
@@ -165,9 +174,74 @@ test("separate storefront owns catalog/cart checkout and private order cookies",
     path: test.info().outputPath("cross-service-order.png"),
     fullPage: true,
   });
-  await sql`update order_fulfillments set status='fulfilled' where order_id=${id}`;
-  await sql`update orders set lifecycle_status='completed' where id=${id}`;
+  await page.getByLabel("Payment evidence").setInputFiles({
+    name: "receipt.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAGUlEQVQokWN4+uI+SYhhVMOL0VB6OlyTBgCmaawfkFnzKAAAAABJRU5ErkJggg==",
+      "base64",
+    ),
+  });
+  await page
+    .getByRole("button", { name: "Submit evidence", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toContainText(
+    "Payment evidence submitted for store review.",
+  );
+  await admin.goto(`/admin/orders/${id}`);
+  await admin
+    .getByRole("button", { name: "Record payment", exact: true })
+    .click();
+  const payment = admin.getByRole("dialog", { name: "Record actual payment" });
+  await payment
+    .getByLabel("Actual received amount in minor units")
+    .fill(String(order.purchase_total_cents));
+  await payment.getByLabel("Actual payment reference").fill(randomUUID());
+  await payment.getByRole("checkbox").check();
+  await clickAction(
+    admin,
+    payment.getByRole("button", { name: "Record receipt", exact: true }),
+  );
+  await clickAction(
+    admin,
+    admin.getByRole("button", { name: "Confirm exact payment", exact: true }),
+  );
   await page.reload();
+  await expect(
+    page.getByText("Confirmed", { exact: true }).first(),
+  ).toBeVisible();
+  await admin
+    .getByRole("button", { name: "Dispatch shipment", exact: true })
+    .click();
+  const dispatch = admin.getByRole("dialog", {
+    name: "Dispatch shipment",
+    exact: true,
+  });
+  await dispatch
+    .getByLabel("Carrier or delivery method")
+    .fill("Synthetic delivery");
+  await clickAction(
+    admin,
+    dispatch.getByRole("button", { name: "Dispatch shipment", exact: true }),
+  );
+  await admin
+    .getByRole("button", { name: "Record delivery", exact: true })
+    .click();
+  const delivery = admin.getByRole("dialog", {
+    name: "Record completed delivery",
+    exact: true,
+  });
+  await delivery
+    .getByLabel("Carrier or delivery method")
+    .fill("Synthetic delivery");
+  await clickAction(
+    admin,
+    delivery.getByRole("button", { name: "Record delivery", exact: true }),
+  );
+  await page.reload();
+  await expect(
+    page.getByText("Completed", { exact: true }).first(),
+  ).toBeVisible();
   await page
     .getByLabel(/Return quantity/)
     .first()
@@ -187,10 +261,87 @@ test("separate storefront owns catalog/cart checkout and private order cookies",
   const [goodsReturn] =
     await sql`select status from order_returns where order_id=${id}`;
   expect(goodsReturn.status).toBe("requested");
+  await admin.reload();
+  await admin
+    .getByRole("link", { name: "Synthetic return request · requested" })
+    .click();
+  await admin
+    .getByRole("combobox", { name: "Decision" })
+    .selectOption("approved");
+  await admin.getByLabel("Review reason").fill("Return approved");
+  await clickAction(
+    admin,
+    admin.getByRole("button", { name: "Save decision" }),
+  );
+  await admin.getByLabel("Restockable units").fill("1");
+  await clickAction(
+    admin,
+    admin.getByRole("button", { name: "Record goods receipt" }),
+  );
+  await admin.goto(`/admin/orders/${id}`);
+  await admin
+    .getByRole("button", { name: "Refund purchase", exact: true })
+    .click();
+  const refund = admin.getByRole("dialog", {
+    name: "Authorize purchase refund",
+  });
+  await refund
+    .getByLabel("Refund amount in minor units")
+    .fill(String(order.purchase_total_cents));
+  await refund.getByLabel("Refund reason").fill("Cross-service refund");
+  await clickAction(
+    admin,
+    refund.getByRole("button", { name: "Authorize source-aware refund" }),
+  );
+  const [allocation] =
+    await sql`select pa.id from payout_allocations pa join refund_authorizations ra on ra.id=pa.refund_authorization_id where ra.order_id=${id} and ra.reason='Cross-service refund'`;
+  expect(allocation).toBeTruthy();
+  await admin.goto("/admin/payments");
+  const payout = admin
+    .locator("#payouts details")
+    .filter({ hasText: allocation.id });
+  await payout.locator("summary").click();
+  await payout
+    .getByLabel("Claim amount (minor units)")
+    .fill(String(order.purchase_total_cents));
+  await payout
+    .getByLabel("Verified return destination")
+    .fill("SYNTHETIC-RETURN");
+  await clickAction(
+    admin,
+    payout.getByRole("button", { name: "Claim payout", exact: true }),
+  );
+  await payout.locator("summary").click();
+  await payout
+    .getByLabel("Actual payout amount (minor units)")
+    .fill(String(order.purchase_total_cents));
+  await payout.getByLabel("Transfer reference").fill(randomUUID());
+  await payout.getByLabel("Actual destination").fill("SYNTHETIC-RETURN");
+  await clickAction(
+    admin,
+    payout.getByRole("button", { name: "Reconcile payout", exact: true }),
+  );
+  await page.reload();
+  await expect(page.getByText(/Cross-service refund/)).toBeVisible();
+  const finalOrder = await page.request.get(`/api/v1/orders/${id}`);
+  expect(finalOrder.ok()).toBe(true);
+  const final = await finalOrder.json();
+  expect(final.data.order.lifecycleStatus).toBe("completed");
+  expect(final.data.fulfillment.status).toBe("fulfilled");
+  expect(final.data.refunds).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        reason: "Cross-service refund",
+        amountCents: order.purchase_total_cents,
+        settledCents: order.purchase_total_cents,
+      }),
+    ]),
+  );
 });
 test("customer registration/login/profile mutation stays behind the backend API", async ({
   page,
   sql,
+  browser,
 }) => {
   const email = `cross-auth-${Date.now()}@example.test`;
   await page.goto("/en/account");
@@ -202,7 +353,28 @@ test("customer registration/login/profile mutation stays behind the backend API"
     .fill("SyntheticCustomerPassword123!");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("check your inbox");
-  await sql`update "user" set email_verified=true where email=${email}`;
+  await page.getByLabel("Account action").selectOption("sign-in");
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("SyntheticCustomerPassword123!");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "Please verify your email",
+  );
+  await expect(page.getByRole("button", { name: "Save profile" })).toHaveCount(
+    0,
+  );
+  const verification = await deliveredLink(
+    page,
+    email,
+    "/api/auth/verify-email",
+  );
+  await page.goto(verification);
+  await expect(
+    page.getByRole("button", { name: "Save profile" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await page.getByLabel("Account action").selectOption("sign-in");
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page
@@ -252,34 +424,62 @@ test("customer registration/login/profile mutation stays behind the backend API"
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("check your inbox");
-  const [reset] =
-    await sql`select v.identifier from verification v join "user" u on v.value=u.id where u.email=${email} and v.identifier like 'reset-password:%' order by v.created_at desc limit 1`;
-  expect(reset).toBeTruthy();
-  const resetToken = reset.identifier.slice("reset-password:".length);
-  await page.goto(
-    `/en/account/reset-password?token=${encodeURIComponent(resetToken)}`,
-  );
-  await page
-    .getByLabel("New password", { exact: true })
-    .fill("SyntheticResetPassword123!");
-  await page
-    .getByLabel("Confirm password", { exact: true })
-    .fill("SyntheticResetPassword123!");
-  await page
-    .getByRole("button", { name: "Update password", exact: true })
-    .click();
-  await expect(page).toHaveURL(/\/en\/account$/);
-  await page.getByLabel("Email", { exact: true }).fill(email);
-  await page
-    .getByLabel("Password", { exact: true })
-    .fill("SyntheticResetPassword123!");
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Save profile" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Sign out", exact: true }).click();
-  await page.getByRole("link", { name: "中文", exact: true }).click();
-  await expect(
-    page.getByRole("link", { name: "购物车", exact: true }),
-  ).toBeVisible();
+  const reset = await deliveredLink(page, email, "/api/auth/reset-password/");
+  // The emailed recovery link opens on a separate device, with its own session
+  // and rate bucket. Production sign-in limits remain active on both devices.
+  const resetContext = await browser.newContext({
+    baseURL: process.env.PLAYWRIGHT_BASE_URL!,
+    extraHTTPHeaders: clientHeaders(),
+  });
+  const resetPage = await resetContext.newPage();
+  try {
+    await resetPage.goto(reset);
+    await resetPage
+      .getByLabel("New password", { exact: true })
+      .fill("SyntheticResetPassword123!");
+    await resetPage
+      .getByLabel("Confirm password", { exact: true })
+      .fill("SyntheticResetPassword123!");
+    await resetPage
+      .getByRole("button", { name: "Update password", exact: true })
+      .click();
+    await expect(resetPage).toHaveURL(/\/en\/account$/);
+    await resetPage.getByLabel("Email", { exact: true }).fill(email);
+    await resetPage
+      .getByLabel("Password", { exact: true })
+      .fill("SyntheticChangedPassword123!");
+    const rejectedSignIn = resetPage.waitForResponse(
+      (response) =>
+        response.url().endsWith("/api/auth/sign-in/email") &&
+        response.request().method() === "POST",
+    );
+    await resetPage
+      .getByRole("button", { name: "Continue", exact: true })
+      .click();
+    expect((await rejectedSignIn).status()).toBe(401);
+    await expect(
+      resetPage.getByRole("button", { name: "Continue", exact: true }),
+    ).toBeEnabled();
+    await expect(
+      resetPage.getByRole("button", { name: "Save profile" }),
+    ).toHaveCount(0);
+    await resetPage
+      .getByLabel("Password", { exact: true })
+      .fill("SyntheticResetPassword123!");
+    await resetPage
+      .getByRole("button", { name: "Continue", exact: true })
+      .click();
+    await expect(
+      resetPage.getByRole("button", { name: "Save profile" }),
+    ).toBeVisible();
+    await resetPage
+      .getByRole("button", { name: "Sign out", exact: true })
+      .click();
+    await resetPage.getByRole("link", { name: "中文", exact: true }).click();
+    await expect(
+      resetPage.getByRole("link", { name: "购物车", exact: true }),
+    ).toBeVisible();
+  } finally {
+    await resetContext.close();
+  }
 });

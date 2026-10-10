@@ -6,6 +6,7 @@ export default defineConfig({
       ? []
       : [
           "**/cross-service-storefront.spec.ts",
+          "**/cross-service-i18n.spec.ts",
           "**/storefront-journey-updates.spec.ts",
         ],
   fullyParallel: false,

@@ -1,11 +1,14 @@
-import type { NotificationProviders } from "@/application/ports/notifications";
+import type {
+  NotificationProviders,
+  EmailSender,
+  SmsSender,
+  PhoneVerifier,
+} from "@/application/ports/notifications";
 import { isShuttingDown } from "../runtime/shutdown";
-import {
-  NodemailerEmailSender,
-  type EmailTransportFactory,
-} from "../notifications/nodemailer-email";
-import { TelnyxSmsSender } from "../notifications/telnyx-sms";
-import { TelnyxPhoneVerifier } from "../notifications/telnyx-phone-verifier";
+import { type EmailTransportFactory } from "../notifications/nodemailer-email";
+import { createSmsAdapter } from "../notifications/sms-adapters";
+import { createEmailAdapter } from "../notifications/email-adapters";
+import { createPhoneAdapter } from "../notifications/phone-adapters";
 import {
   notificationConfigFromEnvironment,
   notificationConfigurationFingerprint,
@@ -30,12 +33,12 @@ export function createNotificationProviders(
 ): NotificationProviders {
   validateNotificationConfig(config);
   const providers: {
-    email?: NodemailerEmailSender;
-    sms?: TelnyxSmsSender;
-    phone?: TelnyxPhoneVerifier;
+    email?: EmailSender;
+    sms?: SmsSender;
+    phone?: PhoneVerifier;
   } = {};
   if (config.email)
-    providers.email = new NodemailerEmailSender(
+    providers.email = createEmailAdapter(
       config.email,
       dependencies.emailTransportFactory,
     );
@@ -46,12 +49,9 @@ export function createNotificationProviders(
       ...(dependencies.fetcher ? { fetcher: dependencies.fetcher } : {}),
     };
     if (config.sms)
-      providers.sms = new TelnyxSmsSender(config.sms, telnyxDependencies);
+      providers.sms = createSmsAdapter(config.sms, telnyxDependencies);
     if (config.phone)
-      providers.phone = new TelnyxPhoneVerifier(
-        config.phone,
-        telnyxDependencies,
-      );
+      providers.phone = createPhoneAdapter(config.phone, telnyxDependencies);
   }
   return Object.freeze(providers);
 }

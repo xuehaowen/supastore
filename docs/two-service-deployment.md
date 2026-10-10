@@ -77,6 +77,29 @@ before deployment. Docker image startup, real Stripe/SMTP delivery, TLS and rest
 verification require an operator acceptance run; local tests alone do not verify
 external deployment configuration.
 
+Run `pnpm test:storefront` for the production-build browser journeys across both
+services. Its default selection includes `cross-service-storefront.spec.ts`,
+`cross-service-i18n.spec.ts`, and `storefront-journey-updates.spec.ts`; the CI browser
+job runs this command. The runner uses an isolated database, local SMTP inbox and
+storage fixture. Customer requests use the storefront proxy and merchant actions
+use a separate authenticated backend browser session.
+
+The journeys cover payment evidence, actual-receipt recording, confirmation,
+shipment and delivery, goods return approval/receipt and refund settlement;
+registration and password reset follow links delivered to the local inbox.
+Account history uses persisted orders, and saved-address/mixed-credit checkout
+checks reservation, submission, capture and reopening from account history.
+The synthetic lifecycle in `tests/unit/synthetic-order-lifecycle.test.ts` is a
+domain simulation, not evidence of a browser or provider journey.
+
+Local journey validation on 2026-10-09: the default `test:storefront` runner passed
+all 10 browser tests after building both services in production mode. The 28
+focused unit tests covering evidence route/origin boundaries and the relocated
+domain simulation passed. TypeScript validation passed. The extended guest
+journey exposed an evidence-upload origin rejection at the service boundary;
+evidence endpoints now use the shared configured-origin guard, with regression
+checks for missing, foreign and cross-site origins.
+
 The disposable container boundary check uses `scripts/compose.smoke.yml` under
 the separate project name `supastore-codex-smoke`, synthetic fixtures, and public
 port 3097. After migrating and seeding that fixture, run

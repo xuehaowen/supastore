@@ -1,4 +1,9 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import type {
+  PaymentProvider,
+  PaymentCheckoutSession,
+  PaymentRefund,
+} from "@/application/ports/payments";
 
 export class StripeAdapterError extends Error {
   constructor(
@@ -106,27 +111,63 @@ function refund(value: unknown): StripeRefund {
 }
 
 /** Network adapter only. Persist request identity before calling; never call while holding database locks. */
-export class StripeAdapter {
+function checkoutResult(value: unknown): PaymentCheckoutSession {
+  const data = session(value);
+  return {
+    id: data.id,
+    url: data.url,
+    status: data.status,
+    paymentStatus: data.payment_status,
+    paymentId: data.payment_intent,
+    amountCents: data.amount_total,
+    currency: data.currency,
+    metadata: data.metadata,
+  };
+}
+function refundResult(value: unknown): PaymentRefund {
+  const data = refund(value);
+  return {
+    id: data.id,
+    amountCents: data.amount,
+    currency: data.currency,
+    paymentId: data.payment_intent,
+    status: data.status,
+  };
+}
+export function validateStripeConfiguration(
+  secretKey: string,
+  storefrontOrigin: string,
+) {
+  if (!/^sk_(test|live)_[A-Za-z0-9]+$/.test(secretKey))
+    throw new StripeAdapterError("Stripe secret key is not configured.");
+  const url = new URL(storefrontOrigin);
+  if (
+    url.username ||
+    url.password ||
+    (url.protocol !== "https:" &&
+      !(
+        url.protocol === "http:" &&
+        ["localhost", "127.0.0.1"].includes(url.hostname)
+      ))
+  )
+    throw new StripeAdapterError("Invalid storefront origin.");
+  return url.origin;
+}
+/** Persist the intent before calling; never call while holding database locks. */
+export class StripeAdapter implements PaymentProvider {
+  readonly provider = "stripe";
+  readonly capabilities = Object.freeze({
+    hostedCheckout: true,
+    refunds: true,
+    idempotencyWindowMs: 86400000,
+  });
   private readonly origin: string;
   constructor(
     private readonly secretKey: string,
     storefrontOrigin: string,
     private readonly fetcher: typeof fetch = fetch,
   ) {
-    if (!/^sk_(test|live)_[A-Za-z0-9]+$/.test(secretKey))
-      throw new StripeAdapterError("Stripe secret key is not configured.");
-    const url = new URL(storefrontOrigin);
-    if (
-      url.username ||
-      url.password ||
-      (url.protocol !== "https:" &&
-        !(
-          url.protocol === "http:" &&
-          ["localhost", "127.0.0.1"].includes(url.hostname)
-        ))
-    )
-      throw new StripeAdapterError("Invalid storefront origin.");
-    this.origin = url.origin;
+    this.origin = validateStripeConfiguration(secretKey, storefrontOrigin);
   }
   private callback(value: string) {
     const url = new URL(value);
@@ -212,17 +253,17 @@ export class StripeAdapter {
       "line_items[0][price_data][product_data][name]": "Order payment",
       "line_items[0][quantity]": "1",
     });
-    return session(
+    return checkoutResult(
       await this.request("checkout/sessions", parameters, input.idempotencyKey),
     );
   }
   async retrieveCheckoutSession(id: string) {
-    return session(
+    return checkoutResult(
       await this.request(`checkout/sessions/${identifier(id, "cs")}`),
     );
   }
   async expireCheckoutSession(id: string, idempotencyKey: string) {
-    return session(
+    return checkoutResult(
       await this.request(
         `checkout/sessions/${identifier(id, "cs")}/expire`,
         new URLSearchParams(),
@@ -231,16 +272,16 @@ export class StripeAdapter {
     );
   }
   async createRefund(input: {
-    paymentIntentId: string;
+    paymentId: string;
     amountCents: number;
     idempotencyKey: string;
   }) {
     amount(input.amountCents);
-    return refund(
+    return refundResult(
       await this.request(
         "refunds",
         new URLSearchParams({
-          payment_intent: identifier(input.paymentIntentId, "pi"),
+          payment_intent: identifier(input.paymentId, "pi"),
           amount: String(input.amountCents),
         }),
         input.idempotencyKey,
@@ -248,14 +289,8 @@ export class StripeAdapter {
     );
   }
   async retrieveRefund(id: string) {
-    return refund(await this.request(`refunds/${identifier(id, "re")}`));
+    return refundResult(await this.request(`refunds/${identifier(id, "re")}`));
   }
-}
-export function stripeFromEnvironment() {
-  return new StripeAdapter(
-    process.env.STRIPE_SECRET_KEY ?? "",
-    process.env.STOREFRONT_ORIGIN || process.env.APP_URL || "",
-  );
 }
 /** Verify exact raw bytes before parsing. Multiple v1 signatures support signing-key rotation. */
 export function verifyStripeWebhook(

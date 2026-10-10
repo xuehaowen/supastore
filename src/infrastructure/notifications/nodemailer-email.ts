@@ -9,12 +9,13 @@ import type {
 } from "@/application/ports/notifications";
 import {
   mailbox,
+  emailAuthentication,
   nodemailerIdentity,
   smtpRequiresTls,
   validMailbox,
-  validateNotificationConfig,
-  type NodemailerConfig,
-} from "./provider-config";
+  validateBuiltinNotificationConfig as validateNotificationConfig,
+  type SmtpProviderConfig,
+} from "./notification-config";
 import { smtpFailure } from "./provider-errors";
 export interface EmailTransport {
   sendMail(options: Mail.Options): Promise<{
@@ -42,7 +43,7 @@ export class NodemailerEmailSender implements EmailSender {
   #recoverAt = 0;
   #pending = 0;
   constructor(
-    config: NodemailerConfig,
+    config: SmtpProviderConfig,
     factory: EmailTransportFactory = (options) =>
       nodemailer.createTransport(options),
   ) {
@@ -50,6 +51,7 @@ export class NodemailerEmailSender implements EmailSender {
     this.identity = nodemailerIdentity(config);
     this.#from = config.from;
     this.#factory = factory;
+    const auth = emailAuthentication(config);
     this.#options = {
       host: config.host,
       port: config.port,
@@ -61,9 +63,7 @@ export class NodemailerEmailSender implements EmailSender {
       greetingTimeout: 10000,
       socketTimeout: 20000,
       requireTLS: smtpRequiresTls(config),
-      ...(config.user
-        ? { auth: { user: config.user, pass: config.password! } }
-        : {}),
+      ...(auth ? { auth } : {}),
       disableFileAccess: true,
       disableUrlAccess: true,
     };

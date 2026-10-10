@@ -25,19 +25,24 @@ const env = {
   BACKEND_URL: "http://127.0.0.1:3102",
   SERVICE_ROLE: "backend",
   STOREFRONT_TESTS: "true",
+  EDGE_PROXY_SECRET: "SyntheticJourneyEdgeSecret123456789!",
   NEXT_DIST_DIR: ".next-cuj/" + database,
   STOREFRONT_ORIGIN: "http://localhost:3103",
   NEXT_TSCONFIG: ".tsconfig-cuj.json",
   DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:55449/" + database,
   APP_URL: "http://localhost:3103",
-  BETTER_AUTH_URL: "http://localhost:3103",
+  BETTER_AUTH_URL: "http://localhost:3102",
+  ADMIN_BASE_URL: "http://localhost:3102",
   PLAYWRIGHT_BASE_URL: "http://localhost:3103",
   ADMIN_SETUP_SECRET: "SyntheticSetupSecret123!",
   BETTER_AUTH_SECRET: "SyntheticAuthSecretForBrowserTests123!",
   M1_DEMO: "true",
   DEMO_OWNER_PASSWORD: "SyntheticOwnerPassword123!",
-  DISABLE_OUTBOUND_DELIVERY: "true",
+  DISABLE_OUTBOUND_DELIVERY: "false",
   ENABLE_OUTBOX_WORKER: "false",
+  EMAIL_PROVIDER: "nodemailer",
+  SMS_PROVIDER: "disabled",
+  PHONE_VERIFICATION_PROVIDER: "disabled",
   S3_ENDPOINT: "http://127.0.0.1:9009",
   S3_ACCESS_KEY_ID: "fixture",
   S3_SECRET_ACCESS_KEY: "fixture",
@@ -46,6 +51,7 @@ const env = {
   SMTP_HOST: "127.0.0.1",
   SMTP_PORT: "25259",
   SMTP_SECURE: "false",
+  SMTP_REQUIRE_TLS: "false",
   SMTP_FROM: "synthetic@example.test",
   SMTP_USER: "",
   SMTP_PASSWORD: "",
@@ -181,6 +187,9 @@ try {
     await admin.end();
   }
   writeFileSync(env.NEXT_TSCONFIG, readFileSync("tsconfig.json"));
+  const mail = start(["scripts/test-mail.mjs"]);
+  await ready("http://127.0.0.1:9010", mail);
+  start(["scripts/test-storage.mjs"]);
 
   await completed(
     start(["node_modules/tsx/dist/cli.mjs", "scripts/seed-demo.ts"]),
@@ -210,7 +219,11 @@ try {
   const testTarget =
     testArguments.length > 0
       ? testArguments
-      : ["tests/browser/cross-service-storefront.spec.ts"];
+      : [
+          "tests/browser/cross-service-storefront.spec.ts",
+          "tests/browser/cross-service-i18n.spec.ts",
+          "tests/browser/storefront-journey-updates.spec.ts",
+        ];
   await completed(
     start(["node_modules/@playwright/test/cli.js", "test", ...testTarget]),
   );

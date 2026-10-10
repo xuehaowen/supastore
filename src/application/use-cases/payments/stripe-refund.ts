@@ -1,3 +1,8 @@
+import type {
+  PaymentProvider,
+  PaymentCheckoutSession,
+} from "@/application/ports/payments";
+import { paymentProviderFromEnvironment } from "@/infrastructure/payments/payment-adapters";
 import { eq, and, notInArray } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
@@ -14,10 +19,6 @@ import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { acquireTransactionLocks } from "@/domain/locking/lock-order";
 import { DomainError, NotFoundError } from "@/application/common/errors";
 import { parseActionUuid } from "@/application/common/request-validation";
-import {
-  stripeFromEnvironment,
-  type StripeAdapter,
-} from "@/infrastructure/payments/stripe";
 import { reconcilePayout } from "@/application/use-cases/refund-payout";
 import type { Destination } from "@/domain/financial-projection/discrepancies";
 import type { QuoteTerms } from "@/application/use-cases/get-quote";
@@ -26,8 +27,10 @@ import { stripeCurrencyIssue } from "@/domain/stripe-currency";
 /** A refund consumes an existing authorized original-receipt allocation, never a caller supplied payment ID or amount. */
 export async function sendStripeRefund(
   input: { allocationId: string; ownerUserId: string },
-  adapter: StripeAdapter = stripeFromEnvironment(),
+  adapter: PaymentProvider = paymentProviderFromEnvironment("stripe"),
 ) {
+  if (adapter.provider !== "stripe")
+    throw new DomainError("This refund requires its original Stripe provider.");
   const allocationId = parseActionUuid(input.allocationId, "Allocation");
   const intent = await db.transaction(async (tx) => {
     await verifyStaffInTransaction(tx, input.ownerUserId, "owner");
@@ -165,13 +168,13 @@ export async function sendStripeRefund(
   const refund = intent.refundId
     ? await adapter.retrieveRefund(intent.refundId)
     : await adapter.createRefund({
-        paymentIntentId: intent.paymentIntentId,
+        paymentId: intent.paymentIntentId,
         amountCents: intent.amountCents,
         idempotencyKey: intent.idempotencyKey,
       });
   if (
-    refund.payment_intent !== intent.paymentIntentId ||
-    refund.amount !== intent.amountCents ||
+    refund.paymentId !== intent.paymentIntentId ||
+    refund.amountCents !== intent.amountCents ||
     refund.currency !== intent.currency
   ) {
     await db
@@ -219,7 +222,7 @@ export async function sendStripeRefund(
       await reconcilePayout({
         ownerUserId: input.ownerUserId,
         attemptId: intent.payoutAttemptId,
-        actualAmountCents: refund.amount,
+        actualAmountCents: refund.amountCents,
         transferReference: refund.id,
         actualDestination: destination,
       });

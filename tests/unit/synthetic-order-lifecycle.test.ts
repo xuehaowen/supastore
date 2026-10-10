@@ -9,8 +9,9 @@ import { classifyPayoutTransfer } from "@/domain/financial-projection/discrepanc
 import { computeInputFingerprint } from "@/application/common/idempotency";
 import { MockEmailAdapter } from "@/infrastructure/notifications/mock";
 
-describe("Milestone M0: Full Synthetic Order Lifecycle", () => {
-  it("executes a complete end-to-end synthetic order lifecycle with full invariant checks", async () => {
+// Domain simulation only. Browser journeys exercise actual persisted transitions.
+describe("Milestone M0: Synthetic domain lifecycle simulation", () => {
+  it("checks financial projections across a simulated order lifecycle", async () => {
     const mockEmail = new MockEmailAdapter();
 
     // Step 1: Owner Bootstrap & Store Configuration
