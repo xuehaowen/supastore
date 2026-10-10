@@ -1,39 +1,37 @@
-import { eq, inArray, sql } from "drizzle-orm";
-import { db } from "@/infrastructure/db";
-import {
-  carts,
-  cartItems,
-  productVariants,
-  products,
-  quotes,
-  storeSettings,
-  shippingZones,
-  deliveryAreas,
-  pickupLocation,
-  paymentAccounts,
-  promotions,
-  promotionRedemptions,
-  productCategories,
-} from "@/infrastructure/db/schema";
-import type { Transaction } from "@/application/common/transaction";
-import { calculatePurchaseTotal } from "@/domain/money/calculations";
-import { shippingPrice, validatePickup } from "@/domain/checkout";
 import {
   InvariantViolationError,
   UnauthorizedError,
 } from "@/application/common/errors";
-import { calculateDiscountCents } from "@/domain/promotions";
+import type { Transaction } from "@/application/common/transaction";
+import { shippingPrice, validatePickup } from "@/domain/checkout";
 import {
   commercePolicy,
-  rewardsActive,
   rewardMerchandiseEligible,
+  rewardsActive,
 } from "@/domain/commerce-policy";
-import { allocateRewardFunding } from "@/domain/rewards";
 import { quoteDelivery } from "@/domain/delivery";
+import { calculatePurchaseTotal } from "@/domain/money/calculations";
+import { calculateDiscountCents } from "@/domain/promotions";
+import { allocateRewardFunding } from "@/domain/rewards";
+import { stripeCurrencyIssue } from "@/domain/stripe-currency";
+import { db } from "@/infrastructure/db";
 import {
-  stripeConfiguredFor,
-  stripeCurrencyIssue,
-} from "@/domain/stripe-currency";
+  cartItems,
+  carts,
+  deliveryAreas,
+  paymentAccounts,
+  pickupLocation,
+  productCategories,
+  productVariants,
+  products,
+  promotionRedemptions,
+  promotions,
+  quotes,
+  shippingZones,
+  storeSettings,
+} from "@/infrastructure/db/schema";
+import { stripeConfiguredFor } from "@/infrastructure/payments/configuration";
+import { eq, inArray, sql } from "drizzle-orm";
 export interface GetQuoteInput {
   cartId: string;
   guestSessionId: string;
@@ -194,6 +192,7 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
           input.pickupDate ?? "",
           input.pickupTime ?? "",
           settings.timezone,
+          new Date(),
         ),
       };
     }
@@ -219,6 +218,7 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
             input.pickupDate ?? "",
             input.pickupTime ?? "",
             settings.timezone,
+            new Date(),
           )
         : { date: "", startTime: "", endTime: "" }),
     };

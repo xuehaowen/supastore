@@ -44,7 +44,7 @@ test("product editor saves existing variants and translations without replacing 
     .check();
   await admin.getByRole("button", { name: "Save changes" }).click();
   await expect(
-    admin.getByRole("status").filter({ hasText: "Product changes saved" }),
+    admin.getByRole("alert").filter({ hasText: "Product changes saved" }),
   ).toBeVisible();
   const [saved] = await sql`select * from products where id=${product!.id}`;
   expect(saved!.quote_version).toBe(product!.quote_version + 1);
@@ -252,7 +252,7 @@ test("promotion codes apply to checkout and record one redemption", async ({
     .getByLabel("Payment method")
     .selectOption({ label: "Demo bank transfer" });
   await page.getByRole("button", { name: /Review your order/ }).click();
-  await expect(page.getByText("Promotion", { exact: true })).toBeVisible();
+  await expect(page.getByText("Promotion code", { exact: true })).toBeVisible();
   await page.getByLabel("Your name").fill("Promotion Customer");
   await page.getByLabel("Email address").fill("promotion@example.test");
   await page.getByRole("checkbox").check();
@@ -285,7 +285,7 @@ test("long manual order dialogs keep the header and submit button reachable", as
     { width: 375, height: 812 },
   ]) {
     await admin.setViewportSize(viewport);
-    await dialog.locator(".admin-dialog-body").evaluate((element) => {
+    await dialog.evaluate((element) => {
       element.scrollTop = element.scrollHeight;
     });
     const bounds = await dialog.boundingBox();
@@ -299,7 +299,7 @@ test("long manual order dialogs keep the header and submit button reachable", as
     );
     await submit.click({ trial: true });
     await dialog
-      .getByRole("button", { name: "Close Add manual order" })
+      .getByRole("button", { name: "Close", exact: true })
       .click({ trial: true });
   }
 });
@@ -320,7 +320,9 @@ test("owner creates a manual order from the orders dialog", async ({
   await dialog.getByLabel("Product variant").selectOption({ index: 1 });
   await dialog.getByRole("button", { name: "Create order" }).click();
   await expect(admin).toHaveURL(/\/admin\/orders\?created=SP-/);
-  await expect(admin.getByRole("status")).toContainText("Manual order SP-");
+  await expect(
+    admin.getByRole("alert").filter({ hasText: "Manual order SP-" }),
+  ).toBeVisible();
   const orderRow = admin.getByRole("row").filter({
     hasText: "manual@example.test",
   });
@@ -373,7 +375,11 @@ test("staff can see submitted payment evidence in the review grid", async ({
   const review = admin.getByRole("dialog", {
     name: `Payment evidence · ${order.reference_code}`,
   });
-  await expect(review.getByRole("img")).toBeVisible();
+  await expect(
+    review.getByRole("img", {
+      name: `Full-size payment evidence submitted for order ${order.reference_code}`,
+    }),
+  ).toBeVisible();
   await expect(
     review.getByRole("link", { name: /Open original/ }),
   ).toHaveAttribute("target", "_blank");

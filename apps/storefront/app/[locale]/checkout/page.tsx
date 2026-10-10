@@ -1,6 +1,7 @@
-﻿import { readApi, type Cart, type Store } from "../../../lib/api";
-import { Checkout } from "../../commerce";
+import { parseOptionalCartDto, parseStoreDto } from "@supastore/contracts";
+import { readApi } from "../../../lib/api";
 import { getStorefrontMessages } from "../../../lib/i18n";
+import { Checkout } from "../../commerce";
 export const metadata = { robots: { index: false, follow: false } };
 export default async function CheckoutPage({
   params,
@@ -10,8 +11,8 @@ export default async function CheckoutPage({
   const { locale } = await params;
   const m = getStorefrontMessages(locale);
   const [cart, store] = await Promise.all([
-    readApi<Cart | null>(`cart?locale=${locale}`),
-    readApi<Store>("store"),
+    readApi(`cart?locale=${locale}`, parseOptionalCartDto),
+    readApi("store", parseStoreDto),
   ]);
   return (
     <>

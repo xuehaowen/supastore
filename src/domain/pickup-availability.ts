@@ -3,7 +3,7 @@ import { validatePickup } from "./checkout";
 export function pickupAvailability(
   location: Parameters<typeof validatePickup>[0],
   timezone: string,
-  now = new Date(),
+  now: Date,
 ) {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-CA", {

@@ -189,19 +189,49 @@ describe.skipIf(!process.env.DATABASE_URL?.endsWith("/supastore_test"))(
       expect(summary.queueCounts.evidenceReviews).toBe(110);
     });
     it("paginates fulfillment and opens orders outside the selected page", async () => {
+      const receiptWork = await getAdminOperations({
+        ...input,
+        view: "fulfillment",
+      });
+      expect(receiptWork.rows).toHaveLength(50);
+      const staffWork = await getAdminOperations({
+        ...input,
+        view: "fulfillment",
+        staffUserId: staff,
+      });
+      expect(staffWork.rows).toEqual([]);
       await db.update(orders).set({ lifecycleStatus: "confirmed" });
       try {
-        const first = await getAdminOperations({ ...input, view: "fulfillment", fulfillmentPage: 1 });
-        const last = await getAdminOperations({ ...input, view: "fulfillment", fulfillmentPage: 3 });
+        const first = await getAdminOperations({
+          ...input,
+          view: "fulfillment",
+          fulfillmentPage: 1,
+        });
+        const last = await getAdminOperations({
+          ...input,
+          view: "fulfillment",
+          fulfillmentPage: 3,
+        });
         expect(first.rows).toHaveLength(50);
         expect(first.fulfillmentHasNext).toBe(true);
         expect(last.rows).toHaveLength(10);
         expect(last.fulfillmentHasNext).toBe(false);
-        expect(last.rows.some(order => order.id === data[0]!.orderId)).toBe(true);
-        const selected = await getAdminOperations({ ...input, view: "fulfillment", fulfillmentPage: 1, managedOrderId: data[0]!.orderId });
+        expect(last.rows.some((order) => order.id === data[0]!.orderId)).toBe(
+          true,
+        );
+        const selected = await getAdminOperations({
+          ...input,
+          view: "fulfillment",
+          fulfillmentPage: 1,
+          managedOrderId: data[0]!.orderId,
+        });
         expect(selected.managedOrders).toHaveLength(1);
         expect(selected.managedOrders[0]!.id).toBe(data[0]!.orderId);
-        expect(selected.receipts.some(receipt => receipt.orderId === data[0]!.orderId)).toBe(true);
+        expect(
+          selected.receipts.some(
+            (receipt) => receipt.orderId === data[0]!.orderId,
+          ),
+        ).toBe(true);
       } finally {
         await db.update(orders).set({ lifecycleStatus: "unpaid" });
       }

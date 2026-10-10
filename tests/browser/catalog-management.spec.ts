@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { test, expect } from "./fixtures";
+import { test, expect, clickAction } from "./fixtures";
 
 test("catalog filtering includes empty drafts and escapes literal search text", async ({
   admin,
@@ -43,7 +43,9 @@ test("option preview generates combinations, excludes selections and preserves m
     .getByLabel("Permanent code", { exact: true })
     .fill(`material-${code}`);
   await dialog.getByRole("button", { name: "Create attribute" }).click();
-  await expect(admin.getByRole("status")).toContainText("Attribute saved");
+  await expect(
+    admin.getByRole("alert").filter({ hasText: "Attribute saved" }),
+  ).toContainText("Attribute saved");
   for (const [label, valueCode] of [
     ["Cotton", "cotton"],
     ["Linen", "linen"],
@@ -56,7 +58,9 @@ test("option preview generates combinations, excludes selections and preserves m
     await valueDialog.getByLabel("Value label").fill(label!);
     await valueDialog.getByLabel("Permanent value code").fill(valueCode!);
     await valueDialog.getByRole("button", { name: "Create value" }).click();
-    await expect(admin.getByRole("status")).toContainText("Attribute saved");
+    await expect(
+      admin.getByRole("alert").filter({ hasText: "Attribute saved" }),
+    ).toContainText("Attribute saved");
   }
   const [product] =
     await sql`insert into products(handle,title,is_published) values(${`option-product-${code}`},'Option test product',false) returning id`;
@@ -77,7 +81,9 @@ test("option preview generates combinations, excludes selections and preserves m
   await admin
     .getByRole("button", { name: "Save options & generate variants" })
     .click();
-  await expect(admin.getByRole("status")).toContainText("1 variants created");
+  await expect(
+    admin.getByRole("alert").filter({ hasText: "1 variants created" }),
+  ).toContainText("1 variants created");
   const variants =
     await sql`select id,sku,title,price_cents,combination_key from product_variants where product_id=${product!.id} order by price_cents`;
   expect(variants).toHaveLength(2);
@@ -90,7 +96,9 @@ test("option preview generates combinations, excludes selections and preserves m
   await admin
     .getByRole("button", { name: "Save options & generate variants" })
     .click();
-  await expect(admin.getByRole("status")).toContainText("0 variants created");
+  await expect(
+    admin.getByRole("alert").filter({ hasText: "0 variants created" }),
+  ).toContainText("0 variants created");
   expect(
     (await sql`select id from product_variants where product_id=${product!.id}`)
       .length,
@@ -137,7 +145,9 @@ test("merchant publishes a collection and controls membership and translations",
   await dialog.getByLabel("Collection handle").fill(handle);
   await dialog.getByLabel("Publish collection").check();
   await dialog.getByRole("button", { name: "Create collection" }).click();
-  await expect(admin.getByRole("status")).toContainText("Collection saved", {
+  await expect(
+    admin.getByRole("alert").filter({ hasText: "Collection saved" }),
+  ).toContainText("Collection saved", {
     timeout: 20000,
   });
   const [product] =
@@ -145,7 +155,10 @@ test("merchant publishes a collection and controls membership and translations",
   await admin
     .getByRole("combobox", { name: "Product", exact: true })
     .selectOption(product!.id);
-  await admin.getByRole("button", { name: "Add product", exact: true }).click();
+  await clickAction(
+    admin,
+    admin.getByRole("button", { name: "Add product", exact: true }),
+  );
   await page.goto(`/en/collections/${handle}`);
   await expect(
     page.getByRole("heading", { name: "Studio cup", exact: true }),

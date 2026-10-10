@@ -1,3 +1,4 @@
+import type { OrderDetailDto } from "@supastore/contracts";
 import { trackOrder } from "@/application/use-cases/tracking";
 import { orderToken } from "@/infrastructure/web";
 import { apiResponse } from "@/infrastructure/http/commerce-api";
@@ -14,7 +15,7 @@ export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  return apiResponse(async () => {
+  return apiResponse<OrderDetailDto>(async () => {
     const id = parseActionUuid((await context.params).id, "Order");
     const result = await trackOrder(id, await orderToken(id));
     const [paymentAttempt] = await db

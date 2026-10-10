@@ -1,18 +1,19 @@
-import { createOrder } from "@/application/use-cases/create-order";
-import {
-  apiResponse,
-  readApiBody,
-  apiText,
-  apiInteger,
-} from "@/infrastructure/http/commerce-api";
-import {
-  guestIdentity,
-  customerIdentity,
-  setOrderToken,
-} from "@/infrastructure/web";
-import { parseActionUuid } from "@/application/common/request-validation";
 import { DomainError } from "@/application/common/errors";
 import { allowRequest } from "@/application/common/rate-limit";
+import { parseActionUuid } from "@/application/common/request-validation";
+import { createOrder } from "@/application/use-cases/create-order";
+import {
+  apiInteger,
+  apiResponse,
+  apiText,
+  readApiBody,
+} from "@/infrastructure/http/commerce-api";
+import {
+  customerIdentity,
+  guestIdentity,
+  setOrderToken,
+} from "@/infrastructure/web";
+import type { CreatedOrderDto } from "@supastore/contracts";
 export async function POST(request: Request) {
   return apiResponse(async () => {
     const body = await readApiBody(request);
@@ -43,6 +44,6 @@ export async function POST(request: Request) {
       referenceCode: order.referenceCode,
       lifecycleStatus: order.lifecycleStatus,
       purchaseTotalCents: order.purchaseTotalCents,
-    };
+    } satisfies CreatedOrderDto;
   });
 }

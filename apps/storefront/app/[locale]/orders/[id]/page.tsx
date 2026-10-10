@@ -1,60 +1,13 @@
-﻿import { readApi, money, type Store } from "../../../../lib/api";
-import { OrderActions } from "../../../order-client";
-import { PurchaseAnalytics } from "../../../analytics";
-import { getStorefrontMessages } from "../../../../lib/i18n";
+import { parseOrderDetailDto, parseStoreDto } from "@supastore/contracts";
 import {
-  statusLabel,
   formatLocalDate,
+  statusLabel,
 } from "../../../../../../packages/i18n/src/customer";
+import { money, readApi } from "../../../../lib/api";
+import { getStorefrontMessages } from "../../../../lib/i18n";
+import { PurchaseAnalytics } from "../../../analytics";
+import { OrderActions } from "../../../order-client";
 export const metadata = { robots: { index: false, follow: false } };
-interface OrderDetail {
-  order: {
-    referenceCode: string;
-    lifecycleStatus: string;
-    purchaseTotalCents: number;
-    creditAppliedCents: number;
-    terms: {
-      currency: string;
-      precision: number;
-      pickup?: {
-        address: string;
-        date: string;
-        startTime: string;
-        endTime: string;
-      } | null;
-      payment: { name: string; instructions: string } | null;
-    };
-  };
-  receivedCents: number;
-  paymentStatus: string | null;
-  refunds: {
-    id: string;
-    amountCents: number;
-    settledCents: number;
-    reason: string;
-  }[];
-  returns: { id: string; status: string; reason: string }[];
-  returnableItems: { id: string; quantity: number }[];
-  shipments?: {
-    id: string;
-    carrier: string;
-    trackingNumber: string | null;
-    status: string;
-    items: { orderItemId: string; quantity: number }[];
-  }[];
-  proposal?: { id: string; reason: string; proposedTotalCents: number } | null;
-  items: {
-    id: string;
-    quantity: number;
-    lineTotalCents: number;
-    catalog: { productTitle?: string; variantTitle?: string; title?: string };
-  }[];
-  fulfillment: {
-    status: string;
-    carrier: string | null;
-    trackingNumber: string | null;
-  } | null;
-}
 export default async function OrderPage({
   params,
 }: {
@@ -62,8 +15,11 @@ export default async function OrderPage({
 }) {
   const { locale, id } = await params;
   const m = getStorefrontMessages(locale);
-  const result = await readApi<OrderDetail>(`orders/${encodeURIComponent(id)}`);
-  const store = await readApi<Store>("store");
+  const result = await readApi(
+    `orders/${encodeURIComponent(id)}`,
+    parseOrderDetailDto,
+  );
+  const store = await readApi("store", parseStoreDto);
   const { order } = result;
   return (
     <div className="stack">

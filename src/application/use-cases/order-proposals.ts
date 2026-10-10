@@ -1,25 +1,23 @@
+import { InvariantViolationError } from "@/application/common/errors";
+import { emitOrderEvent } from "@/application/common/events";
+import { verifyOrderAccess } from "@/application/common/guest-access";
 import { validatePickup } from "@/domain/checkout";
-import type { QuoteTerms } from "./get-quote";
+import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
+import { db } from "@/infrastructure/db";
 import {
+  auditRecords,
+  orderProposals,
+  orders,
+  paymentReceipts,
+  paymentReturns,
   pickupLocation,
-  storeSettings,
   quotes,
+  refundAuthorizations,
+  storeSettings,
 } from "@/infrastructure/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import * as v from "valibot";
-import { db } from "@/infrastructure/db";
-import {
-  orders,
-  orderProposals,
-  paymentReceipts,
-  refundAuthorizations,
-  paymentReturns,
-  auditRecords,
-} from "@/infrastructure/db/schema";
-import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
-import { verifyOrderAccess } from "@/application/common/guest-access";
-import { InvariantViolationError } from "@/application/common/errors";
-import { emitOrderEvent } from "@/application/common/events";
+import type { QuoteTerms } from "./get-quote";
 export async function proposeOrderChange(input: {
   orderId: string;
   staffUserId: string;
@@ -179,6 +177,7 @@ export async function acceptOrderChange(input: {
           terms.pickup.date,
           terms.pickup.startTime,
           settings!.timezone,
+          new Date(),
         );
       }
     }

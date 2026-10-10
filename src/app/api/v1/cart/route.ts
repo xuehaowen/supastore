@@ -1,3 +1,4 @@
+import type { CartDto } from "@supastore/contracts";
 import {
   apiResponse,
   readApiBody,
@@ -9,7 +10,7 @@ import { getCart } from "@/application/use-cases/cart/get-cart";
 import { addToCart } from "@/application/use-cases/cart/add-to-cart";
 import { updateCartItem } from "@/application/use-cases/cart/update-cart-item";
 import { parseActionUuid } from "@/application/common/request-validation";
-async function cart(locale: string) {
+async function cart(locale: string): Promise<CartDto | null> {
   const identity = await guestIdentity();
   const result = identity
     ? await getCart({ guestSessionId: identity, locale })

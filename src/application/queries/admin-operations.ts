@@ -72,7 +72,14 @@ export async function getAdminOperations(input: AdminOperationsInput) {
           ]
         : [];
     if (view === "fulfillment")
-      orderFilters.push(inArray(orders.lifecycleStatus, ["confirmed", "completed"]));
+      orderFilters.push(
+        or(
+          inArray(orders.lifecycleStatus, ["confirmed", "completed"]),
+          member.role === "owner"
+            ? sql`exists (select 1 from ${paymentReceipts} where ${paymentReceipts.orderId} = ${orders.id})`
+            : undefined,
+        )!,
+      );
     const paginated = view === "orders" || view === "fulfillment";
     const resultRows = await tx
       .select()
@@ -80,10 +87,20 @@ export async function getAdminOperations(input: AdminOperationsInput) {
       .where(orderFilters.length ? and(...orderFilters) : undefined)
       .orderBy(desc(orders.createdAt), desc(orders.id))
       .limit(paginated ? 51 : 100)
-      .offset(view === "orders" ? (page - 1) * 50 : view === "fulfillment" ? ((input.fulfillmentPage ?? 1) - 1) * 50 : 0);
+      .offset(
+        view === "orders"
+          ? (page - 1) * 50
+          : view === "fulfillment"
+            ? ((input.fulfillmentPage ?? 1) - 1) * 50
+            : 0,
+      );
     const rows = view === "fulfillment" ? resultRows.slice(0, 50) : resultRows;
     const managedOrders = input.managedOrderId
-      ? await tx.select().from(orders).where(eq(orders.id, input.managedOrderId)).limit(1)
+      ? await tx
+          .select()
+          .from(orders)
+          .where(eq(orders.id, input.managedOrderId))
+          .limit(1)
       : [];
     const accounts = await tx.select().from(paymentAccounts);
     const paymentFilters = [

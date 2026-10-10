@@ -6,6 +6,11 @@ Checkout, money, rewards, reporting, destination, shipment and financial-project
 
 Use explicit inputs. Do not add hidden database, network or clock dependencies to pure calculations. Domain coverage thresholds apply here.
 
+Scheduling functions require the caller to supply the current time. ESLint rejects
+imports from application, infrastructure, and UI layers, environment reads, and
+implicit current-time construction in domain code. Shared domain errors live in
+errors.ts; application/common/errors.ts preserves existing imports.
+
 ## Where to start
 
 - [checkout.ts](checkout.ts): Checkout validation and fulfillment inputs.

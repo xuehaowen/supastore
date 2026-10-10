@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { customerError } from "@/i18n/customer";
+import { parsePaymentCheckoutDto } from "@supastore/contracts";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { request } from "../../apps/storefront/lib/client";
 import { getStorefrontMessages } from "../../apps/storefront/lib/i18n";
-import { customerError } from "@/i18n/customer";
 
 export function OrderPayment({
   id,
@@ -45,9 +46,11 @@ export function OrderPayment({
           onClick={async () => {
             setBusy(true);
             try {
-              const result = await request<{ url: string }>(
+              const result = await request(
                 "v1/payments/checkout",
                 { orderId: id, locale },
+                "POST",
+                parsePaymentCheckoutDto,
               );
               const url = new URL(result.url);
               if (

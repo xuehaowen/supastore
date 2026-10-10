@@ -1,24 +1,24 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
-import type { Transaction } from "@/application/common/transaction";
-import { db } from "@/infrastructure/db";
-import {
-  pickupLocation,
-  pickupTimeSlots,
-  fulfillmentSlots,
-  deliveryAreas,
-  storeSettings,
-  slotReservations,
-  slotVariantQuotas,
-  orderItems,
-  auditRecords,
-} from "@/infrastructure/db/schema";
-import { validatePickup } from "@/domain/checkout";
 import { DomainError } from "@/application/common/errors";
-import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import {
   parseActionInteger,
   parseActionUuid,
 } from "@/application/common/request-validation";
+import type { Transaction } from "@/application/common/transaction";
+import { validatePickup } from "@/domain/checkout";
+import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
+import { db } from "@/infrastructure/db";
+import {
+  auditRecords,
+  deliveryAreas,
+  fulfillmentSlots,
+  orderItems,
+  pickupLocation,
+  pickupTimeSlots,
+  slotReservations,
+  slotVariantQuotas,
+  storeSettings,
+} from "@/infrastructure/db/schema";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 export async function slotUsage(tx: Transaction, slotId: string) {
   const [count] = await tx
@@ -233,6 +233,7 @@ export async function configureFulfillmentSlot(input: {
         input.date,
         input.startTime,
         settings.timezone,
+        new Date(),
       );
       const [pickup] = await tx
         .insert(pickupTimeSlots)
@@ -272,6 +273,7 @@ export async function configureFulfillmentSlot(input: {
         input.date,
         input.startTime,
         settings.timezone,
+        new Date(),
       );
       [slot] = await tx
         .insert(fulfillmentSlots)

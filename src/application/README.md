@@ -12,6 +12,7 @@ Change business rules here or in pure domain functions, and keep external provid
 - [External capability contracts](ports/README.md): Small interfaces for notification and payment providers.
 - [Notification policies and templates](notifications/README.md): Published template management, rendering, consent policy, delivery processing, and callback reconciliation.
 - [Business commands and queries](use-cases/README.md): The main entry point for order, catalog, customer, inventory, payment, credit, and merchant workflows.
+- [Authorized read models](queries/README.md): Scoped admin data loading, paginated work queues, and SQL summaries.
 
 ## Related paths and checks
 

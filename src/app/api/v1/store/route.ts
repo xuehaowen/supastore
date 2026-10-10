@@ -1,22 +1,24 @@
-import { db } from "@/infrastructure/db";
-import {
-  storeSettings,
-  categories,
-  paymentAccounts,
-  pickupLocation,
-  shippingZones,
-  pickupTimeSlots,
-  slotReservations,
-  deliveryAreas,
-  fulfillmentSlots,
-} from "@/infrastructure/db/schema";
-import { eq, ne, and, inArray, sql, gte, lte } from "drizzle-orm";
-import { apiResponse } from "@/infrastructure/http/commerce-api";
 import { commercePolicy } from "@/domain/commerce-policy";
 import { pickupAvailability } from "@/domain/pickup-availability";
-import { stripeConfiguredFor } from "@/domain/stripe-currency";
+import { db } from "@/infrastructure/db";
+import {
+  categories,
+  deliveryAreas,
+  fulfillmentSlots,
+  paymentAccounts,
+  pickupLocation,
+  pickupTimeSlots,
+  shippingZones,
+  slotReservations,
+  storeSettings,
+} from "@/infrastructure/db/schema";
+import { apiResponse } from "@/infrastructure/http/commerce-api";
+import { stripeConfiguredFor } from "@/infrastructure/payments/configuration";
+import type { StoreDto } from "@supastore/contracts";
+import { and, eq, gte, inArray, lte, ne, sql } from "drizzle-orm";
+
 export async function GET() {
-  return apiResponse(async () => {
+  return apiResponse<StoreDto | null>(async () => {
     const [store] = await db.select().from(storeSettings).limit(1);
     if (!store) return null;
     const [categoryRows, payments, pickup, shipping, delivery] =
@@ -72,12 +74,16 @@ export async function GET() {
     const availability = await db.transaction(async (tx) => {
       const generated = pickup.map((p) => ({
         location: p,
-        dates: pickupAvailability(p, store.timezone),
+        dates: pickupAvailability(p, store.timezone, new Date()),
       }));
       const deliveryGenerated = delivery.map((p) => ({
         area: p,
         dates: p.scheduleRequired
-          ? pickupAvailability({ ...p, blackoutDates: [] }, store.timezone)
+          ? pickupAvailability(
+              { ...p, blackoutDates: [] },
+              store.timezone,
+              new Date(),
+            )
           : [],
       }));
       const dates = [

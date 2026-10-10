@@ -1,13 +1,18 @@
 "use client";
 import {
-  customerError,
-  statusLabel,
-  formatMoney,
-  activityLabel,
-} from "../../../packages/i18n/src/customer";
-import { useEffect, useState } from "react";
-import { ApiError, request } from "../lib/client";
+  parseCustomerAccountDto,
+  parseRecoveryOrderDto,
+} from "@supastore/contracts";
+
 import type { CustomerAccountDto as Account } from "@supastore/contracts";
+import { useEffect, useState } from "react";
+import {
+  activityLabel,
+  customerError,
+  formatMoney,
+  statusLabel,
+} from "../../../packages/i18n/src/customer";
+import { ApiError, request } from "../lib/client";
 import type { StorefrontMessages } from "../lib/i18n";
 
 type AccountMessages = Pick<StorefrontMessages, "account" | "auth" | "address">;
@@ -30,10 +35,11 @@ export function AccountClient({
   const [reference, setReference] = useState("");
   const [searchReference, setSearchReference] = useState("");
   async function load(nextPage = page, filter = searchReference) {
-    const value = await request<Account>(
+    const value = await request(
       `v1/account?page=${nextPage}&reference=${encodeURIComponent(filter)}`,
       undefined,
       "GET",
+      parseCustomerAccountDto,
     );
     setAccount(value);
     setPage(nextPage);
@@ -51,7 +57,7 @@ export function AccountClient({
   }
   useEffect(() => {
     let active = true;
-    request<Account>("v1/account", undefined, "GET")
+    request("v1/account", undefined, "GET", parseCustomerAccountDto)
       .then((value) => {
         if (active) setAccount(value);
       })
@@ -536,10 +542,11 @@ export function RecoveryClient({
         setBusy(true);
         try {
           if (token) {
-            const result = await request<{ orderId: string }>(
+            const result = await request(
               "v1/recovery",
               { token },
               "PUT",
+              parseRecoveryOrderDto,
             );
             window.location.assign(`/${locale}/orders/${result.orderId}`);
           } else {

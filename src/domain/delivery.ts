@@ -1,7 +1,4 @@
-import {
-  DomainError,
-  InvariantViolationError,
-} from "@/application/common/errors";
+import { DomainError, InvariantViolationError } from "@/domain/errors";
 export interface DeliveryArea {
   id: string;
   name: string;

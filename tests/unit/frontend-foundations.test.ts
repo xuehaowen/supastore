@@ -77,7 +77,7 @@ describe("frontend visual foundations", () => {
 
   it("offers the order CSV export from the order management page", async () => {
     const operations = await readFile(
-      path.join(workspaceRoot, "src/app/admin/operations.tsx"),
+      path.join(workspaceRoot, "src/app/admin/orders-view.tsx"),
       "utf8",
     );
     expect(operations).toContain('href="/api/admin/exports/orders"');
@@ -93,6 +93,10 @@ describe("frontend visual foundations", () => {
       [
         "src/app/admin/page.tsx",
         "src/app/admin/operations.tsx",
+        "src/app/admin/orders-view.tsx",
+        "src/app/admin/payments-view.tsx",
+        "src/app/admin/overview-view.tsx",
+        "src/app/admin/fulfillment-operations.tsx",
         "src/app/admin/products/[id]/edit/page.tsx",
         "src/app/admin/products/page.tsx",
         "src/app/admin/products/import/page.tsx",

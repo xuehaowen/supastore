@@ -1,10 +1,15 @@
 "use client";
-import { customerError } from "../../../packages/i18n/src/customer";
-import { getStorefrontMessages } from "../lib/i18n";
-import { useEffect, useRef, useState } from "react";
+import {
+  parsePaymentCheckoutDto,
+  parseUploadIntentDto,
+} from "@supastore/contracts";
+
 import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { customerError } from "../../../packages/i18n/src/customer";
 import { request } from "../lib/client";
 import type { StorefrontMessages } from "../lib/i18n";
+import { getStorefrontMessages } from "../lib/i18n";
 
 export function OrderActions({
   id,
@@ -83,9 +88,11 @@ export function OrderActions({
             onClick={async () => {
               setBusy(true);
               try {
-                const checkout = await request<{ url: string }>(
+                const checkout = await request(
                   "v1/payments/checkout",
                   { orderId: id, locale },
+                  "POST",
+                  parsePaymentCheckoutDto,
                 );
                 const url = new URL(checkout.url);
                 if (
@@ -127,11 +134,16 @@ export function OrderActions({
             if (!(file instanceof File)) return;
             setBusy(true);
             try {
-              const intent = await request<{ intentId: string }>("evidence", {
-                orderId: id,
-                mime: file.type,
-                size: file.size,
-              });
+              const intent = await request(
+                "evidence",
+                {
+                  orderId: id,
+                  mime: file.type,
+                  size: file.size,
+                },
+                "POST",
+                parseUploadIntentDto,
+              );
               const upload = await fetch(
                 `/api/evidence/upload?orderId=${encodeURIComponent(id)}&intentId=${encodeURIComponent(intent.intentId)}`,
                 {

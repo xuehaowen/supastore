@@ -1,46 +1,44 @@
-import { isDeepStrictEqual } from "node:util";
-import { eq } from "drizzle-orm";
-import * as v from "valibot";
-import { db } from "@/infrastructure/db";
-import {
-  carts,
-  quotes,
-  orders,
-  orderItems,
-  orderFulfillments,
-  storeSettings,
-  pickupTimeSlots,
-  fulfillmentSlots,
-  promotionRedemptions,
-  auditRecords,
-} from "@/infrastructure/db/schema";
-import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
-import { generateOrderReferenceCode } from "@/domain/money/reference-code";
 import {
   InvariantViolationError,
   UnauthorizedError,
 } from "@/application/common/errors";
 import { emitOrderEvent } from "@/application/common/events";
-import { issueOrderSession } from "./guest/create-guest-session";
-import { calculateQuote, type QuoteTerms } from "./get-quote";
-import { getLaunchReadiness } from "./store/get-launch-readiness";
+import { parseActionInteger } from "@/application/common/request-validation";
+import { commercePolicy } from "@/domain/commerce-policy";
+import { generateOrderReferenceCode } from "@/domain/money/reference-code";
+import { createRewardSnapshot, type RewardComponent } from "@/domain/rewards";
+import { stripeCurrencyIssue } from "@/domain/stripe-currency";
+import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
+import { db } from "@/infrastructure/db";
+import {
+  auditRecords,
+  carts,
+  fulfillmentSlots,
+  orderFulfillments,
+  orderItems,
+  orders,
+  pickupTimeSlots,
+  promotionRedemptions,
+  quotes,
+  storeSettings,
+} from "@/infrastructure/db/schema";
+import { stripeConfiguredFor } from "@/infrastructure/payments/configuration";
+import { eq } from "drizzle-orm";
+import { isDeepStrictEqual } from "node:util";
+import * as v from "valibot";
 import { verifiedCustomer } from "./customers/customer-ownership";
+import { calculateQuote, type QuoteTerms } from "./get-quote";
+import { issueOrderSession } from "./guest/create-guest-session";
+import {
+  reserveFulfillmentSlot,
+  reserveSlot,
+} from "./inventory/slot-operations";
 import { reserveOrderStock } from "./inventory/stock-operations";
 import {
   reserveOrderCredit,
   settleOrderCredit,
 } from "./store-credit/credit-operations";
-import { parseActionInteger } from "@/application/common/request-validation";
-import {
-  reserveSlot,
-  reserveFulfillmentSlot,
-} from "./inventory/slot-operations";
-import { commercePolicy } from "@/domain/commerce-policy";
-import { createRewardSnapshot, type RewardComponent } from "@/domain/rewards";
-import {
-  stripeConfiguredFor,
-  stripeCurrencyIssue,
-} from "@/domain/stripe-currency";
+import { getLaunchReadiness } from "./store/get-launch-readiness";
 export interface CreateOrderInput {
   quoteId: string;
   guestSessionId: string;

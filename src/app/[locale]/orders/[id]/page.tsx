@@ -1,34 +1,34 @@
-import { textFor } from "@/i18n/messages";
-import { statusLabel, formatLocalDate } from "@/i18n/customer";
-import { trackOrder } from "@/application/use-cases/tracking";
-import { orderToken, money } from "@/infrastructure/web";
-import { UnauthorizedError } from "@/application/common/errors";
-import { redirect } from "next/navigation";
-import type { QuoteTerms } from "@/application/use-cases/get-quote";
-import { CopyButton, Uploader } from "@/app/interactive";
-import { Hidden, Notice } from "@/app/components";
 import { acceptProposal } from "@/app/actions";
+import { Field, Hidden, Notice } from "@/app/components";
 import { claimOrderAction } from "@/app/customer-actions";
+import { CopyButton, Uploader } from "@/app/interactive";
 import { requestReturnAction } from "@/app/return-actions";
-import { randomUUID } from "node:crypto";
-import { orderItemName } from "@/domain/catalog/order-item-name";
-import { Input } from "@/components/ui/input";
-import { Field } from "@/app/components";
-export const metadata = { robots: { index: false, follow: false } };
+import { UnauthorizedError } from "@/application/common/errors";
+import type { QuoteTerms } from "@/application/use-cases/get-quote";
+import { trackOrder } from "@/application/use-cases/tracking";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getTranslations } from "next-intl/server";
+import { Input } from "@/components/ui/input";
+import { orderItemName } from "@/domain/catalog/order-item-name";
+import { formatLocalDate, statusLabel } from "@/i18n/customer";
+import { textFor } from "@/i18n/messages";
 import { db } from "@/infrastructure/db";
 import {
   storeSettings,
   stripeCheckoutAttempts,
 } from "@/infrastructure/db/schema";
+import { stripeConfiguredFor } from "@/infrastructure/payments/configuration";
+import { money, orderToken } from "@/infrastructure/web";
 import { eq } from "drizzle-orm";
-import { stripeConfiguredFor } from "@/domain/stripe-currency";
-import { getStorefrontMessages } from "../../../../../apps/storefront/lib/i18n";
+import { getTranslations } from "next-intl/server";
+import { redirect } from "next/navigation";
+import { randomUUID } from "node:crypto";
+export const metadata = { robots: { index: false, follow: false } };
+
 import { OrderPayment } from "@/app/order-payment";
+import { getStorefrontMessages } from "../../../../../apps/storefront/lib/i18n";
 export default async function OrderPage({
   params,
   searchParams,
@@ -356,7 +356,8 @@ export default async function OrderPage({
         </Alert>
       ) : order.purchaseTotalCents > 0 &&
         order.lifecycleStatus === "unpaid" &&
-        terms.payment && !paymentAttempt ? (
+        terms.payment &&
+        !paymentAttempt ? (
         <Card className="mt-6">
           <CardHeader>
             <CardTitle>{t("order.paymentInstructions")}</CardTitle>

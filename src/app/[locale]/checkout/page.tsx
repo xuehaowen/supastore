@@ -1,28 +1,27 @@
-import { textFor } from "@/i18n/messages";
+import { CheckoutDetailsForm, CheckoutOrderForm } from "@/app/checkout-forms";
+import { Notice } from "@/app/components";
+import { getCart } from "@/application/use-cases/cart/get-cart";
+import { customerAccount } from "@/application/use-cases/customers/customer-ownership";
+import type { QuoteTerms } from "@/application/use-cases/get-quote";
+import { pickupAvailability } from "@/domain/pickup-availability";
 import { formatLocalDate } from "@/i18n/customer";
-import { and, eq, ne } from "drizzle-orm";
+import { textFor } from "@/i18n/messages";
 import { db } from "@/infrastructure/db";
 import {
-  quotes,
   carts,
+  deliveryAreas,
   paymentAccounts,
   pickupLocation,
-  storeSettings,
+  quotes,
   shippingZones,
-  deliveryAreas,
+  storeSettings,
 } from "@/infrastructure/db/schema";
-import { guestIdentity, customerIdentity, money } from "@/infrastructure/web";
-import { customerAccount } from "@/application/use-cases/customers/customer-ownership";
-import { getCart } from "@/application/use-cases/cart/get-cart";
-import type { QuoteTerms } from "@/application/use-cases/get-quote";
-import { Notice } from "@/app/components";
-import { CheckoutDetailsForm, CheckoutOrderForm } from "@/app/checkout-forms";
-import { pickupAvailability } from "@/domain/pickup-availability";
+import { stripeConfiguredFor } from "@/infrastructure/payments/configuration";
+import { customerIdentity, guestIdentity, money } from "@/infrastructure/web";
+import { and, eq, ne } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
-import { stripeConfiguredFor } from "@/domain/stripe-currency";
+
 import { ShippingAddress } from "@/app/shipping-address";
-import { commercePolicy } from "@/domain/commerce-policy";
-import { availableFulfillment } from "@/domain/shipping-destination";
 import {
   Card,
   CardContent,
@@ -30,6 +29,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { commercePolicy } from "@/domain/commerce-policy";
+import { availableFulfillment } from "@/domain/shipping-destination";
 export const metadata = { robots: { index: false, follow: false } };
 export default async function Checkout({
   params,
@@ -292,6 +293,7 @@ export default async function Checkout({
                     ? pickupAvailability(
                         { ...area, blackoutDates: [] },
                         store?.timezone ?? "UTC",
+                        new Date(),
                       )
                     : [],
                 }))}
@@ -321,7 +323,11 @@ export default async function Checkout({
                   name: location.name,
                   address: location.address,
                   scheduleRequired: location.scheduleRequired,
-                  dates: pickupAvailability(location, store?.timezone ?? "UTC"),
+                  dates: pickupAvailability(
+                    location,
+                    store?.timezone ?? "UTC",
+                    new Date(),
+                  ),
                 }))}
               />
             </CardContent>

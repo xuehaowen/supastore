@@ -38,7 +38,7 @@ test("C1/C2 search, empty results, category navigation and cart edit/remove acro
   await clickAction(
     page,
     page.getByRole("button", {
-      name: "Increase quantity of Studio cup",
+      name: "Increase quantity for Studio cup",
       exact: true,
     }),
   );
@@ -46,7 +46,9 @@ test("C1/C2 search, empty results, category navigation and cart edit/remove acro
   await expect(page.getByText("$48.00", { exact: true }).first()).toBeVisible();
   await page.getByRole("link", { name: "中文", exact: true }).click();
   await expect(page).toHaveURL(/\/zh\/cart/);
-  await expect(page.getByText("$48.00", { exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByText("US$48.00", { exact: true }).first(),
+  ).toBeVisible();
   await page.getByRole("link", { name: "English", exact: true }).click();
   await page.getByRole("button", { name: "Remove", exact: true }).click();
   await expect(
@@ -134,7 +136,7 @@ test("C7/A3 free pickup confirms, rejects premature handoff, then completes", as
     /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
   );
   await page.reload();
-  await expect(page.getByText(/completed · fulfilled/)).toBeVisible();
+  await expect(page.getByText(/Completed · Fulfilled/)).toBeVisible();
   expect(
     (await sql`select * from payment_receipts where order_id=${order.id}`)
       .length,
@@ -222,7 +224,7 @@ test("A1/A2/A3/A4 receipts, underpayment rejection, confirmation, packing slip a
     /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
   );
   await page.reload();
-  await expect(page.getByText(/completed · fulfilled/)).toBeVisible();
+  await expect(page.getByText(/Completed · Fulfilled/)).toBeVisible();
 });
 
 test("C8/C11/C12/A10 cancelled unpaid order retains private tracking and has no refund", async ({
@@ -263,7 +265,7 @@ test("C8/C11/C12/A10 cancelled unpaid order retains private tracking and has no 
   try {
     const other = await stranger.newPage();
     await other.goto(url);
-    await expect(other).toHaveURL(/\/recover$/);
+    await expect(other).toHaveURL(/\/recover\?locale=en$/);
     await expect(other.getByText("cuj@example.test")).toHaveCount(0);
   } finally {
     await stranger.close();
@@ -521,7 +523,7 @@ test("C6 failed upload can retry; clipboard copies stable payment reference", as
     .getByRole("button", { name: "Upload evidence", exact: true })
     .click();
   await expect(page.getByRole("status")).toHaveText(
-    "Storage temporarily unavailable",
+    "Unable to save. Check your entries and try again.",
   );
   await expect(
     page.getByRole("button", { name: "Upload evidence", exact: true }),

@@ -1,17 +1,18 @@
-import { and, eq } from "drizzle-orm";
-import { db } from "@/infrastructure/db";
 import type { Transaction } from "@/application/common/transaction";
+import { commercePolicy } from "@/domain/commerce-policy";
+import { db } from "@/infrastructure/db";
 import {
-  storeSettings,
+  deliveryAreas,
+  paymentAccounts,
+  pickupLocation,
   products,
   productVariants,
-  paymentAccounts,
   shippingZones,
-  pickupLocation,
-  deliveryAreas,
+  storeSettings,
 } from "@/infrastructure/db/schema";
-import { commercePolicy } from "@/domain/commerce-policy";
-import { stripeConfiguredFor } from "@/domain/stripe-currency";
+import { stripeConfiguredFor } from "@/infrastructure/payments/configuration";
+import { and, eq } from "drizzle-orm";
+
 import { publishedTemplateCoverage } from "@/application/notifications/template-manager";
 export async function getLaunchReadiness(tx: Transaction | typeof db = db) {
   const [settings] = await tx.select().from(storeSettings).limit(1);

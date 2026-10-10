@@ -56,19 +56,35 @@ function amount(value: unknown): value is number {
 
 export function parseQuoteDto(value: unknown): QuoteDto {
   const data = record(value);
-  if (!text(data.id) || !text(data.cartId) || !text(data.expiresAt) ||
-    !Number.isFinite(Date.parse(data.expiresAt)) || !Array.isArray(data.items) ||
-    ![data.merchandiseSubtotalCents, data.shippingCents, data.exclusiveTaxCents,
-      data.inclusiveTaxCents, data.discountCents, data.totalPayableCents].every(amount))
+  if (
+    !text(data.id) ||
+    !text(data.cartId) ||
+    !text(data.expiresAt) ||
+    !Number.isFinite(Date.parse(data.expiresAt)) ||
+    !Array.isArray(data.items) ||
+    ![
+      data.merchandiseSubtotalCents,
+      data.shippingCents,
+      data.exclusiveTaxCents,
+      data.inclusiveTaxCents,
+      data.discountCents,
+      data.totalPayableCents,
+    ].every(amount)
+  )
     throw new Error("Invalid checkout response.");
   return data as unknown as QuoteDto;
 }
 
 export function parseCreatedOrderDto(value: unknown): CreatedOrderDto {
   const data = record(value);
-  if (!text(data.id) || !text(data.referenceCode) ||
-    !["unpaid", "confirmed", "completed", "cancelled"].includes(String(data.lifecycleStatus)) ||
-    !amount(data.purchaseTotalCents))
+  if (
+    !text(data.id) ||
+    !text(data.referenceCode) ||
+    !["unpaid", "confirmed", "completed", "cancelled"].includes(
+      String(data.lifecycleStatus),
+    ) ||
+    !amount(data.purchaseTotalCents)
+  )
     throw new Error("Invalid checkout response.");
   return data as unknown as CreatedOrderDto;
 }

@@ -8,7 +8,7 @@ Keep routes thin: parse inputs and establish identity, then call application use
 
 ## Where to start
 
-- [actions.ts](actions.ts): Main customer commands delegated to application workflows.
+- [actions.ts](actions.ts): Compatibility exports for feature-specific server actions in [actions](actions/README.md).
 - [customer-actions.ts](customer-actions.ts): Customer profile/account operations.
 
 - [Merchant administration](admin/README.md): Authenticated merchant screens and actions for setup, catalog, orders, payments, inventory, fulfillment, returns, reports, and notifications.

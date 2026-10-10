@@ -1,24 +1,24 @@
-import { eq, inArray } from "drizzle-orm";
+import { DomainError } from "@/application/common/errors";
+import {
+  parseActionRequiredText,
+  parseActionUuid,
+} from "@/application/common/request-validation";
+import { validatePickup } from "@/domain/checkout";
+import { acquireTransactionLocks } from "@/domain/locking/lock-order";
+import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { db } from "@/infrastructure/db";
 import {
-  orders,
-  orderFulfillments,
-  storeSettings,
-  fulfillmentSlots,
-  slotReservations,
-  pickupTimeSlots,
-  pickupLocation,
-  deliveryAreas,
   auditRecords,
+  deliveryAreas,
+  fulfillmentSlots,
+  orderFulfillments,
+  orders,
+  pickupLocation,
+  pickupTimeSlots,
+  slotReservations,
+  storeSettings,
 } from "@/infrastructure/db/schema";
-import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
-import { acquireTransactionLocks } from "@/domain/locking/lock-order";
-import {
-  parseActionUuid,
-  parseActionRequiredText,
-} from "@/application/common/request-validation";
-import { DomainError } from "@/application/common/errors";
-import { validatePickup } from "@/domain/checkout";
+import { eq, inArray } from "drizzle-orm";
 import { reserveFulfillmentSlot } from "../inventory/slot-operations";
 export async function rescheduleOrder(input: {
   orderId: string;
@@ -81,6 +81,7 @@ export async function rescheduleOrder(input: {
         destination.date,
         destination.startTime,
         destination.timezone,
+        new Date(),
       );
     } else {
       const [oldPickup] = await tx
@@ -114,6 +115,7 @@ export async function rescheduleOrder(input: {
         destination.date,
         destination.startTime,
         destination.timezone,
+        new Date(),
       );
       address = location.address;
       locationId = location.id;
@@ -196,6 +198,7 @@ export async function rescheduleOrderWindow(input: {
         input.date,
         input.startTime,
         source.timezone,
+        new Date(),
       );
       const [target] = await tx
         .insert(fulfillmentSlots)
@@ -233,6 +236,7 @@ export async function rescheduleOrderWindow(input: {
       input.date,
       input.startTime,
       source.timezone,
+      new Date(),
     );
     const [targetPickup] = await tx
       .insert(pickupTimeSlots)

@@ -1,3 +1,4 @@
+import type { CatalogDto } from "@supastore/contracts";
 import { listProducts } from "@/application/use-cases/catalog/list-products";
 import {
   apiResponse,
@@ -6,7 +7,7 @@ import {
 } from "@/infrastructure/http/commerce-api";
 import { localeOf } from "@/infrastructure/web";
 export async function GET(request: Request) {
-  return apiResponse(async () => {
+  return apiResponse<CatalogDto>(async () => {
     const query = Object.fromEntries(new URL(request.url).searchParams);
     return listProducts({
       locale: localeOf(query.locale),

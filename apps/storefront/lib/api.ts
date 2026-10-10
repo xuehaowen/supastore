@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { responseData, responseMessage } from "./response";
 export class BackendApiError extends Error {
   constructor(
     message: string,
@@ -7,34 +8,30 @@ export class BackendApiError extends Error {
     super(message);
   }
 }
-export async function readApi<T>(path: string): Promise<T> {
+export async function readApi<T>(
+  path: string,
+  decode: (value: unknown) => T,
+): Promise<T> {
   const incoming = await headers();
   const response = await fetch(
     `${process.env.BACKEND_URL || "http://127.0.0.1:3000"}/api/v1/${path}`,
     { headers: { cookie: incoming.get("cookie") || "" }, cache: "no-store" },
   );
-  const result = await response.json();
+  const result: unknown = await response.json().catch(() => null);
   if (!response.ok)
     throw new BackendApiError(
-      result.error?.message || "Store temporarily unavailable.",
+      responseMessage(result, "Store temporarily unavailable."),
       response.status,
     );
-  return result.data as T;
+  try {
+    return decode(responseData(result, true));
+  } catch {
+    throw new BackendApiError("Invalid API response.", 502);
+  }
 }
-export const money = (
-  value: number,
-  currency = "USD",
-  precision = 2,
-  locale = "en",
-) =>
-  new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-    minimumFractionDigits: precision,
-    maximumFractionDigits: precision,
-  }).format(value / 10 ** precision);
 export type {
-  StoreDto as Store,
-  ProductDto as Product,
   CartDto as Cart,
+  ProductDto as Product,
+  StoreDto as Store,
 } from "@supastore/contracts";
+export { money } from "./money";

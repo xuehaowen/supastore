@@ -1,8 +1,9 @@
-import Link from "next/link";
+import { parseCatalogDto, parseStoreDto } from "@supastore/contracts";
 import Image from "next/image";
-import { readApi, money, type Store } from "../../lib/api";
-import { alternateLinks, publicOrigin } from "../../lib/seo";
+import Link from "next/link";
+import { money, readApi } from "../../lib/api";
 import { getStorefrontMessages } from "../../lib/i18n";
+import { alternateLinks, publicOrigin } from "../../lib/seo";
 export async function generateMetadata({
   params,
   searchParams,
@@ -12,7 +13,7 @@ export async function generateMetadata({
 }) {
   const { locale } = await params;
   const query = await searchParams;
-  const store = await readApi<Store>("store");
+  const store = await readApi("store", parseStoreDto);
   return {
     title: store.storeName,
     alternates: {
@@ -40,21 +41,10 @@ export default async function Catalog({
   const query = await searchParams;
   const m = getStorefrontMessages(locale);
   const [store, catalog] = await Promise.all([
-    readApi<Store>("store"),
-    readApi<{
-      items: {
-        id: string;
-        handle: string;
-        title: string;
-        description: string;
-        coverImageKey: string | null;
-        lowestPriceCents: number | null;
-      }[];
-      total: number;
-      page: number;
-      pageSize: number;
-    }>(
+    readApi("store", parseStoreDto),
+    readApi(
       `catalog?${new URLSearchParams({ locale, search: query.search || "", category: query.category || "", page: query.page || "1" })}`,
+      parseCatalogDto,
     ),
   ]);
   return (

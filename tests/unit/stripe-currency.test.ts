@@ -1,8 +1,6 @@
+import { stripeCurrencyIssue } from "@/domain/stripe-currency";
+import { stripeConfiguredFor } from "@/infrastructure/payments/configuration";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  stripeConfiguredFor,
-  stripeCurrencyIssue,
-} from "@/domain/stripe-currency";
 afterEach(() => vi.unstubAllEnvs());
 describe("Stripe charge currency units", () => {
   it("fails closed for mismatched or unverified units without converting amounts", () => {

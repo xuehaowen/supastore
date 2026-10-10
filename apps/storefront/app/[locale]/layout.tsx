@@ -1,10 +1,11 @@
+import { parseOptionalStoreDto } from "@supastore/contracts";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { readApi, type Store } from "../../lib/api";
-import { AnalyticsPreference } from "../analytics";
-import { getStorefrontMessages } from "../../lib/i18n";
-import { LanguageLink } from "../language-link";
 import { DocumentLanguage } from "../../../../packages/i18n/src/document-language";
+import { readApi } from "../../lib/api";
+import { getStorefrontMessages } from "../../lib/i18n";
+import { AnalyticsPreference } from "../analytics";
+import { LanguageLink } from "../language-link";
 export default async function Layout({
   children,
   params,
@@ -14,7 +15,7 @@ export default async function Layout({
 }) {
   const { locale } = await params;
   if (!["en", "zh"].includes(locale)) notFound();
-  const store = await readApi<Store | null>("store");
+  const store = await readApi("store", parseOptionalStoreDto);
   const m = getStorefrontMessages(locale);
   return (
     <div lang={locale}>

@@ -1,4 +1,4 @@
-import { InvariantViolationError } from "@/application/common/errors";
+import { InvariantViolationError } from "@/domain/errors";
 import { validShippingRegion } from "@/domain/shipping-destination";
 export function shippingPrice(
   zones: {
@@ -55,7 +55,7 @@ export function validatePickup(
   date: string,
   start: string,
   timezone: string,
-  now = new Date(),
+  now: Date,
 ) {
   if (
     !/^\d{4}-\d{2}-\d{2}$/.test(date) ||

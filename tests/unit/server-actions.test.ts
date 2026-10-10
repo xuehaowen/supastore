@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as actions from "@/app/actions";
 import { DomainError } from "@/application/common/errors";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   commands: Object.fromEntries(
     [
@@ -196,7 +197,6 @@ vi.mock("@/application/use-cases/store/verify-email", () => ({
   requestEmailVerification: mocks.commands.requestEmailVerification,
   verifyEmailDelivery: mocks.commands.verifyEmailDelivery,
 }));
-import * as actions from "@/app/actions";
 const id = "00000000-0000-0000-0000-000000000001";
 const base: Record<string, string> = {
   locale: "en",
@@ -638,10 +638,22 @@ beforeEach(() => {
     sessionToken: "new-token",
   });
   const tx = {
-    select: () => ({ from: () => ({ for: async () => [] }) }),
-    insert: () => ({ values: mocks.write }),
+    select: () => ({
+      from: () => ({ for: async () => [], where: async () => [] }),
+    }),
+    insert: () => ({
+      values: (value: Record<string, unknown>) => {
+        mocks.write(value);
+        return { returning: async () => [{ id, ...value }] };
+      },
+    }),
     update: () => ({
-      set: (value: unknown) => ({ where: async () => mocks.write(value) }),
+      set: (value: Record<string, unknown>) => ({
+        where: () => {
+          mocks.write(value);
+          return { returning: async () => [{ id, ...value }] };
+        },
+      }),
     }),
   };
   mocks.transaction.mockImplementation(async (work) => work(tx));
@@ -701,7 +713,13 @@ describe("every server action request boundary", () => {
         "staff-session",
         "owner",
       );
-      expect(mocks.write).toHaveBeenCalledTimes(1);
+      expect(mocks.write).toHaveBeenCalledTimes(2);
+      expect(mocks.write).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          actorId: "staff-session",
+          action: "created",
+        }),
+      );
     },
   );
   it.each(["savePayment", "saveCategory"] as const)(
@@ -893,7 +911,9 @@ describe("optional and alternate action forms", () => {
     await expect(
       actions.savePayment(form({ id, active: "false" })),
     ).rejects.toThrow("REDIRECT:/admin/setup");
-    expect(mocks.write).toHaveBeenCalledWith({ isActive: false });
+    expect(mocks.write).toHaveBeenCalledWith(
+      expect.objectContaining({ isActive: false }),
+    );
   });
   it("dispatches email verification with the authenticated identity", async () => {
     await expect(actions.verifyEmail(form())).rejects.toThrow("REDIRECT");

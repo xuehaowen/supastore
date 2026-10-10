@@ -87,8 +87,8 @@ export function apiInteger(
     throw new DomainError(`Invalid ${key}.`);
   return value;
 }
-export async function apiResponse(
-  work: () => Promise<unknown>,
+export async function apiResponse<T>(
+  work: () => Promise<T>,
   publicCache = false,
 ) {
   const requestId = crypto.randomUUID();

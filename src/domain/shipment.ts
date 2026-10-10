@@ -1,4 +1,4 @@
-import { DomainError } from "@/application/common/errors";
+import { DomainError } from "@/domain/errors";
 export function validateShipmentQuantities(
   items: { id: string; quantity: number }[],
   shipped: { orderItemId: string; quantity: number }[],

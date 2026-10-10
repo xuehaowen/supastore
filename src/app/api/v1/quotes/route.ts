@@ -1,14 +1,15 @@
-import { getQuote } from "@/application/use-cases/get-quote";
-import {
-  apiResponse,
-  readApiBody,
-  apiText,
-} from "@/infrastructure/http/commerce-api";
-import { guestIdentity } from "@/infrastructure/web";
 import {
   parseActionEnum,
   parseActionUuid,
 } from "@/application/common/request-validation";
+import { getQuote } from "@/application/use-cases/get-quote";
+import {
+  apiResponse,
+  apiText,
+  readApiBody,
+} from "@/infrastructure/http/commerce-api";
+import { guestIdentity } from "@/infrastructure/web";
+import { parseQuoteDto } from "@supastore/contracts";
 export async function POST(request: Request) {
   return apiResponse(async () => {
     const b = await readApiBody(request);
@@ -38,10 +39,10 @@ export async function POST(request: Request) {
       ...(b.deliveryAreaId ? { deliveryAreaId: uuid("deliveryAreaId") } : {}),
       promotionCode: apiText(b, "promotionCode", 100, true),
     });
-    return {
+    return parseQuoteDto({
       id: q.id,
       cartId: q.cartId,
-      expiresAt: q.expiresAt,
+      expiresAt: q.expiresAt.toISOString(),
       merchandiseSubtotalCents: q.merchandiseSubtotalCents,
       shippingCents: q.shippingCents,
       inclusiveTaxCents: q.inclusiveTaxCents,
@@ -49,6 +50,6 @@ export async function POST(request: Request) {
       discountCents: q.discountCents,
       totalPayableCents: q.totalPayableCents,
       items: q.itemsSnapshot,
-    };
+    });
   });
 }

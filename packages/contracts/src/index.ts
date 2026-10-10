@@ -84,6 +84,8 @@ export interface ProductDto {
 }
 export interface CartDto {
   id: string;
+  revision?: number;
+  itemCount?: number;
   items: {
     id: string;
     productTitle: string;

@@ -6,6 +6,63 @@ import {
   deliveredLink,
   clientHeaders,
 } from "./fixtures";
+
+test("separate checkout discards a delayed quote after the form changes", async ({
+  page,
+}) => {
+  await page.goto("/en/products/studio-cup");
+  await page.getByRole("button", { name: "Add to cart" }).click();
+  await page.getByRole("link", { name: "Checkout", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill("Quote Customer");
+  await page.getByLabel("Email", { exact: true }).fill("quote@example.test");
+  await page
+    .getByLabel("Fulfillment", { exact: true })
+    .selectOption("shipping");
+  await page.getByLabel("Full shipping address").fill("1 Original Street");
+  let release!: () => void;
+  let requested!: () => void;
+  const delayed = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const started = new Promise<void>((resolve) => {
+    requested = resolve;
+  });
+  await page.route(
+    "**/api/v1/quotes",
+    async (route) => {
+      requested();
+      await delayed;
+      await route.fulfill({
+        json: {
+          data: {
+            id: randomUUID(),
+            cartId: randomUUID(),
+            expiresAt: new Date(Date.now() + 900000).toISOString(),
+            merchandiseSubtotalCents: 2400,
+            shippingCents: 500,
+            exclusiveTaxCents: 0,
+            inclusiveTaxCents: 0,
+            discountCents: 0,
+            totalPayableCents: 2900,
+            items: [],
+          },
+        },
+      });
+    },
+    { times: 1 },
+  );
+  const review = page.getByRole("button", { name: "Review final total" });
+  await review.click();
+  await started;
+  await page.getByLabel("Full shipping address").fill("2 Changed Street");
+  await expect(review).toBeDisabled();
+  release();
+  await expect(review).toBeEnabled();
+  await expect(page.locator("#checkout-accepted")).toHaveCount(0);
+  await review.click();
+  await expect(page.locator("#checkout-accepted")).toBeVisible();
+});
+
 for (const mode of ["shipping", "pickup", "local_delivery", "none"] as const) {
   test(`separate storefront honors ${mode}-only fulfillment policy`, async ({
     page,
