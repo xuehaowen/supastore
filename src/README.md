@@ -1,0 +1,23 @@
+# Backend source
+
+The root Next.js application, business workflows, pure calculations, and backend integrations live here.
+
+## When working here
+
+Start with app for entry points, application for behavior, domain for calculations, and infrastructure for external effects.
+
+## Where to start
+
+- [instrumentation.ts](instrumentation.ts): Starts backend background work and registers shutdown handlers.
+- [middleware.ts](middleware.ts): Sets locale context for incoming page requests.
+- [Application routes and UI](app/README.md): Customer pages, merchant admin, server actions, and backend HTTP routes.
+- [Application behavior](application/README.md): Coordinates authorized business operations, database transactions, audit/events, and provider-neutral policies.
+- [Pure business rules](domain/README.md): Checkout, money, rewards, reporting, destination, shipment and financial-projection calculations.
+- [Backend integrations](infrastructure/README.md): Database, authentication, storage, providers, HTTP security, workers and runtime setup.
+- [Shared UI components](components/README.md): Reusable component primitives used by application screens.
+- [Root app localization](i18n/README.md): Root locale dictionaries, request context and customer copy/helpers.
+- [Small shared UI utilities](lib/README.md): General presentation utilities used by components.
+
+## More context
+
+[Parent overview](../README.md)

@@ -1,6 +1,8 @@
 # SupaStore
 
-A self-hosted commerce application for independent merchants, with catalog options, collections, stock tracking, customer accounts, store credit, manual payments, refunds, and physical returns. Storefront, merchant admin, outbox worker, and APIs share one deployment.
+A self-hosted commerce application for independent merchants, with catalog options, collections, stock tracking, customer accounts, store credit and rewards, manual and Stripe payments, refunds, and physical returns. Backend and storefront are independently deployable applications; the backend owns merchant admin, APIs, authentication, and the outbox worker. Combined local development remains available.
+
+Start with [Current System Capabilities](docs/system-capabilities.md) for implemented features and limits, and the [Maintenance Guide](docs/system-maintenance.md) for operational workflows. Directory READMEs explain the code beside each module; the navigation index below links their entry points.
 
 Licensed under MIT.
 
@@ -8,7 +10,7 @@ Licensed under MIT.
 
 ## Key Highlights
 
-- **Lean Production Runtime:** One Next.js application with PostgreSQL, S3-compatible storage, and SMTP. Container size and memory budgets require representative load measurement; they are not guaranteed limits. See [commerce release evidence](docs/commerce-release-evidence.md).
+- **Production Runtime:** Separate Next.js backend and storefront applications with PostgreSQL, S3-compatible storage, and SMTP. Container size and memory budgets require representative load measurement; they are not guaranteed limits. See [two-service deployment](docs/two-service-deployment.md) and [release evidence](docs/generic-store-release-evidence.md).
 - **Zero-External-Cache Architecture:** Redis-free architecture using PostgreSQL session management, row-level locks (`SELECT ... FOR UPDATE SKIP LOCKED`), and in-memory LRU token buckets.
 - **Transactional Outbox Worker:** Reliable asynchronous email notification worker with durable delivery leases and bounded exponential backoff (1m, 5m, 15m, 1h, 6h $\to$ exhausted).
 - **Exact Financial Invariants:** Integer minor-unit arithmetic, canonical financial projections, audited receipt corrections, and component-level payout discrepancies.
@@ -93,7 +95,7 @@ pnpm test:unit
 # Run real PostgreSQL integration tests with an isolated embedded database
 pnpm test:integration
 
-# Enforce 90% minimum coverage for lines, statements, functions, and branches;
+# Enforce 90% minimum pure-domain coverage for lines, statements, functions, and branches;
 # write HTML/LCOV reports to coverage/
 pnpm test:coverage
 
@@ -111,19 +113,31 @@ pnpm test:e2e
 
 ## Documentation Index
 
-| Document                                                          | Description                                                      |
-| ----------------------------------------------------------------- | ---------------------------------------------------------------- |
-| [Product Scope](docs/product-scope.md)                            | Audience, release boundary and document ownership                |
-| [Business Workflows](docs/business-workflows.md)                  | User operations and state transitions                            |
-| [Transaction Contracts](docs/transaction-contracts.md)            | Financial calculations, locking, retries and executable examples |
-| [Data Model](docs/database-schema.md)                             | Entities, relationships, constraints and retention               |
-| [Events Spec](docs/api-events-spec.md)                            | Notification contracts and worker coordination                   |
-| [Architecture Overview](docs/architecture-overview.md)            | Stack, module boundaries and authorization                       |
-| [Critical User Journeys](docs/critical-user-journeys.md)          | Acceptance outcomes and verification coverage                    |
-| [Deployment Recipes](docs/deployment-recipes.md)                  | Self-hosted, VPS, and Cloud deployment guides                    |
-| [Merchant Operations](docs/merchant-operations.md)                | Setup wizard and daily administrative queues                     |
-| [Disaster Recovery Playbook](docs/playbooks/disaster-recovery.md) | Cold backup restore and safety checklists                        |
-| [Outbox Reconciliation](docs/playbooks/outbox-reconciliation.md)  | Event audit and queue recovery workflows                         |
+For short explanations beside the code, open the directory READMEs:
+
+- [Backend source](src/README.md): routes, business workflows, domain rules, and integrations.
+- [Applications](apps/README.md): backend launcher and separate customer storefront.
+- [Shared packages](packages/README.md): HTTP contracts, localization, and destination helpers.
+- [Scripts](scripts/README.md): development, deployment, migration, and recovery tools.
+- [Tests](tests/README.md): unit, integration, and browser verification.
+
+Each module README explains its responsibility, maintenance constraints, and where to find more detail. These cover module boundaries; individual dynamic page and route folders are described by their owning UI/API README.
+
+| Document                                                          | Description                                                         |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------- |
+| [Current System Capabilities](docs/system-capabilities.md)        | Implemented capabilities, boundaries, workflows and evidence limits |
+| [System Maintenance Guide](docs/system-maintenance.md)            | Configuration, verification, diagnosis, upgrades and recovery       |
+| [Product Scope](docs/product-scope.md)                            | Audience, release boundary and document ownership                   |
+| [Business Workflows](docs/business-workflows.md)                  | User operations and state transitions                               |
+| [Transaction Contracts](docs/transaction-contracts.md)            | Financial calculations, locking, retries and executable examples    |
+| [Data Model](docs/database-schema.md)                             | Entities, relationships, constraints and retention                  |
+| [Events Spec](docs/api-events-spec.md)                            | Notification contracts and worker coordination                      |
+| [Architecture Overview](docs/architecture-overview.md)            | Stack, module boundaries and authorization                          |
+| [Critical User Journeys](docs/critical-user-journeys.md)          | Acceptance outcomes and verification coverage                       |
+| [Deployment Recipes](docs/deployment-recipes.md)                  | Self-hosted, VPS, and Cloud deployment guides                       |
+| [Merchant Operations](docs/merchant-operations.md)                | Setup wizard and daily administrative queues                        |
+| [Disaster Recovery Playbook](docs/playbooks/disaster-recovery.md) | Cold backup restore and safety checklists                           |
+| [Outbox Reconciliation](docs/playbooks/outbox-reconciliation.md)  | Event audit and queue recovery workflows                            |
 
 ---
 
