@@ -41,7 +41,11 @@ pnpm install
 cp .env.example .env
 ```
 
-Edit `.env` to set your `DATABASE_URL`, `ADMIN_SETUP_SECRET`, and `BETTER_AUTH_SECRET`.
+Edit `.env` to set your `DATABASE_URL` and separate generated credentials for
+`POSTGRES_PASSWORD`, `ADMIN_SETUP_SECRET`, `BETTER_AUTH_SECRET`, `S3_ACCESS_KEY_ID`
+and `S3_SECRET_ACCESS_KEY`. Use at least 32 random characters for the authentication
+secret. Set the same database password in `DATABASE_URL`. See the
+[deployment guide](docs/two-service-deployment.md) for generation and existing-volume recovery.
 
 ### 3. Run Migrations & Seed Demo Store
 

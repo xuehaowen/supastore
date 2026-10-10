@@ -1,4 +1,4 @@
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, gt } from "drizzle-orm";
 import { randomBytes, randomUUID } from "node:crypto";
 import { db } from "@/infrastructure/db";
 import {
@@ -31,23 +31,22 @@ export async function redeemOwnerRecovery(
     const identifier = `owner-recovery:${token}`;
 
     const [record] = await tx
-      .select()
-      .from(verification)
-      .where(eq(verification.identifier, identifier))
-      .limit(1);
+      .delete(verification)
+      .where(
+        and(
+          eq(verification.identifier, identifier),
+          gt(verification.expiresAt, new Date()),
+        ),
+      )
+      .returning();
 
-    if (!record || record.expiresAt.getTime() <= Date.now()) {
-      // Clean up expired token if exists
-      if (record) {
-        await tx.delete(verification).where(eq(verification.id, record.id));
-      }
+    if (!record) {
       throw new UnauthorizedError(
         "Recovery link is invalid or has expired. Please run the CLI recovery command again.",
       );
     }
 
-    // Atomic consumption - delete record so it can never be reused
-    await tx.delete(verification).where(eq(verification.id, record.id));
+    // DELETE RETURNING gives exactly one transaction ownership of the token.
 
     const userId = record.value;
 

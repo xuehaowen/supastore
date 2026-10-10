@@ -6,11 +6,11 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-supastore}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d supastore"]
       interval: 5s
@@ -27,18 +27,18 @@ services:
     environment:
       ADMINER_DEFAULT_SERVER: postgres
     ports:
-      - "9002:8080"
+      - "127.0.0.1:9002:8080"
 
   rustfs:
     image: rustfs/rustfs:latest
     container_name: supastore-rustfs
     restart: unless-stopped
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     environment:
-      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY_ID:-rustfsadmin}
-      RUSTFS_SECRET_KEY: ${S3_SECRET_ACCESS_KEY:-rustfsadmin}
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY_ID:?Set S3_ACCESS_KEY_ID}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_ACCESS_KEY:?Set S3_SECRET_ACCESS_KEY}
     volumes:
       - rustfs_data:/data
 
@@ -53,9 +53,9 @@ services:
     expose: ["3000"]
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-supastore}?sslmode=disable
-      - ADMIN_SETUP_SECRET=${ADMIN_SETUP_SECRET:-change-me-to-a-secure-random-secret-for-bootstrap}
-      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-change-me-to-a-secure-random-auth-secret-min-32-chars}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-supastore}?sslmode=disable
+      - ADMIN_SETUP_SECRET=${ADMIN_SETUP_SECRET:?Set ADMIN_SETUP_SECRET}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET}
       - BETTER_AUTH_URL=${STOREFRONT_ORIGIN:-http://localhost:3000}
       - APP_URL=${APP_URL:-http://localhost:3000}
       - STOREFRONT_ORIGIN=${STOREFRONT_ORIGIN:-http://localhost:3000}
@@ -65,8 +65,8 @@ services:
       - S3_BUCKET_PRIVATE=supastore-private
       - S3_BUCKET_PUBLIC=supastore-public
       - S3_REGION=us-east-1
-      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID:-rustfsadmin}
-      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-rustfsadmin}
+      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID:?Set S3_ACCESS_KEY_ID}
+      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:?Set S3_SECRET_ACCESS_KEY}
       - ENABLE_OUTBOX_WORKER=true
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT:-587}
@@ -127,7 +127,7 @@ services:
       target: migrations
     profiles: [migration]
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-supastore}?sslmode=disable
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-supastore}?sslmode=disable
     depends_on:
       postgres:
         condition: service_healthy

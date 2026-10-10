@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { UnauthorizedError } from "@/application/common/errors";
+import { createHmac } from "node:crypto";
 
 const mocks = vi.hoisted(() => ({
   redeemOwnerRecovery: vi.fn(),
@@ -24,6 +26,33 @@ vi.mock("@/application/use-cases/uploads/finalize-upload", () => ({
   finalizeUpload: mocks.finalizeUpload,
 }));
 vi.mock("@/infrastructure/db", () => ({ db: mocks.db }));
+vi.mock("@/infrastructure/auth", () => ({
+  auth: {
+    $context: Promise.resolve({
+      secret: "SyntheticRecoveryCookieSecret123456789!",
+      authCookies: {
+        sessionToken: {
+          name: "__Secure-better-auth.session_token",
+          attributes: {
+            httpOnly: true,
+            secure: true,
+            sameSite: "lax",
+            path: "/",
+          },
+        },
+        sessionData: {
+          name: "__Secure-better-auth.session_data",
+          attributes: {
+            httpOnly: true,
+            secure: true,
+            sameSite: "lax",
+            path: "/",
+          },
+        },
+      },
+    }),
+  },
+}));
 
 import { GET as redeem } from "@/app/api/auth/recover-owner/redeem/route";
 import { GET as asset } from "@/app/api/assets/route";
@@ -103,18 +132,38 @@ describe("API route boundaries", () => {
     });
 
     const response = await redeem(
-      request("https://shop.test/api/auth/recover-owner/redeem?token=token"),
+      request("https://shop.test/api/auth/recover-owner/redeem?token=token", {
+        headers: { cookie: "__Secure-better-auth.session_data.0=stale-cache" },
+      }),
     );
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe("https://shop.test/admin");
-    expect(response.headers.get("set-cookie")).toContain(
-      "better-auth.session_token=session-token",
-    );
+    const signed = response.cookies.get("__Secure-better-auth.session_token")!;
+    const expectedSignature = createHmac(
+      "sha256",
+      "SyntheticRecoveryCookieSecret123456789!",
+    )
+      .update("session-token")
+      .digest("base64");
+    expect(signed.value).toBe(`session-token.${expectedSignature}`);
+    expect(signed).toMatchObject({
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      expires: expiresAt,
+    });
+    expect(response.cookies.get("better-auth.session_token")).toBeUndefined();
+    expect(
+      response.cookies.get("__Secure-better-auth.session_data.0")?.maxAge,
+    ).toBe(0);
+    expect(response.headers.get("cache-control")).toBe("no-store");
   });
 
   it("redirects invalid owner recovery tokens to login without exposing a stack trace", async () => {
-    mocks.redeemOwnerRecovery.mockRejectedValueOnce(new Error("expired token"));
+    mocks.redeemOwnerRecovery.mockRejectedValueOnce(
+      new UnauthorizedError("expired token"),
+    );
 
     const response = await redeem(
       request("https://shop.test/api/auth/recover-owner/redeem?token=expired"),
@@ -124,6 +173,21 @@ describe("API route boundaries", () => {
     expect(response.headers.get("location")).toBe(
       "https://shop.test/admin/login?error=expired+token",
     );
+  });
+
+  it("does not expose unexpected recovery errors", async () => {
+    mocks.redeemOwnerRecovery.mockRejectedValueOnce(
+      new Error("private database details"),
+    );
+    const response = await redeem(
+      request("https://shop.test/api/auth/recover-owner/redeem?token=token"),
+    );
+    expect(response.headers.get("location")).toBe(
+      "https://shop.test/admin/login?error=Failed+to+redeem+recovery+link.",
+    );
+    expect(
+      response.cookies.get("__Secure-better-auth.session_token"),
+    ).toBeUndefined();
   });
 
   it("redirects published product assets and rejects unknown keys", async () => {

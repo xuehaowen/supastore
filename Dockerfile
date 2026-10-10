@@ -9,8 +9,8 @@ COPY packages/contracts/package.json ./packages/contracts/package.json
 RUN pnpm install --frozen-lockfile
 FROM deps AS backend-builder
 COPY . .
-ENV NEXT_TELEMETRY_DISABLED=1 STANDALONE=true NODE_ENV=production DATABASE_URL=postgresql://build:build@127.0.0.1:1/build_only BETTER_AUTH_SECRET=build-only-placeholder-secret-at-least-32-characters BETTER_AUTH_URL=http://localhost:3000
-RUN node scripts/backend.mjs build
+ENV NEXT_TELEMETRY_DISABLED=1 STANDALONE=true NODE_ENV=production DATABASE_URL=postgresql://build:build@127.0.0.1:1/build_only BETTER_AUTH_URL=http://localhost:3000
+RUN BETTER_AUTH_SECRET=$(node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('hex'))") node scripts/backend.mjs build
 RUN mkdir -p /app/public
 FROM node:22-alpine AS backend
 WORKDIR /app

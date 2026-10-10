@@ -17,6 +17,13 @@ can complete bounded provider calls before closing pooled transports.
 
 ## Local development
 
+Generate separate random values for `POSTGRES_PASSWORD`, `ADMIN_SETUP_SECRET`,
+`BETTER_AUTH_SECRET`, `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` in `.env`.
+For example, run `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`
+once per value. Set the same PostgreSQL password in `DATABASE_URL`; hex values
+do not need URL escaping. Compose rejects missing or empty credentials, and the
+production backend rejects short or known placeholder authentication secrets.
+
 Install with `pnpm install --frozen-lockfile`. Start dependencies with
 `docker compose up -d postgres rustfs`, run `pnpm db:migrate` against the development
 database, then run `pnpm dev:backend` and `pnpm dev:storefront` separately.
@@ -26,6 +33,25 @@ and `http://127.0.0.1:3000` for the storefront's `BACKEND_URL`. Customer pages a
 `docker compose --profile tools up -d adminer`; RustFS retains port 9001.
 
 ## Containers
+
+PostgreSQL, RustFS and optional Adminer host ports bind only to `127.0.0.1`.
+Use an SSH tunnel for remote operator access. Only the storefront port is intended
+for public ingress.
+
+### Existing PostgreSQL volume correction
+
+PostgreSQL 18 stores its cluster under `/var/lib/postgresql/18/docker`; the named
+volume now mounts at `/var/lib/postgresql`. Earlier Compose versions incorrectly
+mounted `/var/lib/postgresql/data`. Before recreating an existing database container,
+inspect its mounts and `SHOW data_directory`, and take a verified logical backup
+of the running database. Its actual data may reside in an anonymous volume rather
+than the named `postgres_data` volume. Preserve both volumes and the existing
+container until a restored copy has passed verification. Restore the backup into
+a fresh PostgreSQL 18 instance with the corrected mount, verify application data,
+and then switch the application connection. Do not use `down --volumes` or simply
+recreate the old container as a migration procedure.
+
+### Application startup
 
 `docker compose build backend storefront migrate` creates two application images
 and an explicit migration job. Configure secrets and a public HTTPS origin, back
