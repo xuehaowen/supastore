@@ -14,8 +14,55 @@ const compat = new FlatCompat({
   ),
 });
 
+// Next's Babel parser wrapper omits the metadata ESLint needs for cached configs.
+const nextConfigs = compat.extends("next/core-web-vitals").map((config) => {
+  const parser = config.languageOptions?.parser;
+  if (!parser || parser.meta) return config;
+  return {
+    ...config,
+    languageOptions: {
+      ...config.languageOptions,
+      parser: {
+        ...parser,
+        meta: {
+          name: "eslint-config-next/parser",
+          version: require("eslint-config-next/package.json").version,
+        },
+      },
+    },
+  };
+});
+
 const eslintConfig = [
-  ...compat.extends("next/core-web-vitals"),
+  ...nextConfigs,
+  {
+    files: ["src/domain/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/application/*", "@/infrastructure/*", "@/app/*"],
+              message: "Domain rules must not depend on outer layers.",
+            },
+          ],
+        },
+      ],
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "MemberExpression[object.name='process'][property.name='env']",
+          message: "Pass configuration into domain rules explicitly.",
+        },
+        {
+          selector: "NewExpression[callee.name='Date'][arguments.length=0]",
+          message: "Pass the current time into domain rules explicitly.",
+        },
+      ],
+    },
+  },
   {
     ignores: [
       ".next/**",
