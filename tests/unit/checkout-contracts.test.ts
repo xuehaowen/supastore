@@ -43,4 +43,7 @@ describe("checkout response contracts", () => {
       parseCreatedOrderDto({ ...order, lifecycleStatus: "unknown" }),
     ).toThrow();
   });
+  it.each([["unpaid"], ["confirmed"], new String("completed")])("rejects coerced order statuses", (lifecycleStatus) => {
+    expect(() => parseCreatedOrderDto({ id: "order-1", referenceCode: "REF", lifecycleStatus, purchaseTotalCents: 100 })).toThrow("Invalid checkout response");
+  });
 });
