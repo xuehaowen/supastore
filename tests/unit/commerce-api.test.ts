@@ -1,4 +1,5 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { logger } from "@/infrastructure/security/logger";
 import {
   assertMutationOrigin,
   readApiBody,
@@ -7,6 +8,23 @@ import {
 } from "@/infrastructure/http/commerce-api";
 import { UnauthorizedError, ConflictError } from "@/application/common/errors";
 describe("commerce API boundary", () => {
+  afterEach(() => vi.restoreAllMocks());
+  it("correlates unexpected failures through the structured logger without exposing details", async () => {
+    const logError = vi.fn();
+    const child = vi
+      .spyOn(logger, "child")
+      .mockReturnValue({ ...logger, error: logError });
+    const failure = new Error("Synthetic database failure");
+    const response = await apiResponse(async () => {
+      throw failure;
+    });
+    const payload = await response.json();
+    expect(response.status).toBe(500);
+    expect(payload.error.message).toBe("Unable to complete request.");
+    expect(payload.requestId).toBe(response.headers.get("x-request-id"));
+    expect(child).toHaveBeenCalledWith({ requestId: payload.requestId });
+    expect(logError).toHaveBeenCalledWith("Commerce API failure", failure);
+  });
   const request = (body: string, origin = "https://shop.example") =>
     new Request("https://shop.example/api/v1/cart", {
       method: "POST",

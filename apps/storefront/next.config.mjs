@@ -14,6 +14,10 @@ if (
 )
   throw new Error("BACKEND_URL must be an HTTP origin");
 const nextConfig = {
+  distDir: process.env.NEXT_DIST_DIR || ".next",
+  typescript: {
+    tsconfigPath: process.env.STOREFRONT_TSCONFIG || "tsconfig.json",
+  },
   outputFileTracingRoot: fileURLToPath(new URL("../../", import.meta.url)),
   ...(process.env.STANDALONE === "true" || process.env.DOCKER_BUILD === "true"
     ? { output: "standalone" }

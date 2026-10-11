@@ -23,6 +23,11 @@ export interface VariantOptionsDto {
   options: { id: string; label: string }[];
   hasNext: boolean;
 }
+export interface SitemapPageDto {
+  total: number;
+  pageSize: number;
+  items: { handle: string }[];
+}
 
 export interface OrderDetailDto {
   order: {
@@ -329,6 +334,23 @@ export const parseVariantOptionsDto = (value: unknown): VariantOptionsDto =>
   );
 export const parseCatalogDto = (value: unknown): CatalogDto =>
   parse(value, catalog);
+export const parseSitemapPageDto = (value: unknown): SitemapPageDto => {
+  const result = parse<SitemapPageDto>(
+    value,
+    shape({
+      total: amount,
+      pageSize: positive,
+      items: array(shape({ handle: text })),
+    }),
+  );
+  if (
+    result.pageSize !== 1000 ||
+    result.total > 50000000 ||
+    result.items.length > 1000
+  )
+    throw new Error("Invalid API response.");
+  return result;
+};
 export const parseOrderDetailDto = (value: unknown): OrderDetailDto =>
   parse(value, order);
 export const parseUploadIntentDto = (value: unknown): { intentId: string } =>

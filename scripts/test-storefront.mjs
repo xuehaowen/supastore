@@ -29,6 +29,7 @@ const env = {
   NEXT_DIST_DIR: ".next-cuj/" + database,
   STOREFRONT_ORIGIN: "http://localhost:3103",
   NEXT_TSCONFIG: ".tsconfig-cuj.json",
+  STOREFRONT_TSCONFIG: ".tsconfig-cuj.json",
   DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:55449/" + database,
   APP_URL: "http://localhost:3103",
   BETTER_AUTH_URL: "http://localhost:3102",
@@ -187,6 +188,10 @@ try {
     await admin.end();
   }
   writeFileSync(env.NEXT_TSCONFIG, readFileSync("tsconfig.json"));
+  writeFileSync(
+    "apps/storefront/" + env.STOREFRONT_TSCONFIG,
+    readFileSync("apps/storefront/tsconfig.json"),
+  );
   const mail = start(["scripts/test-mail.mjs"]);
   await ready("http://127.0.0.1:9010", mail);
   start(["scripts/test-storage.mjs"]);

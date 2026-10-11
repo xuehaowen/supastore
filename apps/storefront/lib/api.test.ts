@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseOptionalCartDto } from "../../../packages/contracts/src";
-import { BackendApiError, readApi } from "./api";
+import { BackendApiError, readApi, readPublicApi } from "./api";
 import { ApiError, request } from "./client";
 vi.mock("next/headers", () => ({
   headers: async () => new Headers({ cookie: "guest=test" }),
@@ -18,6 +18,45 @@ afterEach(() => {
 });
 
 describe("decoded storefront HTTP boundaries", () => {
+  it("caches public catalog reads without forwarding customer cookies", async () => {
+    fetchMock.mockResolvedValue(
+      Response.json({ data: { title: "Public catalog" } }),
+    );
+    await expect(
+      readPublicApi("catalog?page=1", (value) => value),
+    ).resolves.toEqual({ title: "Public catalog" });
+    expect(fetchMock.mock.calls[0]![1]).toMatchObject({
+      cache: "force-cache",
+      next: { revalidate: 30 },
+    });
+    expect(fetchMock.mock.calls[0]![1].headers).toBeUndefined();
+  });
+  it.each([
+    "catalog?search=unique-customer-search",
+    "catalog?page=2",
+    "products/cup?unexpected=unique",
+    "products/cup?locale=unexpected",
+    "store?unique=anything",
+  ])("keeps variable public queries uncached: %s", async (path) => {
+    fetchMock.mockResolvedValue(
+      Response.json({ data: { title: "Public catalog" } }),
+    );
+    await readPublicApi(path, (value) => value);
+    expect(fetchMock.mock.calls[0]![1]).toMatchObject({ cache: "no-store" });
+    expect(fetchMock.mock.calls[0]![1].headers).toBeUndefined();
+  });
+  it.each([
+    "account",
+    "cart",
+    "orders/private",
+    "products/..",
+    "products/%2e%2e%2fcart",
+  ])("refuses to cache private or malformed paths: %s", async (path) => {
+    await expect(readPublicApi(path, (value) => value)).rejects.toMatchObject({
+      status: 400,
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
   it("preserves bounded response request IDs in both typed error boundaries", async () => {
     fetchMock.mockImplementation(
       () =>

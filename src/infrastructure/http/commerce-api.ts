@@ -1,5 +1,6 @@
 import { DomainError, ForbiddenError } from "@/application/common/errors";
 import { ValiError } from "valibot";
+import { logger } from "@/infrastructure/security/logger";
 
 export function assertMutationOrigin(request: Request) {
   const origin = request.headers.get("origin");
@@ -118,7 +119,8 @@ export async function apiResponse<T>(
               : known
                 ? 400
                 : 500;
-    if (!known) console.error("Commerce API failure", { requestId, error });
+    if (!known)
+      logger.child({ requestId }).error("Commerce API failure", error);
     return Response.json(
       {
         error: {

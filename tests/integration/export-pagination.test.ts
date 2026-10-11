@@ -3,6 +3,7 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { db, queryClient } from "@/infrastructure/db";
 import { streamProductsCsv } from "@/application/use-cases/catalog/export-csv";
+import { getSitemapPage } from "@/application/queries/sitemap";
 
 beforeAll(async () => {
   if (!process.env.DATABASE_URL?.endsWith("/supastore_test"))
@@ -11,6 +12,33 @@ beforeAll(async () => {
 });
 afterAll(async () => {
   await queryClient.end();
+});
+
+it("pages published sitemap handles without loading full product records", async () => {
+  const prefix = randomUUID();
+  const records = Array.from({ length: 1001 }, (_, index) => ({
+    id: randomUUID(),
+    handle: `${prefix}-${index}`,
+  }));
+  const hidden = randomUUID();
+  try {
+    await queryClient`insert into products(id,handle,title) select r.id,r.handle,'Sitemap fixture' from jsonb_to_recordset(${JSON.stringify(records)}::jsonb) as r(id uuid,handle text)`;
+    await queryClient`insert into products(id,handle,title,is_published) values (${hidden},${hidden},'Hidden',false)`;
+    const index = await getSitemapPage(1, true);
+    expect(index.items).toHaveLength(0);
+    const handles: string[] = [];
+    for (let page = 1; page <= Math.ceil(index.total / 1000); page++) {
+      const batch = await getSitemapPage(page);
+      expect(batch.items.length).toBeLessThanOrEqual(1000);
+      handles.push(...batch.items.map((item) => item.handle));
+    }
+    expect(
+      new Set(handles.filter((handle) => handle.startsWith(prefix))).size,
+    ).toBe(1001);
+    expect(handles).not.toContain(hidden);
+  } finally {
+    await queryClient`delete from products where handle like ${prefix + "%"} or id=${hidden}`;
+  }
 });
 
 it("limits statement execution and lock waits on runtime connections", async () => {

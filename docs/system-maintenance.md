@@ -26,12 +26,34 @@ uses an in-memory workbook.
 
 ## Request and database resource budgets
 
+The separate storefront caches common catalog first pages, published product
+reads and store settings with 30-second revalidation, without customer cookies.
+Searches, filters, later catalog pages and unexpected query parameters stay
+uncached to bound cache-key growth. Private carts, checkout, orders and accounts
+continue to read current state. Revalidation serves stale content while it
+refreshes and can retain stale public content during a backend outage; accepted
+quotes and mutations always use current backend state.
+Recovery cutovers must replace the storefront's public data cache before traffic
+resumes, so cached product identifiers from another database are not reused.
+The separate-service test runner isolates cache/build output and generated
+TypeScript configuration per synthetic database.
+
+The separate storefront's `/sitemap.xml` is a streamed index of
+`/sitemaps/{page}.xml` files. Discovery reads only published product handles,
+at most 1,000 per API request. Each XML page contains up to 2,002 bilingual URLs,
+including the two home URLs on the first page. Publication changes can move
+records between pages during a crawl. The combined application's existing
+category/collection sitemap still needs migration to this paged structure.
+
 Storefront JSON reads and writes have a 15-second deadline covering connection,
 headers and response-body reads. Responses are limited to 2 MiB, using both the
 advertised length and actual decoded bytes. Timeout and oversized-body failures
 cancel the transport and use the existing typed error boundary. Bounded backend
 request IDs are retained on errors for correlation; requests are not retried
 automatically.
+Unexpected commerce API failures use the existing structured logger with the
+same request ID returned in the response, while public errors retain a generic
+message.
 
 Runtime database connections default to a pool of 10, a 30-second statement
 timeout, a 5-second lock wait, and a 60-second idle-transaction timeout. Configure

@@ -1,7 +1,7 @@
 import { parseCatalogDto, parseStoreDto } from "@supastore/contracts";
 import Image from "next/image";
 import Link from "next/link";
-import { money, readApi } from "../../lib/api";
+import { money, readPublicApi } from "../../lib/api";
 import { getStorefrontMessages } from "../../lib/i18n";
 import { alternateLinks, publicOrigin } from "../../lib/seo";
 export async function generateMetadata({
@@ -13,7 +13,7 @@ export async function generateMetadata({
 }) {
   const { locale } = await params;
   const query = await searchParams;
-  const store = await readApi("store", parseStoreDto);
+  const store = await readPublicApi("store", parseStoreDto);
   return {
     title: store.storeName,
     alternates: {
@@ -41,8 +41,8 @@ export default async function Catalog({
   const query = await searchParams;
   const m = getStorefrontMessages(locale);
   const [store, catalog] = await Promise.all([
-    readApi("store", parseStoreDto),
-    readApi(
+    readPublicApi("store", parseStoreDto),
+    readPublicApi(
       `catalog?${new URLSearchParams({ locale, search: query.search || "", category: query.category || "", page: query.page || "1" })}`,
       parseCatalogDto,
     ),

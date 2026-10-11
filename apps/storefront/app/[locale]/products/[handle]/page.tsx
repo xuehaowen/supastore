@@ -1,13 +1,13 @@
 import { parseProductDto, parseStoreDto } from "@supastore/contracts";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { BackendApiError, readApi } from "../../../../lib/api";
+import { BackendApiError, readPublicApi } from "../../../../lib/api";
 import { getStorefrontMessages } from "../../../../lib/i18n";
 import { alternateLinks, publicOrigin, safeJsonLd } from "../../../../lib/seo";
 import { AddToCart } from "../../../commerce";
 async function readProduct(locale: string, handle: string) {
   try {
-    return await readApi(
+    return await readPublicApi(
       `products/${encodeURIComponent(handle)}?locale=${locale}`,
       parseProductDto,
     );
@@ -52,7 +52,7 @@ export default async function ProductPage({
   const m = getStorefrontMessages(locale);
   const [product, store] = await Promise.all([
     readProduct(locale, handle),
-    readApi("store", parseStoreDto),
+    readPublicApi("store", parseStoreDto),
   ]);
   return (
     <>
