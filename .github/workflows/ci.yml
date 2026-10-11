@@ -10,9 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
-          version: 11.0.9
+          node-version: 22
+      - run: npm install --global pnpm@11.0.9
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -40,9 +41,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
-          version: 11.0.9
+          node-version: 22
+      - run: npm install --global pnpm@11.0.9
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -69,9 +71,10 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
-          version: 11.0.9
+          node-version: 22
+      - run: npm install --global pnpm@11.0.9
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -103,9 +106,10 @@ jobs:
       S3_SECRET_ACCESS_KEY: fixture-secret
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
-          version: 11.0.9
+          node-version: 22
+      - run: npm install --global pnpm@11.0.9
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -117,9 +121,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
-          version: 11.0.9
+          node-version: 22
+      - run: npm install --global pnpm@11.0.9
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -127,7 +132,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm run test:browser
-      - run: pnpm run test:storefront
+      - run: node scripts/test-storefront.mjs --measure
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
