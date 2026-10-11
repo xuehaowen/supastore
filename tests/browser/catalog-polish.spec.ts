@@ -86,10 +86,13 @@ test("merchant reviews bulk changes and retains edits and categories after inval
   expect(saved.every((v) => v.price_cents === 1250 && !v.is_available)).toBe(
     true,
   );
+  await sql`insert into categories(slug,name) select ${`before-${code}-`} || i, ${`A draft ${code} `} || i from generate_series(1,51) i`;
   const [category] =
     await sql`insert into categories(slug,name) values(${`draft-${code}`},${`Draft category ${code}`}) returning id`;
   await admin.reload();
-  await admin.getByLabel("Search categories", { exact: true }).fill(code);
+  await admin
+    .getByLabel("Search categories", { exact: true })
+    .fill(`Draft category ${code}`);
   await admin
     .getByRole("button", { name: "Search categories", exact: true })
     .click();

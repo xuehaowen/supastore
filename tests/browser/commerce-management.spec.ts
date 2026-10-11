@@ -89,12 +89,16 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
     admin,
     issue.getByRole("button", { name: "Issue store credit", exact: true }),
   );
-  await expect(admin.getByRole("alert")).toContainText("Credit entry posted");
+  await expect(
+    admin.getByRole("alert").filter({ hasText: "Credit entry posted" }),
+  ).toBeVisible();
   await page.goto(`/en/products/${handle}`);
   await expect(
     page.getByText("Available quantity: 2", { exact: true }),
   ).toBeVisible();
-  await page.getByLabel("Quantity", { exact: true }).fill("2");
+  await page
+    .getByRole("button", { name: "Increase quantity", exact: true })
+    .click();
   await page.getByRole("button", { name: "Add to bag" }).click();
   await page.getByRole("link", { name: "Continue to checkout" }).click();
   await page.getByLabel("Street address").fill("1 Synthetic Street");
@@ -106,9 +110,9 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
     page.getByRole("button", { name: /Review your order/ }),
   );
   await page.getByLabel("Credit to apply").fill("10");
-  await expect(page.getByRole("alert")).toContainText(
-    "External payment: $15.00",
-  );
+  await expect(
+    page.getByRole("status").filter({ hasText: "External payment: $15.00" }),
+  ).toBeVisible();
   await page.getByRole("checkbox").check();
   await clickAction(
     page,

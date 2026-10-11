@@ -35,6 +35,24 @@ lazy chunks and actual transfer compression are separate measurements.
 
 ## Reproduction and remaining acceptance
 
+Linux GitHub CI now verifies production builds, coverage, PostgreSQL 17/18,
+121 integration tests, and container smoke, upgrade and recovery acceptance.
+The synthetic container read load completed 22,739 requests at concurrency
+eight over 120 seconds, with zero failures and per-route p95 of 48–100 ms.
+This is a synthetic read workload, not production-sized report/export acceptance.
+
+The Linux Node 22.23.3 standalone fixture passed all 11 cross-service browser
+journeys. Backend RSS was 274,178,048 bytes (261.5 MiB), peak 308,305,920 bytes
+(294.0 MiB); storefront RSS was 185,704,448 bytes (177.1 MiB), peak 185,786,368
+bytes (177.2 MiB). Both runtime processes used the default 256 MiB heap budget.
+Home/product initial route JS measured 132.1/152.2 KiB gzip. These measurements
+support the lightweight target for this fixture only.
+
+These results are recorded in [CI run 38156384993](https://github.com/xuehaowen/supastore/actions/runs/38156384993).
+That run also exposed stale root-browser assertions, subsequently corrected and
+verified locally. The complete suite's current status is available in
+[draft PR #5](https://github.com/xuehaowen/supastore/pull/5).
+
 1. Run `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm typecheck:storefront`, `pnpm lint`, `pnpm format:check`, `pnpm test:coverage` and `pnpm audit --prod --audit-level high`.
 2. Run `node scripts/test-integration.mjs` against its owned local cluster. Run the new PostgreSQL 17/18 CI matrix before extending deployment compatibility claims.
 3. Run `node scripts/test-storefront.mjs --measure`. Linux measures generated standalone processes; Windows measures Next CLI because standalone tracing requires symlink privileges. Neither mode weakens native-loader or filesystem checks.

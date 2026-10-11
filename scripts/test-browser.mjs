@@ -234,7 +234,12 @@ try {
   ]);
   await ready(env.APP_URL + "/api/health/live", server);
   await completed(
-    start(["node_modules/@playwright/test/cli.js", "test", ...testArguments]),
+    start([
+      "node_modules/@playwright/test/cli.js",
+      "test",
+      "--output=test-results/root",
+      ...testArguments,
+    ]),
   );
 } catch (error) {
   console.error(

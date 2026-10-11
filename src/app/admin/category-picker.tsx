@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
+import { CategoryDraftContext } from "./product-draft-form";
 import { parseVariantOptionsDto } from "@supastore/contracts";
 import { boundedJson, deadlineFetch } from "@/infrastructure/http/bounded-json";
 import { Button } from "@/components/ui/button";
@@ -7,11 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NativeSelect } from "@/components/ui/native-select";
 type Option = { id: string; label: string };
+const emptyOptions: Option[] = [];
 export function CategoryPicker({
   name,
   label,
   options,
-  selected = [],
+  selected = emptyOptions,
   multiple = true,
 }: {
   name: string;
@@ -25,6 +27,17 @@ export function CategoryPicker({
   const [query, setQuery] = useState(""),
     [message, setMessage] = useState("");
   const active = useRef<AbortController | null>(null);
+  const draft = useContext(CategoryDraftContext);
+  useEffect(() => {
+    if (!draft || !multiple || name !== "categoryIds") return;
+    const candidates = [...draft.options, ...selected, ...options];
+    setChosen(
+      draft.ids.flatMap((id) => {
+        const option = candidates.find((candidate) => candidate.id === id);
+        return option ? [option] : [];
+      }),
+    );
+  }, [draft, multiple, name, options, selected]);
   useEffect(() => () => active.current?.abort(), []);
   async function search() {
     active.current?.abort();
@@ -106,6 +119,7 @@ export function CategoryPicker({
             <Checkbox
               name={name}
               value={item.id}
+              data-category-label={item.label}
               checked={chosen.some((choice) => choice.id === item.id)}
               onChange={(event) =>
                 setChosen((items) =>

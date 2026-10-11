@@ -325,7 +325,12 @@ try {
           "tests/browser/storefront-journey-updates.spec.ts",
         ];
   await completed(
-    start(["node_modules/@playwright/test/cli.js", "test", ...testTarget]),
+    start([
+      "node_modules/@playwright/test/cli.js",
+      "test",
+      "--output=test-results/storefront",
+      ...testTarget,
+    ]),
   );
   if (measure) {
     console.log(

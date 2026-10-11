@@ -1,6 +1,18 @@
 "use client";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+
+type CategoryDraft = {
+  ids: string[];
+  options: { id: string; label: string }[];
+};
+export const CategoryDraftContext = createContext<CategoryDraft | null>(null);
 
 export function ProductDraftForm({
   action,
@@ -18,6 +30,9 @@ export function ProductDraftForm({
   const ref = useRef<HTMLFormElement>(null);
   const [dirty, setDirty] = useState(false);
   const [restored, setRestored] = useState(false);
+  const [categoryDraft, setCategoryDraft] = useState<CategoryDraft | null>(
+    null,
+  );
   const key = `product-draft:${productId}`;
   const signature = () =>
     Array.from(ref.current?.elements || [])
@@ -36,10 +51,29 @@ export function ProductDraftForm({
       const stored = JSON.parse(sessionStorage.getItem(key) || "null") as {
         signature?: string;
         values?: Record<string, string | string[]>;
+        categoryOptions?: { id: string; label: string }[];
       } | null;
       if (!stored || stored.signature !== signature()) return;
       const draft = stored.values;
       if (!draft || typeof draft !== "object" || Array.isArray(draft)) return;
+      if (
+        Array.isArray(draft.categoryIds) &&
+        draft.categoryIds.every((id) => typeof id === "string")
+      ) {
+        setCategoryDraft({
+          ids: draft.categoryIds,
+          options: Array.isArray(stored.categoryOptions)
+            ? stored.categoryOptions.filter(
+                (option) =>
+                  option &&
+                  typeof option.id === "string" &&
+                  typeof option.label === "string" &&
+                  option.label.length <= 500 &&
+                  draft.categoryIds!.includes(option.id),
+              )
+            : [],
+        });
+      }
       for (const element of Array.from(ref.current?.elements || [])) {
         if (
           element instanceof HTMLInputElement &&
@@ -126,6 +160,18 @@ export function ProductDraftForm({
               element.checked,
           )
           .map((element) => element.value);
+        const categoryOptions = Array.from(ref.current?.elements || [])
+          .filter(
+            (element): element is HTMLInputElement =>
+              element instanceof HTMLInputElement &&
+              element.name === "categoryIds" &&
+              element.type === "checkbox" &&
+              element.checked,
+          )
+          .map((element) => ({
+            id: element.value,
+            label: element.dataset.categoryLabel || "",
+          }));
         for (const element of Array.from(ref.current?.elements || [])) {
           if (element instanceof HTMLSelectElement) {
             if (element.name)
@@ -149,7 +195,11 @@ export function ProductDraftForm({
         try {
           sessionStorage.setItem(
             key,
-            JSON.stringify({ signature: signature(), values: draft }),
+            JSON.stringify({
+              signature: signature(),
+              values: draft,
+              categoryOptions,
+            }),
           );
         } catch {
           /* Storage may be unavailable. */
@@ -166,7 +216,9 @@ export function ProductDraftForm({
           </AlertDescription>
         </Alert>
       )}
-      {children}
+      <CategoryDraftContext.Provider value={categoryDraft}>
+        {children}
+      </CategoryDraftContext.Provider>
     </form>
   );
 }
