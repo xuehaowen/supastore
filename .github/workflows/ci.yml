@@ -28,10 +28,12 @@ jobs:
       - run: pnpm run test:storefront:unit
       - run: pnpm run test:coverage
       - run: pnpm run test:frontend:coverage
-      - run: pnpm run build:backend
+      - name: Build backend with an ephemeral auth secret
+        run: |
+          export BETTER_AUTH_SECRET="$(node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('hex'))")"
+          pnpm run build:backend
         env:
           DATABASE_URL: postgresql://build:build@127.0.0.1:1/build_only
-          BETTER_AUTH_SECRET: build-only-placeholder-secret-at-least-32-characters
           BETTER_AUTH_URL: http://localhost:3000
       - run: pnpm --filter @supastore/storefront run build
         env:
