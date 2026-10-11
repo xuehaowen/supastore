@@ -2,6 +2,31 @@
 
 Snapshot: 2026-10-09. Use the [capability inventory](system-capabilities.md) for system behavior and the directory READMEs linked from [backend source](../src/README.md), [applications](../apps/README.md), and [shared packages](../packages/README.md) for module details. This guide covers maintenance across those modules. Commands below come from the current root `package.json` and repository scripts. Review configuration and the target database before running commands that migrate, seed, restore, or contact providers.
 
+## Order-list query plans and index rollout
+
+Migration `0037_order_queue_indexes.sql` adds two B-tree indexes matching the
+admin order list's `(created_at, id)` ordering and the same ordering within a
+lifecycle status. Natural PostgreSQL plans on a 10,000-order synthetic fixture
+use these indexes without a full sort. These checks do not establish production
+latency, write overhead, or plans for search, fulfillment, reporting or other
+queues. Deep offset pages still scan skipped index entries.
+
+For a fresh or offline installation, the normal migration runner builds the
+indexes. For an online upgrade, execute `scripts/order-query-indexes.sql` first
+through a migration-owner connection with autocommit enabled; never wrap it in
+a transaction. It builds concurrently and uses a five-second lock timeout.
+Verify both indexes are valid and have the expected columns before running the
+normal migration, which preserves prebuilt indexes. A failed concurrent build
+can leave an invalid index: inspect `pg_index`, drop only the failed index with
+`DROP INDEX CONCURRENTLY`, and retry its statement. If the first index already
+succeeded, run only the remaining statement. Existing conflicting definitions
+require investigation. Rehearse this on a production-sized isolated copy before
+cutover. No indexes were applied to a live merchant database during local tests.
+
+The forward rollback is to drop only these two indexes in a later migration;
+order data and query semantics are unchanged. On an online rollback, use
+`DROP INDEX CONCURRENTLY` outside a transaction.
+
 ## Combined application sitemap
 
 The combined application serves `/sitemap.xml` as a streamed index. Its child
@@ -213,7 +238,7 @@ Use [outbox reconciliation](playbooks/outbox-reconciliation.md) as an investigat
 
 The current container deployment has `backend`, `storefront`, `migrate`, PostgreSQL and S3-compatible storage. Only storefront publishes the application; it proxies API/auth/admin and admin assets. Backend owns the worker. Migrations are separate from startup.
 
-Use [two-service deployment](two-service-deployment.md) for exact origin/build settings and [development/deployment](development-deployment.md) for supervision. The checked-in migration chain reaches `0036_notification_templates.sql`; match the deployed image and journal, not merely the filename. Apply compatible additive migrations before starting dependent application images.
+Use [two-service deployment](two-service-deployment.md) for exact origin/build settings and [development/deployment](development-deployment.md) for supervision. The checked-in migration chain reaches `0037_order_queue_indexes.sql`; match the deployed image and journal, not merely the filename. Apply compatible additive migrations before starting dependent application images.
 
 Before an upgrade, back up database and assets, retain the current image/revision and configuration, and rehearse on an isolated restored copy. Keep outbound delivery suppressed there. Verify migration continuity, financial history, reservations, provider intents, template pinning, ownership and service readiness. Roll back application images only to schema-compatible versions; do not delete durable financial/provider history to force compatibility.
 

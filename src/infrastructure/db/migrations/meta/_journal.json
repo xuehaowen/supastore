@@ -260,6 +260,13 @@
       "when": 1791167400014,
       "tag": "0036_notification_templates",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1791167400015,
+      "tag": "0037_order_queue_indexes",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { beforeAll, afterAll, describe, it, expect } from "vitest";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -50,5 +51,25 @@ describe.skipIf(!server)("bounded order-list query plans", () => {
     const plan = JSON.stringify(row!["QUERY PLAN"]);
     expect(plan).toContain(index);
     expect(plan).not.toContain('"Node Type":"Sort"');
+  });
+  it("prebuilds valid indexes concurrently and preserves them on migration adoption", async () => {
+    await client`drop index concurrently idx_order_admin_history`;
+    await client`drop index concurrently idx_order_status_history`;
+    const prebuild = readFileSync("scripts/order-query-indexes.sql", "utf8");
+    for (const statement of prebuild.split(";").filter((part) => part.trim()))
+      await client.unsafe(statement);
+    const before =
+      await client`select c.oid,c.relname,i.indisvalid from pg_class c join pg_index i on i.indexrelid=c.oid where c.relname in ('idx_order_admin_history','idx_order_status_history') order by c.relname`;
+    expect(before).toHaveLength(2);
+    expect(before.every((row) => row.indisvalid)).toBe(true);
+    const migration = readFileSync(
+      "src/infrastructure/db/migrations/0037_order_queue_indexes.sql",
+      "utf8",
+    );
+    for (const statement of migration.split("--> statement-breakpoint"))
+      await client.unsafe(statement);
+    const after =
+      await client`select c.oid,c.relname,i.indisvalid from pg_class c join pg_index i on i.indexrelid=c.oid where c.relname in ('idx_order_admin_history','idx_order_status_history') order by c.relname`;
+    expect(after).toEqual(before);
   });
 });

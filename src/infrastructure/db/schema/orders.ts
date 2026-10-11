@@ -38,7 +38,9 @@ export const orders = pgTable(
     creditAppliedCents: integer("credit_applied_cents").notNull().default(0),
     guestEmail: text("guest_email").notNull(),
     guestName: text("guest_name").notNull(),
-    notificationLocale: text("notification_locale", { enum: ["en", "zh"] }).notNull().default("en"),
+    notificationLocale: text("notification_locale", { enum: ["en", "zh"] })
+      .notNull()
+      .default("en"),
     customerId: uuid("customer_id").references(() => customers.id, {
       onDelete: "restrict",
     }),
@@ -66,6 +68,8 @@ export const orders = pgTable(
   },
   (t) => [
     index("idx_order_customer_history").on(t.customerId, t.createdAt, t.id),
+    index("idx_order_admin_history").on(t.createdAt, t.id),
+    index("idx_order_status_history").on(t.lifecycleStatus, t.createdAt, t.id),
     check(
       "order_credit_within_purchase",
       sql`${t.creditAppliedCents} >= 0 and ${t.creditAppliedCents} <= ${t.purchaseTotalCents}`,
