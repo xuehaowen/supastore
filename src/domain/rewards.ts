@@ -29,21 +29,31 @@ export interface RewardComponentRefund {
 /** Replay immutable detailed refunds and explicitly identified legacy fallback.
  * Fallback uses remaining original sources, so detailed and legacy refunds
  * together cannot exceed any accepted component/source allocation. */
+export interface RewardFundingRefund {
+  externalCents: number;
+  creditCents: number;
+  componentRefunds?: readonly RewardComponentRefund[] | null;
+}
 export function accumulateRewardComponentRefunds(
   snapshot: RewardSnapshot,
-  refunds: readonly {
-    externalCents: number;
-    creditCents: number;
-    componentRefunds?: readonly RewardComponentRefund[] | null;
-  }[],
+  refunds: readonly RewardFundingRefund[],
 ) {
-  const external: Record<string, number> = {};
-  const credit: Record<string, number> = {};
+  const fold = createRewardRefundAccumulator(snapshot);
+  for (const refund of refunds) fold.add(refund);
+  return fold.value();
+}
+
+/** State is bounded by accepted components, rather than refund history length. */
+export function createRewardRefundAccumulator(snapshot: RewardSnapshot) {
+  let external: Record<string, number> = {};
+  let credit: Record<string, number> = {};
   for (const item of snapshot.allocations) {
     external[item.id] = 0;
     credit[item.id] = 0;
   }
-  for (const refund of refunds) {
+  const value = () => ({ external: { ...external }, credit: { ...credit } });
+  const add = (refund: RewardFundingRefund) => {
+    const next = value();
     const externalTotal = minor(refund.externalCents, "external refund");
     const creditTotal = minor(refund.creditCents, "credit refund");
     const details = refund.componentRefunds;
@@ -60,15 +70,15 @@ export function accumulateRewardComponentRefunds(
         seen.add(detail.componentId);
         externalSum += minor(detail.externalCents, "component external refund");
         creditSum += minor(detail.creditCents, "component credit refund");
-        external[detail.componentId] += detail.externalCents;
-        credit[detail.componentId] += detail.creditCents;
+        next.external[detail.componentId] += detail.externalCents;
+        next.credit[detail.componentId] += detail.creditCents;
       }
       if (externalSum !== externalTotal || creditSum !== creditTotal)
         throw new Error("Component refunds do not match funding sources");
     } else {
       for (const [funding, total, used] of [
-        ["externalAmount", externalTotal, external],
-        ["creditAmount", creditTotal, credit],
+        ["externalAmount", externalTotal, next.external],
+        ["creditAmount", creditTotal, next.credit],
       ] as const) {
         const allocated = allocateRewardFunding(
           snapshot.allocations.map((item) => ({
@@ -84,15 +94,17 @@ export function accumulateRewardComponentRefunds(
     }
     for (const item of snapshot.allocations) {
       if (
-        external[item.id] > item.externalAmount ||
-        credit[item.id] > item.creditAmount
+        next.external[item.id] > item.externalAmount ||
+        next.credit[item.id] > item.creditAmount
       )
         throw new RangeError(
           "Refund exceeds original component/source funding",
         );
     }
-  }
-  return { external, credit };
+    external = next.external;
+    credit = next.credit;
+  };
+  return { add, value };
 }
 
 function minor(value: number, name: string): bigint {

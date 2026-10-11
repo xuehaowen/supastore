@@ -19,19 +19,14 @@ export function OverviewView(props: OperationsScreenProps) {
     readiness,
   } = data;
   const { failurePage } = props.filters;
-  const salesByDay = new Map(rawSalesTrend.map((point) => [point.day, point]));
-  const salesTrend = Array.from({ length: 7 }, (_, index) => {
-    const day = new Date();
-    day.setUTCHours(0, 0, 0, 0);
-    day.setUTCDate(day.getUTCDate() - (6 - index));
-    const key = day.toISOString().slice(0, 10);
-    return salesByDay.get(key) ?? { day: key, revenueCents: 0, orders: 0 };
-  });
+  const salesTrend = rawSalesTrend;
   const maximumTrendRevenue = Math.max(
-    ...salesTrend.map((point) => point.revenueCents),
+    ...salesTrend.map((point) => Math.abs(point.revenueCents)),
     1,
   );
-  const hasSalesRevenue = salesTrend.some((point) => point.revenueCents > 0);
+  const hasSalesRevenue = salesTrend.some(
+    (point) => point.revenueCents !== 0 || point.orders !== 0,
+  );
 
   return (
     <>
@@ -39,7 +34,7 @@ export function OverviewView(props: OperationsScreenProps) {
         <>
           <section className="commerce-kpis" aria-label="Commerce performance">
             <article>
-              <span>Revenue · 30 days</span>
+              <span>Net sales · 30 days</span>
               <strong>
                 {money(
                   commerceSummary?.revenueCents ?? 0,
@@ -53,7 +48,7 @@ export function OverviewView(props: OperationsScreenProps) {
               <strong>{commerceSummary?.orderCount ?? 0}</strong>
             </article>
             <article>
-              <span>Average order</span>
+              <span>Average confirmed purchase</span>
               <strong>
                 {money(
                   commerceSummary?.averageOrderCents ?? 0,
@@ -63,24 +58,24 @@ export function OverviewView(props: OperationsScreenProps) {
               </strong>
             </article>
             <article>
-              <span>Units sold · 30 days</span>
+              <span>Confirmed purchase units · 30 days</span>
               <strong>{units}</strong>
             </article>
           </section>
           <section className="panel sales-trend">
             <div>
               <p className="eyebrow">LAST 7 DAYS</p>
-              <h2>Sales trend</h2>
+              <h2>Net sales trend</h2>
             </div>
             {!hasSalesRevenue && (
               <p className="admin-empty">
-                No sales revenue in the last 7 days.
+                No net sales activity in the last 7 days.
               </p>
             )}
             <div
               className={`trend-bars${hasSalesRevenue ? "" : " trend-bars-empty"}`}
               role="region"
-              aria-label="Daily sales for the last 7 days"
+              aria-label="Daily net sales for the last 7 days"
               tabIndex={0}
             >
               {salesTrend.map((point) => {
@@ -94,7 +89,11 @@ export function OverviewView(props: OperationsScreenProps) {
                     <span
                       aria-hidden="true"
                       style={{
-                        height: `${(point.revenueCents / maximumTrendRevenue) * 100}%`,
+                        height: `${(Math.abs(point.revenueCents) / maximumTrendRevenue) * 100}%`,
+                        backgroundColor:
+                          point.revenueCents < 0
+                            ? "var(--destructive)"
+                            : undefined,
                       }}
                     />
                     <small>{point.day.slice(5)}</small>

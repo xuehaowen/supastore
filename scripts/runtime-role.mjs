@@ -12,11 +12,11 @@ export async function provisionRuntimeRole(client, { user, password }) {
       throw new Error("Runtime role must differ from the migration role");
     const owned =
       await tx`SELECT 1 FROM pg_roles role WHERE role.rolname = ${user}::text
-      AND (EXISTS (SELECT 1 FROM pg_class WHERE relowner = role.oid)
-        OR EXISTS (SELECT 1 FROM pg_namespace WHERE nspowner = role.oid)
+      AND (EXISTS (SELECT 1 FROM pg_class WHERE relowner = role.oid AND relpersistence <> 't')
+        OR EXISTS (SELECT 1 FROM pg_namespace WHERE nspowner = role.oid AND nspname !~ '^pg_(toast_)?temp_[0-9]+$')
         OR EXISTS (SELECT 1 FROM pg_database WHERE datdba = role.oid))`;
     if (owned.length)
-      throw new Error("Runtime role must not own database objects");
+      throw new Error("Runtime role must not own persistent database objects");
     const existing =
       await tx`SELECT rolname FROM pg_roles WHERE rolname = ${user}::text`;
     // PostgreSQL utility statements cannot parameterize identifiers/passwords.
@@ -45,7 +45,7 @@ export async function provisionRuntimeRole(client, { user, password }) {
       ${identity.database}::text, ${user}::text, ${user}::text, ${user}::text, ${user}::text, ${user}::text, ${user}::text) AS statement`;
     await tx.unsafe(reset.statement);
     const [grants] = await tx`SELECT format(
-      'GRANT CONNECT ON DATABASE %I TO %I; GRANT USAGE ON SCHEMA public TO %I; '
+      'GRANT CONNECT, TEMPORARY ON DATABASE %I TO %I; GRANT USAGE ON SCHEMA public TO %I; '
       'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO %I; '
       'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO %I',
       ${identity.database}::text, ${user}::text, ${user}::text, ${user}::text, ${user}::text) AS statement`;

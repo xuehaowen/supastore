@@ -22,23 +22,41 @@ import {
   fiscalReportPeriod,
   localReportDate,
   reportDate,
-  summarizeSalesReport,
-  type SalesReportRow,
 } from "@/domain/sales-report";
 import {
-  accumulateRewardComponentRefunds,
+  createRewardRefundAccumulator,
   type RewardSnapshot,
   type RewardComponentRefund,
 } from "@/domain/rewards";
 import { creditHash } from "../store-credit/credit-operations";
+import {
+  createReportWorkspace,
+  reportAmount,
+  reportRow,
+  summarizeWorkspace,
+} from "./report-workspace";
+export async function exportSalesReport(input: {
+  actorUserId: string;
+  start: string;
+  endExclusive: string;
+  signal?: AbortSignal;
+}) {
+  const { spoolSalesReport } = await import("./export-sales-report");
+  return spoolSalesReport(input);
+}
 
-export async function salesReportInTransaction(
+export async function prepareSalesReport(
   tx: Transaction,
   start: string,
   endExclusive: string,
+  signal?: AbortSignal,
 ) {
-  reportDate(start);
-  reportDate(endExclusive);
+  try {
+    reportDate(start);
+    reportDate(endExclusive);
+  } catch {
+    throw new DomainError("Choose valid YYYY-MM-DD reporting dates.");
+  }
   if (
     start >= endExclusive ||
     Date.parse(endExclusive) - Date.parse(start) > 3660 * 86400000
@@ -48,11 +66,9 @@ export async function salesReportInTransaction(
   if (!store) throw new DomainError("Set up the store first.");
   const startTime = sql`${start}::date::timestamp AT TIME ZONE ${store.timezone}`;
   const endTime = sql`${endExclusive}::date::timestamp AT TIME ZONE ${store.timezone}`;
-  const rows: SalesReportRow[] = [];
-  const append = (row: SalesReportRow) => {
-    rows.push(row);
-  };
-  const sales = await tx.execute(sql`
+  const workspace = await createReportWorkspace(tx, signal);
+  const append = workspace.append;
+  const sales = workspace.source(sql`
     SELECT o.id,o.purchase_total_cents,q.total_payable_cents AS quote_total_cents,q.inclusive_tax_cents+q.exclusive_tax_cents AS tax_cents,
       (f.confirmed_at AT TIME ZONE ${store.timezone})::date::text AS date
     FROM orders o JOIN quotes q ON q.id=o.quote_id
@@ -61,7 +77,7 @@ export async function salesReportInTransaction(
       UNION ALL SELECT aggregate_id AS order_id,created_at FROM outbox_events WHERE aggregate_type='order' AND event_type='order.confirmed'
     ) confirmation_events GROUP BY order_id) f ON f.order_id=o.id
     WHERE f.confirmed_at >= ${startTime} AND f.confirmed_at < ${endTime}`);
-  for (const row of sales) {
+  for await (const row of sales) {
     if (
       Number(row.tax_cents) > 0 &&
       Number(row.purchase_total_cents) !== Number(row.quote_total_cents)
@@ -69,7 +85,7 @@ export async function salesReportInTransaction(
       throw new DomainError(
         "A historical taxable order has revised prices without revised tax. Review its accepted tax before generating this report.",
       );
-    append({
+    await append({
       id: `sale:${row.id}`,
       date: String(row.date),
       kind: "sale",
@@ -86,7 +102,7 @@ export async function salesReportInTransaction(
 
   // Include earlier refunds only for orders with a refund in this period, to
   // retain cumulative tax rounding and detailed original-source caps.
-  const refunds = await tx.execute(sql`
+  const refunds = workspace.source(sql`
     SELECT r.*,o.purchase_total_cents,o.reward_snapshot,q.total_payable_cents AS quote_total_cents,q.inclusive_tax_cents+q.exclusive_tax_cents AS purchase_tax_cents,
       (r.created_at AT TIME ZONE ${store.timezone})::date::text AS date,
       COALESCE((SELECT sum(a.authorized_amount_cents) FROM payout_allocations a WHERE a.refund_authorization_id=r.id),0) AS external_cents,
@@ -96,19 +112,14 @@ export async function salesReportInTransaction(
       AND r.created_at < ${endTime}
       AND EXISTS(SELECT 1 FROM refund_authorizations period WHERE period.order_id=o.id AND period.created_at >= ${startTime} AND period.created_at < ${endTime})
     ORDER BY r.order_id,r.created_at,r.id`);
-  const histories = new Map<
-    string,
-    {
-      amount: number;
-      tax: number;
-      source: {
-        externalCents: number;
-        creditCents: number;
-        componentRefunds: RewardComponentRefund[] | null;
-      }[];
-    }
-  >();
-  for (const row of refunds) {
+  let lastOrderId: string | undefined;
+  let history: {
+    amount: number;
+    tax: number;
+    fold?: ReturnType<typeof createRewardRefundAccumulator>;
+    foldError?: unknown;
+  } = { amount: 0, tax: 0 };
+  for await (const row of refunds) {
     if (
       Number(row.purchase_tax_cents) > 0 &&
       Number(row.purchase_total_cents) !== Number(row.quote_total_cents)
@@ -117,7 +128,15 @@ export async function salesReportInTransaction(
         "A historical taxable refund has revised prices without revised tax. Review its accepted tax before generating this report.",
       );
     const orderId = String(row.order_id);
-    const history = histories.get(orderId) ?? { amount: 0, tax: 0, source: [] };
+    const snapshot = row.reward_snapshot as RewardSnapshot | null;
+    if (lastOrderId !== orderId) {
+      lastOrderId = orderId;
+      history = {
+        amount: 0,
+        tax: 0,
+        ...(snapshot ? { fold: createRewardRefundAccumulator(snapshot) } : {}),
+      };
+    }
     const remainingPurchase = Math.max(
       0,
       Number(row.purchase_total_cents) - history.amount,
@@ -125,12 +144,20 @@ export async function salesReportInTransaction(
     const amount = Math.min(Number(row.amount_cents), remainingPurchase);
     if (!amount) continue; // Cancellation surplus is a payout, not refunded sales.
     history.amount += amount;
-    history.source.push({
-      externalCents: Number(row.external_cents),
-      creditCents: Number(row.credit_cents),
-      componentRefunds: row.component_refunds as RewardComponentRefund[] | null,
-    });
-    const snapshot = row.reward_snapshot as RewardSnapshot | null;
+    // Cancellation can return surplus beyond accepted purchase funding. Its tax
+    // calculation is separate; replay errors apply when a normal refund needs the fold.
+    if (history.fold && !history.foldError) {
+      try {
+        history.fold.add({
+          externalCents: Number(row.external_cents),
+          creditCents: Number(row.credit_cents),
+          componentRefunds: row.component_refunds as
+            RewardComponentRefund[] | null,
+        });
+      } catch (error) {
+        history.foldError = error;
+      }
+    }
     let cumulativeTax: number;
     if (row.kind === "cancellation_refund") {
       cumulativeTax =
@@ -141,10 +168,8 @@ export async function salesReportInTransaction(
             BigInt(remainingPurchase),
         );
     } else if (snapshot) {
-      const allocated = accumulateRewardComponentRefunds(
-        snapshot,
-        history.source,
-      );
+      if (history.foldError) throw history.foldError;
+      const allocated = history.fold!.value();
       cumulativeTax = snapshot.allocations
         .filter((item) => item.type === "tax")
         .reduce(
@@ -161,9 +186,8 @@ export async function salesReportInTransaction(
         : 0;
     const tax = cumulativeTax - history.tax;
     history.tax = cumulativeTax;
-    histories.set(orderId, history);
     if (String(row.date) < start || String(row.date) >= endExclusive) continue;
-    append({
+    await append({
       id: `refund:${row.id}`,
       date: String(row.date),
       kind: "refund",
@@ -177,15 +201,15 @@ export async function salesReportInTransaction(
       reason: String(row.reason),
     });
   }
-  const collections = await tx.execute(sql`
+  const collections = workspace.source(sql`
     SELECT 'receipt:'||r.id AS id,r.order_id,r.amount_cents AS amount,a.account_type AS method,r.created_at,'receipt' AS kind,'Recorded collection' AS reason
     FROM payment_receipts r JOIN payment_accounts a ON a.id=r.payment_account_id WHERE r.created_at >= ${startTime} AND r.created_at < ${endTime}
     UNION ALL
     SELECT 'correction:'||c.id,r.order_id,c.delta_amount_cents,a.account_type,c.created_at,'receipt_correction',c.reason
     FROM payment_receipt_corrections c JOIN payment_receipts r ON r.id=c.receipt_id JOIN payment_accounts a ON a.id=r.payment_account_id
     WHERE c.created_at >= ${startTime} AND c.created_at < ${endTime}`);
-  for (const row of collections)
-    append({
+  for await (const row of collections)
+    await append({
       id: String(row.id),
       date: localReportDate(new Date(String(row.created_at)), store.timezone),
       kind: row.kind as "receipt" | "receipt_correction",
@@ -198,13 +222,13 @@ export async function salesReportInTransaction(
       creditLiabilityDeltaCents: 0,
       reason: String(row.reason),
     });
-  const payouts = await tx.execute(sql`
+  const payouts = workspace.source(sql`
     SELECT t.id,t.created_at,t.customer_settlement_cents,t.erroneous_disbursement_cents,r.order_id,a.account_type
     FROM outgoing_transfers t JOIN payout_attempts p ON p.id=t.payout_attempt_id JOIN payout_allocations x ON x.id=p.allocation_id
     JOIN payment_receipts r ON r.id=x.receipt_id JOIN payment_accounts a ON a.id=r.payment_account_id
     WHERE t.created_at >= ${startTime} AND t.created_at < ${endTime}`);
-  for (const row of payouts)
-    append({
+  for await (const row of payouts)
+    await append({
       id: `payout:${row.id}`,
       date: localReportDate(new Date(String(row.created_at)), store.timezone),
       kind: "payout",
@@ -217,11 +241,11 @@ export async function salesReportInTransaction(
       creditLiabilityDeltaCents: 0,
       reason: `Actual customer settlement; erroneous disbursement ${row.erroneous_disbursement_cents} minor units excluded`,
     });
-  const credits = await tx.execute(
+  const credits = workspace.source(
     sql`SELECT id,order_id,amount_cents,kind,reason,created_at FROM store_credit_entries WHERE created_at >= ${startTime} AND created_at < ${endTime}`,
   );
-  for (const row of credits)
-    append({
+  for await (const row of credits)
+    await append({
       id: `credit:${row.id}`,
       date: localReportDate(new Date(String(row.created_at)), store.timezone),
       kind: "credit",
@@ -234,11 +258,11 @@ export async function salesReportInTransaction(
       creditLiabilityDeltaCents: Number(row.amount_cents),
       reason: String(row.reason),
     });
-  const outside = await tx.execute(
+  const outside = workspace.source(
     sql`SELECT * FROM outside_sales_adjustments WHERE sale_date >= ${start}::date AND sale_date < ${endExclusive}::date`,
   );
-  for (const row of outside)
-    append({
+  for await (const row of outside)
+    await append({
       id: `outside:${row.id}`,
       date: String(row.sale_date),
       kind: "outside_adjustment",
@@ -251,19 +275,51 @@ export async function salesReportInTransaction(
       creditLiabilityDeltaCents: 0,
       reason: String(row.reason),
     });
+  workspace.checkTime();
   const [liability] = await tx.execute(
-    sql`SELECT COALESCE(sum(amount_cents),0)::bigint AS amount FROM store_credit_entries WHERE created_at < ${endTime}`,
+    sql`SELECT COALESCE(sum(amount_cents),0)::text AS amount FROM store_credit_entries WHERE created_at < ${endTime}`,
   );
-  rows.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
+  workspace.checkTime();
+  await workspace.finish();
+  const totals = await summarizeWorkspace(tx, workspace.table);
+  workspace.checkTime();
   return {
     start,
     endExclusive,
     timezone: store.timezone,
     currency: store.currency,
     precision: store.precision,
-    rows,
-    totals: summarizeSalesReport(rows),
-    closingCreditLiabilityCents: Number(liability!.amount),
+    table: workspace.table,
+    totals,
+    closingCreditLiabilityCents: reportAmount(liability!.amount),
+  };
+}
+
+export async function salesReportInTransaction(
+  tx: Transaction,
+  start: string,
+  endExclusive: string,
+  page = 1,
+) {
+  if (!Number.isSafeInteger(page) || page < 1 || page > 10000)
+    throw new DomainError("Invalid report page.");
+  const { table, ...report } = await prepareSalesReport(
+    tx,
+    start,
+    endExclusive,
+  );
+  const rows = await tx.execute(
+    sql`SELECT * FROM ${table} ORDER BY date, id LIMIT 101 OFFSET ${(page - 1) * 100}`,
+  );
+  const [count] = await tx.execute(
+    sql`SELECT count(*)::text AS total FROM ${table}`,
+  );
+  return {
+    ...report,
+    rows: rows.slice(0, 100).map(reportRow),
+    totalRows: reportAmount(count!.total),
+    hasNext: rows.length > 100,
+    page,
   };
 }
 
@@ -271,40 +327,83 @@ export async function generateSalesReport(input: {
   actorUserId: string;
   start: string;
   endExclusive: string;
+  page?: number;
 }) {
   return db.transaction(
     async (tx) => {
       await verifyStaffInTransaction(tx, input.actorUserId);
-      return salesReportInTransaction(tx, input.start, input.endExclusive);
+      return salesReportInTransaction(
+        tx,
+        input.start,
+        input.endExclusive,
+        input.page,
+      );
     },
     { isolationLevel: "repeatable read" },
   );
 }
 
-/** A durable periodic check; store lock serializes configuration and duplicate alerts. */
+/** Calculate a read snapshot first, then briefly lock settings to validate and emit an alert. */
 export async function checkSalesThreshold(actorUserId?: string, date?: string) {
+  const observed = await db.transaction(
+    async (tx) => {
+      if (actorUserId) await verifyStaffInTransaction(tx, actorUserId);
+      const [store] = await tx.select().from(storeSettings).limit(1);
+      if (!store) return null;
+      const policy = commercePolicy(store.commercePolicy);
+      if (!policy.salesThresholdCents) return null;
+      const period = fiscalReportPeriod(
+        date ?? localReportDate(new Date(), store.timezone),
+        policy.fiscalYearStartMonth,
+      );
+      const report = await prepareSalesReport(
+        tx,
+        period.start,
+        period.endExclusive,
+      );
+      if (report.totals.netSalesCents < policy.salesThresholdCents) return null;
+      return {
+        storeId: store.id,
+        timezone: store.timezone,
+        currency: store.currency,
+        precision: store.precision,
+        month: policy.fiscalYearStartMonth,
+        threshold: policy.salesThresholdCents,
+        period,
+        netCents: report.totals.netSalesCents,
+      };
+    },
+    { isolationLevel: "repeatable read" },
+  );
+  if (!observed) return null;
   return db.transaction(async (tx) => {
     if (actorUserId) await verifyStaffInTransaction(tx, actorUserId);
-    const [store] = await tx.select().from(storeSettings).for("update");
+    const [store] = await tx
+      .select()
+      .from(storeSettings)
+      .where(eq(storeSettings.id, observed.storeId))
+      .for("update");
     if (!store) return null;
     const policy = commercePolicy(store.commercePolicy);
-    if (!policy.salesThresholdCents) return null;
-    const period = fiscalReportPeriod(
-      date ?? localReportDate(new Date(), store.timezone),
-      policy.fiscalYearStartMonth,
-    );
-    const report = await salesReportInTransaction(
-      tx,
-      period.start,
-      period.endExclusive,
-    );
-    if (report.totals.netSalesCents < policy.salesThresholdCents) return null;
+    const period = observed.period;
+    if (
+      store.timezone !== observed.timezone ||
+      store.currency !== observed.currency ||
+      store.precision !== observed.precision ||
+      policy.fiscalYearStartMonth !== observed.month ||
+      policy.salesThresholdCents !== observed.threshold ||
+      fiscalReportPeriod(
+        date ?? localReportDate(new Date(), store.timezone),
+        policy.fiscalYearStartMonth,
+      ).start !== period.start
+    )
+      return null;
     const [alert] = await tx
       .insert(salesThresholdAlerts)
       .values({
         fiscalStart: period.start,
         thresholdCents: policy.salesThresholdCents,
-        observedNetCents: String(report.totals.netSalesCents),
+        observedNetCents: String(observed.netCents),
       })
       .onConflictDoNothing()
       .returning();
@@ -326,7 +425,7 @@ export async function checkSalesThreshold(actorUserId?: string, date?: string) {
           fiscalStart: period.start,
           fiscalEndExclusive: period.endExclusive,
           thresholdCents: policy.salesThresholdCents,
-          observedNetCents: report.totals.netSalesCents,
+          observedNetCents: observed.netCents,
           currency: store.currency,
           precision: store.precision,
           basis:
@@ -360,7 +459,7 @@ export async function checkSalesThreshold(actorUserId?: string, date?: string) {
       details: {
         alertId: alert.id,
         fiscalStart: period.start,
-        observedNetCents: report.totals.netSalesCents,
+        observedNetCents: observed.netCents,
         thresholdCents: policy.salesThresholdCents,
       },
     });

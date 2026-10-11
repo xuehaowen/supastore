@@ -21,6 +21,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { QueuePagination, queuePage } from "@/app/admin/queue-pagination";
+import { logger } from "@/infrastructure/security/logger";
 export default async function Reports({
   searchParams,
 }: {
@@ -29,6 +31,7 @@ export default async function Reports({
     end?: string;
     error?: string;
     saved?: string;
+    page?: string;
   }>;
 }) {
   const staff = await staffIdentity();
@@ -50,9 +53,14 @@ export default async function Reports({
       actorUserId: staff,
       start: query.start ?? fiscal.start,
       endExclusive: query.end ?? nextDay,
+      page: Math.min(10000, queuePage(query.page)),
     });
   } catch (error) {
     if (error instanceof DomainError) reportError = error.message;
+    else
+      logger
+        .child({ actorId: staff })
+        .error("Sales report generation failed", error);
   }
   const format = (amount: number) =>
     money(
@@ -165,6 +173,16 @@ export default async function Reports({
               )}
             </TableBody>
           </Table>
+          <p>
+            {report.totalRows} report entries. Totals cover the complete period.
+          </p>
+          <QueuePagination
+            query={{ start: report.start, end: report.endExclusive }}
+            path="/admin/reports"
+            parameter="page"
+            page={report.page}
+            hasNext={report.hasNext}
+          />
         </>
       ) : (
         <Alert variant="destructive">

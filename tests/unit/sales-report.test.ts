@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   fiscalReportPeriod,
   localReportDate,
+  offsetReportDate,
   reportDate,
   salesReportCsv,
   summarizeSalesReport,
@@ -25,6 +26,12 @@ const row = (
   ...values,
 });
 describe("generic sales report accounting", () => {
+  it("offsets merchant calendar dates across month, leap-day and DST boundaries", () => {
+    expect(offsetReportDate("2028-02-28", 1)).toBe("2028-02-29");
+    expect(offsetReportDate("2026-03-08", -1)).toBe("2026-03-07");
+    expect(offsetReportDate("2026-03-08", 1)).toBe("2026-03-09");
+    expect(offsetReportDate("2026-01-01", -29)).toBe("2025-12-03");
+  });
   it("recognizes a credit-funded purchase once and distinguishes collections, refunds and liabilities", () => {
     expect(
       summarizeSalesReport([

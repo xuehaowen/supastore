@@ -149,7 +149,7 @@ test("management sidebar opens real sections and product editor fits mobile", as
       await expect(admin.locator(".trend-day")).toHaveCount(7);
       await expect(admin.getByText("0 orders").first()).toBeVisible();
       await expect(
-        admin.getByText("No sales revenue in the last 7 days."),
+        admin.getByText("No net sales activity in the last 7 days."),
       ).toBeVisible();
       await expect(
         admin.getByText("No overdue orders in this view."),

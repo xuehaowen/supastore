@@ -2,6 +2,36 @@
 
 Snapshot: 2026-10-09. Use the [capability inventory](system-capabilities.md) for system behavior and the directory READMEs linked from [backend source](../src/README.md), [applications](../apps/README.md), and [shared packages](../packages/README.md) for module details. This guide covers maintenance across those modules. Commands below come from the current root `package.json` and repository scripts. Review configuration and the target database before running commands that migrate, seed, restore, or contact providers.
 
+## Financial reports and dashboard
+
+Sales reports show 100 rows per page while totals cover the complete requested
+period. Sources are read through PostgreSQL cursors in batches of 500 and staged
+in a transaction-local temporary table. Earlier refund history also counts toward
+the source budget because it determines cumulative allocation. Exceeding a budget
+fails the report instead of returning incomplete financial totals.
+
+The default budgets are `REPORT_MAX_SOURCE_ROWS=100000` (range 1–1,000,000),
+`REPORT_MAX_EXPORT_BYTES=67108864` (1–256 MiB), and `REPORT_TIMEOUT_MS=30000`
+(1–300 seconds). Time and cancellation are checked between queries and batches;
+an active SQL statement is separately bounded by the runtime statement timeout.
+Report work and index maintenance each use a local 4 MiB PostgreSQL memory budget.
+
+Financial CSV exports prepare the complete repeatable-read snapshot in a private,
+exclusively created temporary file before returning a response. Downloads use
+64 KiB byte-based backpressure without holding a database transaction open. Files
+are removed on completion, failure, or cancellation; a process crash can leave
+an orphan in the operating-system temporary directory. Measure disk capacity and
+concurrent reporting load on the target deployment before increasing budgets.
+Rerun runtime-role provisioning through the migration runner to grant temporary
+table access; persistent database object ownership remains forbidden.
+
+The dashboard uses the same canonical sales rows. Its 30-day window follows the
+merchant's calendar and purchase confirmation dates. Net sales include refunds
+and outside adjustments and exclude tax. Average confirmed purchase includes
+tax; confirmed purchase units count original confirmed order quantities. The
+seven-day chart includes negative net days. Threshold evaluation reads a snapshot
+before taking a short settings lock to revalidate the policy and fiscal period.
+
 ## Catalog selectors, histories, and exports
 
 Manual-order and slot-quota variant selectors load at most 50 initial options.

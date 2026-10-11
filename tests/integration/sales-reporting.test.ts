@@ -1,4 +1,15 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { mkdtemp, readdir, rmdir } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -12,10 +23,15 @@ vi.mock("@/infrastructure/db", () => ({
 import * as schema from "@/infrastructure/db/schema";
 import {
   generateSalesReport,
+  salesReportInTransaction,
+  exportSalesReport,
   recordOutsideSales,
   checkSalesThreshold,
 } from "@/application/use-cases/reports/sales-report";
 import { refundPurchase } from "@/application/use-cases/store-credit/purchase-refund";
+import { spoolSalesReport } from "@/application/use-cases/reports/export-sales-report";
+import { provisionRuntimeRole } from "../../scripts/runtime-role.mjs";
+import { getAdminOperations } from "@/application/queries/admin-operations";
 import { correctReceipt } from "@/application/use-cases/payments/correct-receipt";
 import { summarizeSalesReport, salesReportCsv } from "@/domain/sales-report";
 import { commercePolicy } from "@/domain/commerce-policy";
@@ -24,6 +40,10 @@ const server = process.env.TRANSLATION_TEST_DATABASE_URL;
 describe.skipIf(!server)("generic sales reporting PostgreSQL", () => {
   const name = `reports_test_${randomUUID().replaceAll("-", "")}`;
   const owner = "reports-owner";
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.useRealTimers();
+  });
   let admin: ReturnType<typeof postgres>, client: ReturnType<typeof postgres>;
   const methods = new Map<string, string>();
   beforeAll(async () => {
@@ -456,5 +476,163 @@ describe.skipIf(!server)("generic sales reporting PostgreSQL", () => {
       ).totals.netSalesCents,
     ).toBe(800);
     await client`update store_settings set commerce_policy=${JSON.stringify(commercePolicy({}))}::jsonb`;
+  });
+  it("pages report evidence while keeping complete totals and exporting every row", async () => {
+    await client`insert into outside_sales_adjustments(sale_date,net_cents,tax_cents,reason,actor_id,request_key,payload_hash)
+      select '2060-01-01'::date,100,10,'Paged report fixture',${owner},gen_random_uuid(),'fixture' from generate_series(1,1005)`;
+    const input = {
+      actorUserId: owner,
+      start: "2060-01-01",
+      endExclusive: "2060-02-01",
+    };
+    const first = await generateSalesReport(input);
+    expect(first.rows).toHaveLength(100);
+    expect(first.totals).toMatchObject({
+      netSalesCents: 100500,
+      taxCents: 10050,
+      grossSalesCents: 110550,
+    });
+    expect(first.totalRows).toBe(1005);
+    expect(first.hasNext).toBe(true);
+    const last = await generateSalesReport({ ...input, page: 11 });
+    expect(last.rows).toHaveLength(5);
+    expect(last.hasNext).toBe(false);
+    expect(last.totals).toEqual(first.totals);
+    const csv = await new Response(await exportSalesReport(input)).text();
+    expect(csv.trimEnd().split("\r\n")).toHaveLength(1006);
+  });
+  it("fails closed on report budgets and cleans temporary exports on cancellation", async () => {
+    const input = {
+      actorUserId: owner,
+      start: "2060-01-01",
+      endExclusive: "2060-02-01",
+    };
+    vi.stubEnv("REPORT_MAX_SOURCE_ROWS", "10");
+    await expect(generateSalesReport(input)).rejects.toThrow(
+      "source-row budget",
+    );
+    expect(
+      await client`select c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname like 'pg_temp_%' and c.relname like 'report_%'`,
+    ).toHaveLength(0);
+    const directory = await mkdtemp(join(tmpdir(), "supastore-report-test-"));
+    try {
+      await expect(spoolSalesReport(input, directory)).rejects.toThrow(
+        "source-row budget",
+      );
+      expect(await readdir(directory)).toHaveLength(0);
+      vi.unstubAllEnvs();
+      const controller = new AbortController();
+      const cancelled = spoolSalesReport(
+        { ...input, signal: controller.signal },
+        directory,
+      );
+      controller.abort();
+      await expect(cancelled).rejects.toThrow("cancelled");
+      expect(await readdir(directory)).toHaveLength(0);
+      const reader = (await spoolSalesReport(input, directory)).getReader();
+      await reader.read();
+      await reader.cancel();
+      await vi.waitFor(async () =>
+        expect(await readdir(directory)).toHaveLength(0),
+      );
+    } finally {
+      await rmdir(directory);
+    }
+  });
+  it("supports reporting with the restricted runtime database role", async () => {
+    await client.unsafe(`REVOKE TEMPORARY ON DATABASE "${name}" FROM PUBLIC`);
+    await provisionRuntimeRole(client, {
+      user: "reports_runtime",
+      password: "synthetic-report-password",
+    });
+    const report = await drizzle(client, { schema }).transaction(
+      async (tx) => {
+        await tx.execute("SET LOCAL ROLE reports_runtime");
+        return salesReportInTransaction(tx, "2060-01-01", "2060-02-01");
+      },
+      { isolationLevel: "repeatable read" },
+    );
+    expect(report.totalRows).toBe(1005);
+    expect(report.totals.netSalesCents).toBe(100500);
+    expect(report.rows).toHaveLength(100);
+  });
+  it("rejects oversized CSV exports before publishing a file and removes partial artifacts", async () => {
+    await client`insert into outside_sales_adjustments(sale_date,net_cents,tax_cents,reason,actor_id,request_key,payload_hash)
+      select '2061-01-01'::date,100,10,repeat('x',500),${owner},gen_random_uuid(),'fixture' from generate_series(1,2500)`;
+    vi.stubEnv("REPORT_MAX_EXPORT_BYTES", "1048576");
+    const directory = await mkdtemp(
+      join(tmpdir(), "supastore-report-size-test-"),
+    );
+    try {
+      await expect(
+        spoolSalesReport(
+          {
+            actorUserId: owner,
+            start: "2061-01-01",
+            endExclusive: "2061-02-01",
+          },
+          directory,
+        ),
+      ).rejects.toThrow("file-size budget");
+      expect(await readdir(directory)).toHaveLength(0);
+    } finally {
+      await rmdir(directory);
+    }
+  });
+  it("uses canonical net sales and merchant confirmation dates on the dashboard", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2032-01-02T07:30:00Z"));
+    const accepted = await purchase({
+      net: 2000,
+      tax: 200,
+      receipts: [{ method: "cash", amount: 2200 }],
+      at: "2032-01-02T06:30:00Z",
+    });
+    await client`update orders set created_at='2031-12-01T00:00:00Z' where id=${accepted.orderId}`;
+    await purchase({
+      net: 1000,
+      receipts: [{ method: "cash", amount: 1000 }],
+      at: "2032-01-02T08:00:00Z",
+    });
+    const [refund] =
+      await client`insert into refund_authorizations(order_id,kind,amount_cents,reason,authorized_by_user_id,created_at)
+      values (${accepted.orderId},'purchase_refund',550,'Dashboard refund',${owner},'2032-01-02T07:00:00Z') returning id`;
+    await client`insert into payout_allocations(refund_authorization_id,receipt_id,authorized_amount_cents)
+      values (${refund!.id},${accepted.receiptIds[0]!},550)`;
+    await recordOutsideSales({
+      actorUserId: owner,
+      saleDate: "2032-01-01",
+      netCents: 300,
+      taxCents: 30,
+      reason: "Dashboard outside sales",
+      requestKey: randomUUID(),
+    });
+    const dashboard = await getAdminOperations({
+      staffUserId: owner,
+      view: "overview",
+      search: "",
+      status: "",
+      page: 1,
+      paymentSearch: "",
+      paymentStatus: "",
+      paymentType: "",
+      paymentPage: 1,
+      payoutPage: 1,
+      evidencePage: 1,
+      failurePage: 1,
+    });
+    expect(dashboard.commerceSummary).toMatchObject({
+      revenueCents: 1800,
+      orderCount: 1,
+      averageOrderCents: 2200,
+    });
+    expect(dashboard.salesTrend).toContainEqual({
+      day: "2032-01-01",
+      revenueCents: 1800,
+      orders: 1,
+    });
+    expect(dashboard.salesTrend.some((day) => day.day === "2032-01-02")).toBe(
+      false,
+    );
   });
 });

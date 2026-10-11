@@ -39,6 +39,16 @@ export function localReportDate(date: Date, timezone: string) {
     parts.find((item) => item.type === type)!.value;
   return `${part("year")}-${part("month")}-${part("day")}`;
 }
+export function offsetReportDate(date: string, days: number) {
+  reportDate(date);
+  if (!Number.isSafeInteger(days))
+    throw new Error("Invalid calendar day offset");
+  return reportDate(
+    new Date(Date.parse(`${date}T00:00:00Z`) + days * 86400000)
+      .toISOString()
+      .slice(0, 10),
+  );
+}
 export function fiscalReportPeriod(date: string, firstMonth: number) {
   reportDate(date);
   if (!Number.isInteger(firstMonth) || firstMonth < 1 || firstMonth > 12)
@@ -98,24 +108,22 @@ function csv(value: string | number | null) {
   if (/^[=+@\-\t\r]/.test(text) && typeof value !== "number") text = `'${text}`;
   return `"${text.replaceAll('"', '""')}"`;
 }
+const reportColumns = [
+  "id",
+  "date",
+  "kind",
+  "orderId",
+  "method",
+  "netCents",
+  "taxCents",
+  "collectionCents",
+  "payoutCents",
+  "creditLiabilityDeltaCents",
+  "reason",
+] as const;
+export const salesReportCsvHeader = () => reportColumns.join(",") + "\r\n";
+export const salesReportCsvRow = (row: SalesReportRow) =>
+  reportColumns.map((column) => csv(row[column])).join(",") + "\r\n";
 export function salesReportCsv(rows: readonly SalesReportRow[]) {
-  const columns = [
-    "id",
-    "date",
-    "kind",
-    "orderId",
-    "method",
-    "netCents",
-    "taxCents",
-    "collectionCents",
-    "payoutCents",
-    "creditLiabilityDeltaCents",
-    "reason",
-  ] as const;
-  return (
-    [
-      columns.join(","),
-      ...rows.map((row) => columns.map((column) => csv(row[column])).join(",")),
-    ].join("\r\n") + "\r\n"
-  );
+  return salesReportCsvHeader() + rows.map(salesReportCsvRow).join("");
 }

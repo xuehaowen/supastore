@@ -8,6 +8,7 @@ import {
   recoverRevokedCreditRestore,
   allocateCreditLots,
   accumulateRewardComponentRefunds,
+  createRewardRefundAccumulator,
   type RewardComponent,
 } from "@/domain/rewards";
 
@@ -26,6 +27,46 @@ const snapshot = (components: RewardComponent[], externalAmount: number) =>
     components,
     externalAmount,
   });
+it("incrementally folds mixed detailed and legacy refunds with original-source caps", () => {
+  const accepted = snapshot(
+    [
+      merchandise("merch", 90),
+      { id: "tax", type: "tax", amount: 10, eligible: false },
+    ],
+    60,
+  );
+  const refunds = [
+    {
+      externalCents: 1,
+      creditCents: 0,
+      componentRefunds: [
+        { componentId: "tax", externalCents: 1, creditCents: 0 },
+      ],
+    },
+    { externalCents: 9, creditCents: 6 },
+    {
+      externalCents: 2,
+      creditCents: 3,
+      componentRefunds: [
+        { componentId: "merch", externalCents: 2, creditCents: 3 },
+      ],
+    },
+  ];
+  const fold = createRewardRefundAccumulator(accepted);
+  for (const refund of refunds) fold.add(refund);
+  expect(fold.value()).toEqual({
+    external: { merch: 10, tax: 2 },
+    credit: { merch: 8, tax: 1 },
+  });
+  expect(fold.value()).toEqual(
+    accumulateRewardComponentRefunds(accepted, refunds),
+  );
+  expect(() => fold.add({ externalCents: 100, creditCents: 0 })).toThrow();
+  expect(fold.value()).toEqual({
+    external: { merch: 10, tax: 2 },
+    credit: { merch: 8, tax: 1 },
+  });
+});
 
 describe("accepted reward funding", () => {
   it.each([
