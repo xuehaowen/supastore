@@ -189,6 +189,7 @@ export async function createManualOrderAction(form: FormData) {
       25,
     );
     const order = await createManualOrder({
+      requestKey: field(form, "requestKey"),
       staffUserId: await staffIdentity(),
       customerName: field(form, "customerName"),
       customerEmail: field(form, "customerEmail"),

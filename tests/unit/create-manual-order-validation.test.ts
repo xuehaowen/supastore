@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createManualOrder } from "@/application/use-cases/create-manual-order";
 
 const input = {
+  requestKey: "33333333-3333-4333-8333-333333333333",
   staffUserId: "owner",
   customerName: "Manual Customer",
   customerEmail: "manual@example.test",
@@ -17,6 +18,11 @@ const input = {
 };
 
 describe("manual order validation", () => {
+  it("requires a valid retry identity before writing", async () => {
+    await expect(
+      createManualOrder({ ...input, requestKey: "" }),
+    ).rejects.toThrow("Manual order request");
+  });
   it("rejects invalid customer email before writing", async () => {
     await expect(
       createManualOrder({ ...input, customerEmail: "invalid" }),

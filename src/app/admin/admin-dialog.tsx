@@ -18,6 +18,7 @@ export function AdminDialog({
   title,
   description,
   children,
+  onOpenChange,
 }: {
   trigger?: string;
   defaultOpen?: boolean;
@@ -25,13 +26,20 @@ export function AdminDialog({
   title: string;
   description?: string;
   children: ReactNode;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const [open, setOpen] = useState(defaultOpen);
 
   if (inline) return children;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        onOpenChange?.(next);
+      }}
+    >
       {trigger && (
         <DialogTrigger
           render={(props) => (

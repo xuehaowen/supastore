@@ -311,6 +311,10 @@ test("owner creates a manual order from the orders dialog", async ({
   await admin.goto("/admin/orders");
   await admin.getByRole("button", { name: "Add manual order" }).click();
   const dialog = admin.getByRole("dialog", { name: "Add manual order" });
+  const requestKey = await dialog
+    .locator('input[name="requestKey"]')
+    .inputValue();
+  expect(requestKey).toMatch(/^[0-9a-f-]{36}$/);
   await dialog.getByLabel("Customer name").fill("Manual Customer");
   await dialog.getByLabel("Customer email").fill("manual@example.test");
   await dialog.getByLabel("Shipping address").fill("1 Manual Street");
@@ -323,6 +327,14 @@ test("owner creates a manual order from the orders dialog", async ({
   await expect(
     admin.getByRole("alert").filter({ hasText: "Manual order SP-" }),
   ).toBeVisible();
+  const [created] =
+    await sql`select source_cart_id from orders where guest_email='manual@example.test'`;
+  expect(created!.source_cart_id).toBe(requestKey);
+  await admin.getByRole("button", { name: "Add manual order" }).click();
+  expect(
+    await dialog.locator('input[name="requestKey"]').inputValue(),
+  ).not.toBe(requestKey);
+  await admin.keyboard.press("Escape");
   const orderRow = admin.getByRole("row").filter({
     hasText: "manual@example.test",
   });

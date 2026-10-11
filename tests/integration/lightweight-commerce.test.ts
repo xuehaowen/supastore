@@ -181,6 +181,11 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
     await expect(createManualOrder(input)).rejects.toThrow();
     const [after] = await client`select count(*)::int as count from carts`;
     expect(after!.count).toBe(before!.count);
+    const retried = await createManualOrder({
+      ...input,
+      paymentAccountId: bank,
+    });
+    expect(retried.sourceCartId).toBe(input.requestKey);
   });
   it("consumes partial shipment stock once and completes only after all units arrive", async () => {
     const variant = await product();

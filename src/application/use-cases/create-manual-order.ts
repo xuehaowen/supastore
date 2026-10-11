@@ -1,10 +1,16 @@
-import { randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
+import { eq } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
-import { cartItems, carts } from "@/infrastructure/db/schema";
+import {
+  cartItems,
+  carts,
+  orders,
+  storeSettings,
+} from "@/infrastructure/db/schema";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { DomainError } from "@/application/common/errors";
-import { getQuote } from "@/application/use-cases/get-quote";
-import { createOrder } from "@/application/use-cases/create-order";
+import { getQuoteInTransaction } from "@/application/use-cases/get-quote";
+import { createOrderInTransaction } from "@/application/use-cases/create-order";
 import {
   parseActionInteger,
   parseActionRequiredText,
@@ -12,6 +18,7 @@ import {
 } from "@/application/common/request-validation";
 
 export async function createManualOrder(input: {
+  requestKey: string;
   staffUserId: string;
   customerName: string;
   customerEmail: string;
@@ -57,37 +64,73 @@ export async function createManualOrder(input: {
   if (new Set(items.map((item) => item.variantId)).size !== items.length)
     throw new DomainError("Combine duplicate product variants into one line.");
 
-  const guestSessionId = `manual:${randomUUID()}`;
-  const cart = await db.transaction(async (tx) => {
+  const requestKey = parseActionUuid(input.requestKey, "Manual order request");
+  const shippingAddress = {
+    country,
+    address,
+    region: input.region?.trim().toUpperCase() ?? "",
+    postalCode: input.postalCode?.trim() ?? "",
+  };
+  const fingerprint = createHash("sha256")
+    .update(
+      JSON.stringify({
+        staffUserId: input.staffUserId,
+        customerName,
+        customerEmail,
+        shippingAddress,
+        paymentAccountId,
+        items: [...items].sort((a, b) =>
+          a.variantId.localeCompare(b.variantId),
+        ),
+      }),
+    )
+    .digest("hex");
+  const guestSessionId = `manual:${fingerprint}`;
+  return db.transaction(async (tx) => {
     await verifyStaffInTransaction(tx, input.staffUserId, "owner");
+    // Follow checkout's settings-before-cart lock order, including retries.
+    await tx.select().from(storeSettings).for("update");
     const [created] = await tx
       .insert(carts)
-      .values({ guestSessionId })
+      .values({ id: requestKey, guestSessionId })
+      .onConflictDoNothing()
       .returning();
-    await tx
-      .insert(cartItems)
-      .values(items.map((item) => ({ cartId: created!.id, ...item })));
-    return created!;
+    const [cart] = await tx
+      .select()
+      .from(carts)
+      .where(eq(carts.id, requestKey))
+      .for("update");
+    if (!cart || cart.guestSessionId !== guestSessionId)
+      throw new DomainError(
+        "Manual order request was already used with different details.",
+      );
+    if (cart.convertedOrderId) {
+      const [existing] = await tx
+        .select()
+        .from(orders)
+        .where(eq(orders.id, cart.convertedOrderId));
+      if (!existing)
+        throw new DomainError("Manual order request has no recoverable order.");
+      return { ...existing, orderId: existing.id, isExisting: true };
+    }
+    if (created)
+      await tx
+        .insert(cartItems)
+        .values(items.map((item) => ({ cartId: cart.id, ...item })));
+    const quote = await getQuoteInTransaction(tx, {
+      cartId: cart.id,
+      guestSessionId,
+      fulfillmentType: "shipping",
+      shippingAddress,
+      paymentAccountId,
+    });
+    return createOrderInTransaction(tx, {
+      quoteId: quote.id,
+      guestSessionId,
+      guestEmail: customerEmail,
+      guestName: customerName,
+      staffUserId: input.staffUserId,
+      manualItemCount: items.length,
+    });
   });
-  const quote = await getQuote({
-    cartId: cart.id,
-    guestSessionId,
-    fulfillmentType: "shipping",
-    shippingAddress: {
-      country,
-      address,
-      region: input.region?.trim().toUpperCase() ?? "",
-      postalCode: input.postalCode?.trim() ?? "",
-    },
-    paymentAccountId,
-  });
-  const order = await createOrder({
-    quoteId: quote.id,
-    guestSessionId,
-    guestEmail: customerEmail,
-    guestName: customerName,
-    staffUserId: input.staffUserId,
-    manualItemCount: items.length,
-  });
-  return order;
 }

@@ -348,34 +348,34 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
 }
 export type QuoteTerms = Awaited<ReturnType<typeof calculateQuote>>["terms"];
 export async function getQuote(input: GetQuoteInput) {
-  return db.transaction(async (tx) => {
-    await tx.select().from(storeSettings).for("update");
-    await tx
-      .select()
-      .from(carts)
-      .where(eq(carts.id, input.cartId))
-      .for("update");
-    const { cart, calculationItems, result, terms } = await calculateQuote(
-      tx,
-      input,
-    );
-    const [quote] = await tx
-      .insert(quotes)
-      .values({
-        cartId: cart.id,
-        cartRevision: cart.revision,
-        merchandiseSubtotalCents: result.merchandiseSubtotalCents,
-        shippingCents: result.shippingCents,
-        exclusiveTaxCents: result.exclusiveTaxCents,
-        inclusiveTaxCents: result.inclusiveTaxCents,
-        totalPayableCents: result.totalPayableCents,
-        discountCents: terms.promotion?.discountCents ?? 0,
-        itemsSnapshot: calculationItems,
-        shippingSnapshot: result.shipping,
-        termsSnapshot: terms,
-        expiresAt: new Date(Date.now() + 15 * 60000),
-      })
-      .returning();
-    return quote!;
-  });
+  return db.transaction((tx) => getQuoteInTransaction(tx, input));
+}
+export async function getQuoteInTransaction(
+  tx: Transaction,
+  input: GetQuoteInput,
+) {
+  await tx.select().from(storeSettings).for("update");
+  await tx.select().from(carts).where(eq(carts.id, input.cartId)).for("update");
+  const { cart, calculationItems, result, terms } = await calculateQuote(
+    tx,
+    input,
+  );
+  const [quote] = await tx
+    .insert(quotes)
+    .values({
+      cartId: cart.id,
+      cartRevision: cart.revision,
+      merchandiseSubtotalCents: result.merchandiseSubtotalCents,
+      shippingCents: result.shippingCents,
+      exclusiveTaxCents: result.exclusiveTaxCents,
+      inclusiveTaxCents: result.inclusiveTaxCents,
+      totalPayableCents: result.totalPayableCents,
+      discountCents: terms.promotion?.discountCents ?? 0,
+      itemsSnapshot: calculationItems,
+      shippingSnapshot: result.shipping,
+      termsSnapshot: terms,
+      expiresAt: new Date(Date.now() + 15 * 60000),
+    })
+    .returning();
+  return quote!;
 }

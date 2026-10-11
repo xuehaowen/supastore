@@ -19,13 +19,18 @@ export function ManualOrderDialog({
   paymentAccounts: Option[];
 }) {
   const [lines, setLines] = useState([0]);
+  const [requestKey, setRequestKey] = useState("");
   return (
     <AdminDialog
       trigger="Add manual order"
       title="Add manual order"
       description="Create an order using current catalog prices, tax, and shipping rules."
+      onOpenChange={(open) => {
+        if (open) setRequestKey(crypto.randomUUID());
+      }}
     >
       <form action={createManualOrderAction} className="grid gap-4">
+        <Hidden name="requestKey" value={requestKey} />
         <Hidden name="itemCount" value={String(lines.length)} />
         <div className="two-col">
           <Field name="customerName" label="Customer name" />

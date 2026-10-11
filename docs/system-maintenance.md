@@ -2,6 +2,15 @@
 
 Snapshot: 2026-10-09. Use the [capability inventory](system-capabilities.md) for system behavior and the directory READMEs linked from [backend source](../src/README.md), [applications](../apps/README.md), and [shared packages](../packages/README.md) for module details. This guide covers maintenance across those modules. Commands below come from the current root `package.json` and repository scripts. Review configuration and the target database before running commands that migrate, seed, restore, or contact providers.
 
+## Manual order retries
+
+Manual-order forms generate a request UUID when the dialog opens. Retries of the
+same submitted request recover its original order, including after ordering is
+paused. The identity is bound to the owner and normalized customer, destination,
+payment method and item details; changing those details requires a new request.
+Cart preparation, quoting and placement share one transaction, so failures leave
+no partial preparation. Opening a new dialog starts a distinct request.
+
 ## Financial reports and dashboard
 
 Sales reports show 100 rows per page while totals cover the complete requested
