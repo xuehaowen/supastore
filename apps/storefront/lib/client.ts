@@ -1,8 +1,10 @@
 import { responseData, responseMessage } from "./response";
+import { fetchJson, TransportError } from "./fetch-json";
 export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
+    public requestId?: string,
   ) {
     super(message);
   }
@@ -24,21 +26,25 @@ export async function request(
   method = "POST",
   decode?: (value: unknown) => unknown,
 ): Promise<unknown> {
-  const response = await fetch(`/api/${path}`, {
+  const { response, data, requestId } = await fetchJson(`/api/${path}`, {
     method,
     headers: body ? { "Content-Type": "application/json" } : {},
     ...(body ? { body: JSON.stringify(body) } : {}),
+  }).catch((error: unknown) => {
+    if (error instanceof TransportError)
+      throw new ApiError(error.message, error.status, error.requestId);
+    throw error;
   });
-  const data: unknown = await response.json().catch(() => null);
   if (!response.ok)
     throw new ApiError(
       responseMessage(data, "Unable to complete request."),
       response.status,
+      requestId,
     );
   try {
     const value = responseData(data, path.startsWith("v1/"));
     return decode ? decode(value) : value;
   } catch {
-    throw new ApiError("Invalid API response.", 502);
+    throw new ApiError("Invalid API response.", 502, requestId);
   }
 }

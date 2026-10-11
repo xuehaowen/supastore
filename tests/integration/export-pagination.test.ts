@@ -13,6 +13,17 @@ afterAll(async () => {
   await queryClient.end();
 });
 
+it("limits statement execution and lock waits on runtime connections", async () => {
+  const [settings] =
+    await queryClient`select current_setting('statement_timeout') as statement,
+    current_setting('lock_timeout') as lock, current_setting('idle_in_transaction_session_timeout') as idle`;
+  expect(settings).toMatchObject({
+    statement: "30s",
+    lock: "5s",
+    idle: "1min",
+  });
+});
+
 it("exports every original variant once across deletions and excludes later creations", async () => {
   const product = randomUUID();
   const prefix = `export-${product}`;

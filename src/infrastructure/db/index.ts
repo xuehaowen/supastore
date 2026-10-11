@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
+import { runtimeDatabaseOptions } from "./runtime-options";
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -16,11 +17,7 @@ if (!connectionString) {
 export const queryClient = postgres(
   connectionString ||
     "postgresql://postgres:postgres@localhost:5432/supastore_inert",
-  {
-    max: 10,
-    idle_timeout: 20,
-    connect_timeout: 10,
-  },
+  runtimeDatabaseOptions(),
 );
 
 export const db = drizzle(queryClient, { schema });

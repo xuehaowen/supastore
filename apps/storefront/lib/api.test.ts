@@ -12,9 +12,93 @@ beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock);
   fetchMock.mockReset();
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
 
 describe("decoded storefront HTTP boundaries", () => {
+  it("preserves bounded response request IDs in both typed error boundaries", async () => {
+    fetchMock.mockImplementation(
+      () =>
+        new Response("Unauthorized", {
+          status: 401,
+          headers: { "x-request-id": "fixture-request-id" },
+        }),
+    );
+    await expect(readApi("cart", parseOptionalCartDto)).rejects.toMatchObject({
+      status: 401,
+      requestId: "fixture-request-id",
+    });
+    await expect(request("v1/cart")).rejects.toMatchObject({
+      status: 401,
+      requestId: "fixture-request-id",
+    });
+    fetchMock.mockImplementation(
+      () =>
+        new Response("Unauthorized", {
+          status: 401,
+          headers: { "x-request-id": "x".repeat(65) },
+        }),
+    );
+    await expect(request("v1/cart")).rejects.toMatchObject({
+      status: 401,
+      requestId: undefined,
+    });
+  });
+  it("times out stalled requests and cancels the transport", async () => {
+    vi.useFakeTimers();
+    let signal: AbortSignal | undefined;
+    fetchMock.mockImplementation((_url, init) => {
+      signal = init.signal;
+      return new Promise(() => {});
+    });
+    const pending = readApi("cart", parseOptionalCartDto);
+    const assertion = expect(pending).rejects.toMatchObject({ status: 504 });
+    await vi.advanceTimersByTimeAsync(15000);
+    await assertion;
+    expect(signal?.aborted).toBe(true);
+  });
+  it("bounds chunked response bodies and cancels oversized downloads", async () => {
+    const cancelled = vi.fn();
+    fetchMock.mockImplementation(
+      () =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(new Uint8Array(2 * 1024 * 1024 + 1));
+            },
+            cancel: cancelled,
+          }),
+        ),
+    );
+    await expect(request("v1/cart")).rejects.toMatchObject({ status: 502 });
+    expect(cancelled).toHaveBeenCalled();
+  });
+  it("rejects an oversized advertised body before reading it", async () => {
+    const cancelled = vi.fn();
+    fetchMock.mockImplementation(
+      () =>
+        new Response(new ReadableStream({ cancel: cancelled }), {
+          headers: { "content-length": String(2 * 1024 * 1024 + 1) },
+        }),
+    );
+    await expect(readApi("cart", parseOptionalCartDto)).rejects.toMatchObject({
+      status: 502,
+    });
+    expect(cancelled).toHaveBeenCalled();
+  });
+  it("includes response-body reads in the deadline", async () => {
+    vi.useFakeTimers();
+    fetchMock.mockImplementation(
+      () => new Response(new ReadableStream({ start() {} })),
+    );
+    const assertion = expect(request("v1/cart")).rejects.toMatchObject({
+      status: 504,
+    });
+    await vi.advanceTimersByTimeAsync(15000);
+    await assertion;
+  });
   it("decodes server responses and forwards guest context", async () => {
     fetchMock.mockResolvedValue(Response.json({ data: cart }));
     await expect(readApi("cart", parseOptionalCartDto)).resolves.toEqual(cart);

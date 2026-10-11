@@ -24,6 +24,24 @@ cell limit. Larger exports return a readable HTTP 422 response directing the
 merchant to the streaming CSV download. XLSX generation is bounded but still
 uses an in-memory workbook.
 
+## Request and database resource budgets
+
+Storefront JSON reads and writes have a 15-second deadline covering connection,
+headers and response-body reads. Responses are limited to 2 MiB, using both the
+advertised length and actual decoded bytes. Timeout and oversized-body failures
+cancel the transport and use the existing typed error boundary. Bounded backend
+request IDs are retained on errors for correlation; requests are not retried
+automatically.
+
+Runtime database connections default to a pool of 10, a 30-second statement
+timeout, a 5-second lock wait, and a 60-second idle-transaction timeout. Configure
+these with `DB_POOL_MAX`, `DB_STATEMENT_TIMEOUT_MS`, `DB_LOCK_TIMEOUT_MS`, and
+`DB_IDLE_TRANSACTION_TIMEOUT_MS`. Pools are limited to 1–20 connections;
+statement/idle budgets to 1–300 seconds; lock waits to 100–300,000 milliseconds.
+The lock budget cannot exceed the statement budget. Invalid configuration fails
+at startup. Migrations use their separate operator connection and are not given
+these runtime budgets. Budget total connections across all backend instances.
+
 ## Establish the current state
 
 Start with the relevant directory README, current diff, deployed image revision, environment configuration, and migration journal. Determine whether the problem affects the combined app, separate storefront, backend, worker, storage, or provider. Record the request/order/reference and timestamps without exposing private access tokens or credentials.
