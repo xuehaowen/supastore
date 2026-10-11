@@ -26,6 +26,7 @@ import { createProduct } from "@/application/use-cases/catalog/create-product";
 import { addToCart } from "@/application/use-cases/cart/add-to-cart";
 import { getQuote } from "@/application/use-cases/get-quote";
 import { createOrder } from "@/application/use-cases/create-order";
+import { createManualOrder } from "@/application/use-cases/create-manual-order";
 import { cancelOrder } from "@/application/use-cases/orders/cancel-order";
 import { adjustStock } from "@/application/use-cases/inventory/stock-operations";
 import { recordReceipt } from "@/application/use-cases/record-receipt";
@@ -132,6 +133,55 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
       guestName: "Guest",
     };
   }
+  it("recovers concurrent and lost-response manual submissions without duplicate side effects", async () => {
+    const variant = await product();
+    const input = {
+      requestKey: randomUUID(),
+      staffUserId: owner,
+      customerName: "Manual customer",
+      customerEmail: "manual@example.test",
+      country: "US",
+      address: "1 Test St",
+      paymentAccountId: bank,
+      items: [{ variantId: variant.id, quantity: 1 }],
+    };
+    const [first, second] = await Promise.all([
+      createManualOrder(input),
+      createManualOrder(input),
+    ]);
+    expect(second.id).toBe(first.id);
+    await client`update store_settings set is_paused=true`;
+    try {
+      expect((await createManualOrder(input)).id).toBe(first.id);
+      await expect(
+        createManualOrder({ ...input, address: "Changed address" }),
+      ).rejects.toThrow("request");
+    } finally {
+      await client`update store_settings set is_paused=false`;
+    }
+    const [counts] = await client`select
+      (select count(*)::int from orders where source_cart_id=${first.sourceCartId}) as orders,
+      (select count(*)::int from quotes where cart_id=${first.sourceCartId}) as quotes,
+      (select count(*)::int from audit_records where entity_id=${first.id} and action='manual_order.created') as audits`;
+    expect(counts).toMatchObject({ orders: 1, quotes: 1, audits: 1 });
+  });
+  it("rolls back manual preparation when quoting fails", async () => {
+    const variant = await product();
+    const input = {
+      requestKey: randomUUID(),
+      staffUserId: owner,
+      customerName: "Manual customer",
+      customerEmail: "manual@example.test",
+      country: "US",
+      address: "1 Test St",
+      paymentAccountId: randomUUID(),
+      items: [{ variantId: variant.id, quantity: 1 }],
+    };
+    const [before] = await client`select count(*)::int as count from carts`;
+    await expect(createManualOrder(input)).rejects.toThrow();
+    const [after] = await client`select count(*)::int as count from carts`;
+    expect(after!.count).toBe(before!.count);
+  });
   it("consumes partial shipment stock once and completes only after all units arrive", async () => {
     const variant = await product();
     await adjustStock({
