@@ -7,7 +7,15 @@ import {
   orderFulfillments,
   paymentReceipts,
 } from "@/infrastructure/db/schema";
-import { eq, asc, inArray, sql } from "drizzle-orm";
+import { and, eq, asc, inArray, sql } from "drizzle-orm";
+
+type ExportCursor = { id: string; timestamp: string };
+async function exportCutoff() {
+  const [snapshot] = await db.execute<{ timestamp: string }>(
+    sql`select clock_timestamp()::text as timestamp`,
+  );
+  return snapshot!.timestamp;
+}
 
 // ---------------------------------------------------------------------------
 // CSV serialization helpers
@@ -30,6 +38,7 @@ function csvRow(cells: unknown[]): string {
 //          is_available, is_published, created_at
 // ---------------------------------------------------------------------------
 export async function* streamProductsCsv(): AsyncGenerator<string> {
+  const cutoff = await exportCutoff();
   const HEADER = csvRow([
     "handle",
     "sku",
@@ -47,11 +56,13 @@ export async function* streamProductsCsv(): AsyncGenerator<string> {
 
   // Stream products in batches to avoid loading entire catalog into memory
   const BATCH = 200;
-  let offset = 0;
+  let cursor: ExportCursor | undefined;
 
   while (true) {
     const rows = await db
       .select({
+        id: productVariants.id,
+        cursorTimestamp: sql<string>`${productVariants.createdAt}::text`,
         handle: products.handle,
         productTitle: products.title,
         productDescription: products.description,
@@ -66,9 +77,16 @@ export async function* streamProductsCsv(): AsyncGenerator<string> {
       })
       .from(products)
       .innerJoin(productVariants, eq(productVariants.productId, products.id))
-      .orderBy(asc(products.handle), asc(productVariants.sku))
-      .limit(BATCH)
-      .offset(offset);
+      .where(
+        and(
+          sql`${productVariants.createdAt} <= ${cutoff}::timestamptz`,
+          cursor
+            ? sql`(${productVariants.createdAt}, ${productVariants.id}) > (${cursor.timestamp}::timestamptz, ${cursor.id}::uuid)`
+            : undefined,
+        ),
+      )
+      .orderBy(asc(productVariants.createdAt), asc(productVariants.id))
+      .limit(BATCH);
 
     if (rows.length === 0) break;
 
@@ -89,7 +107,8 @@ export async function* streamProductsCsv(): AsyncGenerator<string> {
     }
 
     if (rows.length < BATCH) break;
-    offset += BATCH;
+    const last = rows[rows.length - 1]!;
+    cursor = { id: last.id, timestamp: last.cursorTimestamp };
   }
 }
 
@@ -118,12 +137,14 @@ export type OrderExportRow = Record<
 
 export async function* streamOrderExportRows(): AsyncGenerator<OrderExportRow> {
   const BATCH = 100;
-  let offset = 0;
+  const cutoff = await exportCutoff();
+  let cursor: ExportCursor | undefined;
 
   while (true) {
     const orderRows = await db
       .select({
         id: orders.id,
+        cursorTimestamp: sql<string>`${orders.createdAt}::text`,
         referenceCode: orders.referenceCode,
         lifecycleStatus: orders.lifecycleStatus,
         guestEmail: orders.guestEmail,
@@ -136,9 +157,16 @@ export async function* streamOrderExportRows(): AsyncGenerator<OrderExportRow> {
       })
       .from(orders)
       .leftJoin(orderFulfillments, eq(orderFulfillments.orderId, orders.id))
-      .orderBy(asc(orders.createdAt))
-      .limit(BATCH)
-      .offset(offset);
+      .where(
+        and(
+          sql`${orders.createdAt} <= ${cutoff}::timestamptz`,
+          cursor
+            ? sql`(${orders.createdAt}, ${orders.id}) > (${cursor.timestamp}::timestamptz, ${cursor.id}::uuid)`
+            : undefined,
+        ),
+      )
+      .orderBy(asc(orders.createdAt), asc(orders.id))
+      .limit(BATCH);
 
     if (orderRows.length === 0) break;
 
@@ -154,7 +182,8 @@ export async function* streamOrderExportRows(): AsyncGenerator<OrderExportRow> {
       })
       .from(orderItems)
       .innerJoin(productVariants, eq(productVariants.id, orderItems.variantId))
-      .where(inArray(orderItems.orderId, orderIds));
+      .where(inArray(orderItems.orderId, orderIds))
+      .orderBy(asc(orderItems.orderId), asc(orderItems.id));
 
     const receiptRows = await db
       .select({
@@ -162,7 +191,8 @@ export async function* streamOrderExportRows(): AsyncGenerator<OrderExportRow> {
         rawReference: paymentReceipts.rawReference,
       })
       .from(paymentReceipts)
-      .where(inArray(paymentReceipts.orderId, orderIds));
+      .where(inArray(paymentReceipts.orderId, orderIds))
+      .orderBy(asc(paymentReceipts.createdAt), asc(paymentReceipts.id));
 
     for (const order of orderRows) {
       const items = itemRows.filter((item) => item.orderId === order.id);
@@ -213,7 +243,8 @@ export async function* streamOrderExportRows(): AsyncGenerator<OrderExportRow> {
     }
 
     if (orderRows.length < BATCH) break;
-    offset += BATCH;
+    const last = orderRows[orderRows.length - 1]!;
+    cursor = { id: last.id, timestamp: last.cursorTimestamp };
   }
 }
 

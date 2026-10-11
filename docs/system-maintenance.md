@@ -2,6 +2,28 @@
 
 Snapshot: 2026-10-09. Use the [capability inventory](system-capabilities.md) for system behavior and the directory READMEs linked from [backend source](../src/README.md), [applications](../apps/README.md), and [shared packages](../packages/README.md) for module details. This guide covers maintenance across those modules. Commands below come from the current root `package.json` and repository scripts. Review configuration and the target database before running commands that migrate, seed, restore, or contact providers.
 
+## Catalog selectors, histories, and exports
+
+Manual-order and slot-quota variant selectors load at most 50 initial options.
+Use the SKU/product search to find other variants; the search is owner-only,
+returns up to 50 matches, and preserves selections while searching. Existing
+slot quota labels are loaded with their quota records, independently of this
+initial batch. Customer credit history uses a separate `creditPage` parameter
+with 25 entries per page. Reconciliation always checks the complete ledger.
+
+CSV exports fetch bounded batches using `(created_at, id)` cursors with full
+PostgreSQL timestamp precision, and a creation-time cutoff captured when the
+export starts. The HTTP response pulls chunks on demand and cancels the source
+on disconnect. This is a live export with a creation-time cutoff: it does not
+provide a database snapshot of fields, deletions, or transactions committed
+later with older timestamps. Use a cold database copy for an exact historical
+snapshot. Product export rows are ordered by variant creation time and ID.
+
+XLSX exports support up to 10,000 data rows and the spreadsheet's 32,767-character
+cell limit. Larger exports return a readable HTTP 422 response directing the
+merchant to the streaming CSV download. XLSX generation is bounded but still
+uses an in-memory workbook.
+
 ## Establish the current state
 
 Start with the relevant directory README, current diff, deployed image revision, environment configuration, and migration journal. Determine whether the problem affects the combined app, separate storefront, backend, worker, storage, or provider. Record the request/order/reference and timestamps without exposing private access tokens or credentials.

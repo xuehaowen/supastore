@@ -3,14 +3,22 @@ import {
   type AdminOperationsInput,
 } from "@/application/queries/admin-operations";
 import { createCategory } from "@/application/use-cases/catalog/create-category";
+import { searchVariantOptions } from "@/application/queries/variant-options";
 import { savePaymentAccount } from "@/application/use-cases/payments/save-payment-account";
+import {
+  customerCredit,
+  issueStoreCredit,
+} from "@/application/use-cases/store-credit/credit-operations";
 import { db, queryClient } from "@/infrastructure/db";
 import {
   auditRecords,
   carts,
+  customers,
   orders,
   paymentReceipts,
   paymentUploadIntents,
+  products,
+  productVariants,
   payoutAllocations,
   quotes,
   staffMemberships,
@@ -235,6 +243,62 @@ describe.skipIf(!process.env.DATABASE_URL?.endsWith("/supastore_test"))(
       } finally {
         await db.update(orders).set({ lifecycleStatus: "unpaid" });
       }
+    });
+    it("bounds variant options and finds catalog items beyond the initial batch", async () => {
+      const id = randomUUID();
+      await db
+        .insert(products)
+        .values({ id, handle: id, title: "Selector fixture" });
+      await db
+        .insert(productVariants)
+        .values(
+          Array.from({ length: 51 }, (_, index) => ({
+            productId: id,
+            sku: `selector-${String(index).padStart(3, "0")}`,
+            title: `Variant ${index}`,
+            priceCents: 100,
+          })),
+        );
+      const first = await searchVariantOptions(owner, "selector-");
+      expect(first.options).toHaveLength(50);
+      expect(first.hasNext).toBe(true);
+      const last = await searchVariantOptions(owner, "selector-050");
+      expect(last.options).toHaveLength(1);
+      expect(last.options[0]?.label).toContain("selector-050");
+      await expect(searchVariantOptions(staff, "selector-")).rejects.toThrow(
+        "Owner privileges",
+      );
+    });
+    it("pages customer credit history while reconciling the complete ledger", async () => {
+      const customerId = randomUUID();
+      await db.insert(customers).values({
+        id: customerId,
+        email: `${customerId}@example.test`,
+        name: "Credit history fixture",
+      });
+      for (let index = 0; index < 26; index++)
+        await issueStoreCredit({
+          staffUserId: owner,
+          customerId,
+          amountCents: 100,
+          reason: `History ${index}`,
+          requestKey: randomUUID(),
+        });
+      const first = await db.transaction((tx) =>
+        customerCredit(tx, customerId),
+      );
+      const second = await db.transaction((tx) =>
+        customerCredit(tx, customerId, 2),
+      );
+      expect(first?.entries).toHaveLength(25);
+      expect(second?.entries).toHaveLength(1);
+      expect(first?.account.balanceCents).toBe(2600);
+      expect(second?.reconciled).toBe(true);
+      expect(
+        new Set(
+          [...first!.entries, ...second!.entries].map((entry) => entry.id),
+        ).size,
+      ).toBe(26);
     });
     it("enforces owner authorization and audits extracted mutations", async () => {
       await expect(

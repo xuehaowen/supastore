@@ -32,23 +32,39 @@ export function AccountClient({
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState("sign-in");
   const [page, setPage] = useState(1);
+  const [creditPage, setCreditPage] = useState(1);
   const [reference, setReference] = useState("");
   const [searchReference, setSearchReference] = useState("");
-  async function load(nextPage = page, filter = searchReference) {
+  async function load(
+    nextPage = page,
+    filter = searchReference,
+    nextCreditPage = creditPage,
+  ) {
     const value = await request(
-      `v1/account?page=${nextPage}&reference=${encodeURIComponent(filter)}`,
+      `v1/account?page=${nextPage}&reference=${encodeURIComponent(filter)}&creditPage=${nextCreditPage}`,
       undefined,
       "GET",
       parseCustomerAccountDto,
     );
     setAccount(value);
     setPage(nextPage);
+    setCreditPage(nextCreditPage);
     setSearchReference(filter);
   }
   async function changePage(nextPage: number) {
     setBusy(true);
     try {
       await load(nextPage);
+    } catch (error) {
+      setMessage(customerError(error, locale));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function changeCreditPage(nextPage: number) {
+    setBusy(true);
+    try {
+      await load(page, searchReference, nextPage);
     } catch (error) {
       setMessage(customerError(error, locale));
     } finally {
@@ -166,6 +182,21 @@ export function AccountClient({
                 </p>
               ))}
               <p>{m.account.creditHelp}</p>
+              <nav aria-label={m.account.recentActivity}>
+                <button
+                  disabled={busy || creditPage === 1}
+                  onClick={() => changeCreditPage(creditPage - 1)}
+                >
+                  {m.account.previous}
+                </button>
+                <span> {creditPage} </span>
+                <button
+                  disabled={busy || !account.credit.hasNext}
+                  onClick={() => changeCreditPage(creditPage + 1)}
+                >
+                  {m.account.next}
+                </button>
+              </nav>
             </section>
           )}
           <h2>{m.account.orderHistory}</h2>

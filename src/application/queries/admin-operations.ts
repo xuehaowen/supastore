@@ -234,7 +234,7 @@ export async function getAdminOperations(input: AdminOperationsInput) {
           ];
     const [store] = await tx.select().from(storeSettings).limit(1);
     const manualOrderVariants =
-      view === "orders"
+      view === "orders" && member.role === "owner"
         ? await tx
             .select({
               id: productVariants.id,
@@ -250,7 +250,8 @@ export async function getAdminOperations(input: AdminOperationsInput) {
                 eq(productVariants.isAvailable, true),
               ),
             )
-            .orderBy(products.title, productVariants.title)
+            .orderBy(productVariants.sku, productVariants.id)
+            .limit(50)
         : [];
     const [commerceSummary] =
       view === "overview"

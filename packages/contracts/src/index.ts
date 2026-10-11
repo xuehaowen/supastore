@@ -17,6 +17,7 @@ export interface CustomerAccountDto {
     currency: string;
     precision: number;
     reconciled?: boolean;
+    hasNext?: boolean;
     entries: {
       id: string;
       amountCents: number;

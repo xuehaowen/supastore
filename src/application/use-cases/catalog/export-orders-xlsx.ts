@@ -1,5 +1,8 @@
 import ExcelJS from "exceljs";
 import { ORDER_EXPORT_COLUMNS, streamOrderExportRows } from "./export-csv";
+import { DomainError } from "@/domain/errors";
+
+const MAX_ROWS = 10000;
 
 export async function exportOrdersXlsx(): Promise<ArrayBuffer> {
   const workbook = new ExcelJS.Workbook();
@@ -23,7 +26,22 @@ export async function exportOrdersXlsx(): Promise<ArrayBuffer> {
     pattern: "solid",
     fgColor: { argb: "FF17252A" },
   };
-  for await (const row of streamOrderExportRows()) sheet.addRow(row);
+  let rowCount = 0;
+  for await (const row of streamOrderExportRows()) {
+    if (++rowCount > MAX_ROWS)
+      throw new DomainError(
+        "XLSX exports support up to 10,000 rows. Use the streaming CSV export for larger downloads.",
+      );
+    if (
+      Object.values(row).some(
+        (value) => typeof value === "string" && value.length > 32767,
+      )
+    )
+      throw new DomainError(
+        "A value exceeds the XLSX cell limit. Use the streaming CSV export.",
+      );
+    sheet.addRow(row);
+  }
   for (const key of [
     "discount_cents",
     "purchase_total_cents",

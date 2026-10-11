@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { and, asc, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
   fulfillmentSlots,
@@ -26,6 +26,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { queuePage, QueuePagination } from "@/app/admin/queue-pagination";
+import { VariantPicker } from "@/app/admin/variant-picker";
 export default async function SlotsPage({
   searchParams,
 }: {
@@ -51,11 +52,22 @@ export default async function SlotsPage({
     const variants = await tx
       .select({ id: productVariants.id, sku: productVariants.sku })
       .from(productVariants)
-      .orderBy(asc(productVariants.sku));
+      .orderBy(asc(productVariants.sku), asc(productVariants.id))
+      .limit(50);
     const quotas = slots.length
       ? await tx
-          .select()
+          .select({
+            id: slotVariantQuotas.id,
+            slotId: slotVariantQuotas.slotId,
+            variantId: slotVariantQuotas.variantId,
+            quantity: slotVariantQuotas.quantity,
+            sku: productVariants.sku,
+          })
           .from(slotVariantQuotas)
+          .innerJoin(
+            productVariants,
+            eq(productVariants.id, slotVariantQuotas.variantId),
+          )
           .where(
             inArray(
               slotVariantQuotas.slotId,
@@ -178,8 +190,7 @@ export default async function SlotsPage({
                     .filter((q) => q.slotId === slot.id)
                     .map((q) => (
                       <p key={q.id} className="text-sm">
-                        {data.variants.find((v) => v.id === q.variantId)?.sku}:{" "}
-                        {q.quantity}
+                        {q.sku}: {q.quantity}
                       </p>
                     ))}
                   {data.owner && (
@@ -188,20 +199,15 @@ export default async function SlotsPage({
                       className="mt-2 flex flex-wrap items-center gap-2"
                     >
                       <input type="hidden" name="slotId" value={slot.id} />
-                      <label className="text-xs">
-                        Variant
-                        <NativeSelect
-                          name="variantId"
-                          required
-                          className="mt-1"
-                        >
-                          {data.variants.map((v) => (
-                            <option key={v.id} value={v.id}>
-                              {v.sku}
-                            </option>
-                          ))}
-                        </NativeSelect>
-                      </label>
+                      <VariantPicker
+                        name="variantId"
+                        label="Variant"
+                        scope="quota"
+                        initialOptions={data.variants.map((variant) => ({
+                          id: variant.id,
+                          label: variant.sku,
+                        }))}
+                      />
                       <label className="text-xs">
                         Max units
                         <Input

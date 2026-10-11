@@ -340,7 +340,11 @@ export async function settleOrderCredit(
     .where(eq(storeCreditReservations.id, hold.id));
   return { ...hold, status, debitEntryId };
 }
-export async function customerCredit(tx: Transaction, customerId: string) {
+export async function customerCredit(
+  tx: Transaction,
+  customerId: string,
+  page = 1,
+) {
   const [store] = await tx.select().from(storeSettings).limit(1);
   if (!store) return null;
   const [account] = await tx
@@ -358,7 +362,8 @@ export async function customerCredit(tx: Transaction, customerId: string) {
     .from(storeCreditEntries)
     .where(eq(storeCreditEntries.accountId, account.id))
     .orderBy(desc(storeCreditEntries.createdAt), desc(storeCreditEntries.id))
-    .limit(25);
+    .limit(26)
+    .offset((Math.min(10000, Math.max(1, Math.floor(page) || 1)) - 1) * 25);
   const [ledger] = await tx
     .select({
       total: sql<number>`coalesce(sum(${storeCreditEntries.amountCents}),0)::bigint`,
@@ -385,7 +390,8 @@ export async function customerCredit(tx: Transaction, customerId: string) {
     .where(eq(creditSourceLots.accountId, account.id));
   return {
     account,
-    entries,
+    entries: entries.slice(0, 25),
+    hasNext: entries.length > 25,
     reconciled:
       Number(ledger!.total) === account.balanceCents &&
       Number(holds!.total) === account.reservedCents &&

@@ -5,6 +5,7 @@ import { auth } from "@/infrastructure/auth";
 import { db } from "@/infrastructure/db";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { ForbiddenError } from "@/application/common/errors";
+import { textIterableStream } from "@/infrastructure/http/iterable-stream";
 
 export async function GET(_request: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -28,18 +29,7 @@ export async function GET(_request: NextRequest) {
 
   const filename = `products-${new Date().toISOString().slice(0, 10)}.csv`;
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        for await (const chunk of streamProductsCsv()) {
-          controller.enqueue(new TextEncoder().encode(chunk));
-        }
-        controller.close();
-      } catch (err) {
-        controller.error(err);
-      }
-    },
-  });
+  const stream = textIterableStream(streamProductsCsv());
 
   return new NextResponse(stream, {
     status: 200,

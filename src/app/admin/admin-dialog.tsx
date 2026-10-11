@@ -41,12 +41,12 @@ export function AdminDialog({
           )}
         />
       )}
-      <DialogPopup className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
+      <DialogPopup className="flex max-h-[90vh] flex-col overflow-y-auto sm:max-w-2xl">
+        <DialogHeader className="shrink-0">
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
-        <div className="admin-dialog-body mt-2">{children}</div>
+        <div className="admin-dialog-body mt-2 shrink-0">{children}</div>
       </DialogPopup>
     </Dialog>
   );

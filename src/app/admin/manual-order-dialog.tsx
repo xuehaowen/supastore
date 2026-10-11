@@ -7,6 +7,7 @@ import { Field, Hidden } from "@/app/components";
 import { createManualOrderAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
+import { VariantPicker } from "./variant-picker";
 
 type Option = { id: string; label: string };
 
@@ -59,17 +60,11 @@ export function ManualOrderDialog({
           <legend>Items</legend>
           {lines.map((line, index) => (
             <div className="manual-order-line" key={line}>
-              <label>
-                Product variant
-                <NativeSelect name={`variantId-${index}`} required>
-                  <option value="">Choose variant</option>
-                  {variants.map((variant) => (
-                    <option value={variant.id} key={variant.id}>
-                      {variant.label}
-                    </option>
-                  ))}
-                </NativeSelect>
-              </label>
+              <VariantPicker
+                name={`variantId-${index}`}
+                label="Product variant"
+                initialOptions={variants}
+              />
               <Field
                 name={`quantity-${index}`}
                 label="Quantity"

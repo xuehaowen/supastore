@@ -506,7 +506,7 @@
 
 .admin-dialog-body {
   min-height: 0;
-  overflow-y: auto;
+  overflow: visible;
   padding: 1.5rem;
 }
 

@@ -19,6 +19,11 @@ export interface CatalogDto {
   }[];
 }
 
+export interface VariantOptionsDto {
+  options: { id: string; label: string }[];
+  hasNext: boolean;
+}
+
 export interface OrderDetailDto {
   order: {
     referenceCode: string;
@@ -217,6 +222,7 @@ const account = shape({
       currency,
       precision,
       reconciled: optional(bool),
+      hasNext: optional(bool),
       entries: array(
         shape({
           id,
@@ -316,6 +322,11 @@ export const parseOptionalCartDto = (value: unknown): CartDto | null =>
   parse(value, nullable(cart));
 export const parseCustomerAccountDto = (value: unknown): CustomerAccountDto =>
   parse(value, account);
+export const parseVariantOptionsDto = (value: unknown): VariantOptionsDto =>
+  parse(
+    value,
+    shape({ options: array(shape({ id, label: text })), hasNext: bool }),
+  );
 export const parseCatalogDto = (value: unknown): CatalogDto =>
   parse(value, catalog);
 export const parseOrderDetailDto = (value: unknown): OrderDetailDto =>

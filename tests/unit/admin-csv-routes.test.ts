@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ForbiddenError } from "@/application/common/errors";
+import { DomainError, ForbiddenError } from "@/application/common/errors";
 
 const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
@@ -101,6 +101,21 @@ describe("admin CSV routes", () => {
     },
   );
 
+  it("returns a readable limit error for oversized XLSX exports", async () => {
+    mocks.exportOrdersXlsx.mockRejectedValueOnce(
+      new DomainError("Use CSV for more than 10,000 rows."),
+    );
+    const response = await getOrderExport(
+      new Request(
+        "http://localhost/api/admin/exports/orders?format=xlsx",
+      ) as never,
+    );
+    expect(response.status).toBe(422);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    await expect(response.json()).resolves.toEqual({
+      error: "Use CSV for more than 10,000 rows.",
+    });
+  });
   it("streams an authenticated order export as a dated CSV download", async () => {
     mocks.streamOrdersCsv.mockImplementation(async function* () {
       yield "reference_code,discount_cents\n";

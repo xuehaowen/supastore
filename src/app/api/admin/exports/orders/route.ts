@@ -6,6 +6,8 @@ import { auth } from "@/infrastructure/auth";
 import { db } from "@/infrastructure/db";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { ForbiddenError } from "@/application/common/errors";
+import { DomainError } from "@/domain/errors";
+import { textIterableStream } from "@/infrastructure/http/iterable-stream";
 
 export async function GET(request: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -32,7 +34,16 @@ export async function GET(request: NextRequest) {
   const format = new URL(request.url).searchParams.get("format");
   const date = new Date().toISOString().slice(0, 10);
   if (format === "xlsx") {
-    const workbook = await exportOrdersXlsx();
+    let workbook: ArrayBuffer;
+    try {
+      workbook = await exportOrdersXlsx();
+    } catch (error) {
+      if (!(error instanceof DomainError)) throw error;
+      return NextResponse.json(
+        { error: error.message },
+        { status: 422, headers: { "Cache-Control": "no-store" } },
+      );
+    }
     return new NextResponse(workbook, {
       status: 200,
       headers: {
@@ -46,18 +57,7 @@ export async function GET(request: NextRequest) {
 
   const filename = `orders-${date}.csv`;
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        for await (const chunk of streamOrdersCsv()) {
-          controller.enqueue(new TextEncoder().encode(chunk));
-        }
-        controller.close();
-      } catch (err) {
-        controller.error(err);
-      }
-    },
-  });
+  const stream = textIterableStream(streamOrdersCsv());
 
   return new NextResponse(stream, {
     status: 200,

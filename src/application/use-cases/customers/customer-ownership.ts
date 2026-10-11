@@ -84,6 +84,7 @@ export async function customerAccount(
   userId: string,
   page = 1,
   reference = "",
+  creditPage = 1,
 ) {
   const searchReference = reference.trim();
   if (searchReference.length > 100)
@@ -115,7 +116,7 @@ export async function customerAccount(
       orders: history.slice(0, 25),
       hasNext: history.length > 25,
       addresses,
-      credit: await customerCredit(tx, customer.id),
+      credit: await customerCredit(tx, customer.id, creditPage),
     };
   });
 }

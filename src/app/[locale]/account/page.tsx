@@ -28,7 +28,12 @@ export default async function Account({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ error?: string; page?: string; reference?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    page?: string;
+    reference?: string;
+    creditPage?: string;
+  }>;
 }) {
   const { locale } = await params;
   const t = await getTranslations({ locale });
@@ -40,8 +45,14 @@ export default async function Account({
     Math.max(1, Number.parseInt(query.page || "1", 10) || 1),
   );
   const reference = (query.reference || "").trim().slice(0, 100);
+  const creditPage = Math.min(
+    10000,
+    Math.max(1, Number.parseInt(query.creditPage || "1", 10) || 1),
+  );
+  const historyHref = (ordersPage: number, creditsPage: number) =>
+    `?page=${ordersPage}&creditPage=${creditsPage}&reference=${encodeURIComponent(reference)}`;
   const account = session
-    ? await customerAccount(session.user.id, page, reference)
+    ? await customerAccount(session.user.id, page, reference, creditPage)
     : null;
 
   return (
@@ -148,6 +159,27 @@ export default async function Account({
                       )}
                     </p>
                   ))}
+                  <nav
+                    aria-label={textFor(locale).ui.recentActivity}
+                    className="flex gap-4"
+                  >
+                    {creditPage > 1 && (
+                      <Link href={historyHref(page, creditPage - 1)}>
+                        {textFor(locale).ui.previous}
+                      </Link>
+                    )}
+                    <span>
+                      {textFor(locale).common.page.replace(
+                        "{count}",
+                        String(creditPage),
+                      )}
+                    </span>
+                    {account.credit.hasNext && (
+                      <Link href={historyHref(page, creditPage + 1)}>
+                        {textFor(locale).ui.next}
+                      </Link>
+                    )}
+                  </nav>
                 </>
               ) : (
                 <p>{t("account.noCredit")}</p>
@@ -202,9 +234,7 @@ export default async function Account({
                 className="flex gap-4 mt-4"
               >
                 {page > 1 && (
-                  <Link
-                    href={`?page=${page - 1}&reference=${encodeURIComponent(reference)}`}
-                  >
+                  <Link href={historyHref(page - 1, creditPage)}>
                     {textFor(locale).ui.previous}
                   </Link>
                 )}
@@ -212,9 +242,7 @@ export default async function Account({
                   {textFor(locale).common.page.replace("{count}", String(page))}
                 </span>
                 {account.hasNext && (
-                  <Link
-                    href={`?page=${page + 1}&reference=${encodeURIComponent(reference)}`}
-                  >
+                  <Link href={historyHref(page + 1, creditPage)}>
                     {textFor(locale).ui.next}
                   </Link>
                 )}
