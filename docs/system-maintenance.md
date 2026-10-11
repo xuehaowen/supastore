@@ -2,6 +2,21 @@
 
 Snapshot: 2026-10-09. Use the [capability inventory](system-capabilities.md) for system behavior and the directory READMEs linked from [backend source](../src/README.md), [applications](../apps/README.md), and [shared packages](../packages/README.md) for module details. This guide covers maintenance across those modules. Commands below come from the current root `package.json` and repository scripts. Review configuration and the target database before running commands that migrate, seed, restore, or contact providers.
 
+## Checkout request and response contracts
+
+`src/application/common/quote-request.ts` owns validation of public quote fields
+for the JSON API and combined checkout form. Both trim text, uppercase country
+and region, validate UUIDs and fulfillment types, and apply the same length
+limits: country 2, address 2,000, region 12, postal code 40, pickup date 10,
+pickup time 20 and promotion code 100 characters. Missing optional text becomes
+an empty string; empty optional UUIDs are omitted. Wrong field types fail before
+quote calculation. Guest identity is supplied by the server, independently of
+submitted fields. Business validation remains in the quote use case.
+
+The shared created-order response parser requires a primitive string containing
+one of the four supported lifecycle statuses. Arrays and coercible objects are
+rejected before customer navigation.
+
 ## Order-list query plans and index rollout
 
 Migration `0037_order_queue_indexes.sql` adds two B-tree indexes matching the

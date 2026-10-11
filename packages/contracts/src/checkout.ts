@@ -80,8 +80,9 @@ export function parseCreatedOrderDto(value: unknown): CreatedOrderDto {
   if (
     !text(data.id) ||
     !text(data.referenceCode) ||
+    typeof data.lifecycleStatus !== "string" ||
     !["unpaid", "confirmed", "completed", "cancelled"].includes(
-      String(data.lifecycleStatus),
+      data.lifecycleStatus,
     ) ||
     !amount(data.purchaseTotalCents)
   )

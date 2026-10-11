@@ -42,6 +42,24 @@ beforeEach(() => {
   mocks.cart.mockResolvedValue(null);
 });
 describe("commerce API route ownership", () => {
+  it.each([
+    { address: "x".repeat(2001) },
+    { region: "x".repeat(13) },
+    { paymentAccountId: false },
+    { fulfillmentType: ["shipping"] },
+  ])("rejects invalid quote fields before dispatch", async (change) => {
+    const response = await quote(
+      request({
+        cartId: id,
+        fulfillmentType: "shipping",
+        country: "US",
+        address: "1 Main",
+        ...change,
+      }),
+    );
+    expect(response.status).toBe(400);
+    expect(mocks.quote).not.toHaveBeenCalled();
+  });
   it("ignores submitted guest/customer identities and hides proof tokens", async () => {
     mocks.create.mockResolvedValue({
       id,

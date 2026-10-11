@@ -1,43 +1,21 @@
-import {
-  parseActionEnum,
-  parseActionUuid,
-} from "@/application/common/request-validation";
+import { parseQuoteRequest } from "@/application/common/quote-request";
 import { getQuote } from "@/application/use-cases/get-quote";
-import {
-  apiResponse,
-  apiText,
-  readApiBody,
-} from "@/infrastructure/http/commerce-api";
+import { apiResponse, readApiBody } from "@/infrastructure/http/commerce-api";
 import { guestIdentity } from "@/infrastructure/web";
 import { parseQuoteDto } from "@supastore/contracts";
 export async function POST(request: Request) {
   return apiResponse(async () => {
     const b = await readApiBody(request);
-    const uuid = (key: string) => parseActionUuid(apiText(b, key), key);
+    const fields = parseQuoteRequest(b);
     const q = await getQuote({
+      ...fields,
       guestSessionId: await guestIdentity(),
-      cartId: parseActionUuid(apiText(b, "cartId"), "Cart"),
-      fulfillmentType: parseActionEnum(
-        apiText(b, "fulfillmentType"),
-        "Fulfillment",
-        ["shipping", "pickup", "local_delivery"] as const,
-      ),
       shippingAddress: {
-        country: apiText(b, "country", 2, true).toUpperCase(),
-        address: apiText(b, "address", 2000, true),
-        postalCode: apiText(b, "postalCode", 40, true),
-        region: apiText(b, "region", 12, true).trim().toUpperCase(),
+        country: fields.country,
+        address: fields.address,
+        region: fields.region,
+        postalCode: fields.postalCode,
       },
-      pickupDate: apiText(b, "pickupDate", 10, true),
-      pickupTime: apiText(b, "pickupTime", 20, true),
-      ...(b.pickupLocationId
-        ? { pickupLocationId: uuid("pickupLocationId") }
-        : {}),
-      ...(b.paymentAccountId
-        ? { paymentAccountId: uuid("paymentAccountId") }
-        : {}),
-      ...(b.deliveryAreaId ? { deliveryAreaId: uuid("deliveryAreaId") } : {}),
-      promotionCode: apiText(b, "promotionCode", 100, true),
     });
     return parseQuoteDto({
       id: q.id,

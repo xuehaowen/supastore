@@ -1,9 +1,9 @@
 "use server";
+import { parseQuoteRequest } from "@/application/common/quote-request";
 import type { CheckoutActionState } from "@/app/checkout-state";
 import { DomainError } from "@/application/common/errors";
 import { allowRequest } from "@/application/common/rate-limit";
 import {
-  parseActionEnum,
   parseActionInteger,
   parseActionUuid,
 } from "@/application/common/request-validation";
@@ -60,47 +60,16 @@ export async function quoteCart(form: FormData) {
   });
 }
 async function quoteFromForm(form: FormData) {
+  const fields = parseQuoteRequest(Object.fromEntries(form));
   return getQuote({
-    cartId: parseActionUuid(field(form, "cartId"), "Cart"),
+    ...fields,
     guestSessionId: await guestIdentity(),
-    fulfillmentType: parseActionEnum(
-      field(form, "fulfillmentType"),
-      "Fulfillment",
-      ["shipping", "pickup", "local_delivery"] as const,
-    ),
     shippingAddress: {
-      country: field(form, "country").toUpperCase(),
-      address: field(form, "address"),
-      region: field(form, "region").trim().toUpperCase(),
-      postalCode: field(form, "postalCode"),
+      country: fields.country,
+      address: fields.address,
+      region: fields.region,
+      postalCode: fields.postalCode,
     },
-    pickupDate: field(form, "pickupDate"),
-    ...(field(form, "pickupLocationId")
-      ? {
-          pickupLocationId: parseActionUuid(
-            field(form, "pickupLocationId"),
-            "Pickup location",
-          ),
-        }
-      : {}),
-    pickupTime: field(form, "pickupTime"),
-    ...(field(form, "deliveryAreaId")
-      ? {
-          deliveryAreaId: parseActionUuid(
-            field(form, "deliveryAreaId"),
-            "Delivery area",
-          ),
-        }
-      : {}),
-    promotionCode: field(form, "promotionCode"),
-    ...(field(form, "paymentAccountId")
-      ? {
-          paymentAccountId: parseActionUuid(
-            field(form, "paymentAccountId"),
-            "Payment account",
-          ),
-        }
-      : {}),
   });
 }
 export async function placeOrder(form: FormData) {
