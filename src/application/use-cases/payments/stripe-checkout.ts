@@ -1,3 +1,4 @@
+import { logger } from "@/infrastructure/security/logger";
 import type {
   PaymentProvider,
   PaymentCheckoutSession,
@@ -465,10 +466,9 @@ export async function reconcileStripeInbox(limit = 25) {
     try {
       await acceptStripeEvent(row.payload as unknown as StripeEvent);
     } catch (error) {
-      console.error("Stripe inbox reconciliation pending", {
-        eventId: row.eventId,
-        error,
-      });
+      logger
+        .child({ eventId: row.eventId })
+        .error("Stripe inbox reconciliation pending", error);
     }
   }
   // Recover lost completion/expiration webhooks from authoritative session data.
@@ -502,10 +502,9 @@ export async function reconcileStripeInbox(limit = 25) {
           .set({ updatedAt: new Date() })
           .where(eq(stripeCheckoutAttempts.id, attempt.id));
     } catch (error) {
-      console.error("Stripe session reconciliation pending", {
-        attemptId: attempt.id,
-        error,
-      });
+      logger
+        .child({ attemptId: attempt.id })
+        .error("Stripe session reconciliation pending", error);
     }
   }
 }

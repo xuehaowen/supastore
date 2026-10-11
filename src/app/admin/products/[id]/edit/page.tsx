@@ -1,3 +1,4 @@
+import { CategoryPicker } from "@/app/admin/category-picker";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
@@ -74,10 +75,15 @@ export default async function EditProductPage({
         .from(productVariants)
         .where(eq(productVariants.productId, id))
         .orderBy(asc(productVariants.sortOrder)),
-      groups: await tx.select().from(categories).orderBy(asc(categories.name)),
+      groups: await tx
+        .select()
+        .from(categories)
+        .orderBy(asc(categories.name), asc(categories.id))
+        .limit(50),
       selected: await tx
         .select()
         .from(productCategories)
+        .innerJoin(categories, eq(productCategories.categoryId, categories.id))
         .where(eq(productCategories.productId, id)),
       images: await tx
         .select()
@@ -161,26 +167,15 @@ export default async function EditProductPage({
             Description
             <Textarea name="description" defaultValue={product.description} />
           </label>
-          <fieldset className="grid gap-3">
-            <legend className="mb-3">Categories</legend>
-            {groups.map((g) => (
-              <label className="check" key={g.id}>
-                <Checkbox
-                  name="categoryIds"
-                  value={g.id}
-                  defaultChecked={selected.some(
-                    (item) => item.categoryId === g.id,
-                  )}
-                />
-                {g.name}
-              </label>
-            ))}
-            {groups.length === 0 && (
-              <p className="admin-empty">
-                Create categories from the Products page.
-              </p>
-            )}
-          </fieldset>
+          <CategoryPicker
+            name="categoryIds"
+            label="Categories"
+            options={groups.map((item) => ({ id: item.id, label: item.name }))}
+            selected={selected.map((item) => ({
+              id: item.categories.id,
+              label: item.categories.name,
+            }))}
+          />
         </section>
         <section className="panel product-editor-wide">
           <h2>Variants & pricing</h2>

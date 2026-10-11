@@ -43,12 +43,10 @@ export async function searchVariantOptions(
       .orderBy(asc(productVariants.sku), asc(productVariants.id))
       .limit(51);
     return {
-      options: rows
-        .slice(0, 50)
-        .map((row) => ({
-          id: row.id,
-          label: `${row.product} · ${row.title} · ${row.sku}`,
-        })),
+      options: rows.slice(0, 50).map((row) => ({
+        id: row.id,
+        label: `${row.product} · ${row.title} · ${row.sku}`,
+      })),
       hasNext: rows.length > 50,
     };
   });

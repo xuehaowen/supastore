@@ -1,6 +1,40 @@
 # System maintenance guide
 
-Snapshot: 2026-10-09. Use the [capability inventory](system-capabilities.md) for system behavior and the directory READMEs linked from [backend source](../src/README.md), [applications](../apps/README.md), and [shared packages](../packages/README.md) for module details. This guide covers maintenance across those modules. Commands below come from the current root `package.json` and repository scripts. Review configuration and the target database before running commands that migrate, seed, restore, or contact providers.
+Maintenance updated: 2026-10-11. Use the [capability inventory](system-capabilities.md) for system behavior and the directory READMEs linked from [backend source](../src/README.md), [applications](../apps/README.md), and [shared packages](../packages/README.md) for module details. This guide covers maintenance across those modules. Commands below come from the current root `package.json` and repository scripts. Review configuration and the target database before running commands that migrate, seed, restore, or contact providers.
+
+## Current transport, fixture and dependency budgets
+
+Combined browser HTTP requests use a 60-second deadline. Authentication/import,
+category and variant JSON reads are limited to 1 MiB and a 10-second body-read
+budget. Stripe keeps its 10-second request deadline and also bounds actual JSON
+body bytes and body-read time; rejection or uncertainty still requires the
+existing reconciliation rules. Separate storefront JSON remains bounded to
+2 MiB and 15 seconds. Analytics has a five-second deadline, and evidence uploads
+have a 60-second deadline. Deadlines do not automatically retry mutations.
+
+Category search is owner-only and returns at most 50 candidates with a sentinel
+for more results. Product creation/editing/filtering and reward eligibility retain
+existing selections outside the initial batch. Native controls submit those
+selected IDs; changing search never clears them.
+
+Browser runners use unique owned PostgreSQL directories, bounded startup and
+checked cleanup paths. They clear inherited live Stripe and Telnyx keys and use
+local synthetic storage/mail. Cache and browser traces remain available for
+diagnosis; successful shutdown removes the PostgreSQL fixture directory.
+
+The Docker runtime defaults to a 256 MiB V8 old-space limit. Override it using
+`BACKEND_NODE_OPTIONS` or `STOREFRONT_NODE_OPTIONS` only with workload evidence;
+total RSS also includes native allocations and code. Node image and infrastructure
+image digests are pinned, pnpm is fixed at 11.0.9, and Node >=22.13 is required.
+Production dependency audit is clean. A development-only braces advisory lacks
+a published patched release; a locked local patch rejects excessive brace and
+parenthesis nesting, with behavioral regression coverage. The registry audit
+still reports that package version. Remove the local patch after a verified
+upstream release is adopted. No audit result is suppressed.
+
+See [dated verification and remaining acceptance](maintenance-hardening-evidence-2026-10-11.md)
+for commands, coverage, browser results, bundle/RSS measurements and the pending
+Linux container, CI matrix and real-deployment checks.
 
 ## Admin workflow context
 
@@ -12,8 +46,7 @@ Error messages are inserted before URL fragments. Management links preserve the
 same queue context, and pagination avoids duplicating the query string.
 
 CI now runs the existing lint command alongside type checks and coverage gates.
-Repository-wide formatting enforcement remains pending reconciliation of legacy
-formatting; local changed-file formatting checks remain part of verification.
+Whole-repository formatting now passes and is enforced by CI.
 
 ## Checkout request and response contracts
 
@@ -276,7 +309,7 @@ Use the disposable project defined by `scripts/compose.smoke.yml` for container 
 
 ## Release evidence and remaining external checks
 
-The repository contains local synthetic integration/browser/container/load/restore evidence. This documentation update does not claim those checks were rerun or that production migration 0036 was applied.
+The repository contains local synthetic integration/browser/container/load/restore evidence. Use the dated hardening evidence for the checks actually rerun. No production migration was applied.
 
 Production acceptance still needs real Stripe configuration and payment/refund receipt verification, SMTP receipt in real inboxes, public TLS/callback/origin validation, trusted ingress limits, production-copy migration/restore rehearsal, and hosting/domain cutover. Optional SMS remains disabled and requires a separate authorized activation decision and provider acceptance. Use deployment-specific measurements for image/memory/bundle claims.
 

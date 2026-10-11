@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { gzipSync } from "node:zlib";
-const build = resolve("apps/storefront/.next");
+const build = resolve(
+  "apps/storefront",
+  process.env.STOREFRONT_DIST_DIR || process.env.NEXT_DIST_DIR || ".next",
+);
 const manifest = JSON.parse(
   readFileSync(resolve(build, "app-build-manifest.json"), "utf8"),
 );

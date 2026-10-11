@@ -150,6 +150,7 @@ export function OrderActions({
                   method: "PUT",
                   headers: { "Content-Type": file.type },
                   body: file,
+                  signal: AbortSignal.timeout(60000),
                 },
               );
               if (!upload.ok) throw new Error("Upload failed. Please retry.");

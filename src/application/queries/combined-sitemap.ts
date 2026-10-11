@@ -8,7 +8,7 @@ import {
   type SitemapResource,
   type SitemapCounts,
   type SitemapEntry,
-} from "@/infrastructure/http/sitemap";
+} from "@/application/common/sitemap";
 
 const sources = {
   products: { table: "products", column: "handle", published: true },

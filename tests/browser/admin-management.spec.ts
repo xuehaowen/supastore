@@ -38,6 +38,14 @@ test("product editor saves existing variants and translations without replacing 
     .getByLabel("Image description")
     .fill("Updated image description");
   const [category] = await sql`select id,name from categories limit 1`;
+  const categoryGroup = admin.getByRole("group", {
+    name: "Categories",
+    exact: true,
+  });
+  await categoryGroup.getByLabel("Search categories").fill(category!.name);
+  await categoryGroup
+    .getByRole("button", { name: "Search categories", exact: true })
+    .click();
   await admin
     .getByRole("group", { name: "Categories", exact: true })
     .getByLabel(category!.name, { exact: true })

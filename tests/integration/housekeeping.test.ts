@@ -20,16 +20,14 @@ describe.skipIf(!process.env.DATABASE_URL?.endsWith("/supastore_test"))(
     it("purges expired quotes while preserving purchased and active carts", async () => {
       const old = new Date("2020-01-01");
       const ids = Array.from({ length: 3 }, () => randomUUID());
-      await db
-        .insert(carts)
-        .values(
-          ids.map((id) => ({
-            id,
-            guestSessionId: id,
-            createdAt: old,
-            updatedAt: old,
-          })),
-        );
+      await db.insert(carts).values(
+        ids.map((id) => ({
+          id,
+          guestSessionId: id,
+          createdAt: old,
+          updatedAt: old,
+        })),
+      );
       const quoted = await db
         .insert(quotes)
         .values(
@@ -47,17 +45,15 @@ describe.skipIf(!process.env.DATABASE_URL?.endsWith("/supastore_test"))(
           })),
         )
         .returning();
-      await db
-        .insert(orders)
-        .values({
-          sourceCartId: ids[1]!,
-          quoteId: quoted[1]!.id,
-          referenceCode: "HOUSEKEEPING",
-          purchaseTotalCents: 100,
-          guestEmail: "fixture@example.test",
-          guestName: "Fixture",
-          shippingAddressSnapshot: {},
-        });
+      await db.insert(orders).values({
+        sourceCartId: ids[1]!,
+        quoteId: quoted[1]!.id,
+        referenceCode: "HOUSEKEEPING",
+        purchaseTotalCents: 100,
+        guestEmail: "fixture@example.test",
+        guestName: "Fixture",
+        shippingAddressSnapshot: {},
+      });
       await expect(purgeUnconvertedCarts()).resolves.toBe(1);
       expect(
         await db.select().from(carts).where(eq(carts.id, ids[0]!)),

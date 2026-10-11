@@ -20,21 +20,17 @@ describe.skipIf(!process.env.DATABASE_URL?.endsWith("/supastore_test"))(
       await migrate(db, {
         migrationsFolder: "src/infrastructure/db/migrations",
       });
-      await db
-        .insert(user)
-        .values({
-          id: userId,
-          name: "Recovery owner",
-          email: `${userId}@example.test`,
-        });
-      await db
-        .insert(staffMemberships)
-        .values({
-          userId,
-          email: `${userId}@example.test`,
-          role: "owner",
-          isActive: true,
-        });
+      await db.insert(user).values({
+        id: userId,
+        name: "Recovery owner",
+        email: `${userId}@example.test`,
+      });
+      await db.insert(staffMemberships).values({
+        userId,
+        email: `${userId}@example.test`,
+        role: "owner",
+        isActive: true,
+      });
     });
     afterAll(async () => {
       await db
@@ -47,14 +43,12 @@ describe.skipIf(!process.env.DATABASE_URL?.endsWith("/supastore_test"))(
     });
     async function token(expiresAt = new Date(Date.now() + 60000)) {
       const value = randomBytes(32).toString("hex");
-      await db
-        .insert(verification)
-        .values({
-          id: randomUUID(),
-          identifier: `owner-recovery:${value}`,
-          value: userId,
-          expiresAt,
-        });
+      await db.insert(verification).values({
+        id: randomUUID(),
+        identifier: `owner-recovery:${value}`,
+        value: userId,
+        expiresAt,
+      });
       return value;
     }
     it("allows exactly one concurrent redemption and rejects reuse", async () => {

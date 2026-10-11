@@ -102,7 +102,10 @@ test("account exposes persisted wallet activity, older orders and exact referenc
       exact: true,
     }),
   ).toHaveCount(0);
-  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Order history" })
+    .getByRole("button", { name: "Next", exact: true })
+    .click();
   await expect(
     page.getByRole("button", {
       name: `${references[0]} · Awaiting payment`,
@@ -110,17 +113,23 @@ test("account exposes persisted wallet activity, older orders and exact referenc
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Next", exact: true }),
+    page
+      .getByRole("navigation", { name: "Order history" })
+      .getByRole("button", { name: "Next", exact: true }),
   ).toBeDisabled();
   await page.getByLabel("Order reference", { exact: true }).fill(references[0]);
   await page
     .getByRole("button", { name: "Search orders", exact: true })
     .click();
   await expect(
-    page.getByRole("button", { name: "Previous", exact: true }),
+    page
+      .getByRole("navigation", { name: "Order history" })
+      .getByRole("button", { name: "Previous", exact: true }),
   ).toBeDisabled();
   await expect(
-    page.getByRole("button", { name: "Next", exact: true }),
+    page
+      .getByRole("navigation", { name: "Order history" })
+      .getByRole("button", { name: "Next", exact: true }),
   ).toBeDisabled();
   await page
     .getByRole("button", {

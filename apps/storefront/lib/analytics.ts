@@ -25,5 +25,6 @@ export function sendAnalytics(payload: Record<string, string | number>) {
       referrerPolicy: "no-referrer",
       body: JSON.stringify(payload),
       keepalive: true,
+      signal: AbortSignal.timeout(5000),
     }).catch(() => {});
 }

@@ -1,13 +1,18 @@
+import { fixtureDirectory } from "./fixture-directory.mjs";
+import { measureFixtureResources } from "./measure-fixture-resources.mjs";
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import postgres from "postgres";
 import EmbeddedPostgres from "embedded-postgres";
 
 // A dedicated synthetic cluster, database and Next cache. Never use the app DB.
+const fixture = fixtureDirectory("storefront");
+const databaseDir = fixture.path;
 const pg = new EmbeddedPostgres({
-  databaseDir: "./.test-storefront-postgres",
+  databaseDir,
   port: 55449,
   user: "postgres",
   password: "postgres",
@@ -17,9 +22,13 @@ const pg = new EmbeddedPostgres({
 });
 const database = "supastore_cuj_" + Date.now();
 const production = true;
+const measure = process.argv.includes("--measure");
+const standalone = measure && process.platform === "linux";
 const testArguments = process.argv
   .slice(2)
-  .filter((argument) => argument !== "--production");
+  .filter(
+    (argument) => argument !== "--production" && argument !== "--measure",
+  );
 const env = {
   ...process.env,
   BACKEND_URL: "http://127.0.0.1:3102",
@@ -57,6 +66,11 @@ const env = {
   SMTP_USER: "",
   SMTP_PASSWORD: "",
   NODE_ENV: production ? "production" : "development",
+  STANDALONE: standalone ? "true" : "false",
+  DOCKER_BUILD: "false",
+  STRIPE_SECRET_KEY: "",
+  STRIPE_WEBHOOK_SECRET: "",
+  TELNYX_API_KEY: "",
 };
 const children = [];
 function completed(child) {
@@ -69,9 +83,15 @@ function completed(child) {
     );
   });
 }
-function start(args) {
+function start(args, runtime = false, overrides = {}) {
   const child = spawn(process.execPath, args, {
-    env,
+    env: runtime
+      ? {
+          ...env,
+          NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=256",
+          ...overrides,
+        }
+      : env,
     stdio: "inherit",
     windowsHide: true,
   });
@@ -92,6 +112,7 @@ async function ready(url, child) {
 }
 let pgCtl;
 let postgresBinary;
+let databaseProcess;
 if (process.platform === "win32") {
   const require = createRequire(import.meta.url);
   const embeddedRequire = createRequire(require.resolve("embedded-postgres"));
@@ -104,7 +125,7 @@ if (process.platform === "win32") {
 }
 function controlPostgres(command) {
   return completed(
-    spawn(pgCtl, ["-D", ".test-storefront-postgres", ...command], {
+    spawn(pgCtl, ["-D", databaseDir, ...command], {
       stdio: "inherit",
       windowsHide: true,
     }),
@@ -141,11 +162,27 @@ async function stop() {
       if (pgCtl) await controlPostgres(["-m", "fast", "-w", "stop"]);
       else await pg.stop();
     }
+    if (!pgStarted && databaseProcess && databaseProcess.exitCode === null) {
+      const exited = new Promise((resolve) =>
+        databaseProcess.once("exit", resolve),
+      );
+      databaseProcess.kill();
+      await Promise.race([
+        exited,
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Fixture database did not stop")),
+            10000,
+          ),
+        ),
+      ]);
+    }
     if (failures.length)
       throw new AggregateError(
         failures,
         "Some test processes did not stop cleanly",
       );
+    fixture.cleanup();
   })();
   return stopping;
 }
@@ -153,26 +190,38 @@ let exitCode = 0;
 process.once("SIGINT", () => void stop().finally(() => process.exit(130)));
 process.once("SIGTERM", () => void stop().finally(() => process.exit(143)));
 try {
-  if (!existsSync(".test-storefront-postgres/PG_VERSION"))
-    await pg.initialise();
+  if (!existsSync(`${databaseDir}/PG_VERSION`)) await pg.initialise();
   if (postgresBinary) {
-    const child = spawn(
+    const child = (databaseProcess = spawn(
       postgresBinary,
-      ["-D", ".test-storefront-postgres", "-p", "55449"],
+      ["-D", databaseDir, "-p", "55449"],
       { stdio: ["ignore", "ignore", "pipe"], windowsHide: true },
-    );
+    ));
     await new Promise((resolve, reject) => {
-      child.once("error", reject);
-      child.once("exit", (code) =>
-        reject(new Error("Test PostgreSQL exited: " + code)),
+      const timer = setTimeout(
+        () => reject(new Error("Test PostgreSQL startup timed out")),
+        30000,
+      );
+      child.once("error", (error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+      child.once(
+        "exit",
+        (code) => (
+          clearTimeout(timer),
+          reject(new Error("Test PostgreSQL exited: " + code))
+        ),
       );
       child.stderr.on("data", (data) => {
         if (
           String(data).includes(
             "database system is ready to accept connections",
           )
-        )
+        ) {
+          clearTimeout(timer);
           resolve();
+        }
       });
     });
   } else await pg.start();
@@ -206,20 +255,60 @@ try {
     await completed(
       start(["node_modules/next/dist/bin/next", "build", "apps/storefront"]),
     );
-  const server = start([
-    "node_modules/next/dist/bin/next",
-    production ? "start" : "dev",
-    "--port",
-    "3102",
-  ]);
+  if (standalone) {
+    cpSync(
+      join(env.NEXT_DIST_DIR, "static"),
+      join(env.NEXT_DIST_DIR, "standalone", env.NEXT_DIST_DIR, "static"),
+      { recursive: true },
+    );
+    cpSync(
+      join("apps/storefront", env.NEXT_DIST_DIR, "static"),
+      join(
+        "apps/storefront",
+        env.NEXT_DIST_DIR,
+        "standalone/apps/storefront",
+        env.NEXT_DIST_DIR,
+        "static",
+      ),
+      { recursive: true },
+    );
+    if (existsSync("public"))
+      cpSync("public", join(env.NEXT_DIST_DIR, "standalone/public"), {
+        recursive: true,
+      });
+  }
+  const server = start(
+    standalone
+      ? [join(env.NEXT_DIST_DIR, "standalone/server.js")]
+      : [
+          "node_modules/next/dist/bin/next",
+          production ? "start" : "dev",
+          "--port",
+          "3102",
+        ],
+    true,
+    { PORT: "3102", HOSTNAME: "127.0.0.1" },
+  );
   await ready("http://127.0.0.1:3102/api/health/live", server);
-  const storefront = start([
-    "node_modules/next/dist/bin/next",
-    "start",
-    "apps/storefront",
-    "--port",
-    "3103",
-  ]);
+  const storefront = start(
+    standalone
+      ? [
+          join(
+            "apps/storefront",
+            env.NEXT_DIST_DIR,
+            "standalone/apps/storefront/server.js",
+          ),
+        ]
+      : [
+          "node_modules/next/dist/bin/next",
+          "start",
+          "apps/storefront",
+          "--port",
+          "3103",
+        ],
+    true,
+    { PORT: "3103", HOSTNAME: "127.0.0.1" },
+  );
   await ready(env.APP_URL + "/en", storefront);
   const testTarget =
     testArguments.length > 0
@@ -232,6 +321,27 @@ try {
   await completed(
     start(["node_modules/@playwright/test/cli.js", "test", ...testTarget]),
   );
+  if (measure) {
+    console.log(
+      JSON.stringify(
+        {
+          metric:
+            "Production Next process RSS after synthetic browser journeys",
+          platform: process.platform,
+          runtime: standalone ? "standalone" : "Next CLI",
+          nodeVersion: process.version,
+          workload: testTarget,
+          services: measureFixtureResources([
+            { service: "backend", pid: server.pid },
+            { service: "storefront", pid: storefront.pid },
+          ]),
+        },
+        null,
+        2,
+      ),
+    );
+    await completed(start(["scripts/measure-storefront-bundle.mjs"]));
+  }
 } catch (error) {
   console.error(
     error ?? "Browser infrastructure failed; check ports 55449, 3102 and 3103.",

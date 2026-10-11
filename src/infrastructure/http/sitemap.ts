@@ -1,15 +1,13 @@
-export const sitemapResources = [
-  "products",
-  "collections",
-  "categories",
-] as const;
-export type SitemapResource = (typeof sitemapResources)[number];
-export type SitemapCounts = Record<SitemapResource, number>;
-export interface SitemapEntry {
-  path: string;
-  updatedAt?: Date;
-  locales?: ("en" | "zh")[];
-}
+import {
+  sitemapResources,
+  sitemapPageCount,
+  type SitemapCounts,
+  type SitemapEntry,
+} from "@/application/common/sitemap";
+export {
+  sitemapPageCount,
+  type SitemapResource,
+} from "@/application/common/sitemap";
 const origin = () =>
   (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
 const xml = (value: string) =>
@@ -24,17 +22,6 @@ const xml = (value: string) =>
         "'": "&apos;",
       })[char]!,
   );
-export function sitemapPageCount(counts: SitemapCounts) {
-  let pages = 1;
-  for (const resource of sitemapResources) {
-    const count = counts[resource];
-    if (!Number.isSafeInteger(count) || count < 0)
-      throw new Error("Invalid sitemap count.");
-    pages += Math.ceil(count / 1000);
-  }
-  if (pages > 50000) throw new Error("Catalog exceeds sitemap capacity.");
-  return pages;
-}
 export function* sitemapIndex(counts: SitemapCounts) {
   sitemapPageCount(counts);
   yield '<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';

@@ -6,6 +6,32 @@ import {
   signOutSession,
   uploadEvidence,
 } from "@/app/client-requests";
+import {
+  parseProductCsv,
+  serializeProductCsv,
+} from "@/domain/catalog/product-csv";
+
+const importFile = (sizes: number[]) =>
+  new File(
+    [
+      serializeProductCsv(
+        sizes.flatMap((size, group) =>
+          Array.from({ length: size }, (_, index) => ({
+            handle: `group-${group}`,
+            sku: `sku-${group}-${index}`,
+            variantTitle: `Variant ${index}`,
+            productTitle: `Group ${group}`,
+            description: "",
+            priceCents: 100,
+            isAvailable: true,
+            isPublished: true,
+          })),
+        ),
+      ),
+    ],
+    "batch.csv",
+    { type: "text/csv" },
+  );
 
 describe("frontend backend request contracts", () => {
   beforeEach(() => {
@@ -20,6 +46,7 @@ describe("frontend backend request contracts", () => {
     await signOutSession();
 
     expect(fetchMock).toHaveBeenCalledWith("/api/auth/sign-out", {
+      signal: expect.any(AbortSignal),
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: "{}",
@@ -43,6 +70,7 @@ describe("frontend backend request contracts", () => {
       }),
     ).resolves.toEqual({ user: { emailVerified: true } });
     expect(fetch).toHaveBeenCalledWith("/api/auth/sign-in/email", {
+      signal: expect.any(AbortSignal),
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -159,7 +187,9 @@ describe("frontend backend request contracts", () => {
     await expect(downloadAdminExport("orders")).resolves.toMatchObject({
       filename: "orders.csv",
     });
-    expect(fetch).toHaveBeenCalledWith("/api/admin/exports/orders");
+    expect(fetch).toHaveBeenCalledWith("/api/admin/exports/orders", {
+      signal: expect.any(AbortSignal),
+    });
   });
 });
 
@@ -174,6 +204,49 @@ const jsonResponse = (payload: unknown, status = 200) =>
 
 describe("frontend failure and retry boundaries", () => {
   beforeEach(() => vi.restoreAllMocks());
+  it("keeps product groups together across bounded import requests and totals their results", async () => {
+    const batches: ReturnType<typeof parseProductCsv>["rows"][] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
+      const file = (init!.body as FormData).get("file") as File;
+      batches.push(parseProductCsv(await file.text()).rows);
+      return jsonResponse(
+        batches.length === 1
+          ? { success: true, created: 80 }
+          : { success: true, updated: 80 },
+      );
+    });
+    expect(await importProductsCsv(importFile([40, 40, 40, 40]))).toEqual({
+      success: true,
+      created: 80,
+      updated: 80,
+    });
+    expect(batches).toHaveLength(2);
+    expect(batches.every((batch) => batch.length <= 100)).toBe(true);
+    expect(new Set(batches.flat().map((row) => row.sku)).size).toBe(160);
+    expect(new Set(batches[0]!.map((row) => row.handle))).not.toEqual(
+      new Set(batches[1]!.map((row) => row.handle)),
+    );
+  });
+  it.each([new Error("Response lost"), "Response lost"])(
+    "reports earlier saved batches and resumable SKU identity on failure",
+    async (error) => {
+      const fetch = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce(jsonResponse({ success: true, created: 80 }))
+        .mockRejectedValueOnce(error);
+      await expect(importProductsCsv(importFile([40, 40, 40]))).rejects.toThrow(
+        "Batch 2 failed after 80 created and 0 updated variants. Earlier batches are saved. Retry the same file to resume by SKU.",
+      );
+      expect(fetch).toHaveBeenCalledTimes(2);
+    },
+  );
+  it("rejects oversized products before sending any import batch", async () => {
+    const fetch = vi.spyOn(globalThis, "fetch");
+    await expect(importProductsCsv(importFile([51, 50]))).rejects.toThrow(
+      "up to 50 variant rows",
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it.each([
     [{ error: { message: "Incorrect credentials" } }, "Incorrect credentials"],
     [{ message: "Access denied" }, "Access denied"],

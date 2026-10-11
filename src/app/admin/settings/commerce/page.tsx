@@ -1,6 +1,7 @@
+import { CategoryPicker } from "@/app/admin/category-picker";
 import { db } from "@/infrastructure/db";
 import { storeSettings, categories } from "@/infrastructure/db/schema";
-import { asc } from "drizzle-orm";
+import { asc, inArray } from "drizzle-orm";
 import { staffIdentity } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { commercePolicy } from "@/domain/commerce-policy";
@@ -23,7 +24,14 @@ export default async function CommerceSettings({
   const rewardCategories = await db
     .select()
     .from(categories)
-    .orderBy(asc(categories.name));
+    .orderBy(asc(categories.name), asc(categories.id))
+    .limit(50);
+  const selectedCategories = policy.rewardEligibleCategoryIds.length
+    ? await db
+        .select({ id: categories.id, label: categories.name })
+        .from(categories)
+        .where(inArray(categories.id, policy.rewardEligibleCategoryIds))
+    : [];
   const query = await searchParams;
   return (
     <main className="admin">
@@ -67,18 +75,15 @@ export default async function CommerceSettings({
             Leave all unchecked to include every category. Product reward
             exclusions always apply.
           </p>
-          {rewardCategories.map((category) => (
-            <label key={category.id} className="flex items-center gap-2">
-              <Checkbox
-                name="rewardEligibleCategoryIds"
-                value={category.id}
-                defaultChecked={policy.rewardEligibleCategoryIds.includes(
-                  category.id,
-                )}
-              />
-              {category.name}
-            </label>
-          ))}
+          <CategoryPicker
+            name="rewardEligibleCategoryIds"
+            label="Category selection"
+            options={rewardCategories.map((item) => ({
+              id: item.id,
+              label: item.name,
+            }))}
+            selected={selectedCategories}
+          />
         </fieldset>
         <Field
           label="Reward start (UTC, e.g. 2026-10-01T00:00:00Z; optional)"

@@ -1,3 +1,4 @@
+import { deadlineFetch as fetch } from "@/infrastructure/http/bounded-json";
 export type CustomerAuthOperation =
   | "request-password-reset"
   | "reset-password"

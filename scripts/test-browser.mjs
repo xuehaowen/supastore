@@ -1,3 +1,4 @@
+import { fixtureDirectory } from "./fixture-directory.mjs";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -7,8 +8,10 @@ import postgres from "postgres";
 import EmbeddedPostgres from "embedded-postgres";
 
 // A dedicated synthetic cluster, database and Next cache. Never use the app DB.
+const fixture = fixtureDirectory("browser");
+const databaseDir = fixture.path;
 const pg = new EmbeddedPostgres({
-  databaseDir: "./.test-cuj-postgres",
+  databaseDir,
   port: 55439,
   user: "postgres",
   password: "postgres",
@@ -51,6 +54,9 @@ const env = {
   SMTP_USER: "",
   SMTP_PASSWORD: "",
   NODE_ENV: production ? "production" : "development",
+  STRIPE_SECRET_KEY: "",
+  STRIPE_WEBHOOK_SECRET: "",
+  TELNYX_API_KEY: "",
 };
 const children = [];
 function completed(child) {
@@ -86,6 +92,7 @@ async function ready(url, child) {
 }
 let pgCtl;
 let postgresBinary;
+let databaseProcess;
 if (process.platform === "win32") {
   const require = createRequire(import.meta.url);
   const embeddedRequire = createRequire(require.resolve("embedded-postgres"));
@@ -98,7 +105,7 @@ if (process.platform === "win32") {
 }
 function controlPostgres(command) {
   return completed(
-    spawn(pgCtl, ["-D", ".test-cuj-postgres", ...command], {
+    spawn(pgCtl, ["-D", databaseDir, ...command], {
       stdio: "inherit",
       windowsHide: true,
     }),
@@ -135,11 +142,27 @@ async function stop() {
       if (pgCtl) await controlPostgres(["-m", "fast", "-w", "stop"]);
       else await pg.stop();
     }
+    if (!pgStarted && databaseProcess && databaseProcess.exitCode === null) {
+      const exited = new Promise((resolve) =>
+        databaseProcess.once("exit", resolve),
+      );
+      databaseProcess.kill();
+      await Promise.race([
+        exited,
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Fixture database did not stop")),
+            10000,
+          ),
+        ),
+      ]);
+    }
     if (failures.length)
       throw new AggregateError(
         failures,
         "Some test processes did not stop cleanly",
       );
+    fixture.cleanup();
   })();
   return stopping;
 }
@@ -147,25 +170,38 @@ let exitCode = 0;
 process.once("SIGINT", () => void stop().finally(() => process.exit(130)));
 process.once("SIGTERM", () => void stop().finally(() => process.exit(143)));
 try {
-  if (!existsSync(".test-cuj-postgres/PG_VERSION")) await pg.initialise();
+  if (!existsSync(`${databaseDir}/PG_VERSION`)) await pg.initialise();
   if (postgresBinary) {
-    const child = spawn(
+    const child = (databaseProcess = spawn(
       postgresBinary,
-      ["-D", ".test-cuj-postgres", "-p", "55439"],
+      ["-D", databaseDir, "-p", "55439"],
       { stdio: ["ignore", "ignore", "pipe"], windowsHide: true },
-    );
+    ));
     await new Promise((resolve, reject) => {
-      child.once("error", reject);
-      child.once("exit", (code) =>
-        reject(new Error("Test PostgreSQL exited: " + code)),
+      const timer = setTimeout(
+        () => reject(new Error("Test PostgreSQL startup timed out")),
+        30000,
+      );
+      child.once("error", (error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+      child.once(
+        "exit",
+        (code) => (
+          clearTimeout(timer),
+          reject(new Error("Test PostgreSQL exited: " + code))
+        ),
       );
       child.stderr.on("data", (data) => {
         if (
           String(data).includes(
             "database system is ready to accept connections",
           )
-        )
+        ) {
+          clearTimeout(timer);
           resolve();
+        }
       });
     });
   } else await pg.start();

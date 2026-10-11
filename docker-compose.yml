@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:18-alpine
+    image: postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
     container_name: supastore-postgres
     restart: unless-stopped
     environment:
@@ -18,7 +18,7 @@ services:
       retries: 5
 
   adminer:
-    image: adminer:latest
+    image: adminer:latest@sha256:74f29c416e148b98305e84446a18db7cd2c1038264dec464359d36774ef080ce
     restart: unless-stopped
     profiles: [tools]
     depends_on:
@@ -30,7 +30,7 @@ services:
       - "127.0.0.1:9002:8080"
 
   rustfs:
-    image: rustfs/rustfs:latest
+    image: rustfs/rustfs:latest@sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c
     container_name: supastore-rustfs
     restart: unless-stopped
     ports:
@@ -61,6 +61,7 @@ services:
       - REPORT_MAX_SOURCE_ROWS=${REPORT_MAX_SOURCE_ROWS:-100000}
       - REPORT_MAX_EXPORT_BYTES=${REPORT_MAX_EXPORT_BYTES:-67108864}
       - REPORT_TIMEOUT_MS=${REPORT_TIMEOUT_MS:-30000}
+      - NODE_OPTIONS=${BACKEND_NODE_OPTIONS:---max-old-space-size=256}
       - ADMIN_SETUP_SECRET=${ADMIN_SETUP_SECRET:?Set ADMIN_SETUP_SECRET}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET}
       - BETTER_AUTH_URL=${STOREFRONT_ORIGIN:-http://localhost:3000}
@@ -120,6 +121,7 @@ services:
       - "${PORT:-3000}:3000"
     environment:
       NODE_ENV: production
+      NODE_OPTIONS: ${STOREFRONT_NODE_OPTIONS:---max-old-space-size=256}
       BACKEND_URL: http://backend:3000
       STOREFRONT_ORIGIN: ${STOREFRONT_ORIGIN:-http://localhost:3000}
       EDGE_PROXY_SECRET: ${EDGE_PROXY_SECRET:-}

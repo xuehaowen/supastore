@@ -1,3 +1,7 @@
+import {
+  boundedJson,
+  deadlineFetch as fetch,
+} from "@/infrastructure/http/bounded-json";
 export interface AuthPayload {
   name: FormDataEntryValue | null;
   email: FormDataEntryValue | null;
@@ -20,7 +24,7 @@ export interface ProductImportResult {
 async function readJson(
   response: Response,
 ): Promise<Record<string, unknown> | null> {
-  return (await response.json().catch(() => null)) as Record<
+  return (await boundedJson(response).catch(() => null)) as Record<
     string,
     unknown
   > | null;

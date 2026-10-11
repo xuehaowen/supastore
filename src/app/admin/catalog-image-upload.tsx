@@ -1,4 +1,8 @@
 "use client";
+import {
+  boundedJson,
+  deadlineFetch as fetch,
+} from "@/infrastructure/http/bounded-json";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
@@ -31,8 +35,16 @@ export function CatalogImageUpload({
             method: "POST",
             body: new FormData(form),
           });
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.error);
+          const result = await boundedJson(response);
+          if (!response.ok)
+            throw new Error(
+              result &&
+                typeof result === "object" &&
+                "error" in result &&
+                typeof result.error === "string"
+                ? result.error
+                : "Image upload failed.",
+            );
           setMessage("Image uploaded.");
           form.reset();
           router.refresh();

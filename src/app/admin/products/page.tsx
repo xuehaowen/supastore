@@ -1,4 +1,5 @@
 import { VariantFields } from "@/app/interactive";
+import { CategoryPicker } from "@/app/admin/category-picker";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { listAdminProducts } from "@/application/use-cases/catalog/list-admin-products";
@@ -63,16 +64,14 @@ export default async function Products({
               Description
               <Textarea name="description" />
             </label>
-            <label>
-              Categories
-              <NativeSelect name="categoryIds" multiple>
-                {groups.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            </label>
+            <CategoryPicker
+              name="categoryIds"
+              label="Categories"
+              options={groups.map((group) => ({
+                id: group.id,
+                label: group.name,
+              }))}
+            />
             <VariantFields />
             <Button type="submit">Publish product</Button>
           </form>
@@ -95,17 +94,15 @@ export default async function Products({
             <option value="draft">Draft</option>
           </NativeSelect>
         </label>
-        <label>
-          Category
-          <NativeSelect name="category" defaultValue={category}>
-            <option value="">All categories</option>
-            {groups.map((group) => (
-              <option key={group.id} value={group.id}>
-                {group.name}
-              </option>
-            ))}
-          </NativeSelect>
-        </label>
+        <CategoryPicker
+          name="category"
+          label="Category"
+          multiple={false}
+          options={groups.map((group) => ({ id: group.id, label: group.name }))}
+          selected={groups
+            .filter((group) => group.id === category)
+            .map((group) => ({ id: group.id, label: group.name }))}
+        />
         <label>
           Sort
           <NativeSelect name="sort" defaultValue={sort}>

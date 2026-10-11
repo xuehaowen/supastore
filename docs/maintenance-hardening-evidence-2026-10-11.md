@@ -1,0 +1,54 @@
+# Hardening verification: 2026-10-11
+
+This is synthetic local evidence, not a production launch approval.
+
+## Changes
+
+- All repository formatting reconciled; CI now gates lint, formatting, coverage and high/critical production dependency advisories.
+- Production dependency audit changed from 38 advisories to zero. Patched ORM, Next, next-intl, mail and testing dependencies; compatible transitive overrides are locked. The unused generator dependency was removed after preserving its exact stylesheet and MIT license under `src/styles/vendor`.
+- pnpm 11.0.9 and Node >=22.13 are explicit. Docker Node, PostgreSQL, object storage and optional database-tool images have registry-resolved immutable digests.
+- Browser/provider HTTP clients have deadlines and bounded JSON reads. Provider status decoding rejects coerced values; payment errors retain structured event/attempt context.
+- Browser fixtures create unique owned PostgreSQL directories, bound startup waits, guard cleanup paths and suppress inherited live Stripe/Telnyx credentials.
+- Category selectors fetch 50 candidates and retain selected records independently. Owner-only search covers categories outside that initial batch.
+- Sitemap application queries use pure pagination contracts separately from HTTP serialization. UI class merging has one owner; customer i18n continues to use the existing shared package.
+- Service runtime heaps default to 256 MiB with Compose overrides. Builds retain their normal memory allowance.
+
+The development-only braces 3.0.3 parser has a reproducible local patch limiting nesting to 100 levels. Its ordinary-glob and adversarial-nesting tests pass. The upstream 3.0.4 patch version was not published when checked, so the registry still reports one development advisory; it is not suppressed.
+
+## Completed local checks
+
+- 121 PostgreSQL integration regressions passed after dependency and category-query changes.
+- 852 backend/storefront unit tests passed. Domain coverage: statements 93.58%, branches 91.52%, functions 98.8%, lines 93.70%.
+- 18 selected production root-app browser tests passed, including category search, report export, manual orders, workflow context, checkout and sitemap.
+- 11 cross-service production browser tests passed, including Chinese checkout, shipping policies, credit, account history, evidence, delivery, returns and refunds.
+- Frontend request coverage also passed at 100% lines and 98.46% branches. Both application type checks, lint and repository formatting passed. Frozen installation succeeded. Production audit reported no advisories.
+
+The current synthetic Windows Node 24.12 Next CLI workload with a 256 MiB heap
+recorded backend RSS 584.5 MiB / peak 616.7 MiB, and storefront RSS 238.6 MiB /
+peak 262.3 MiB. This includes CLI/configuration startup and native allocations;
+it does not establish the Linux standalone/container footprint. No 512 MiB
+backend acceptance claim is made.
+
+Compiled storefront initial route JS, summing per-chunk gzip, measured 132.7 KiB
+for the home route and 152.6 KiB for the product route. Browser cache, RSC payloads,
+lazy chunks and actual transfer compression are separate measurements.
+
+## Reproduction and remaining acceptance
+
+1. Run `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm typecheck:storefront`, `pnpm lint`, `pnpm format:check`, `pnpm test:coverage` and `pnpm audit --prod --audit-level high`.
+2. Run `node scripts/test-integration.mjs` against its owned local cluster. Run the new PostgreSQL 17/18 CI matrix before extending deployment compatibility claims.
+3. Run `node scripts/test-storefront.mjs --measure`. Linux measures generated standalone processes; Windows measures Next CLI because standalone tracing requires symlink privileges. Neither mode weakens native-loader or filesystem checks.
+4. Run `pnpm test:containers` on an isolated Docker runner. The local Docker daemon was unavailable; CI now includes this existing smoke/upgrade/recovery command. Check image readiness, runtime role, persistence, rollback and backup/restore before deployment.
+5. Measure Linux standalone/container RSS and concurrent merchant-sized reports, XLSX/CSV exports, worker batches and database plans within the configured limits. Heap limits do not bound total RSS. Adjust `BACKEND_NODE_OPTIONS` and `STOREFRONT_NODE_OPTIONS` only using measured deployment evidence.
+6. Rehearse production-copy restore with outbound delivery suppressed. Verify authoritative Stripe/SMTP receipts, TLS/callback/origin handling, hosting cutover and human screen-reader/language acceptance with authorized production access.
+
+On Windows, native SWC requires a privately owned cache with trusted ancestor
+permissions. Use a validated `SWC_NATIVE_BINDING_CACHE`; this environment used an
+owner-only directory directly under the user profile. Its default AppData cache
+and standalone symlink permissions were unsuitable. No system-wide permission
+or loader-security bypass was applied.
+
+Build and browser trace artifacts remain in ignored fixture/cache directories
+for diagnosis. PostgreSQL fixture directories are removed after successful
+shutdown. An interrupted process can leave an orphan, but subsequent runs use
+fresh directories.

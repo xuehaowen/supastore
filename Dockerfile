@@ -1,20 +1,21 @@
-FROM node:22-alpine AS base
-RUN apk add --no-cache libc6-compat && corepack enable && corepack prepare pnpm@9.15.9 --activate
+FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS base
+RUN apk add --no-cache libc6-compat && corepack enable && corepack prepare pnpm@11.0.9 --activate
 WORKDIR /app
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/backend/package.json ./apps/backend/package.json
 COPY apps/storefront/package.json ./apps/storefront/package.json
 COPY packages/contracts/package.json ./packages/contracts/package.json
+COPY patches ./patches
 RUN pnpm install --frozen-lockfile
 FROM deps AS backend-builder
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1 STANDALONE=true NODE_ENV=production DATABASE_URL=postgresql://build:build@127.0.0.1:1/build_only BETTER_AUTH_URL=http://localhost:3000
 RUN BETTER_AUTH_SECRET=$(node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('hex'))") node scripts/backend.mjs build
 RUN mkdir -p /app/public
-FROM node:22-alpine AS backend
+FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS backend
 WORKDIR /app
-ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0 SERVICE_ROLE=backend ENABLE_OUTBOX_WORKER=true
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS=--max-old-space-size=256 PORT=3000 HOSTNAME=0.0.0.0 SERVICE_ROLE=backend ENABLE_OUTBOX_WORKER=true
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 COPY --from=backend-builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=backend-builder --chown=nextjs:nodejs /app/.next/static ./.next/static
@@ -28,9 +29,9 @@ COPY . .
 ARG BACKEND_URL=http://backend:3000
 ENV NEXT_TELEMETRY_DISABLED=1 STANDALONE=true NODE_ENV=production BACKEND_URL=$BACKEND_URL
 RUN node node_modules/next/dist/bin/next build apps/storefront
-FROM node:22-alpine AS storefront
+FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS storefront
 WORKDIR /app
-ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0 BACKEND_URL=http://backend:3000
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS=--max-old-space-size=256 PORT=3000 HOSTNAME=0.0.0.0 BACKEND_URL=http://backend:3000
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 COPY --from=storefront-builder --chown=nextjs:nodejs /app/apps/storefront/.next/standalone ./
 COPY --from=storefront-builder --chown=nextjs:nodejs /app/apps/storefront/.next/static ./apps/storefront/.next/static
@@ -41,7 +42,7 @@ CMD ["node", "apps/storefront/server.js"]
 FROM deps AS migration-builder
 COPY scripts/migrate.mjs scripts/runtime-role.mjs scripts/build-migrations.mjs ./scripts/
 RUN node scripts/build-migrations.mjs
-FROM node:22-alpine AS migrations
+FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS migrations
 WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 COPY --from=migration-builder --chown=nextjs:nodejs /app/migrate.mjs ./migrate.mjs

@@ -83,7 +83,16 @@ export async function listAdminProducts(
     const groups = await tx
       .select()
       .from(categories)
-      .orderBy(asc(categories.name));
+      .orderBy(asc(categories.name), asc(categories.id))
+      .limit(50);
+    if (category && !groups.some((group) => group.id === category)) {
+      const [selected] = await tx
+        .select()
+        .from(categories)
+        .where(eq(categories.id, category))
+        .limit(1);
+      if (selected) groups.push(selected);
+    }
     const [store] = await tx.select().from(storeSettings).limit(1);
     return {
       rows,

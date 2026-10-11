@@ -1,4 +1,8 @@
 "use client";
+import {
+  boundedJson,
+  deadlineFetch as fetch,
+} from "@/infrastructure/http/bounded-json";
 import { useEffect, useId, useRef, useState } from "react";
 import { parseVariantOptionsDto } from "@supastore/contracts";
 import { Input } from "@/components/ui/input";
@@ -44,7 +48,7 @@ export function VariantPicker({
         { signal: controller.signal },
       );
       if (!response.ok) throw new Error("Search failed");
-      const payload: unknown = await response.json();
+      const payload: unknown = await boundedJson(response);
       if (!payload || typeof payload !== "object" || !("data" in payload))
         throw new Error("Invalid response");
       const result = parseVariantOptionsDto(payload.data);

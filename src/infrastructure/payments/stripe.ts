@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { boundedJson } from "@/infrastructure/http/bounded-json";
 import type {
   PaymentProvider,
   PaymentCheckoutSession,
@@ -57,10 +58,10 @@ function session(value: unknown): StripeSession {
   if (
     typeof v.id !== "string" ||
     !v.id.startsWith("cs_") ||
-    !["open", "complete", "expired"].includes(String(v.status)) ||
-    !["paid", "unpaid", "no_payment_required"].includes(
-      String(v.payment_status),
-    ) ||
+    typeof v.status !== "string" ||
+    !["open", "complete", "expired"].includes(v.status) ||
+    typeof v.payment_status !== "string" ||
+    !["paid", "unpaid", "no_payment_required"].includes(v.payment_status) ||
     (v.amount_total !== null &&
       (!Number.isSafeInteger(v.amount_total) || Number(v.amount_total) < 0)) ||
     (v.payment_intent !== null && typeof v.payment_intent !== "string") ||
@@ -95,8 +96,9 @@ function refund(value: unknown): StripeRefund {
     !Number.isSafeInteger(v.amount) ||
     Number(v.amount) < 1 ||
     typeof v.currency !== "string" ||
+    typeof v.status !== "string" ||
     !["pending", "requires_action", "succeeded", "failed", "canceled"].includes(
-      String(v.status),
+      v.status,
     ) ||
     (v.payment_intent !== null && typeof v.payment_intent !== "string")
   )
@@ -210,14 +212,16 @@ export class StripeAdapter implements PaymentProvider {
         "Payment provider request failed; reconcile before retrying.",
       );
     }
-    if (!response.ok)
+    if (!response.ok) {
+      void response.body?.cancel().catch(() => {});
       throw new StripeAdapterError(
         "Payment provider rejected the request.",
         response.status,
         response.headers.get("request-id"),
       );
+    }
     try {
-      return record(await response.json());
+      return record(await boundedJson(response));
     } catch {
       throw new StripeAdapterError(
         "Invalid payment provider response.",

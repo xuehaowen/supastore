@@ -4,6 +4,7 @@ import {
 } from "@/application/queries/admin-operations";
 import { createCategory } from "@/application/use-cases/catalog/create-category";
 import { searchVariantOptions } from "@/application/queries/variant-options";
+import { searchCategoryOptions } from "@/application/queries/category-options";
 import { savePaymentAccount } from "@/application/use-cases/payments/save-payment-account";
 import {
   customerCredit,
@@ -150,6 +151,20 @@ describe.skipIf(!process.env.DATABASE_URL?.endsWith("/supastore_test"))(
     afterAll(async () => {
       await queryClient.end();
     });
+    it("bounds category searches and enforces owner access", async () => {
+      const prefix = randomUUID();
+      try {
+        await queryClient`insert into categories(name,slug) select ${prefix} || '-' || n, ${prefix} || '-' || n from generate_series(1,61) n`;
+        const results = await searchCategoryOptions(owner, prefix);
+        expect(results.options).toHaveLength(50);
+        expect(results.hasNext).toBe(true);
+        await expect(searchCategoryOptions(staff, prefix)).rejects.toThrow(
+          "Owner privileges",
+        );
+      } finally {
+        await queryClient`delete from categories where slug like ${prefix + "%"}`;
+      }
+    });
 
     it("loads receipts only for the selected orders", async () => {
       const page = await getAdminOperations(input);
@@ -249,16 +264,14 @@ describe.skipIf(!process.env.DATABASE_URL?.endsWith("/supastore_test"))(
       await db
         .insert(products)
         .values({ id, handle: id, title: "Selector fixture" });
-      await db
-        .insert(productVariants)
-        .values(
-          Array.from({ length: 51 }, (_, index) => ({
-            productId: id,
-            sku: `selector-${String(index).padStart(3, "0")}`,
-            title: `Variant ${index}`,
-            priceCents: 100,
-          })),
-        );
+      await db.insert(productVariants).values(
+        Array.from({ length: 51 }, (_, index) => ({
+          productId: id,
+          sku: `selector-${String(index).padStart(3, "0")}`,
+          title: `Variant ${index}`,
+          priceCents: 100,
+        })),
+      );
       const first = await searchVariantOptions(owner, "selector-");
       expect(first.options).toHaveLength(50);
       expect(first.hasNext).toBe(true);
