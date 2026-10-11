@@ -501,6 +501,76 @@ describe.skipIf(!server)("generic sales reporting PostgreSQL", () => {
     const csv = await new Response(await exportSalesReport(input)).text();
     expect(csv.trimEnd().split("\r\n")).toHaveLength(1006);
   });
+  it("keeps concurrent 10,000-row reports bounded and exports complete evidence", async () => {
+    await client`insert into outside_sales_adjustments(sale_date,net_cents,tax_cents,reason,actor_id,request_key,payload_hash)
+      select '2070-01-01'::date,100,10,'Scale report fixture',${owner},gen_random_uuid(),'fixture' from generate_series(1,10000)`;
+    const input = {
+      actorUserId: owner,
+      start: "2070-01-01",
+      endExclusive: "2070-02-01",
+    };
+    const directory = await mkdtemp(join(tmpdir(), "supastore-report-scale-"));
+    const started = performance.now();
+    try {
+      const exportRows = async () => {
+        const reader = (await spoolSalesReport(input, directory)).getReader();
+        let lines = 0;
+        try {
+          for (;;) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            for (const byte of value) if (byte === 10) lines++;
+          }
+          return lines;
+        } finally {
+          await reader.cancel();
+          reader.releaseLock();
+        }
+      };
+      const [firstResult, lastResult, exportResult] = await Promise.allSettled([
+        generateSalesReport(input),
+        generateSalesReport({ ...input, page: 100 }),
+        exportRows(),
+      ]);
+      if (firstResult.status === "rejected") throw firstResult.reason;
+      if (lastResult.status === "rejected") throw lastResult.reason;
+      if (exportResult.status === "rejected") throw exportResult.reason;
+      const first = firstResult.value,
+        last = lastResult.value,
+        lines = exportResult.value;
+      expect(first.totalRows).toBe(10000);
+      expect(last.totalRows).toBe(10000);
+      expect(first.rows).toHaveLength(100);
+      expect(last.rows).toHaveLength(100);
+      expect(first.hasNext).toBe(true);
+      expect(last.hasNext).toBe(false);
+      expect(
+        last.rows.some((row) =>
+          first.rows.some((other) => other.id === row.id),
+        ),
+      ).toBe(false);
+      expect(first.totals).toMatchObject({
+        netSalesCents: 1000000,
+        taxCents: 100000,
+        grossSalesCents: 1100000,
+      });
+      expect(last.totals).toEqual(first.totals);
+      expect(lines).toBe(10001);
+      await vi.waitFor(async () =>
+        expect(await readdir(directory)).toHaveLength(0),
+      );
+      console.log(
+        JSON.stringify({
+          metric: "isolated PostgreSQL report/export regression",
+          sourceRows: 10000,
+          concurrentReports: 3,
+          elapsedMs: Math.round(performance.now() - started),
+        }),
+      );
+    } finally {
+      await rmdir(directory);
+    }
+  }, 60000);
   it("fails closed on report budgets and cleans temporary exports on cancellation", async () => {
     const input = {
       actorUserId: owner,

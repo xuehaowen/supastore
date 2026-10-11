@@ -35,6 +35,19 @@ lazy chunks and actual transfer compression are separate measurements.
 
 ## Reproduction and remaining acceptance
 
+The continued scale-verification batch passed 123 isolated integration tests,
+including two added 10,000-row regressions. The catalog regression runs two
+100-item page reads concurrently with a complete 10,000-variant CSV export and
+checks uniqueness and page separation. The reporting regression runs two
+100-row pages concurrently with a complete 10,000-adjustment CSV spool, checks
+full totals and removes temporary files. These establish synthetic concurrent
+correctness, not production query plans, export latency percentiles or service
+RSS under a merchant-sized workload.
+
+`pnpm bench:memory` now invokes the existing real-process production fixture.
+The former allocation-only script has been removed. Linux standalone and
+Windows Next CLI measurements retain their documented platform limitations.
+
 Linux GitHub CI now verifies production builds, coverage, PostgreSQL 17/18,
 121 integration tests, and container smoke, upgrade and recovery acceptance.
 The synthetic container read load completed 22,739 requests at concurrency

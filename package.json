@@ -28,7 +28,7 @@
     "test:postgres": "node scripts/test-postgres.mjs",
     "test:storage": "node scripts/test-storage.mjs",
     "bench:search": "tsx scripts/measure-search.ts",
-    "bench:memory": "tsx scripts/benchmark-memory.ts",
+    "bench:memory": "node scripts/test-storefront.mjs --measure",
     "auth:recover-owner": "tsx scripts/recover-owner.ts",
     "test:browser:existing": "playwright test",
     "test:frontend:coverage": "vitest run tests/unit --coverage --coverage.include=src/app/actions.ts --coverage.include=src/app/client-requests.ts",

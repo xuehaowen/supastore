@@ -77,7 +77,7 @@ Relevant entry points:
 
 **Documentation drift is real:** README says customer registration is absent, while the current UI and auth handler expose account functionality. Promotions and multiple pickup locations also exceed older scope wording. Reconcile docs against runnable code in Phase 0. Do not use old scope exclusions to block the user's newly requested features.
 
-Existing type checking and seven admin browser tests passed during the preceding UI work. That is limited evidence, not proof of whole-store production readiness. The browser runner reported Windows cleanup access errors. `scripts/benchmark-memory.ts` measures a synthetic allocation script, not the running Next.js server, database workload, or full deployment; it cannot substantiate the README memory claims.
+Existing type checking and seven admin browser tests passed during the preceding UI work. That is limited evidence, not proof of whole-store production readiness. The browser runner reported Windows cleanup access errors. The former allocation-only memory script has been removed. `pnpm bench:memory` now runs the isolated production fixture and measures the actual backend/storefront processes; full deployment and merchant-sized report/export memory acceptance remain separate.
 
 ## 4. Information architecture and shared interaction rules
 

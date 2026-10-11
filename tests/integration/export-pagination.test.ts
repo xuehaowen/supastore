@@ -3,6 +3,7 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { db, queryClient } from "@/infrastructure/db";
 import { streamProductsCsv } from "@/application/use-cases/catalog/export-csv";
+import { listProducts } from "@/application/use-cases/catalog/list-products";
 import { getSitemapPage } from "@/application/queries/sitemap";
 import {
   getCombinedSitemapIndex,
@@ -17,6 +18,64 @@ beforeAll(async () => {
 afterAll(async () => {
   await queryClient.end();
 });
+
+it("keeps catalog pages bounded while concurrently exporting a 10,000-product catalog", async () => {
+  const prefix = `scale-${randomUUID()}`;
+  const started = performance.now();
+  try {
+    await queryClient`insert into products(handle,title) select ${prefix} || '-' || n, ${prefix} || ' product ' || n from generate_series(1,10000) n`;
+    await queryClient`insert into product_variants(product_id,sku,title,price_cents) select id,handle,'Scale variant',100 from products where handle like ${prefix + "%"}`;
+    await queryClient`analyze products`;
+    await queryClient`analyze product_variants`;
+    const exported = async () => {
+      const seen = new Set<string>();
+      let rows = 0;
+      for await (const row of streamProductsCsv()) {
+        if (!row.startsWith(prefix + "-")) continue;
+        rows++;
+        seen.add(row.split(",")[1]!);
+      }
+      return { rows, unique: seen.size };
+    };
+    const [firstResult, lastResult, exportResult] = await Promise.allSettled([
+      listProducts({ search: prefix, page: 1, pageSize: 100 }),
+      listProducts({ search: prefix, page: 100, pageSize: 100 }),
+      exported(),
+    ]);
+    if (firstResult.status === "rejected") throw firstResult.reason;
+    if (lastResult.status === "rejected") throw lastResult.reason;
+    if (exportResult.status === "rejected") throw exportResult.reason;
+    const first = firstResult.value,
+      last = lastResult.value,
+      csv = exportResult.value;
+    expect(first.total).toBe(10000);
+    expect(last.total).toBe(10000);
+    expect(first.items).toHaveLength(100);
+    expect(last.items).toHaveLength(100);
+    expect(
+      first.items.every(
+        (item) => item.variantCount === 1 && item.lowestPriceCents === 100,
+      ),
+    ).toBe(true);
+    expect(
+      last.items.some((item) =>
+        first.items.some((other) => other.id === item.id),
+      ),
+    ).toBe(false);
+    expect(csv).toEqual({ rows: 10000, unique: 10000 });
+    console.log(
+      JSON.stringify({
+        metric: "isolated PostgreSQL catalog/export regression",
+        products: 10000,
+        concurrentReaders: 3,
+        elapsedMs: Math.round(performance.now() - started),
+      }),
+    );
+  } finally {
+    await queryClient`delete from product_variants where product_id in (select id from products where handle like ${prefix + "%"})`;
+    await queryClient`delete from products where handle like ${prefix + "%"}`;
+  }
+}, 60000);
 
 it("pages published sitemap handles without loading full product records", async () => {
   const prefix = randomUUID();

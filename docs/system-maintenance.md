@@ -26,6 +26,10 @@ The Docker runtime defaults to a 256 MiB V8 old-space limit. Override it using
 `BACKEND_NODE_OPTIONS` or `STOREFRONT_NODE_OPTIONS` only with workload evidence;
 total RSS also includes native allocations and code. Node image and infrastructure
 image digests are pinned, pnpm is fixed at 11.0.9, and Node >=22.13 is required.
+`pnpm bench:memory` runs the isolated production browser fixture and measures
+the actual backend/storefront child processes. Linux uses standalone servers;
+Windows uses Next CLI. The readings exclude PostgreSQL and browser processes
+and do not establish deployment-sized report/export memory acceptance.
 Production dependency audit is clean. A development-only braces advisory lacks
 a published patched release; a locked local patch rejects excessive brace and
 parenthesis nesting, with behavioral regression coverage. The registry audit

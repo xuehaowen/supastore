@@ -108,7 +108,8 @@ pnpm test:coverage
 # Verify strict TypeScript types
 pnpm typecheck
 
-# Run memory consumption benchmark
+# Measure isolated backend/storefront processes after production browser journeys
+# Linux uses standalone servers; Windows uses Next CLI. PostgreSQL and Chromium are required.
 pnpm bench:memory
 
 # Run Playwright End-to-End tests
