@@ -24,7 +24,7 @@ test("public catalog requests responsive optimized thumbnails", async ({
     .getByRole("button", { name: "Upload image", exact: true })
     .click();
   await expect(
-    admin.getByRole("status").filter({ hasText: "Image uploaded." }),
+    admin.getByRole("alert").filter({ hasText: "Image uploaded." }),
   ).toBeVisible({ timeout: 20000 });
   await page.goto("/en");
   const image = page.getByRole("img", { name: "Studio cup", exact: true });
@@ -99,7 +99,7 @@ test("merchant reviews bulk changes and retains edits and categories after inval
   await admin.getByLabel("Title", { exact: true }).fill("Keep my edited title");
   await admin.getByLabel("URL handle").fill("Invalid HANDLE");
   await expect(
-    admin.getByRole("status").filter({ hasText: "unsaved changes" }),
+    admin.getByRole("alert").filter({ hasText: "unsaved changes" }),
   ).toBeVisible();
   await clickAction(
     admin,
@@ -110,7 +110,7 @@ test("merchant reviews bulk changes and retains edits and categories after inval
   );
   await expect(admin.getByLabel("URL handle")).toHaveValue("Invalid HANDLE");
   await expect(
-    admin.getByRole("status").filter({ hasText: "restored after the error" }),
+    admin.getByRole("alert").filter({ hasText: "restored after the error" }),
   ).toBeVisible();
   await expect(
     admin.getByRole("checkbox", {
