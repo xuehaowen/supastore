@@ -9,6 +9,7 @@ Coordinate worker stop and bounded provider drain with container grace periods. 
 ## Where to start
 
 - [shutdown.ts](shutdown.ts): Tracks in-flight work and drains it during shutdown.
+- [worker.ts](worker.ts): Independent wall-clock job schedules, per-job in-flight guards, retry diagnostics and process-local health state. Disabled/stalled/degraded workers are not reported as healthy database connections.
 
 ## Related paths and checks
 

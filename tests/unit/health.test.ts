@@ -3,6 +3,10 @@ import { GET as getLive } from "@/app/api/health/live/route";
 import { GET as getReady } from "@/app/api/health/ready/route";
 import { GET as getWorker } from "@/app/api/health/worker/route";
 import { db } from "@/infrastructure/db";
+import {
+  createWorkerRunner,
+  resetWorkerState,
+} from "@/infrastructure/runtime/worker";
 
 describe("Health Endpoints", () => {
   it("/api/health/live returns 200 with status ok and uptime", async () => {
@@ -41,6 +45,11 @@ describe("Health Endpoints", () => {
   });
 
   it("/api/health/worker returns 200 with outbox metrics", async () => {
+    const runner = createWorkerRunner(
+      [{ name: "fixture", intervalMs: 5000, run: async () => 0 }],
+      { onError: vi.fn() },
+    );
+    await runner.tick();
     vi.spyOn(db, "execute")
       .mockResolvedValueOnce([
         { status: "pending", count: 3 },
@@ -58,5 +67,21 @@ describe("Health Endpoints", () => {
     expect(body.outbox.pending).toBe(3);
     expect(body.outbox.delivered).toBe(15);
     expect(body.outbox.oldestPendingAgeSeconds).toBeGreaterThanOrEqual(25);
+    runner.stop();
+  });
+  it("reports a disabled worker instead of healthy database-only metrics", async () => {
+    resetWorkerState();
+    vi.spyOn(db, "execute").mockResolvedValue([] as any);
+    const response = await getWorker();
+    expect(response.status).toBe(503);
+    expect((await response.json()).status).toBe("disabled");
+  });
+  it("does not expose database exception details", async () => {
+    vi.spyOn(db, "execute").mockRejectedValueOnce(
+      new Error("private database credentials"),
+    );
+    const response = await getWorker();
+    expect(response.status).toBe(503);
+    expect(await response.text()).not.toContain("private database credentials");
   });
 });
