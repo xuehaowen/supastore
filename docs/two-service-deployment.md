@@ -17,10 +17,13 @@ can complete bounded provider calls before closing pooled transports.
 
 ## Local development
 
-Generate separate random values for `POSTGRES_PASSWORD`, `ADMIN_SETUP_SECRET`,
+Generate separate random values for `POSTGRES_PASSWORD`, `APP_DATABASE_PASSWORD`, `ADMIN_SETUP_SECRET`,
 `BETTER_AUTH_SECRET`, `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` in `.env`.
 For example, run `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`
-once per value. Set the same PostgreSQL password in `DATABASE_URL`; hex values
+once per value. `DATABASE_URL` uses `APP_DATABASE_USER` and `APP_DATABASE_PASSWORD`;
+`MIGRATION_DATABASE_URL` uses `POSTGRES_USER` and `POSTGRES_PASSWORD`. Migrations
+refresh the restricted application's table/sequence grants after applying schema
+changes. Keep administrator credentials out of the running backend. Hex values
 do not need URL escaping. Compose rejects missing or empty credentials, and the
 production backend rejects short or known placeholder authentication secrets.
 

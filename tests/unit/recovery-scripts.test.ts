@@ -36,6 +36,7 @@ elif [ "$name" = "pg_restore" ]; then
 elif [ "$name" = "node" ]; then
   [ "\${DISABLE_OUTBOUND_DELIVERY:-}" = "true" ] || exit 11
   [ "\${ENABLE_OUTBOX_WORKER:-}" = "false" ] || exit 12
+  [ "\${MIGRATION_DATABASE_URL:-}" = "\${DATABASE_URL:-}" ] || exit 14
   printf 'migrations executed\\n'
   [ "\${FAIL_MIGRATION:-}" != "true" ] || exit 13
 fi
@@ -123,7 +124,9 @@ describe("disaster recovery command failures", () => {
   });
   it("runs migrations with recovery flags and redacts target credentials", () => {
     const f = fixture();
-    const result = f.run("restore", [f.dump]);
+    const result = f.run("restore", [f.dump], {
+      MIGRATION_DATABASE_URL: "postgresql://fixture@localhost/other-database",
+    });
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("migrations executed");
     expect(result.stdout + result.stderr).not.toContain("private-password");

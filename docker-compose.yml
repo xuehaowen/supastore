@@ -53,7 +53,7 @@ services:
     expose: ["3000"]
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-supastore}?sslmode=disable
+      - DATABASE_URL=postgresql://${APP_DATABASE_USER:-supastore_app}:${APP_DATABASE_PASSWORD:?Set APP_DATABASE_PASSWORD}@postgres:5432/${POSTGRES_DB:-supastore}?sslmode=disable
       - ADMIN_SETUP_SECRET=${ADMIN_SETUP_SECRET:?Set ADMIN_SETUP_SECRET}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET}
       - BETTER_AUTH_URL=${STOREFRONT_ORIGIN:-http://localhost:3000}
@@ -128,6 +128,8 @@ services:
     profiles: [migration]
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-supastore}?sslmode=disable
+      APP_DATABASE_USER: ${APP_DATABASE_USER:-supastore_app}
+      APP_DATABASE_PASSWORD: ${APP_DATABASE_PASSWORD:?Set APP_DATABASE_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy

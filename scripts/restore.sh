@@ -10,6 +10,7 @@ if [ "${RESTORE_COLD_CONFIRMED:-}" != "true" ]; then
   exit 1
 fi
 export DATABASE_URL="$TARGET_DB_URL"
+export MIGRATION_DATABASE_URL="$TARGET_DB_URL"
 export DISABLE_OUTBOUND_DELIVERY=true
 export ENABLE_OUTBOX_WORKER=false
 for tool in pg_restore psql node; do

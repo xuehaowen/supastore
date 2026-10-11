@@ -15,13 +15,15 @@ services:
     image: supastore-migrate
     environment:
       DATABASE_URL: postgresql://postgres:fixture-only@postgres:5432/supastore_smoke
+      APP_DATABASE_USER: supastore_app
+      APP_DATABASE_PASSWORD: fixture-runtime-only
     depends_on:
       postgres:
         condition: service_healthy
   backend:
     image: supastore-backend:latest
     environment:
-      DATABASE_URL: postgresql://postgres:fixture-only@postgres:5432/supastore_smoke
+      DATABASE_URL: postgresql://supastore_app:fixture-runtime-only@postgres:5432/supastore_smoke
       APP_URL: http://localhost:3097
       STOREFRONT_ORIGIN: http://localhost:3097
       BETTER_AUTH_URL: http://localhost:3097
