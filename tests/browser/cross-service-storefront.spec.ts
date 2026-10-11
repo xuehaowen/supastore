@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import type { Page } from "@playwright/test";
+import { parseQuoteDto } from "@supastore/contracts";
 import {
   test,
   expect,
@@ -6,6 +8,22 @@ import {
   deliveredLink,
   clientHeaders,
 } from "./fixtures";
+
+async function reviewQuote(page: Page) {
+  let body: { data: unknown } | undefined;
+  await page.route("**/api/v1/quotes", async (route) => {
+    const response = await route.fetch();
+    body = await response.json();
+    await route.fulfill({ response });
+  });
+  const response = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/api/v1/quotes") && r.request().method() === "POST",
+  );
+  await page.getByRole("button", { name: "Review final total" }).click();
+  expect((await response).ok()).toBe(true);
+  return parseQuoteDto(body?.data);
+}
 
 test("separate checkout discards a delayed quote after the form changes", async ({
   page,
@@ -109,16 +127,8 @@ for (const mode of ["shipping", "pickup", "local_delivery", "none"] as const) {
             .getByLabel("Full shipping address")
             .fill("1 Market Street");
           await page.getByLabel("Postal code", { exact: true }).fill("94105");
-          const response = page.waitForResponse(
-            (r) =>
-              r.url().endsWith("/api/v1/quotes") &&
-              r.request().method() === "POST",
-          );
-          await page
-            .getByRole("button", { name: "Review final total" })
-            .click();
-          const result = await (await response).json();
-          expect(result.data.shippingCents).toBe(700);
+          const result = await reviewQuote(page);
+          expect(result.shippingCents).toBe(700);
         }
       }
     } finally {
@@ -155,15 +165,10 @@ test("separate storefront applies regional shipping through the quote API", asyn
     await page.getByLabel("State / region", { exact: true }).selectOption("CA");
     await page.getByLabel("Postal code", { exact: true }).fill("94105");
     await page.getByLabel("Full shipping address").fill("1 Market Street");
-    const response = page.waitForResponse(
-      (r) =>
-        r.url().endsWith("/api/v1/quotes") && r.request().method() === "POST",
-    );
-    await page.getByRole("button", { name: "Review final total" }).click();
-    const body = await (await response).json();
-    expect(body.data.shippingCents).toBe(800);
+    const quoteResult = await reviewQuote(page);
+    expect(quoteResult.shippingCents).toBe(800);
     const [quote] =
-      await sql`select terms_snapshot from quotes where id=${body.data.id}`;
+      await sql`select terms_snapshot from quotes where id=${quoteResult.id}`;
     expect(quote.terms_snapshot.shippingAddress).toMatchObject({
       country: "US",
       region: "CA",
