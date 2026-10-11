@@ -322,6 +322,7 @@ try {
       : [
           "tests/browser/cross-service-storefront.spec.ts",
           "tests/browser/cross-service-i18n.spec.ts",
+          "tests/browser/cross-service-sitemap.spec.ts",
           "tests/browser/storefront-journey-updates.spec.ts",
         ];
   await completed(
