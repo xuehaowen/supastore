@@ -57,6 +57,7 @@ const env = {
   S3_ACCESS_KEY_ID: "fixture",
   S3_SECRET_ACCESS_KEY: "fixture",
   S3_BUCKET_PRIVATE: "browser-fixture",
+  S3_BUCKET_PUBLIC: "browser-public-fixture",
   TEST_STORAGE_PORT: "9009",
   SMTP_HOST: "127.0.0.1",
   SMTP_PORT: "25259",
@@ -256,6 +257,11 @@ try {
       start(["node_modules/next/dist/bin/next", "build", "apps/storefront"]),
     );
   if (standalone) {
+    // Next's generated entry point is CommonJS even when the source package is ESM.
+    cpSync(
+      join(env.NEXT_DIST_DIR, "standalone/server.js"),
+      join(env.NEXT_DIST_DIR, "standalone/server.cjs"),
+    );
     cpSync(
       join(env.NEXT_DIST_DIR, "static"),
       join(env.NEXT_DIST_DIR, "standalone", env.NEXT_DIST_DIR, "static"),
@@ -279,7 +285,7 @@ try {
   }
   const server = start(
     standalone
-      ? [join(env.NEXT_DIST_DIR, "standalone/server.js")]
+      ? [join(env.NEXT_DIST_DIR, "standalone/server.cjs")]
       : [
           "node_modules/next/dist/bin/next",
           production ? "start" : "dev",

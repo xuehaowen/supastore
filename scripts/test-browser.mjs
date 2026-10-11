@@ -45,6 +45,7 @@ const env = {
   S3_ACCESS_KEY_ID: "fixture",
   S3_SECRET_ACCESS_KEY: "fixture",
   S3_BUCKET_PRIVATE: "browser-fixture",
+  S3_BUCKET_PUBLIC: "browser-public-fixture",
   TEST_STORAGE_PORT: "9009",
   SMTP_HOST: "127.0.0.1",
   SMTP_PORT: "25259",

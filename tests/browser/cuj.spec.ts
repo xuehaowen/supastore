@@ -124,7 +124,7 @@ test("C7/A3 free pickup confirms, rejects premature handoff, then completes", as
     row.getByRole("button", { name: "Mark ready for pickup", exact: true }),
   );
   await expect(admin).toHaveURL(
-    /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
+    /\/admin(?:\/orders|\/fulfillment|\/payments)?(?:\?[^#]*)?$/,
   );
   row = await openOrder(admin, order.reference_code);
   await row.getByLabel("Recipient / authorized recipient").fill("CUJ Customer");
@@ -133,7 +133,7 @@ test("C7/A3 free pickup confirms, rejects premature handoff, then completes", as
     row.getByRole("button", { name: "Complete pickup handoff", exact: true }),
   );
   await expect(admin).toHaveURL(
-    /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
+    /\/admin(?:\/orders|\/fulfillment|\/payments)?(?:\?[^#]*)?$/,
   );
   await page.reload();
   await expect(page.getByText(/Completed · Fulfilled/)).toBeVisible();
@@ -201,7 +201,7 @@ test("A1/A2/A3/A4 receipts, underpayment rejection, confirmation, packing slip a
   await correction.getByLabel("Correction reason").fill("Tracking typo");
   await clickAction(admin, correction.getByRole("button"));
   await expect(admin).toHaveURL(
-    /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
+    /\/admin(?:\/orders|\/fulfillment|\/payments)?(?:\?[^#]*)?$/,
   );
   expect(
     (
@@ -221,7 +221,7 @@ test("A1/A2/A3/A4 receipts, underpayment rejection, confirmation, packing slip a
   await shipment.getByLabel("Tracking number", { exact: true }).fill("SHIP-1");
   await clickAction(admin, shipment.getByRole("button"));
   await expect(admin).toHaveURL(
-    /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
+    /\/admin(?:\/orders|\/fulfillment|\/payments)?(?:\?[^#]*)?$/,
   );
   await page.reload();
   await expect(page.getByText(/Completed · Fulfilled/)).toBeVisible();
@@ -250,7 +250,7 @@ test("C8/C11/C12/A10 cancelled unpaid order retains private tracking and has no 
     row.getByRole("button", { name: "Cancel order", exact: true }),
   );
   await expect(admin).toHaveURL(
-    /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
+    /\/admin(?:\/orders|\/fulfillment|\/payments)?(?:\?[^#]*)?$/,
   );
   await page.reload();
   await expect(page.getByText(/cancelled/).first()).toBeVisible();
@@ -292,7 +292,7 @@ test("A5/A6 owner authorizes, claims and reconciles a partial refund", async ({
     row.getByRole("button", { name: "Authorize refund", exact: true }),
   );
   await expect(admin).toHaveURL(
-    /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
+    /\/admin(?:\/orders|\/fulfillment|\/payments)?(?:\?[^#]*)?$/,
   );
   const [allocation] =
     await sql`select pa.id from payout_allocations pa join refund_authorizations ra on ra.id=pa.refund_authorization_id where ra.order_id=${order.id}`;
@@ -310,7 +310,7 @@ test("A5/A6 owner authorizes, claims and reconciles a partial refund", async ({
     payout.getByRole("button", { name: "Claim payout", exact: true }),
   );
   await expect(admin).toHaveURL(
-    /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
+    /\/admin(?:\/orders|\/fulfillment|\/payments)?(?:\?[^#]*)?$/,
   );
   await admin.reload();
   await payout.locator("summary").click();
@@ -323,7 +323,7 @@ test("A5/A6 owner authorizes, claims and reconciles a partial refund", async ({
     payout.getByRole("button", { name: "Reconcile payout", exact: true }),
   );
   await expect(admin).toHaveURL(
-    /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
+    /\/admin(?:\/orders|\/fulfillment|\/payments)?(?:\?[^#]*)?$/,
   );
   await admin.reload();
   await payout.locator("summary").click();
@@ -364,7 +364,7 @@ test("A9 cash receipt records change and receipt correction is audited", async (
   await cash.getByLabel("Payer name").fill("CUJ Customer");
   await clickAction(admin, cash.getByRole("button"));
   await expect(admin).toHaveURL(
-    /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
+    /\/admin(?:\/orders|\/fulfillment|\/payments)?(?:\?[^#]*)?$/,
   );
   await confirm(admin, order.reference_code);
   row = await openOrder(admin, order.reference_code);
@@ -381,7 +381,7 @@ test("A9 cash receipt records change and receipt correction is audited", async (
     .fill("Synthetic investigation");
   await clickAction(admin, correction.getByRole("button"));
   await expect(admin).toHaveURL(
-    /\/admin(?:\/orders|\/fulfillment|\/payments)?$/,
+    /\/admin(?:\/orders|\/fulfillment|\/payments)?(?:\?[^#]*)?$/,
   );
   expect(
     (

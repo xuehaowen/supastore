@@ -191,7 +191,7 @@ test("C8-C10 recovery, proposal acceptance and failed email visibility", async (
     admin,
     row.getByRole("button", { name: "Propose new terms" }),
   );
-  await expect(admin).toHaveURL(/\/admin\/orders$/);
+  await expect(admin).toHaveURL(/\/admin\/orders(?:\?[^#]*)?$/);
   await page.reload();
   await expect(
     page.getByRole("alert").getByText("Order Terms Updated", { exact: true }),
@@ -325,7 +325,7 @@ test("M2/C3/C7 publish variants, free pickup checkout and availability", async (
   await expect(
     customer.getByText("No payment or payment evidence is required."),
   ).toBeVisible();
-  await expect(customer.getByText(/confirmed/).first()).toBeVisible();
+  await expect(customer.getByText(/confirmed/i).first()).toBeVisible();
   const row = page.getByRole("row").filter({ hasText: title });
   await row.getByRole("link", { name: "Edit", exact: true }).click();
   await page.getByLabel("Select all variants", { exact: true }).check();

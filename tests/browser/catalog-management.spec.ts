@@ -116,7 +116,7 @@ test("category table edits hierarchy and rejects long cycles", async ({
     await sql`insert into categories(name,slug,parent_id) values('Hierarchy child',${`child-${code}`},${root!.id}) returning id`;
   const [grandchild] =
     await sql`insert into categories(name,slug,parent_id) values('Hierarchy grandchild',${`grandchild-${code}`},${child!.id}) returning id`;
-  await admin.goto("/admin/categories");
+  await admin.goto(`/admin/categories?q=${encodeURIComponent(`root-${code}`)}`);
   await admin
     .getByRole("row")
     .filter({ hasText: `root-${code}` })

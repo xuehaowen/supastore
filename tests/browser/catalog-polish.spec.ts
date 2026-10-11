@@ -89,6 +89,10 @@ test("merchant reviews bulk changes and retains edits and categories after inval
   const [category] =
     await sql`insert into categories(slug,name) values(${`draft-${code}`},${`Draft category ${code}`}) returning id`;
   await admin.reload();
+  await admin.getByLabel("Search categories", { exact: true }).fill(code);
+  await admin
+    .getByRole("button", { name: "Search categories", exact: true })
+    .click();
   await admin
     .getByRole("checkbox", { name: `Draft category ${code}`, exact: true })
     .check();

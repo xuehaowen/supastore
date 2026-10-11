@@ -8,12 +8,10 @@ test.describe("request rejection flows", () => {
     await page.getByRole("button", { name: "Add to bag" }).click();
     await expect(page.getByRole("heading", { name: "Your bag" })).toBeVisible();
     const quantity = page.locator('input[name="quantity"]').first();
-    await quantity.evaluate((input) => input.removeAttribute("min"));
-    await quantity.fill("-1");
-    await quantity
-      .locator("xpath=ancestor::form")
-      .getByRole("button", { name: "Update" })
-      .click();
+    await quantity.evaluate((input) => {
+      (input as HTMLInputElement).value = "-1";
+    });
+    await quantity.locator("xpath=ancestor::form").getByRole("button").click();
     await expect(page.getByText("Quantity must be at least 0.")).toBeVisible();
   });
 
@@ -25,8 +23,8 @@ test.describe("request rejection flows", () => {
     await quantity.evaluate((input) => {
       input.removeAttribute("min");
       input.closest("form")!.noValidate = true;
+      (input as HTMLInputElement).value = "0";
     });
-    await quantity.fill("0");
     await page.getByRole("button", { name: "Add to bag" }).click();
     await expect(page.locator('[data-slot="alert"]')).toContainText(
       "Quantity must be at least 1.",

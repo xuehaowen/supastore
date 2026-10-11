@@ -143,6 +143,9 @@
   },
   "errors": {
     "generic": "Unable to save. Check your entries and try again.",
+    "quantityMinimumZero": "Quantity must be at least 0.",
+    "quantityMinimumOne": "Quantity must be at least 1.",
+    "fulfillmentInvalid": "Fulfillment is invalid.",
     "acceptTotal": "Accept the final total before placing an order.",
     "rateLimit": "Please wait a minute before retrying.",
     "shippingAddress": "Enter your shipping address and country.",
