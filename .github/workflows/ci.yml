@@ -133,8 +133,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm run test:browser
-      - run: node scripts/test-storefront.mjs --measure
+      - run: node scripts/test-browser.mjs --production
+      - if: ${{ !cancelled() }}
+        run: node scripts/test-storefront.mjs --measure
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
