@@ -4,6 +4,10 @@ import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { db, queryClient } from "@/infrastructure/db";
 import { streamProductsCsv } from "@/application/use-cases/catalog/export-csv";
 import { getSitemapPage } from "@/application/queries/sitemap";
+import {
+  getCombinedSitemapIndex,
+  getCombinedSitemapPage,
+} from "@/application/queries/combined-sitemap";
 
 beforeAll(async () => {
   if (!process.env.DATABASE_URL?.endsWith("/supastore_test"))
@@ -36,8 +40,42 @@ it("pages published sitemap handles without loading full product records", async
       new Set(handles.filter((handle) => handle.startsWith(prefix))).size,
     ).toBe(1001);
     expect(handles).not.toContain(hidden);
+    const combined = await getCombinedSitemapIndex();
+    const urls: string[] = [];
+    for (let page = 1; page <= Math.ceil(combined.products / 1000); page++) {
+      const batch = await getCombinedSitemapPage("products", page);
+      expect(batch.length).toBeLessThanOrEqual(1000);
+      urls.push(...batch.map((entry) => entry.path));
+    }
+    expect(new Set(urls.filter((url) => url.includes(prefix))).size).toBe(1001);
+    expect(urls).not.toContain(`/products/${hidden}`);
   } finally {
     await queryClient`delete from products where handle like ${prefix + "%"} or id=${hidden}`;
+  }
+});
+
+it("discovers categories and published collections beyond their former caps", async () => {
+  const prefix = randomUUID();
+  try {
+    await queryClient`insert into categories(slug,name) select ${prefix} || '-' || n, 'Sitemap category' from generate_series(1,1001) n`;
+    await queryClient`insert into product_collections(handle,title,is_published) select ${prefix} || '-' || n, 'Sitemap collection', true from generate_series(1,1001) n`;
+    await queryClient`insert into product_collections(handle,title,is_published) values (${prefix + "-hidden"}, 'Hidden', false)`;
+    const counts = await getCombinedSitemapIndex();
+    for (const resource of ["categories", "collections"] as const) {
+      const urls: string[] = [];
+      for (let page = 1; page <= Math.ceil(counts[resource] / 1000); page++) {
+        const batch = await getCombinedSitemapPage(resource, page);
+        expect(batch.length).toBeLessThanOrEqual(1000);
+        urls.push(...batch.map((entry) => entry.path));
+      }
+      expect(new Set(urls.filter((url) => url.includes(prefix))).size).toBe(
+        1001,
+      );
+      expect(urls.some((url) => url.endsWith("-hidden"))).toBe(false);
+    }
+  } finally {
+    await queryClient`delete from categories where slug like ${prefix + "%"}`;
+    await queryClient`delete from product_collections where handle like ${prefix + "%"}`;
   }
 });
 

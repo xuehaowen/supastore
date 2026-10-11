@@ -2,6 +2,18 @@
 
 Snapshot: 2026-10-09. Use the [capability inventory](system-capabilities.md) for system behavior and the directory READMEs linked from [backend source](../src/README.md), [applications](../apps/README.md), and [shared packages](../packages/README.md) for module details. This guide covers maintenance across those modules. Commands below come from the current root `package.json` and repository scripts. Review configuration and the target database before running commands that migrate, seed, restore, or contact providers.
 
+## Combined application sitemap
+
+The combined application serves `/sitemap.xml` as a streamed index. Its child
+routes are `/sitemaps/static.xml` and `/sitemaps/{resource}-{page}.xml`, where
+resource is `products`, `collections`, or `categories`. Each resource page reads
+at most 1,000 projected records ordered by ID and emits both supported locales.
+Unpublished products and collections are excluded. Static content links preserve
+the configured locale fallback. The index rejects more than 50,000 child pages
+instead of silently truncating discovery. Responses allow 30 seconds of public
+caching. Publication changes can shift pages between requests; these are live
+discovery documents, not a historical snapshot.
+
 ## Manual order retries
 
 Manual-order forms generate a request UUID when the dialog opens. Retries of the
