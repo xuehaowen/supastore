@@ -11,13 +11,16 @@ import { togglePromotion, upsertPromotion } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NativeSelect } from "@/components/ui/native-select";
+import { queuePage, QueuePagination } from "@/app/admin/queue-pagination";
 
 export default async function PromotionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; page?: string }>;
 }) {
   const staff = await staffIdentity().catch(() => redirect("/admin/login"));
+  const query = await searchParams;
+  const page = queuePage(query.page);
   const rows = await db.transaction(async (tx) => {
     await verifyStaffInTransaction(tx, staff, "owner");
     return tx
@@ -31,7 +34,9 @@ export default async function PromotionsPage({
         eq(promotionRedemptions.promotionId, promotions.id),
       )
       .groupBy(promotions.id)
-      .orderBy(desc(promotions.createdAt));
+      .orderBy(desc(promotions.createdAt), desc(promotions.id))
+      .limit(51)
+      .offset((page - 1) * 50);
   });
   const form = (promotion?: typeof promotions.$inferSelect) => (
     <form action={upsertPromotion} className="grid gap-4">
@@ -114,11 +119,11 @@ export default async function PromotionsPage({
           {form()}
         </AdminDialog>
       </div>
-      <Notice error={(await searchParams).error} />
+      <Notice error={query.error} />
       <div className="admin-grid">
         <section className="panel">
           <h2>Promotion codes</h2>
-          {rows.map(({ promotion, redemptions }) => (
+          {rows.slice(0, 50).map(({ promotion, redemptions }) => (
             <details className="panel" key={promotion.id}>
               <summary>
                 {promotion.code} · {promotion.name} ·{" "}
@@ -136,6 +141,13 @@ export default async function PromotionsPage({
             </details>
           ))}
           {!rows.length && <p className="admin-empty">No promotions yet.</p>}
+          <QueuePagination
+            query={query}
+            path="/admin/promotions"
+            parameter="page"
+            page={page}
+            hasNext={rows.length > 50}
+          />
         </section>
       </div>
     </main>

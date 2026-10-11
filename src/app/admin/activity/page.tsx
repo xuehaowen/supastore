@@ -9,6 +9,7 @@ import {
 import { staffIdentity } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { AdminNav } from "@/app/admin/admin-nav";
+import { queuePage, QueuePagination } from "@/app/admin/queue-pagination";
 
 const deliveryLabels: Record<string, string> = {
   pending: "Queued",
@@ -24,7 +25,19 @@ const deliveryLabels: Record<string, string> = {
   exhausted: "Retry limit reached",
 };
 
-export default async function ActivityPage() {
+export default async function ActivityPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    auditsPage?: string;
+    operationsPage?: string;
+    deliveriesPage?: string;
+  }>;
+}) {
+  const query = await searchParams;
+  const auditsPage = queuePage(query.auditsPage);
+  const operationsPage = queuePage(query.operationsPage);
+  const deliveriesPage = queuePage(query.deliveriesPage);
   const staff = await staffIdentity().catch(() => redirect("/admin/login"));
   const data = await db.transaction(async (tx) => {
     await verifyStaffInTransaction(tx, staff, "owner");
@@ -32,18 +45,21 @@ export default async function ActivityPage() {
       audits: await tx
         .select()
         .from(auditRecords)
-        .orderBy(desc(auditRecords.createdAt))
-        .limit(100),
+        .orderBy(desc(auditRecords.createdAt), desc(auditRecords.id))
+        .limit(51)
+        .offset((auditsPage - 1) * 50),
       operations: await tx
         .select()
         .from(operationRequests)
-        .orderBy(desc(operationRequests.createdAt))
-        .limit(50),
+        .orderBy(desc(operationRequests.createdAt), desc(operationRequests.id))
+        .limit(51)
+        .offset((operationsPage - 1) * 50),
       deliveries: await tx
         .select()
         .from(eventDeliveries)
-        .orderBy(desc(eventDeliveries.createdAt))
-        .limit(50),
+        .orderBy(desc(eventDeliveries.createdAt), desc(eventDeliveries.id))
+        .limit(51)
+        .offset((deliveriesPage - 1) * 50),
     };
   });
   return (
@@ -57,7 +73,7 @@ export default async function ActivityPage() {
       </p>
       <section className="panel">
         <h2>Audit log</h2>
-        {data.audits.map((item) => (
+        {data.audits.slice(0, 50).map((item) => (
           <article className="admin-index-row" key={item.id}>
             <span>
               <strong>{item.action}</strong>
@@ -75,11 +91,18 @@ export default async function ActivityPage() {
         {!data.audits.length && (
           <p className="admin-empty">No audit records.</p>
         )}
+        <QueuePagination
+          query={query}
+          path="/admin/activity"
+          parameter="auditsPage"
+          page={auditsPage}
+          hasNext={data.audits.length > 50}
+        />
       </section>
       <div className="admin-grid">
         <section className="panel">
           <h2>Operation requests</h2>
-          {data.operations.map((item) => (
+          {data.operations.slice(0, 50).map((item) => (
             <article className="translation-row" key={item.id}>
               <span>
                 <strong>{item.action}</strong>
@@ -88,10 +111,17 @@ export default async function ActivityPage() {
               <span>{item.status}</span>
             </article>
           ))}
+          <QueuePagination
+            query={query}
+            path="/admin/activity"
+            parameter="operationsPage"
+            page={operationsPage}
+            hasNext={data.operations.length > 50}
+          />
         </section>
         <section className="panel">
           <h2>Notification deliveries</h2>
-          {data.deliveries.map((item) => (
+          {data.deliveries.slice(0, 50).map((item) => (
             <article className="translation-row" key={item.id}>
               <span>
                 <strong>{item.recipient}</strong>
@@ -106,6 +136,13 @@ export default async function ActivityPage() {
               </span>
             </article>
           ))}
+          <QueuePagination
+            query={query}
+            path="/admin/activity"
+            parameter="deliveriesPage"
+            page={deliveriesPage}
+            hasNext={data.deliveries.length > 50}
+          />
         </section>
       </div>
     </main>

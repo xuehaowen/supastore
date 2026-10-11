@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { asc, inArray, sql } from "drizzle-orm";
+import { and, asc, inArray, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
   fulfillmentSlots,
@@ -25,13 +25,15 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { queuePage, QueuePagination } from "@/app/admin/queue-pagination";
 export default async function SlotsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; saved?: string }>;
+  searchParams: Promise<{ error?: string; saved?: string; page?: string }>;
 }) {
   const staff = await staffIdentity().catch(() => redirect("/admin/login"));
   const query = await searchParams;
+  const page = queuePage(query.page);
   const data = await db.transaction(async (tx) => {
     const identity = await verifyStaffInTransaction(tx, staff);
     const locations = await tx.select().from(pickupLocation);
@@ -39,8 +41,13 @@ export default async function SlotsPage({
     const slots = await tx
       .select()
       .from(fulfillmentSlots)
-      .orderBy(asc(fulfillmentSlots.date), asc(fulfillmentSlots.startTime))
-      .limit(200);
+      .orderBy(
+        asc(fulfillmentSlots.date),
+        asc(fulfillmentSlots.startTime),
+        asc(fulfillmentSlots.id),
+      )
+      .limit(51)
+      .offset((page - 1) * 50);
     const variants = await tx
       .select({ id: productVariants.id, sku: productVariants.sku })
       .from(productVariants)
@@ -63,11 +70,20 @@ export default async function SlotsPage({
             count: sql<number>`count(*)::int`,
           })
           .from(slotReservations)
-          .where(inArray(slotReservations.status, ["active", "consumed"]))
+          .where(
+            and(
+              inArray(slotReservations.status, ["active", "consumed"]),
+              inArray(
+                slotReservations.slotId,
+                slots.map((slot) => slot.id),
+              ),
+            ),
+          )
           .groupBy(slotReservations.slotId)
       : [];
     return {
-      slots,
+      slots: slots.slice(0, 50),
+      hasNext: slots.length > 50,
       locations,
       areas,
       variants,
@@ -80,6 +96,13 @@ export default async function SlotsPage({
     <main className="admin">
       <AdminNav />
       <h1>Fulfillment slot inventory</h1>
+      <QueuePagination
+        query={query}
+        path="/admin/inventory/slots"
+        parameter="page"
+        page={page}
+        hasNext={data.hasNext}
+      />
       <p>
         Capacity includes reserved and completed bookings. Variant quotas limit
         units independently of counted stock. Configure schedules and capacity

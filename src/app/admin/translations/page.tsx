@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { NativeSelect } from "@/components/ui/native-select";
 import { translationLocales } from "@/domain/catalog-locales";
+import { queuePage, QueuePagination } from "@/app/admin/queue-pagination";
 
 type TranslationItem = {
   id: string;
@@ -32,10 +33,19 @@ type TranslationItem = {
 export default async function TranslationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; locale?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    locale?: string;
+    productsPage?: string;
+    categoriesPage?: string;
+    variantsPage?: string;
+  }>;
 }) {
   const staff = await staffIdentity().catch(() => redirect("/admin/login"));
   const q = await searchParams;
+  const productsPage = queuePage(q.productsPage);
+  const categoriesPage = queuePage(q.categoriesPage);
+  const variantsPage = queuePage(q.variantsPage);
   const data = await db.transaction(async (tx) => {
     await verifyStaffInTransaction(tx, staff, "owner");
     const [settings] = await tx.select().from(storeSettings).limit(1);
@@ -63,7 +73,9 @@ export default async function TranslationsPage({
             eq(productTranslations.locale, targetLocale),
           ),
         )
-        .orderBy(asc(products.title)),
+        .orderBy(asc(products.title), asc(products.id))
+        .limit(51)
+        .offset((productsPage - 1) * 50),
       categories: await tx
         .select({
           id: categories.id,
@@ -78,7 +90,9 @@ export default async function TranslationsPage({
             eq(categoryTranslations.locale, targetLocale),
           ),
         )
-        .orderBy(asc(categories.name)),
+        .orderBy(asc(categories.name), asc(categories.id))
+        .limit(51)
+        .offset((categoriesPage - 1) * 50),
       variants: await tx
         .select({
           id: productVariants.id,
@@ -94,7 +108,9 @@ export default async function TranslationsPage({
             eq(variantTranslations.locale, targetLocale),
           ),
         )
-        .orderBy(asc(productVariants.sku)),
+        .orderBy(asc(productVariants.sku), asc(productVariants.id))
+        .limit(51)
+        .offset((variantsPage - 1) * 50),
     };
   });
   const languageName = (locale: string) =>
@@ -163,15 +179,36 @@ export default async function TranslationsPage({
       </form>
       <section className="panel">
         <h2>Products</h2>
-        {data.products.map((item) => editor("product", item))}
+        {data.products.slice(0, 50).map((item) => editor("product", item))}
+        <QueuePagination
+          query={{ ...q, locale: data.targetLocale }}
+          path="/admin/translations"
+          parameter="productsPage"
+          page={productsPage}
+          hasNext={data.products.length > 50}
+        />
       </section>
       <section className="panel">
         <h2>Categories</h2>
-        {data.categories.map((item) => editor("category", item))}
+        {data.categories.slice(0, 50).map((item) => editor("category", item))}
+        <QueuePagination
+          query={{ ...q, locale: data.targetLocale }}
+          path="/admin/translations"
+          parameter="categoriesPage"
+          page={categoriesPage}
+          hasNext={data.categories.length > 50}
+        />
       </section>
       <section className="panel">
         <h2>Variants</h2>
-        {data.variants.map((item) => editor("variant", item))}
+        {data.variants.slice(0, 50).map((item) => editor("variant", item))}
+        <QueuePagination
+          query={{ ...q, locale: data.targetLocale }}
+          path="/admin/translations"
+          parameter="variantsPage"
+          page={variantsPage}
+          hasNext={data.variants.length > 50}
+        />
       </section>
     </main>
   );

@@ -20,12 +20,19 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { queuePage, QueuePagination } from "@/app/admin/queue-pagination";
 export default async function Shipments({
   searchParams,
 }: {
-  searchParams: Promise<{ orderId?: string; error?: string; saved?: string }>;
+  searchParams: Promise<{
+    orderId?: string;
+    error?: string;
+    saved?: string;
+    page?: string;
+  }>;
 }) {
   const query = await searchParams;
+  const page = queuePage(query.page);
   const staff = await staffIdentity();
   if (!query.orderId) {
     const candidates = await db.transaction(async (tx) => {
@@ -34,14 +41,15 @@ export default async function Shipments({
         .select()
         .from(orders)
         .where(inArray(orders.lifecycleStatus, ["unpaid", "confirmed"]))
-        .orderBy(orders.createdAt)
-        .limit(100);
+        .orderBy(orders.createdAt, orders.id)
+        .limit(51)
+        .offset((page - 1) * 50);
     });
     return (
       <main className="admin">
         <AdminNav />
         <h1>Shipments & booking</h1>
-        {candidates.map((order) => (
+        {candidates.slice(0, 50).map((order) => (
           <p key={order.id}>
             <Link href={`/admin/fulfillment/shipments?orderId=${order.id}`}>
               {order.referenceCode} · {order.fulfillmentType} ·{" "}
@@ -49,6 +57,13 @@ export default async function Shipments({
             </Link>
           </p>
         ))}
+        <QueuePagination
+          query={query}
+          path="/admin/fulfillment/shipments"
+          parameter="page"
+          page={page}
+          hasNext={candidates.length > 50}
+        />
       </main>
     );
   }
