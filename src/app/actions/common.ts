@@ -1,21 +1,11 @@
 import { DomainError } from "@/application/common/errors";
 import { redirect } from "next/navigation";
 import { ValiError } from "valibot";
+import { adminReturnContext } from "@/application/common/admin-return-context";
 export const field = (form: FormData, name: string) =>
   String(form.get(name) ?? "").trim();
 export function adminReturnPath(form: FormData) {
-  const requested = field(form, "returnTo");
-  if (
-    /^\/admin\/orders\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      requested,
-    )
-  )
-    return requested;
-  return ["/admin/orders", "/admin/payments", "/admin/fulfillment"].includes(
-    requested,
-  )
-    ? requested
-    : "/admin";
+  return adminReturnContext(field(form, "returnTo"));
 }
 export async function perform(
   path: string,
@@ -25,15 +15,17 @@ export async function perform(
   try {
     destination = (await work()) || path;
   } catch (error) {
+    const [base, fragment] = path.split("#", 2);
     destination =
-      path +
-      (path.includes("?") ? "&" : "?") +
+      base +
+      (base!.includes("?") ? "&" : "?") +
       "error=" +
       encodeURIComponent(
         error instanceof DomainError || error instanceof ValiError
           ? error.message
           : "Unable to save. Check your entries and try again.",
-      );
+      ) +
+      (fragment ? `#${fragment}` : "");
   }
   redirect(destination);
 }

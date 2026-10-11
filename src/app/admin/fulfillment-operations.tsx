@@ -204,7 +204,7 @@ export function FulfillmentOperations(props: OperationsScreenProps) {
                       ))}
                   {view === "fulfillment" && (
                     <form action={correctOrderFulfillment} className="mt-2">
-                      <Hidden name="returnTo" value={`/admin/${view}`} />
+                      <Hidden name="returnTo" value={returnTo} />
                       <Hidden name="orderId" value={o.id} />
                       <Field
                         label="Corrected carrier / delivery method"

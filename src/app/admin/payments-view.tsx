@@ -1,4 +1,5 @@
 import { AdminDialog } from "@/app/admin/admin-dialog";
+import { adminQueueReturnContext } from "@/application/common/admin-return-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -121,7 +122,7 @@ export function PaymentsView(props: OperationsScreenProps) {
                     <TableCell className="text-right">
                       <a
                         className="admin-edit-link"
-                        href={`/admin/payments?paymentQ=${encodeURIComponent(paymentSearch)}&paymentStatus=${paymentStatus}&paymentType=${paymentType}&managePayment=${order.id}#payment-${order.id}`}
+                        href={`${adminQueueReturnContext("/admin/payments", { ...query, managePayment: order.id })}#payment-${order.id}`}
                       >
                         Manage
                       </a>

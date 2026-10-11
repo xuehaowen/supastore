@@ -6,6 +6,7 @@ import {
   receivePayment,
 } from "@/app/actions";
 import { AdminDialog } from "@/app/admin/admin-dialog";
+import { adminQueueReturnContext } from "@/application/common/admin-return-context";
 import { ManualOrderDialog } from "@/app/admin/manual-order-dialog";
 import { Field, Hidden } from "@/app/components";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -156,8 +157,8 @@ export function OrdersView(props: OperationsScreenProps) {
                       href={
                         order.lifecycleStatus === "unpaid" ||
                         order.lifecycleStatus === "cancelled"
-                          ? `/admin/orders?manage=${order.id}#order-payment-${order.id}`
-                          : `/admin/fulfillment?manage=${order.id}#order-fulfillment-${order.id}`
+                          ? `${adminQueueReturnContext("/admin/orders", { ...query, manage: order.id })}#order-payment-${order.id}`
+                          : `${adminQueueReturnContext("/admin/fulfillment", { ...query, manage: order.id })}#order-fulfillment-${order.id}`
                       }
                     >
                       Manage

@@ -14,6 +14,7 @@ import { OverviewView } from "./overview-view";
 import { PaymentsView } from "./payments-view";
 import { PayoutQueue } from "./payout-queue";
 import { queuePage } from "./queue-pagination";
+import { adminQueueReturnContext } from "@/application/common/admin-return-context";
 export default async function Admin({
   searchParams,
   view = "overview",
@@ -91,7 +92,10 @@ export default async function Admin({
       order.lifecycleStatus === "unpaid" &&
       order.createdAt.getTime() < Date.now() - 86400000,
   );
-  const returnTo = view === "overview" ? "/admin" : `/admin/${view}`;
+  const returnTo = adminQueueReturnContext(
+    view === "overview" ? "/admin" : `/admin/${view}`,
+    query,
+  );
   const screenProps: OperationsScreenProps = {
     data,
     query,

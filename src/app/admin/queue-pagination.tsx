@@ -25,7 +25,7 @@ export function QueuePagination({
     for (const [key, value] of Object.entries(query))
       if (value !== undefined && key !== "error") params.set(key, value);
     params.set(parameter, String(next));
-    return `${path}?${params}`;
+    return `${path.split(/[?#]/, 1)[0]}?${params}`;
   };
   if (page === 1 && !hasNext) return null;
   return (

@@ -170,12 +170,12 @@ export async function record(
   await form.getByLabel("Actual bank / cash reference").fill(bankReference);
   await form.getByRole("checkbox").check();
   await submit(form, "Record receipt");
-  await expect(admin).toHaveURL(/\/admin(?:\/orders)?$/);
+  await expect(admin).toHaveURL(/\/admin(?:\/orders)?(?:\?[^#]*)?$/);
 }
 export async function confirm(admin: Page, reference: string) {
   const row = await openOrder(admin, reference);
   await submit(row, "Confirm exact payment");
-  await expect(admin).toHaveURL(/\/admin(?:\/orders)?$/);
+  await expect(admin).toHaveURL(/\/admin(?:\/orders)?(?:\?[^#]*)?$/);
 }
 
 export async function clickAction(page: Page, button: Locator) {

@@ -2,6 +2,19 @@
 
 Snapshot: 2026-10-09. Use the [capability inventory](system-capabilities.md) for system behavior and the directory READMEs linked from [backend source](../src/README.md), [applications](../apps/README.md), and [shared packages](../packages/README.md) for module details. This guide covers maintenance across those modules. Commands below come from the current root `package.json` and repository scripts. Review configuration and the target database before running commands that migrate, seed, restore, or contact providers.
 
+## Admin workflow context
+
+Order, payment and fulfillment queue actions retain the active search, filters,
+pagination and selected management record on success and failure. Return paths
+are restricted to known admin sections and order details; only recognized query
+fields survive. Stale notices and arbitrary redirect parameters are removed.
+Error messages are inserted before URL fragments. Management links preserve the
+same queue context, and pagination avoids duplicating the query string.
+
+CI now runs the existing lint command alongside type checks and coverage gates.
+Repository-wide formatting enforcement remains pending reconciliation of legacy
+formatting; local changed-file formatting checks remain part of verification.
+
 ## Checkout request and response contracts
 
 `src/application/common/quote-request.ts` owns validation of public quote fields
