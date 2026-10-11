@@ -87,7 +87,12 @@ describe.skipIf(!server)("catalog translation database constraints", () => {
       ).rejects.toMatchObject({ code: "23505" });
       await expect(
         client`DELETE FROM attribute_values WHERE id=${value.id}`,
-      ).rejects.toMatchObject({ code: "23001" });
+      ).rejects.toMatchObject({
+        code: expect.stringMatching(/^(23001|23503)$/),
+        constraint_name: expect.stringContaining(
+          "variant_attribute_values_attribute_id_attribute_value_id",
+        ),
+      });
       await client`DELETE FROM product_variants WHERE id=${variant.id}`;
       expect(await client`SELECT * FROM variant_attribute_values`).toHaveLength(
         0,

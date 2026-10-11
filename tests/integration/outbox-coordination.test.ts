@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, queryClient } from "@/infrastructure/db";
@@ -46,7 +47,10 @@ async function clear() {
   await queryClient.unsafe("TRUNCATE outbox_events,event_deliveries CASCADE");
 }
 describe.skipIf(!enabled)("durable notification leases and callbacks", () => {
-  beforeAll(clear);
+  beforeAll(async () => {
+    await migrate(db, { migrationsFolder: "src/infrastructure/db/migrations" });
+    await clear();
+  });
   it("coordinates concurrent replicas without duplicate submissions and retains acceptance separately", async () => {
     await clear();
     for (let index = 0; index < 6; index++)
