@@ -8,6 +8,7 @@ export default defineConfig({
           "**/cross-service-storefront.spec.ts",
           "**/cross-service-i18n.spec.ts",
           "**/cross-service-sitemap.spec.ts",
+          "**/cross-service-scale.spec.ts",
           "**/storefront-journey-updates.spec.ts",
         ],
   fullyParallel: false,

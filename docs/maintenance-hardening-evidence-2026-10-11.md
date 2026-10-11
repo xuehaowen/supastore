@@ -48,6 +48,18 @@ RSS under a merchant-sized workload.
 The former allocation-only script has been removed. Linux standalone and
 Windows Next CLI measurements retain their documented platform limitations.
 
+The production fixture now also exercises 10,000 products/variants and 10,000
+outside-report adjustments through actual service HTTP routes: two catalog
+pages, two owner report pages and a CSV export run concurrently. It verifies
+100-item pages, complete unique CSV evidence, private export caching and the
+last report page. This scenario passed locally in 2.6 seconds, excluding fixture
+seeding/build time; its dedicated Windows Next CLI run recorded backend peak
+RSS 349,425,664 bytes (333.2 MiB), storefront peak 139,284,480 bytes (132.8 MiB).
+The default memory fixture includes this scenario alongside the customer
+journeys; Linux standalone results are logged by CI. The database/browser RSS,
+30-minute mixed read/write load and target deployment still require separate
+measurements.
+
 Linux GitHub CI now verifies production builds, coverage, PostgreSQL 17/18,
 121 integration tests, and container smoke, upgrade and recovery acceptance.
 The synthetic container read load completed 22,739 requests at concurrency

@@ -29,7 +29,9 @@ image digests are pinned, pnpm is fixed at 11.0.9, and Node >=22.13 is required.
 `pnpm bench:memory` runs the isolated production browser fixture and measures
 the actual backend/storefront child processes. Linux uses standalone servers;
 Windows uses Next CLI. The readings exclude PostgreSQL and browser processes
-and do not establish deployment-sized report/export memory acceptance.
+and include a synthetic 10,000-product/10,000-report-entry HTTP scenario with
+concurrent catalog pages, owner report pages and CSV export. They do not establish
+deployment-sized or sustained-load report/export memory acceptance.
 Production dependency audit is clean. A development-only braces advisory lacks
 a published patched release; a locked local patch rejects excessive brace and
 parenthesis nesting, with behavioral regression coverage. The registry audit
