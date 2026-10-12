@@ -1,6 +1,9 @@
 # Outbox State Reconciliation Playbook
 
-After restoring from a database backup or recovering from worker downtime, the outbox table may contain events in `pending`, `retrying`, or `exhausted` status whose delivery status is uncertain.
+After restoring from a database backup or recovering from worker downtime,
+inspect every delivery state, including `dispatching`, `awaiting`, `accepted`
+and `review`, as well as `pending`, `retrying` and `exhausted`. Provider acceptance
+does not necessarily prove final delivery.
 
 ## 1. Inspect Outbox State
 
@@ -26,13 +29,24 @@ GROUP BY status, channel;
 
 ## 3. SQL Reconciliation Queries
 
-### Bulk Suppress (Mark as Delivered Without Resending)
+For `dispatching`, `awaiting`, `accepted` and `review`, preserve pinned provider,
+attempt, lease and idempotency evidence. Consult authoritative provider status
+and the application's reconciliation workflow. Do not reset these records with
+the SQL below: an expired idempotency window or uncertain provider outcome can
+require manual review rather than a resend. Keep outbound delivery disabled
+until unresolved outcomes are established.
+
+### Suppress a Verified Delivered Record
+
+Stop delivery workers before reconciliation. Match each record to authoritative
+provider evidence and retain that evidence in the incident record. Age alone
+does not prove delivery. Never mark an uncertain batch delivered by date.
 
 ```sql
 UPDATE event_deliveries
 SET status = 'delivered', lease_token = NULL, lease_expires_at = NULL, updated_at = NOW()
-WHERE status IN ('pending', 'retrying')
-  AND created_at < '2026-09-10 00:00:00Z';
+WHERE id = '<verified-delivery-id>'
+  AND status IN ('pending', 'retrying');
 ```
 
 ### Re-Queue Specific Delivery
@@ -40,14 +54,17 @@ WHERE status IN ('pending', 'retrying')
 ```sql
 UPDATE event_deliveries
 SET status = 'pending', attempts = 0, retry_after = NOW(), lease_token = NULL, lease_expires_at = NULL, updated_at = NOW()
-WHERE id = '<delivery-id>';
+WHERE id = '<verified-undelivered-id>'
+  AND status IN ('retrying', 'exhausted');
 ```
 
 ---
 
 ## 4. Re-Enabling Outbox Worker
 
-Once all uncertain records have been audited and either marked `delivered` or retained as `pending`:
+Keep outbound delivery disabled while any delivery outcome remains uncertain.
+Once all uncertain records have been audited and either verified delivered or
+verified safe to retry:
 
 1. Remove `DISABLE_OUTBOUND_DELIVERY=true` from your environment.
 2. Restart the application service with `ENABLE_OUTBOX_WORKER=true`.
