@@ -2,11 +2,15 @@
 
 ## Current status
 
-There are no application scripts, executable migrations, Docker files or runnable services. This document defines implementation deliverables, not commands that work today.
+The repository includes runnable Next.js backend and storefront services, executable Drizzle migrations, isolated PostgreSQL integration tests and Docker targets. See [two-service deployment](two-service-deployment.md) for current commands, configuration and acceptance limits.
 
 ## Reproducible development
 
 Pin Node, pnpm and dependency versions; provide an environment template, synthetic seed store and exact install/start/check commands. Document local PostgreSQL, Better-Auth and S3 storage configuration and provider differences from production. When connecting to pooled PostgreSQL (Supabase, Neon, PgBouncer), specify `DATABASE_URL` targeting direct session mode (e.g. port 5432) to preserve transaction-level row and advisory locks. Isolate email and physical-payment simulation; never require production credentials or live transfers for tests.
+
+## Logging
+
+Application logs are emitted as sanitized structured JSON to stdout/stderr by default. Set `LOG_LEVEL=debug` for local diagnosis or `LOG_LEVEL=info` for production. Set `LOG_PANEL_ENABLED=true` to also retain a bounded recent-event buffer in `panelLogSink` for an enhanced in-process log panel. The logger exposes pluggable sinks: use `createNativeLogSink()` for native process logs and `createMemoryLogSink()` for tests or custom panels. Keep operational logs separate from business audit records, and never add secrets, tokens, payment data, or unnecessary customer PII to log payloads.
 
 Build schemas and migrations alongside vertical slices. Use one TypeScript application use case and Drizzle transaction per business command, with pure domain calculations and thin server entry points. See [architecture](architecture-overview.md) and [transaction contracts](transaction-contracts.md). Do not generate deferred schemas or duplicate business rules in SQL functions.
 

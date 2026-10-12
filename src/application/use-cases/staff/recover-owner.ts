@@ -12,7 +12,7 @@ import { DomainError } from "@/application/common/errors";
 
 const EmailSchema = v.pipe(
   v.string(),
-  v.email("A valid email address is required.")
+  v.email("A valid email address is required."),
 );
 
 export interface RecoverOwnerInput {
@@ -34,7 +34,7 @@ export interface RecoverOwnerOutput {
  * a single-use temporary recovery login URL.
  */
 export async function recoverOwner(
-  input: RecoverOwnerInput
+  input: RecoverOwnerInput,
 ): Promise<RecoverOwnerOutput> {
   const email = v.parse(EmailSchema, input.email.trim().toLowerCase());
   const baseUrl = (

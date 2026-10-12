@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import "./load-env";
 import { recoverOwner } from "@/application/use-cases/staff/recover-owner";
 
 async function main() {
@@ -18,7 +19,9 @@ async function main() {
 
   if (!email) {
     console.error("Error: Missing required email argument.");
-    console.error("Usage: pnpm run auth:recover-owner --email=admin@example.com");
+    console.error(
+      "Usage: pnpm run auth:recover-owner --email=admin@example.com",
+    );
     process.exit(1);
   }
 

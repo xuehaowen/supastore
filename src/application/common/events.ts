@@ -34,11 +34,13 @@ export async function emitOrderEvent(
       ? []
       : [recipient],
   );
+  const customerRecipient = recipient;
   if (
     [
       "order.submitted",
       "order.change_invalidated",
       "payment.evidence_uploaded",
+      "return.requested",
     ].includes(type)
   ) {
     const owners = await tx
@@ -52,15 +54,17 @@ export async function emitOrderEvent(
       );
     owners.forEach((owner) => recipients.add(owner.email));
   }
-  await tx
-    .insert(eventDeliveries)
-    .values(
-      [...recipients].map((recipient) => ({
-        eventId: event!.id,
-        recipient,
-        channel: "email" as const,
-        status: "pending" as const,
-        retryAfter: new Date(),
-      })),
-    );
+  await tx.insert(eventDeliveries).values(
+    [...recipients].map((recipient) => ({
+      eventId: event!.id,
+      recipient,
+      channel: "email" as const,
+      audience:
+        recipient.toLowerCase() === customerRecipient.toLowerCase()
+          ? ("customer" as const)
+          : ("staff" as const),
+      status: "pending" as const,
+      retryAfter: new Date(),
+    })),
+  );
 }

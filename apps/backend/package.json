@@ -1,0 +1,11 @@
+{
+  "name": "@supastore/backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node ../../scripts/backend.mjs dev",
+    "build": "node ../../scripts/backend.mjs build",
+    "start": "node ../../scripts/backend.mjs start",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc --noEmit -p ../../tsconfig.json"
+  }
+}

@@ -1,11 +1,28 @@
-import Link from "next/link";
-export function Notice({ error }: { error?: string | undefined }) {
+import { useId } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { textFor } from "@/i18n/messages";
+import { customerError } from "@/i18n/customer";
+
+export function Notice({
+  error,
+  locale,
+}: {
+  error?: string | undefined;
+  locale?: string;
+}) {
+  const m = textFor(locale ?? "en").checkoutDetails;
   return error ? (
-    <p className="notice error" role="alert">
-      {error}
-    </p>
+    <Alert variant="destructive" className="mb-6">
+      <AlertDescription>
+        <strong className="font-medium">{m.errorHeading}</strong>{" "}
+        {locale ? customerError(error, locale) : error} {m.errorRetry}
+      </AlertDescription>
+    </Alert>
   ) : null;
 }
+
 export function Field({
   label,
   name,
@@ -19,23 +36,21 @@ export function Field({
   value?: string | number | undefined;
   required?: boolean;
 }) {
+  const id = useId();
   return (
-    <label>
-      {label}
-      <input name={name} type={type} defaultValue={value} required={required} />
-    </label>
+    <div className="grid gap-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        name={name}
+        type={type}
+        defaultValue={value}
+        required={required}
+      />
+    </div>
   );
 }
+
 export function Hidden({ name, value }: { name: string; value: string }) {
   return <input type="hidden" name={name} value={value} />;
-}
-export function AdminNav() {
-  return (
-    <nav className="admin-nav" aria-label="Admin">
-      <Link href="/admin">Daily queue</Link>
-      <Link href="/admin/products">Products</Link>
-      <Link href="/admin/setup">Store setup</Link>
-      <Link href="/">View shop ↗</Link>
-    </nav>
-  );
 }

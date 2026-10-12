@@ -1,0 +1,1 @@
+ALTER TABLE "order_items" ADD COLUMN "catalog_snapshot" jsonb DEFAULT '{}'::jsonb NOT NULL;

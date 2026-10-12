@@ -1,0 +1,21 @@
+# @format
+
+storeName: "Supa / everyday"
+supportEmail: "support@example.test"
+ownerEmail: "owner@example.test"
+ownerName: "Demo Owner"
+
+# Localisation
+currency: USD
+precision: 2
+defaultLocale: en
+timezone: America/Los_Angeles
+
+# Tax
+taxRateBasisPoints: 0 # 100 = 1%
+isTaxInclusive: false
+
+# Ordering
+isOrderingEnabled: true
+isPaused: false
+pauseMessage: "The store is currently paused. Please check back soon."

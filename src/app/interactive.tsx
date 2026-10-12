@@ -1,13 +1,33 @@
 "use client";
+import { textFor } from "@/i18n/messages";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
-export function CopyButton({ value, label }: { value: string; label: string }) {
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { customerError } from "@/i18n/customer";
+import { LoaderCircle, LockKeyhole, Mail, UserRound } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  authenticate,
+  signOutSession,
+  uploadEvidence,
+} from "@/app/client-requests";
+export function CopyButton({
+  value,
+  label,
+  locale = "en",
+}: {
+  value: string;
+  label: string;
+  locale?: string;
+}) {
   const [copied, setCopied] = useState(false);
   return (
-    <button
+    <Button
       type="button"
-      className="secondary"
+      variant="outline"
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(value);
@@ -17,139 +37,278 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
         }
       }}
     >
-      {copied ? "Copied" : label}
-    </button>
+      {copied ? textFor(locale).common.copied : label}
+    </Button>
   );
 }
-export function Uploader({ orderId }: { orderId: string }) {
+export function Uploader({
+  orderId,
+  locale = "en",
+}: {
+  orderId: string;
+  locale?: string;
+}) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   return (
     <form
+      className="grid gap-4"
       onSubmit={async (event) => {
         event.preventDefault();
         const form = event.currentTarget;
-        const file = new FormData(form).get("file") as File;
         setBusy(true);
-        setMessage("Uploading…");
+        setMessage(textFor(locale).common.uploading);
         try {
-          const response = await fetch("/api/evidence", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ orderId, mime: file.type, size: file.size }),
-          });
-          const intent = await response.json();
-          if (!response.ok) throw new Error(intent.error);
-          const upload = await fetch(intent.uploadUrl, {
-            method: "PUT",
-            headers: { "Content-Type": file.type },
-            body: file,
-          });
-          if (!upload.ok) throw new Error("Upload interrupted. Please retry.");
-          const finalized = await fetch("/api/evidence", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ orderId, intentId: intent.intentId }),
-          });
-          if (!finalized.ok) throw new Error((await finalized.json()).error);
-          setMessage("Evidence received. This is not a payment receipt.");
+          const fileValue = new FormData(form).get("file");
+          if (!(fileValue instanceof File) || fileValue.size === 0) {
+            throw new Error("Choose an image to upload.");
+          }
+          await uploadEvidence(orderId, fileValue);
+          setMessage(textFor(locale).common.evidenceReceived);
           form.reset();
         } catch (error) {
+          setMessage(customerError(error, locale));
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <div className="grid gap-2">
+        <Label>
+          {textFor(locale).common.paymentImage}
+          <Input
+            type="file"
+            name="file"
+            accept="image/jpeg,image/png,image/webp"
+            required
+          />
+        </Label>
+      </div>
+      <Button type="submit" disabled={busy}>
+        {busy
+          ? textFor(locale).common.uploading
+          : textFor(locale).common.uploadEvidence}
+      </Button>
+      <p
+        className="text-sm text-muted-foreground"
+        role="status"
+        aria-live="polite"
+      >
+        {message}
+      </p>
+    </form>
+  );
+}
+
+export function SessionVerificationGuard() {
+  useEffect(() => {
+    void signOutSession()
+      .then((response) => {
+        if (response.ok) window.location.reload();
+      })
+      .catch(() => {
+        // A transient sign-out failure should not create an unhandled rejection.
+      });
+  }, []);
+  return null;
+}
+export function AuthForm({
+  audience = "admin",
+  locale = "en",
+}: {
+  audience?: "admin" | "customer";
+  locale?: string;
+}) {
+  const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const isCustomer = audience === "customer";
+  const destination = isCustomer ? `/${locale}/account` : "/admin";
+  return (
+    <form
+      className="grid gap-4"
+      onSubmit={async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const fields = new FormData(form);
+        setBusy(true);
+        setMessage("");
+        try {
+          const payload = await authenticate(
+            mode,
+            {
+              name: fields.get("name"),
+              email: fields.get("email"),
+              password: fields.get("password"),
+              callbackURL: destination,
+            },
+            { customer: isCustomer },
+          );
+          if (mode === "sign-up") {
+            setMessage(textFor(locale).common.accountCreated);
+            setMode("sign-in");
+            form.reset();
+            return;
+          }
+          if (
+            isCustomer &&
+            payload &&
+            typeof payload.user === "object" &&
+            payload.user !== null &&
+            "emailVerified" in payload.user &&
+            payload.user.emailVerified === false
+          ) {
+            await signOutSession();
+            throw new Error(textFor(locale).errors.verifyEmail);
+          }
+          window.location.assign(destination);
+        } catch (error) {
           setMessage(
-            error instanceof Error
-              ? error.message
-              : "Upload failed. Please retry.",
+            isCustomer
+              ? customerError(error, locale)
+              : error instanceof Error
+                ? error.message
+                : textFor(locale).errors.generic,
           );
         } finally {
           setBusy(false);
         }
       }}
     >
-      <label>
-        Payment image (JPEG, PNG, WebP, under 5 MB)
-        <input
-          type="file"
-          name="file"
-          accept="image/jpeg,image/png,image/webp"
-          required
-        />
-      </label>
-      <button disabled={busy}>{busy ? "Uploading…" : "Upload evidence"}</button>
-      <p role="status" aria-live="polite">
-        {message}
-      </p>
-    </form>
-  );
-}
-export function AuthForm() {
-  const [message, setMessage] = useState("");
-  const [register, setRegister] = useState(false);
-  return (
-    <form
-      onSubmit={async (event) => {
-        event.preventDefault();
-        const fields = new FormData(event.currentTarget);
-        const response = await fetch(
-          "/api/auth/" + (register ? "sign-up/email" : "sign-in/email"),
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email: fields.get("email"),
-              password: fields.get("password"),
-              name: fields.get("name"),
-            }),
-          },
-        );
-        if (response.ok) window.location.href = "/admin/setup";
-        else setMessage("Sign-in failed. Check your details and try again.");
-      }}
-    >
-      {register && (
-        <label>
-          Name
-          <input name="name" required />
-        </label>
+      {isCustomer && (
+        <div
+          className="grid grid-cols-2 rounded-lg bg-muted p-1"
+          aria-label={textFor(locale).common.accountAction}
+        >
+          <Button
+            type="button"
+            variant={mode === "sign-in" ? "secondary" : "ghost"}
+            onClick={() => {
+              setMode("sign-in");
+              setMessage("");
+            }}
+          >
+            {textFor(locale).auth.signIn}
+          </Button>
+          <Button
+            type="button"
+            variant={mode === "sign-up" ? "secondary" : "ghost"}
+            onClick={() => {
+              setMode("sign-up");
+              setMessage("");
+            }}
+          >
+            {textFor(locale).common.createAccount}
+          </Button>
+        </div>
       )}
-      <label>
-        Email
-        <input type="email" name="email" required autoComplete="email" />
-      </label>
-      <label>
-        Password
-        <input
+      {mode === "sign-up" && (
+        <div className="grid gap-2">
+          <Label htmlFor="name">
+            <UserRound className="mr-1 inline size-3.5" />
+            {textFor(locale).profile.name}
+          </Label>
+          <Input id="name" name="name" required autoComplete="name" />
+        </div>
+      )}
+      <div className="grid gap-2">
+        <Label className="auth-field-label" htmlFor="auth-email">
+          <span>
+            <Mail className="mr-1 inline size-3.5" />
+            {textFor(locale).auth.email}
+          </span>
+        </Label>
+        <Input
+          id="auth-email"
+          type="email"
+          name="email"
+          required
+          autoComplete="email"
+          placeholder={textFor(locale).common.emailPlaceholder}
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label className="auth-field-label" htmlFor="auth-password">
+          <span>
+            <LockKeyhole className="mr-1 inline size-3.5" />
+            {textFor(locale).auth.password}
+          </span>
+        </Label>
+        <Input
+          id="auth-password"
           type="password"
           name="password"
           minLength={12}
           required
-          autoComplete={register ? "new-password" : "current-password"}
+          autoComplete="current-password"
         />
-      </label>
-      <button>{register ? "Create account" : "Sign in"}</button>
-      <button
-        type="button"
-        className="text-button"
-        onClick={() => setRegister(!register)}
-      >
-        {register
-          ? "Already have an account?"
-          : "First visit? Create your account"}
-      </button>
-      <p role="alert">{message}</p>
+      </div>
+      <Button type="submit" size="lg" disabled={busy}>
+        {busy && <LoaderCircle className="animate-spin" />}
+        {busy
+          ? textFor(locale).common.wait
+          : mode === "sign-up"
+            ? textFor(locale).common.createAccount
+            : textFor(locale).common.signInSecurely}
+      </Button>
+      {isCustomer && mode === "sign-in" && (
+        <p className="text-xs leading-5 text-muted-foreground">
+          {textFor(locale).common.verifiedNotice}
+        </p>
+      )}
+      {message && (
+        <Alert
+          variant={
+            message === textFor(locale).common.accountCreated
+              ? "default"
+              : "destructive"
+          }
+        >
+          <AlertDescription>{message}</AlertDescription>
+        </Alert>
+      )}
     </form>
+  );
+}
+
+export function SignOutButton({ locale }: { locale: string }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        try {
+          const response = await signOutSession();
+          if (response.ok) window.location.assign(`/${locale}`);
+          else setBusy(false);
+        } catch {
+          setBusy(false);
+        }
+      }}
+    >
+      {busy
+        ? textFor(locale).common.signingOut
+        : textFor(locale).account.signOut}
+    </Button>
   );
 }
 
 export function LanguageLink({ locale }: { locale: string }) {
   const pathname = usePathname();
+  const query = useSearchParams().toString();
   return (
     <Link
-      href={pathname.replace(
-        /^\/(en|zh)(?=\/|$)/,
-        locale === "en" ? "/zh" : "/en",
-      )}
+      href={
+        pathname.replace(
+          /^\/(en|zh)(?=\/|$)/,
+          locale === "en" ? "/zh" : "/en",
+        ) + (query ? `?${query}` : "")
+      }
     >
-      {locale === "en" ? "中文" : "English"}
+      {textFor(locale).common.languageName}
     </Link>
   );
 }
@@ -160,46 +319,60 @@ export function VariantFields() {
     <>
       <input type="hidden" name="variantCount" value={count} />
       {Array.from({ length: count }, (_, i) => (
-        <fieldset key={i}>
+        <fieldset className="grid gap-4 rounded-lg border p-4" key={i}>
           <legend>Variant {i + 1}</legend>
-          <label>
-            SKU
-            <input name={"sku-" + i} required />
-          </label>
-          <label>
-            Variant name
-            <input name={"variantTitle-" + i} required defaultValue="Default" />
-          </label>
-          <label>
-            Price in minor units
-            <input
-              name={"price-" + i}
-              type="number"
-              min="0"
-              step="1"
-              required
-            />
-          </label>
-          <div className="two-col">
-            <label>
-              Color
-              <input name={"color-" + i} />
-            </label>
-            <label>
-              Size
-              <input name={"size-" + i} />
-            </label>
+          <div className="grid gap-2">
+            <Label>
+              SKU
+              <Input name={"sku-" + i} required />
+            </Label>
+          </div>
+          <div className="grid gap-2">
+            <Label>
+              Variant name
+              <Input
+                name={"variantTitle-" + i}
+                required
+                defaultValue="Default"
+              />
+            </Label>
+          </div>
+          <div className="grid gap-2">
+            <Label>
+              Price in minor units
+              <Input
+                name={"price-" + i}
+                type="number"
+                min="0"
+                step="1"
+                required
+              />
+            </Label>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label>
+                Color
+                <Input name={"color-" + i} />
+              </Label>
+            </div>
+            <div className="grid gap-2">
+              <Label>
+                Size
+                <Input name={"size-" + i} />
+              </Label>
+            </div>
           </div>
         </fieldset>
       ))}
-      <button
-        className="secondary"
+      <Button
+        variant="outline"
         type="button"
         disabled={count >= 50}
         onClick={() => setCount(count + 1)}
       >
         Add variant
-      </button>
+      </Button>
     </>
   );
 }

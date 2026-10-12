@@ -1,9 +1,9 @@
-import { eq, and } from 'drizzle-orm';
-import type { PgTransaction } from 'drizzle-orm/pg-core';
-import { staffMemberships } from '@/infrastructure/db/schema';
-import { ForbiddenError, UnauthorizedError } from '@/application/common/errors';
+import { eq, and } from "drizzle-orm";
+import type { PgTransaction } from "drizzle-orm/pg-core";
+import { staffMemberships } from "@/infrastructure/db/schema";
+import { ForbiddenError, UnauthorizedError } from "@/application/common/errors";
 
-export type StaffRole = 'owner' | 'staff';
+export type StaffRole = "owner" | "staff";
 
 export interface VerifiedStaff {
   userId: string;
@@ -18,24 +18,33 @@ export interface VerifiedStaff {
 export async function verifyStaffInTransaction(
   tx: PgTransaction<any, any, any>,
   userId: string,
-  requiredRole?: StaffRole
+  requiredRole?: StaffRole,
 ): Promise<VerifiedStaff> {
   if (!userId) {
-    throw new UnauthorizedError('User authentication required.');
+    throw new UnauthorizedError("User authentication required.");
   }
 
   const [membership] = await tx
     .select()
     .from(staffMemberships)
-    .where(and(eq(staffMemberships.userId, userId), eq(staffMemberships.isActive, true)))
+    .where(
+      and(
+        eq(staffMemberships.userId, userId),
+        eq(staffMemberships.isActive, true),
+      ),
+    )
     .limit(1);
 
   if (!membership) {
-    throw new ForbiddenError('Access denied: Active staff membership required.');
+    throw new ForbiddenError(
+      "Access denied: Active staff membership required.",
+    );
   }
 
-  if (requiredRole === 'owner' && membership.role !== 'owner') {
-    throw new ForbiddenError('Access denied: Owner privileges required for this operation.');
+  if (requiredRole === "owner" && membership.role !== "owner") {
+    throw new ForbiddenError(
+      "Access denied: Owner privileges required for this operation.",
+    );
   }
 
   return {

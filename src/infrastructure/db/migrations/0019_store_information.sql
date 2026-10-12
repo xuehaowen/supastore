@@ -1,0 +1,1 @@
+ALTER TABLE "store_settings" ADD COLUMN "public_content" jsonb DEFAULT '{}'::jsonb NOT NULL;

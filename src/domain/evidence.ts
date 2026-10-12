@@ -1,4 +1,4 @@
-import { InvariantViolationError } from "@/application/common/errors";
+import { InvariantViolationError } from "@/domain/errors";
 export const MAX_EVIDENCE_SIZE_BYTES = 5 * 1024 * 1024;
 export const ALLOWED_EVIDENCE_MIME_TYPES = [
   "image/jpeg",

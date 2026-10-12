@@ -1,8 +1,10 @@
-import { NextResponse } from 'next/server';
-import { sql } from 'drizzle-orm';
-import { db } from '@/infrastructure/db';
+import { NextResponse } from "next/server";
+import { sql } from "drizzle-orm";
+import { db } from "@/infrastructure/db";
+import { workerHealth } from "@/infrastructure/runtime/worker";
+import { logger } from "@/infrastructure/security/logger";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
@@ -17,7 +19,7 @@ export async function GET() {
     const oldestPendingResult = await db.execute(sql`
       SELECT MIN(created_at) as oldest_pending
       FROM event_deliveries
-      WHERE status IN ('pending', 'retrying')
+      WHERE status IN ('pending', 'retrying', 'dispatching')
     `);
 
     const counts: Record<string, number> = {
@@ -25,40 +27,77 @@ export async function GET() {
       retrying: 0,
       delivered: 0,
       exhausted: 0,
+      dispatching: 0,
+      awaiting: 0,
+      review: 0,
+      accepted: 0,
+      sent: 0,
+      failed: 0,
+      suppressed: 0,
     };
 
     if (Array.isArray(countsResult)) {
-      for (const row of countsResult as any[]) {
-        if (row.status && typeof row.count === 'number') {
-          counts[row.status] = row.count;
+      for (const row of countsResult) {
+        if (
+          typeof row.status === "string" &&
+          Object.hasOwn(counts, row.status) &&
+          Number.isSafeInteger(row.count) &&
+          Number(row.count) >= 0
+        ) {
+          counts[row.status] = Number(row.count);
         }
       }
     }
 
-    const oldestDate = (oldestPendingResult as any)?.[0]?.oldest_pending;
+    const oldestDate = Array.isArray(oldestPendingResult)
+      ? oldestPendingResult[0]?.oldest_pending
+      : undefined;
     const oldestPendingAgeSeconds = oldestDate
-      ? Math.max(0, Math.floor((Date.now() - new Date(oldestDate).getTime()) / 1000))
+      ? Math.max(
+          0,
+          Math.floor(
+            (Date.now() - new Date(String(oldestDate)).getTime()) / 1000,
+          ),
+        )
       : 0;
 
-    return NextResponse.json({
-      status: 'ok',
-      outbox: {
-        pending: counts.pending,
-        retrying: counts.retrying,
-        delivered: counts.delivered,
-        exhausted: counts.exhausted,
-        oldestPendingAgeSeconds,
-      },
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error: any) {
+    const worker = workerHealth();
     return NextResponse.json(
       {
-        status: 'unhealthy',
-        error: error?.message ?? 'Worker health check failed',
+        status: worker.status,
+        worker,
+        outbox: {
+          pending: counts.pending,
+          retrying: counts.retrying,
+          delivered: counts.delivered,
+          exhausted: counts.exhausted,
+          dispatching: counts.dispatching,
+          awaiting: counts.awaiting,
+          review: counts.review,
+          accepted: counts.accepted,
+          sent: counts.sent,
+          failed: counts.failed,
+          suppressed: counts.suppressed,
+          oldestPendingAgeSeconds: Number.isFinite(oldestPendingAgeSeconds)
+            ? oldestPendingAgeSeconds
+            : 0,
+        },
         timestamp: new Date().toISOString(),
       },
-      { status: 503 }
+      {
+        status: worker.status === "ok" ? 200 : 503,
+        headers: { "Cache-Control": "no-store" },
+      },
+    );
+  } catch (error) {
+    logger.error("Worker health query failed.", error);
+    return NextResponse.json(
+      {
+        status: "unhealthy",
+        error: "Worker health check failed",
+        timestamp: new Date().toISOString(),
+      },
+      { status: 503 },
     );
   }
 }

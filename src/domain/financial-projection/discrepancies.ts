@@ -4,7 +4,7 @@
  */
 
 export interface Destination {
-  type: 'bank_account' | 'card' | 'cash';
+  type: "bank_account" | "card" | "cash";
   accountNumberHash?: string;
   recipientName?: string;
   rawDestination?: string;
@@ -29,7 +29,10 @@ export interface ClassifiedTransferResult {
   isDestinationMatched: boolean;
 }
 
-export function areDestinationsEqual(d1: Destination, d2: Destination): boolean {
+export function areDestinationsEqual(
+  d1: Destination,
+  d2: Destination,
+): boolean {
   if (d1.type !== d2.type) return false;
   if (d1.accountNumberHash && d2.accountNumberHash) {
     return d1.accountNumberHash === d2.accountNumberHash;
@@ -40,21 +43,31 @@ export function areDestinationsEqual(d1: Destination, d2: Destination): boolean 
   return true;
 }
 
-export function classifyPayoutTransfer(input: ClassifyTransferInput): ClassifiedTransferResult {
+export function classifyPayoutTransfer(
+  input: ClassifyTransferInput,
+): ClassifiedTransferResult {
   const T = input.actualAmountCents;
   if (T <= 0) {
     throw new Error(`Actual transfer amount T must be > 0. Received: ${T}`);
   }
 
-  const U = Math.max(0, input.allocationAuthorizedCents - input.priorSettledCentsAcrossAttempts);
-  const isDestinationMatched = areDestinationsEqual(input.claimedDestination, input.actualDestination);
+  const U = Math.max(
+    0,
+    input.allocationAuthorizedCents - input.priorSettledCentsAcrossAttempts,
+  );
+  const isDestinationMatched = areDestinationsEqual(
+    input.claimedDestination,
+    input.actualDestination,
+  );
 
   const C = isDestinationMatched ? Math.min(T, U) : 0;
   const E = T - C;
   const remainingUnsettledCents = Math.max(0, U - C);
 
-  const cumulativeAttemptTransfers = input.priorActualTransfersForAttemptCents + T;
-  const isClaimLimitBreached = cumulativeAttemptTransfers > input.attemptClaimedAmountCents;
+  const cumulativeAttemptTransfers =
+    input.priorActualTransfersForAttemptCents + T;
+  const isClaimLimitBreached =
+    cumulativeAttemptTransfers > input.attemptClaimedAmountCents;
 
   return {
     actualAmountCents: T,

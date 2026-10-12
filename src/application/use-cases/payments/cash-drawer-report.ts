@@ -45,7 +45,7 @@ export interface CashDrawerReportOutput {
 }
 
 export async function generateCashDrawerReport(
-  input: CashDrawerReportInput
+  input: CashDrawerReportInput,
 ): Promise<CashDrawerReportOutput> {
   return await db.transaction(async (tx) => {
     // 1. In-transaction staff verification
@@ -55,7 +55,8 @@ export async function generateCashDrawerReport(
     let status: "open" | "closed" | "summary" = "summary";
     let startingFloatCents = 0;
     let closingBalanceCents: number | null = null;
-    let periodStart = input.startDate || new Date(new Date().setHours(0, 0, 0, 0));
+    let periodStart =
+      input.startDate || new Date(new Date().setHours(0, 0, 0, 0));
     let periodEnd = input.endDate || new Date();
 
     if (input.cashDrawerSessionId) {
@@ -67,7 +68,7 @@ export async function generateCashDrawerReport(
 
       if (!session) {
         throw new NotFoundError(
-          `Cash drawer session '${input.cashDrawerSessionId}' not found.`
+          `Cash drawer session '${input.cashDrawerSessionId}' not found.`,
         );
       }
 
@@ -97,7 +98,7 @@ export async function generateCashDrawerReport(
       .from(paymentReceipts)
       .innerJoin(
         cashReceiptDetails,
-        eq(cashReceiptDetails.receiptId, paymentReceipts.id)
+        eq(cashReceiptDetails.receiptId, paymentReceipts.id),
       )
       .where(
         and(
@@ -106,19 +107,19 @@ export async function generateCashDrawerReport(
           input.cashDrawerSessionId
             ? eq(
                 cashReceiptDetails.cashDrawerSessionId,
-                input.cashDrawerSessionId
+                input.cashDrawerSessionId,
               )
-            : undefined
-        )
+            : undefined,
+        ),
       );
 
     const totalCashCollectedCents = rows.reduce(
       (sum, r) => sum + r.amountCents,
-      0
+      0,
     );
     const totalChangeGivenCents = rows.reduce(
       (sum, r) => sum + r.changeDueCents,
-      0
+      0,
     );
     const expectedDrawerBalanceCents =
       startingFloatCents + totalCashCollectedCents;

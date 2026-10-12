@@ -1,0 +1,9 @@
+ALTER TABLE stock_reservations ADD COLUMN consumed_quantity integer NOT NULL DEFAULT 0;
+UPDATE stock_reservations SET consumed_quantity=quantity WHERE status='consumed';
+ALTER TABLE stock_reservations ADD CONSTRAINT stock_consumed_bounds CHECK(consumed_quantity>=0 AND consumed_quantity<=quantity);
+CREATE TABLE order_shipments(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),order_id uuid NOT NULL REFERENCES orders(id),request_key text NOT NULL,carrier text NOT NULL,provider text NOT NULL DEFAULT 'manual',tracking_number text,status text NOT NULL DEFAULT 'dispatched' CHECK(status IN ('dispatched','delivered')),delivered_at timestamptz,created_at timestamptz NOT NULL DEFAULT now());
+CREATE UNIQUE INDEX uq_shipment_request ON order_shipments(order_id,request_key);
+CREATE TABLE shipment_items(shipment_id uuid NOT NULL REFERENCES order_shipments(id),order_item_id uuid NOT NULL REFERENCES order_items(id),quantity integer NOT NULL CHECK(quantity>0),PRIMARY KEY(shipment_id,order_item_id));
+CREATE TABLE carrier_events(provider text NOT NULL,event_id text NOT NULL,shipment_id uuid NOT NULL REFERENCES order_shipments(id),body_hash text NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(provider,event_id));
+INSERT INTO order_shipments(order_id,request_key,carrier,tracking_number,status,delivered_at) SELECT f.order_id,'legacy-dispatch',coalesce(f.carrier,'Manual delivery'),f.tracking_number,CASE WHEN f.status='fulfilled' THEN 'delivered' ELSE 'dispatched' END,f.fulfilled_at FROM order_fulfillments f JOIN orders o ON o.id=f.order_id WHERE o.fulfillment_type IN ('shipping','local_delivery') AND f.status IN ('shipped','fulfilled');
+INSERT INTO shipment_items(shipment_id,order_item_id,quantity) SELECT s.id,i.id,i.quantity FROM order_shipments s JOIN order_items i ON i.order_id=s.order_id WHERE s.request_key='legacy-dispatch';

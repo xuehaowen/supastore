@@ -1,0 +1,19 @@
+Regional shipping is configured in Admin → Setup → Shipping.
+
+Each zone has a flat rate and optional free-shipping threshold (both in the store currency's minor units), countries, optional state/region codes, optional ZIP/postal prefixes, and priority.
+
+Example: create a West Coast zone with country US, regions CA, OR, WA, and rate 800 ($8 in USD). Create an East Coast zone with US and your chosen state codes, and rate 1500. Retain a US country-only zone for the rest of the country. No sample rates are created automatically.
+
+Regional zones must specify exactly one country. Lists use commas. Region codes are uppercase subdivision codes without a country prefix (CA, NY, BC). US checkout offers state names while submitting codes. Other countries use a region-code field. ZIP/postal prefixes are literal prefixes, not ranges or wildcard expressions; spaces and hyphens are ignored. Both constraints must match when a zone has both regions and postal prefixes.
+
+Matching precedence is postal + region, postal, region, country, then catch-all. Within equal specificity, lower priority wins; equal priority is resolved deterministically by zone ID. Use distinct priorities for overlapping zones. Customers must provide region or postal code when the destination country has rules using those fields. Unmatched destinations without a fallback are rejected.
+
+Both storefronts show country names and store country codes. Region and postal code are retained when editing a quote and included in order shipping addresses. Manual orders also accept region and postal fields. Packing slips include the region. Existing country-only zones remain valid with no required region or postal fields. API quotes accept optional `region` and `postalCode`; the store API exposes zone constraints.
+
+Migration 0035 adds two JSON arrays with empty defaults, preserving all existing zones. Apply migrations before deploying the updated application. Migration tests use the synthetic browser database; no production database is modified. To roll back, revert application code first; a new forward migration can drop the two columns, losing regional configuration.
+
+Fulfillment choices follow Admin → Settings → Commerce policies in both storefronts. For pickup-only, enable pickup and disable shipping/local delivery; for shipping-only, enable shipping and disable the others; for delivery-only, enable local delivery and configure active areas at Admin → Settings → Delivery. A method also requires at least one configured zone/location/active area. If none are available, checkout explains this and disables review. Scheduled delivery requires a date/window and reserves the selected slot on order placement; unscheduled delivery does not request a window. Unscheduled pickup also omits the calendar. Editing a quote whose area/location has been removed falls back to an available choice and clears incompatible schedule values.
+
+The embedded build-lint warning was fixed by resolving ESLint plugins relative to the installed Next ESLint configuration, where pnpm installs its dependencies. Lint rules remain enabled.
+
+Follow-up verification on 2026-10-09: 647 fast tests across backend and storefront passed. Seventeen production browser checks passed: eleven main-storefront checks cover enabled-method filtering, no available methods, scheduled/unscheduled delivery order placement, slot reservation, disabled-area recovery and regional checkout regressions; six separate-storefront checks cover all fulfillment-policy modes, regional pricing and full order placement. TypeScript and standalone ESLint pass. Both production builds complete with embedded lint enabled and no plugin-resolution warning. No live deployment or real-rate configuration was performed; the configured local app/database are unavailable, and the deployment target and rates must be supplied.

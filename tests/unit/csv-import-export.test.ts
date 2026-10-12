@@ -3,6 +3,47 @@ import {
   parseProductCsv,
   type ProductCsvRow,
 } from "@/application/use-cases/catalog/import-products-csv";
+import { serializeProductCsv } from "@/domain/catalog/product-csv";
+
+describe("Normalized CSV contract", () => {
+  it("round trips quoted multiline descriptions and stable option/collection codes", () => {
+    const row: ProductCsvRow = {
+      handle: "shirt",
+      sku: "SHIRT-RED",
+      productTitle: "衬衫",
+      variantTitle: 'Red "special"',
+      description: "Line one\nLine two, cotton",
+      priceCents: 1000,
+      isAvailable: true,
+      isPublished: false,
+      optionValues: { color: "red", size: "m" },
+      collectionHandles: ["summer", "gifts"],
+    };
+    expect(parseProductCsv(serializeProductCsv([row]))).toEqual({
+      rows: [row],
+      errors: [],
+    });
+  });
+  it("rejects fractional, truncated, out of range and ambiguous option values", () => {
+    for (const price of ["1.5", "12foo", "2147483648"])
+      expect(
+        parseProductCsv(
+          `handle,sku,title,price_cents\nshirt,SKU,Shirt,${price}`,
+        ).errors[0]?.field,
+      ).toBe("price_cents");
+    expect(
+      parseProductCsv(
+        "handle,sku,title,price_cents,option_values\nshirt,SKU,Shirt,10,color:red|color:blue",
+      ).errors[0]?.field,
+    ).toBe("option_values");
+  });
+  it("rejects malformed quoted fields", () => {
+    expect(
+      parseProductCsv('handle,sku,title,price_cents\nshirt,SKU,"Shirt,10')
+        .errors[0]?.message,
+    ).toContain("Unclosed");
+  });
+});
 
 describe("Product CSV parser (parseProductCsv)", () => {
   it("parses valid CSV with required and optional columns", () => {

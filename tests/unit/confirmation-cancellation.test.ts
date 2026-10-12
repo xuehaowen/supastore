@@ -22,7 +22,7 @@ describe("M2 Exact Confirmation, Surplus Returns & Cancellations", () => {
       expect(() => {
         if (projection.netReceivedCents !== purchaseTotalCents) {
           throw new InvariantViolationError(
-            `Order is underfunded. Required: ${purchaseTotalCents} cents, Net Received: ${projection.netReceivedCents} cents.`
+            `Order is underfunded. Required: ${purchaseTotalCents} cents, Net Received: ${projection.netReceivedCents} cents.`,
           );
         }
       }).toThrow(InvariantViolationError);

@@ -1,0 +1,254 @@
+{
+  "order.submitted": {
+    "en": {
+      "subject": "Order received · {{order.reference}}",
+      "body": "We received your order. Payment must be verified before fulfillment.\nOrder total: {{order.total}}\n\nOrder: {{order.reference}}\nView or recover your order: {{order.url}}\n\n{{store.name}}\nSupport: {{support.email}}",
+      "staffBody": "Staff alert: Order received. Review the order in the management console.\n\nOrder: {{order.reference}}\n{{order.url}}\n\n{{store.name}}"
+    },
+    "zh": {
+      "subject": "订单已收到 · {{order.reference}}",
+      "body": "我们已收到您的订单。付款确认后才能安排发货或取货。\n订单总额：{{order.total}}\n\n订单编号：{{order.reference}}\n查看或找回订单：{{order.url}}\n\n{{store.name}}\n客服：{{support.email}}",
+      "staffBody": "员工通知：订单已收到。请在管理后台审核此订单。\n\n订单编号：{{order.reference}}\n{{order.url}}\n\n{{store.name}}"
+    }
+  },
+  "order.confirmed": {
+    "en": {
+      "subject": "Payment confirmed · {{order.reference}}",
+      "body": "Your payment is confirmed. We will update you when your order is ready.\nOrder total: {{order.total}}\n\nOrder: {{order.reference}}\nView or recover your order: {{order.url}}\n\n{{store.name}}\nSupport: {{support.email}}",
+      "sms": "{{store.name}}: Payment confirmed · {{order.reference}}. Reply STOP to unsubscribe."
+    },
+    "zh": {
+      "subject": "付款已确认 · {{order.reference}}",
+      "body": "您的付款已确认。订单准备好后，我们将通知您。\n订单总额：{{order.total}}\n\n订单编号：{{order.reference}}\n查看或找回订单：{{order.url}}\n\n{{store.name}}\n客服：{{support.email}}",
+      "sms": "{{store.name}}：付款已确认 · {{order.reference}}。回复 STOP 退订。"
+    }
+  },
+  "order.cancelled": {
+    "en": {
+      "subject": "Order cancelled · {{order.reference}}",
+      "body": "Your order was cancelled. Any refund is handled separately; contact support if you have questions.\n\nOrder: {{order.reference}}\nView or recover your order: {{order.url}}\n\n{{store.name}}\nSupport: {{support.email}}",
+      "sms": "{{store.name}}: Order cancelled · {{order.reference}}. Reply STOP to unsubscribe."
+    },
+    "zh": {
+      "subject": "订单已取消 · {{order.reference}}",
+      "body": "您的订单已取消。退款将另行处理；如有疑问，请联系客服。\n\n订单编号：{{order.reference}}\n查看或找回订单：{{order.url}}\n\n{{store.name}}\n客服：{{support.email}}",
+      "sms": "{{store.name}}：订单已取消 · {{order.reference}}。回复 STOP 退订。"
+    }
+  },
+  "order.completed": {
+    "en": {
+      "subject": "Order completed · {{order.reference}}",
+      "body": "Your order has been completed. Thank you for shopping with us.\n\nOrder: {{order.reference}}\nView or recover your order: {{order.url}}\n\n{{store.name}}\nSupport: {{support.email}}",
+      "sms": "{{store.name}}: Order completed · {{order.reference}}. Reply STOP to unsubscribe."
+    },
+    "zh": {
+      "subject": "订单已完成 · {{order.reference}}",
+      "body": "您的订单已完成。感谢您的惠顾。\n\n订单编号：{{order.reference}}\n查看或找回订单：{{order.url}}\n\n{{store.name}}\n客服：{{support.email}}",
+      "sms": "{{store.name}}：订单已完成 · {{order.reference}}。回复 STOP 退订。"
+    }
+  },
+  "order.change_proposed": {
+    "en": {
+      "subject": "Review your order change · {{order.reference}}",
+      "body": "The store proposed a change to your order. Review the updated terms before paying. Contact support if you do not accept the change.\n\nOrder: {{order.reference}}\nView or recover your order: {{order.url}}\n\n{{store.name}}\nSupport: {{support.email}}"
+    },
+    "zh": {
+      "subject": "请审核订单变更 · {{order.reference}}",
+      "body": "商店提出了订单变更。付款前请审核更新后的条款。如不接受变更，请联系客服。\n\n订单编号：{{order.reference}}\n查看或找回订单：{{order.url}}\n\n{{store.name}}\n客服：{{support.email}}"
+    }
+  },
+  "order.change_accepted": {
+    "en": {
+      "subject": "Order change accepted · {{order.reference}}",
+      "body": "Your acceptance was recorded. Review the current order total and payment instructions.\nOrder total: {{order.total}}\n\nOrder: {{order.reference}}\nView or recover your order: {{order.url}}\n\n{{store.name}}\nSupport: {{support.email}}"
+    },
+    "zh": {
+      "subject": "订单变更已接受 · {{order.reference}}",
+      "body": "您已接受订单变更。请查看当前订单总额及付款说明。\n订单总额：{{order.total}}\n\n订单编号：{{order.reference}}\n查看或找回订单：{{order.url}}\n\n{{store.name}}\n客服：{{support.email}}"
+    }
+  },
+  "order.change_invalidated": {
+    "en": {
+      "subject": "Order change withdrawn · {{order.reference}}",
+      "body": "The earlier proposed change no longer applies. Check the latest order details before making another payment.\n\nOrder: {{order.reference}}\nView or recover your order: {{order.url}}\n\n{{store.name}}\nSupport: {{support.email}}",
+      "staffBody": "Staff alert: Order change withdrawn. Review the order in the management console.\n\nOrder: {{order.reference}}\n{{order.url}}\n\n{{store.name}}"
+    },
+    "zh": {
+      "subject": "订单变更已撤回 · {{order.reference}}",
+      "body": "之前提出的订单变更已失效。再次付款前，请查看最新订单详情。\n\n订单编号：{{order.reference}}\n查看或找回订单：{{order.url}}\n\n{{store.name}}\n客服：{{support.email}}",
+      "staffBody": "员工通知：订单变更已撤回。请在管理后台审核此订单。\n\n订单编号：{{order.reference}}\n{{order.url}}\n\n{{store.name}}"
+    }
+  },
+  "payment.evidence_uploaded": {
+    "en": {
+      "subject": "Payment evidence received · {{order.reference}}",
+      "body": "Your payment evidence was received for review. Uploading evidence does not confirm payment.\n\nOrder: {{order.reference}}\nView or recover your order: {{order.url}}\n\n{{store.name}}\nSupport: {{support.email}}",
+      "staffBody": "Staff alert: Payment evidence received. Review the order in the management console.\n\nOrder: {{order.reference}}\n{{order.url}}\n\n{{store.name}}"
+    },
+    "zh": {
+      "subject": "付款凭证已收到 · {{order.reference}}",
+      "body": "您的付款凭证已收到，等待审核。上传凭证不代表付款已确认。\n\n订单编号：{{order.reference}}\n查看或找回订单：{{order.url}}\n\n{{store.name}}\n客服：{{support.email}}",
+      "staffBody": "员工通知：付款凭证已收到。请在管理后台审核此订单。\n\n订单编号：{{order.reference}}\n{{order.url}}\n\n{{store.name}}"
+    }
+  },
+  "fulfillment.updated": {
+    "en": {
+      "subject": "Tracking updated · {{order.reference}}",
+      "body": "The store updated your fulfillment details. Check the latest status below.\n\nOrder: {{order.reference}}\nView or recover your order: {{order.url}}\n\n{{store.name}}\nSupport: {{support.email}}"
+    },
+    "zh": {
+      "subject": "物流信息已更新 · {{order.reference}}",
+      "body": "商店已更新您的配送信息。请查看最新状态。\n\n订单编号：{{order.reference}}\n查看或找回订单：{{order.url}}\n\n{{store.name}}\n客服：{{support.email}}"
+    }
+  },
+  "fulfillment.shipped": {
+    "en": {
+      "subject": "Order dispatched · {{order.reference}}",
+      "body": "Your order has been dispatched. Check your order for shipment details.\n\nOrder: {{order.reference}}\nView or recover your order: {{order.url}}\n\n{{store.name}}\nSupport: {{support.email}}\nTracking: {{fulfillment.tracking}}",
+      "sms": "{{store.name}}: Order dispatched · {{order.reference}}. Reply STOP to unsubscribe."
+    },
+    "zh": {
+      "subject": "订单已发出 · {{order.reference}}",
+      "body": "您的订单已发出。请查看订单中的物流详情。\n\n订单编号：{{order.reference}}\n查看或找回订单：{{order.url}}\n\n{{store.name}}\n客服：{{support.email}}\n物流信息：{{fulfillment.tracking}}",
+      "sms": "{{store.name}}：订单已发出 · {{order.reference}}。回复 STOP 退订。"
+    }
+  },
+  "fulfillment.out_for_delivery": {
+    "en": {
+      "subject": "Out for delivery · {{order.reference}}",
+      "body": "Your order is out for delivery.\n\nOrder: {{order.reference}}\nView or recover your order: {{order.url}}\n\n{{store.name}}\nSupport: {{support.email}}",
+      "sms": "{{store.name}}: Out for delivery · {{order.reference}}. Reply STOP to unsubscribe."
+    },
+    "zh": {
+      "subject": "订单正在配送 · {{order.reference}}",
+      "body": "您的订单正在配送。\n\n订单编号：{{order.reference}}\n查看或找回订单：{{order.url}}\n\n{{store.name}}\n客服：{{support.email}}",
+      "sms": "{{store.name}}：订单正在配送 · {{order.reference}}。回复 STOP 退订。"
+    }
+  },
+  "fulfillment.ready_for_pickup": {
+    "en": {
+      "subject": "Ready for pickup · {{order.reference}}",
+      "body": "Your order is ready for pickup. Bring your order reference and follow the collection details below.\n\nOrder: {{order.reference}}\nView or recover your order: {{order.url}}\n\n{{store.name}}\nSupport: {{support.email}}\nPickup: {{fulfillment.pickup}}",
+      "sms": "{{store.name}}: Ready for pickup · {{order.reference}}. Reply STOP to unsubscribe."
+    },
+    "zh": {
+      "subject": "订单可以取货了 · {{order.reference}}",
+      "body": "您的订单可以取货了。请携带订单编号，并按照以下取货信息到店。\n\n订单编号：{{order.reference}}\n查看或找回订单：{{order.url}}\n\n{{store.name}}\n客服：{{support.email}}\n取货信息：{{fulfillment.pickup}}",
+      "sms": "{{store.name}}：订单可以取货了 · {{order.reference}}。回复 STOP 退订。"
+    }
+  },
+  "fulfillment.completed": {
+    "en": {
+      "subject": "Fulfillment complete · {{order.reference}}",
+      "body": "Your order handoff is complete.\n\nOrder: {{order.reference}}\nView or recover your order: {{order.url}}\n\n{{store.name}}\nSupport: {{support.email}}",
+      "sms": "{{store.name}}: Fulfillment complete · {{order.reference}}. Reply STOP to unsubscribe."
+    },
+    "zh": {
+      "subject": "交付已完成 · {{order.reference}}",
+      "body": "您的订单交付已完成。\n\n订单编号：{{order.reference}}\n查看或找回订单：{{order.url}}\n\n{{store.name}}\n客服：{{support.email}}",
+      "sms": "{{store.name}}：交付已完成 · {{order.reference}}。回复 STOP 退订。"
+    }
+  },
+  "return.requested": {
+    "en": {
+      "subject": "Return request received · {{order.reference}}",
+      "body": "Your return request was received. Wait for store approval before sending goods back.\n\nOrder: {{order.reference}}\nView or recover your order: {{order.url}}\n\n{{store.name}}\nSupport: {{support.email}}",
+      "staffBody": "Staff alert: Return request received. Review the order in the management console.\n\nOrder: {{order.reference}}\n{{order.url}}\n\n{{store.name}}"
+    },
+    "zh": {
+      "subject": "退货申请已收到 · {{order.reference}}",
+      "body": "您的退货申请已收到。寄回商品前，请等待商店批准。\n\n订单编号：{{order.reference}}\n查看或找回订单：{{order.url}}\n\n{{store.name}}\n客服：{{support.email}}",
+      "staffBody": "员工通知：退货申请已收到。请在管理后台审核此订单。\n\n订单编号：{{order.reference}}\n{{order.url}}\n\n{{store.name}}"
+    }
+  },
+  "return.approved": {
+    "en": {
+      "subject": "Return approved · {{order.reference}}",
+      "body": "Your return was approved. Contact the store for return instructions. Approval does not mean your refund has been settled.\n\nOrder: {{order.reference}}\nView or recover your order: {{order.url}}\n\n{{store.name}}\nSupport: {{support.email}}"
+    },
+    "zh": {
+      "subject": "退货已批准 · {{order.reference}}",
+      "body": "您的退货已获批准。请联系商店获取退货指引。退货批准不代表退款已完成。\n\n订单编号：{{order.reference}}\n查看或找回订单：{{order.url}}\n\n{{store.name}}\n客服：{{support.email}}"
+    }
+  },
+  "return.rejected": {
+    "en": {
+      "subject": "Return not approved · {{order.reference}}",
+      "body": "Your return request was not approved. Contact support to discuss the decision.\n\nOrder: {{order.reference}}\nView or recover your order: {{order.url}}\n\n{{store.name}}\nSupport: {{support.email}}"
+    },
+    "zh": {
+      "subject": "退货未获批准 · {{order.reference}}",
+      "body": "您的退货申请未获批准。如需了解详情，请联系客服。\n\n订单编号：{{order.reference}}\n查看或找回订单：{{order.url}}\n\n{{store.name}}\n客服：{{support.email}}"
+    }
+  },
+  "return.cancelled": {
+    "en": {
+      "subject": "Return cancelled · {{order.reference}}",
+      "body": "Your return request was cancelled. Contact support if you need help.\n\nOrder: {{order.reference}}\nView or recover your order: {{order.url}}\n\n{{store.name}}\nSupport: {{support.email}}"
+    },
+    "zh": {
+      "subject": "退货已取消 · {{order.reference}}",
+      "body": "您的退货申请已取消。如需帮助，请联系客服。\n\n订单编号：{{order.reference}}\n查看或找回订单：{{order.url}}\n\n{{store.name}}\n客服：{{support.email}}"
+    }
+  },
+  "return.received": {
+    "en": {
+      "subject": "Returned goods received · {{order.reference}}",
+      "body": "Your returned goods were received. Refund settlement is reviewed separately against your original payment sources.\n\nOrder: {{order.reference}}\nView or recover your order: {{order.url}}\n\n{{store.name}}\nSupport: {{support.email}}"
+    },
+    "zh": {
+      "subject": "退回商品已收到 · {{order.reference}}",
+      "body": "您的退回商品已收到。退款将根据原付款来源另行审核处理。\n\n订单编号：{{order.reference}}\n查看或找回订单：{{order.url}}\n\n{{store.name}}\n客服：{{support.email}}"
+    }
+  },
+  "auth.reset_password": {
+    "en": {
+      "subject": "Reset your password · {{store.name}}",
+      "body": "Use the link below to set a new password. If you did not request this, you can ignore this message.\n\n{{action.url}}\n\n{{store.name}}\nSupport: {{support.email}}"
+    },
+    "zh": {
+      "subject": "重置密码 · {{store.name}}",
+      "body": "请使用以下链接设置新密码。如果您没有提出此请求，请忽略此邮件。\n\n{{action.url}}\n\n{{store.name}}\n客服：{{support.email}}"
+    }
+  },
+  "auth.email_verification": {
+    "en": {
+      "subject": "Verify your email address · {{store.name}}",
+      "body": "Verify your email address using the link below to access your account.\n\n{{action.url}}\n\n{{store.name}}\nSupport: {{support.email}}"
+    },
+    "zh": {
+      "subject": "验证电子邮箱 · {{store.name}}",
+      "body": "请使用以下链接验证电子邮箱，以访问您的账户。\n\n{{action.url}}\n\n{{store.name}}\n客服：{{support.email}}"
+    }
+  },
+  "store.email_verification": {
+    "en": {
+      "subject": "Verify store email delivery · {{store.name}}",
+      "body": "Open the link below while signed in as the store owner to verify email delivery. Provider acceptance alone does not confirm receipt.\n\n{{action.url}}\n\n{{store.name}}\nSupport: {{support.email}}"
+    },
+    "zh": {
+      "subject": "验证商店邮件发送 · {{store.name}}",
+      "body": "请登录店主账户后打开以下链接，验证邮件发送。邮件服务接受发送不代表收件成功。\n\n{{action.url}}\n\n{{store.name}}\n客服：{{support.email}}"
+    }
+  },
+  "order.access_recovery": {
+    "en": {
+      "subject": "Your order access link · {{order.reference}}",
+      "body": "Use this private link to access order {{order.reference}}. It expires after 24 hours. Do not share it.\n\n{{action.url}}\n\n{{store.name}}\nSupport: {{support.email}}"
+    },
+    "zh": {
+      "subject": "订单访问链接 · {{order.reference}}",
+      "body": "请使用此私人链接访问订单 {{order.reference}}。链接将在24小时后过期，请勿分享。\n\n{{action.url}}\n\n{{store.name}}\n客服：{{support.email}}"
+    }
+  },
+  "sales.threshold_reached": {
+    "en": {
+      "subject": "Sales threshold reached · {{store.name}}",
+      "body": "Net sales reached {{sales.total}}, exceeding the configured threshold of {{sales.threshold}}.\nReporting period: {{sales.period}}\nReview the report: {{sales.url}}"
+    },
+    "zh": {
+      "subject": "销售额达到提醒阈值 · {{store.name}}",
+      "body": "净销售额已达到 {{sales.total}}，超过设定的 {{sales.threshold}} 提醒阈值。\n报告期间：{{sales.period}}\n查看报告：{{sales.url}}"
+    }
+  }
+}

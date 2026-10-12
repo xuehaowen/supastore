@@ -1,0 +1,97 @@
+# attributeValues uses stable codes from attributes.yaml; attributes retains legacy display labels.
+# Each product can have:
+#   - multiple variants (each with their own sku, title, priceCents, attributes, isAvailable, sortOrder)
+#   - categories: list of slugs defined in categories.yaml
+#   - translations: per-locale title + description overrides
+#   - isPublished: controls storefront visibility (default: true)
+
+- handle: everyday-shirt
+  title: Everyday shirt
+  description: "Soft cotton. A relaxed fit for unhurried days."
+  isPublished: true
+  categories: [apparel]
+  variants:
+    - sku: everyday-shirt-natural-s
+      title: Natural / S
+      attributeValues: { color: natural, size: s }
+      translations:
+        - locale: zh
+          title: 原色 / 小码
+      priceCents: 3200
+      isAvailable: true
+      sortOrder: 0
+      attributes:
+        color: Natural
+        size: S
+    - sku: everyday-shirt-natural-m
+      title: Natural / M
+      attributeValues: { color: natural, size: m }
+      translations:
+        - locale: zh
+          title: 原色 / 中码
+      priceCents: 3200
+      isAvailable: true
+      sortOrder: 1
+      attributes:
+        color: Natural
+        size: M
+    - sku: everyday-shirt-natural-l
+      title: Natural / L
+      attributeValues: { color: natural, size: l }
+      translations:
+        - locale: zh
+          title: 原色 / 大码
+      priceCents: 3200
+      isAvailable: true
+      sortOrder: 2
+      attributes:
+        color: Natural
+        size: L
+  translations:
+    - locale: zh
+      title: 日常衬衫
+      description: 精心挑选的日常好物。
+
+- handle: studio-cup
+  title: Studio cup
+  description: "A generous ceramic cup, made for your morning ritual."
+  isPublished: true
+  categories: [homeware]
+  variants:
+    - sku: studio-cup-natural-01
+      title: Natural
+      attributeValues: { color: natural }
+      translations:
+        - locale: zh
+          title: 原色
+      priceCents: 2400
+      isAvailable: true
+      sortOrder: 0
+      attributes:
+        color: Natural
+  translations:
+    - locale: zh
+      title: 陶瓷杯
+      description: 精心挑选的日常好物。
+
+- handle: market-tote
+  title: Market tote
+  description: "Carry a little less. A durable everyday canvas bag."
+  isPublished: true
+  categories: [accessories]
+  variants:
+    - sku: market-tote-natural-01
+      title: Natural
+      attributeValues: { color: natural }
+      translations:
+        - locale: zh
+          title: 原色
+      priceCents: 1800
+      isAvailable: true
+      sortOrder: 0
+      attributes:
+        color: Natural
+  translations:
+    - locale: zh
+      title: 帆布袋
+      description: 精心挑选的日常好物。

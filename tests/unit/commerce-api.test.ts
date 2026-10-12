@@ -1,0 +1,66 @@
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { logger } from "@/infrastructure/security/logger";
+import {
+  assertMutationOrigin,
+  readApiBody,
+  apiResponse,
+  apiInteger,
+} from "@/infrastructure/http/commerce-api";
+import { UnauthorizedError, ConflictError } from "@/application/common/errors";
+describe("commerce API boundary", () => {
+  afterEach(() => vi.restoreAllMocks());
+  it("correlates unexpected failures through the structured logger without exposing details", async () => {
+    const logError = vi.fn();
+    const child = vi
+      .spyOn(logger, "child")
+      .mockReturnValue({ ...logger, error: logError });
+    const failure = new Error("Synthetic database failure");
+    const response = await apiResponse(async () => {
+      throw failure;
+    });
+    const payload = await response.json();
+    expect(response.status).toBe(500);
+    expect(payload.error.message).toBe("Unable to complete request.");
+    expect(payload.requestId).toBe(response.headers.get("x-request-id"));
+    expect(child).toHaveBeenCalledWith({ requestId: payload.requestId });
+    expect(logError).toHaveBeenCalledWith("Commerce API failure", failure);
+  });
+  const request = (body: string, origin = "https://shop.example") =>
+    new Request("https://shop.example/api/v1/cart", {
+      method: "POST",
+      headers: { origin, "content-type": "application/json" },
+      body,
+    });
+  it("rejects missing and foreign origin before mutations", () => {
+    expect(() =>
+      assertMutationOrigin(new Request("https://shop.example/api/v1/cart")),
+    ).toThrow("Untrusted");
+    expect(() =>
+      assertMutationOrigin(request("{}", "https://attacker.example")),
+    ).toThrow("Untrusted");
+    expect(() => assertMutationOrigin(request("{}"))).not.toThrow();
+  });
+  it("bounds chunked bodies and rejects malformed/non-object JSON", async () => {
+    await expect(
+      readApiBody(request(JSON.stringify({ data: "x".repeat(32768) }))),
+    ).rejects.toThrow("too large");
+    await expect(readApiBody(request("[1]"))).rejects.toThrow("object");
+    await expect(readApiBody(request("{"))).rejects.toThrow("Invalid JSON");
+  });
+  it("rejects coercion, fractions and out-of-range amounts", () => {
+    for (const quantity of ["1", 1.2, -1, Infinity, 1000])
+      expect(() => apiInteger({ quantity }, "quantity", 0, 999)).toThrow();
+  });
+  it("maps authorization and conflicts and never caches private responses", async () => {
+    const unauthorized = await apiResponse(async () => {
+      throw new UnauthorizedError();
+    });
+    expect(unauthorized.status).toBe(401);
+    expect(unauthorized.headers.get("cache-control")).toBe("private, no-store");
+    const conflict = await apiResponse(async () => {
+      throw new ConflictError("Quote changed.");
+    });
+    expect(conflict.status).toBe(409);
+    expect((await conflict.json()).error.message).toBe("Quote changed.");
+  });
+});

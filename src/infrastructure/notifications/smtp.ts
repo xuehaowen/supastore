@@ -1,37 +1,44 @@
-import nodemailer from "nodemailer";
+import { randomUUID } from "node:crypto";
 import type { NotificationAdapter } from "./adapter";
+import { prepareNotification } from "@/application/notifications/template-manager";
+import { db } from "@/infrastructure/db";
+import { getNotificationProviders } from "@/infrastructure/bootstrap/notification-providers";
+import { trackInFlight } from "@/infrastructure/runtime/shutdown";
+
+/** Compatibility for existing authentication hooks. Acceptance is not delivery proof. */
 export const smtpAdapter: NotificationAdapter = {
   async sendEmail(payload) {
-    const transport = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT ?? 587),
-      secure: process.env.SMTP_SECURE === "true",
-      ...(process.env.SMTP_USER
-        ? {
-            auth: {
-              user: process.env.SMTP_USER,
-              pass: process.env.SMTP_PASSWORD,
-            },
-          }
-        : {}),
-    });
-    const data = payload.data;
-    const lines = [payload.subject];
-    for (const key of [
-      "referenceCode",
-      "purchaseTotalCents",
-      "receivedCents",
-      "balanceCents",
-      "recoveryUrl",
-      "verificationUrl",
-    ])
-      if (data[key] !== undefined) lines.push(key + ": " + String(data[key]));
-    const result = await transport.sendMail({
-      from: process.env.SMTP_FROM,
-      to: payload.recipient,
-      subject: payload.subject,
-      text: lines.join("\n"),
-    });
-    return { success: true, messageId: result.messageId };
+    const sender = getNotificationProviders().email;
+    if (!sender)
+      return { success: false, error: "Email delivery is disabled." };
+    let locale: "en" | "zh" = payload.data.locale === "zh" ? "zh" : "en";
+    const link = payload.data.resetUrl || payload.data.verificationUrl;
+    if (typeof link === "string") {
+      const url = new URL(link);
+      const callback = url.searchParams.get("callbackURL");
+      if (
+        /\/(zh)(?:\/|$)/.test(url.pathname) ||
+        (callback && /\/zh(?:\/|$)/.test(new URL(callback, url).pathname))
+      )
+        locale = "zh";
+    }
+    const prepared = await db.transaction((tx) =>
+      prepareNotification(tx, {
+        event: payload.template,
+        channel: "email",
+        audience: "customer",
+        locale,
+        deliveryId: randomUUID(),
+        recipient: payload.recipient,
+        payload: payload.data,
+      }),
+    );
+    if (!("subject" in prepared.message))
+      throw new Error("Email template required.");
+    const message = prepared.message;
+    const result = await trackInFlight(() => sender.send(message));
+    return result.status === "accepted"
+      ? { success: true, messageId: result.providerMessageId }
+      : { success: false, error: result.code };
   },
 };

@@ -1,4 +1,4 @@
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, gt } from "drizzle-orm";
 import { randomBytes, randomUUID } from "node:crypto";
 import { db } from "@/infrastructure/db";
 import {
@@ -21,7 +21,7 @@ export interface RedeemRecoveryOutput {
  * Redeems a one-time owner recovery token, destroys it, and establishes an authenticated owner session.
  */
 export async function redeemOwnerRecovery(
-  token: string
+  token: string,
 ): Promise<RedeemRecoveryOutput> {
   if (!token || typeof token !== "string") {
     throw new UnauthorizedError("Recovery token is required.");
@@ -31,27 +31,22 @@ export async function redeemOwnerRecovery(
     const identifier = `owner-recovery:${token}`;
 
     const [record] = await tx
-      .select()
-      .from(verification)
-      .where(eq(verification.identifier, identifier))
-      .limit(1);
+      .delete(verification)
+      .where(
+        and(
+          eq(verification.identifier, identifier),
+          gt(verification.expiresAt, new Date()),
+        ),
+      )
+      .returning();
 
-    if (!record || record.expiresAt.getTime() <= Date.now()) {
-      // Clean up expired token if exists
-      if (record) {
-        await tx
-          .delete(verification)
-          .where(eq(verification.id, record.id));
-      }
+    if (!record) {
       throw new UnauthorizedError(
-        "Recovery link is invalid or has expired. Please run the CLI recovery command again."
+        "Recovery link is invalid or has expired. Please run the CLI recovery command again.",
       );
     }
 
-    // Atomic consumption - delete record so it can never be reused
-    await tx
-      .delete(verification)
-      .where(eq(verification.id, record.id));
+    // DELETE RETURNING gives exactly one transaction ownership of the token.
 
     const userId = record.value;
 
@@ -67,22 +62,20 @@ export async function redeemOwnerRecovery(
       .where(
         and(
           eq(staffMemberships.userId, userId),
-          eq(staffMemberships.isActive, true)
-        )
+          eq(staffMemberships.isActive, true),
+        ),
       )
       .limit(1);
 
     if (!targetUser || !membership || membership.role !== "owner") {
       throw new UnauthorizedError(
-        "Target account is not an active owner membership."
+        "Target account is not an active owner membership.",
       );
     }
 
     // Create persistent session (7-day validity)
     const sessionToken = randomBytes(32).toString("hex");
-    const sessionExpiresAt = new Date(
-      Date.now() + 7 * 24 * 60 * 60 * 1000
-    );
+    const sessionExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     await tx.insert(session).values({
       id: randomUUID(),

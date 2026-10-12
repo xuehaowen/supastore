@@ -57,14 +57,12 @@ describe.skipIf(!enabled)("M1 real PostgreSQL journeys", () => {
     await db
       .insert(staffMemberships)
       .values({ userId: staff, email: "owner@example.test", role: "owner" });
-    await db
-      .insert(storeSettings)
-      .values({
-        storeName: "M1 shop",
-        supportEmail: "owner@example.test",
-        setupCompleted: true,
-        emailVerifiedAt: new Date(),
-      });
+    await db.insert(storeSettings).values({
+      storeName: "M1 shop",
+      supportEmail: "owner@example.test",
+      setupCompleted: true,
+      emailVerifiedAt: new Date(),
+    });
     [accountId] = (
       await db
         .insert(paymentAccounts)
@@ -331,8 +329,16 @@ describe.skipIf(!enabled)("M1 real PostgreSQL journeys", () => {
     const order = await createOrder(p.input);
     await processOutboxBatch({
       batchSize: 100,
-      adapter: {
-        sendEmail: async () => ({ success: false, error: "Synthetic outage" }),
+      providers: {
+        email: {
+          identity: { provider: "fixture", profile: "email" },
+          capabilities: { deliveryTracking: false },
+          send: async () => ({
+            status: "rejected",
+            code: "fixture_outage",
+            retryable: true,
+          }),
+        },
       },
     });
     expect((await trackOrder(order.id, order.sessionToken)).order.id).toBe(

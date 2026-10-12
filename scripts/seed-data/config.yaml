@@ -1,0 +1,29 @@
+# @format
+
+paymentAccounts:
+  - accountName: "Demo bank transfer"
+    accountIdentifier: "SYNTHETIC ONLY — Do not send real funds."
+    accountType: other # cash | zelle | venmo | other
+    isActive: true
+
+shippingZones:
+  - name: "Standard"
+    rateCents: 500
+    freeThresholdCents: 5000
+    countryCodes: null # null = catch-all (any destination)
+    sortOrder: 0
+
+pickupLocations:
+  - name: "The studio"
+    address: "1 Demo Street"
+    prepMinutes: 60
+    blackoutDates: [] # ISO date strings e.g. ["2026-12-25"]
+    weeklySchedule:
+      mon: [["16:00", "17:00"]]
+      thu: [["16:00", "17:00"]]
+  - name: "The Town Hall"
+    address: "1 Town Hall Square"
+    prepMinutes: 120
+    blackoutDates: [] # ISO date strings e.g. ["2026-12-25"]
+    weeklySchedule:
+      thu: [["10:00", "12:00"]]

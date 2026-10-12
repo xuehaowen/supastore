@@ -1,13 +1,16 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { checkRateLimit, _resetRateLimitCache } from '@/infrastructure/security/rate-limiter';
+import { describe, it, expect, beforeEach } from "vitest";
+import {
+  checkRateLimit,
+  _resetRateLimitCache,
+} from "@/infrastructure/security/rate-limiter";
 
-describe('Rate Limiter', () => {
+describe("Rate Limiter", () => {
   beforeEach(() => {
     _resetRateLimitCache();
   });
 
-  it('allows requests within limit and decrements remaining', () => {
-    const key = 'test-ip-1';
+  it("allows requests within limit and decrements remaining", () => {
+    const key = "test-ip-1";
     const opts = { maxRequests: 3, windowMs: 1000 };
 
     const res1 = checkRateLimit(key, opts);
@@ -29,16 +32,16 @@ describe('Rate Limiter', () => {
     expect(res4.resetMs).toBeGreaterThan(0);
   });
 
-  it('tracks distinct keys independently', () => {
+  it("tracks distinct keys independently", () => {
     const opts = { maxRequests: 2, windowMs: 1000 };
 
-    checkRateLimit('client-a', opts);
-    checkRateLimit('client-a', opts);
-    const blockedA = checkRateLimit('client-a', opts);
+    checkRateLimit("client-a", opts);
+    checkRateLimit("client-a", opts);
+    const blockedA = checkRateLimit("client-a", opts);
     expect(blockedA.allowed).toBe(false);
 
     // client-b has separate quota
-    const allowedB = checkRateLimit('client-b', opts);
+    const allowedB = checkRateLimit("client-b", opts);
     expect(allowedB.allowed).toBe(true);
   });
 });

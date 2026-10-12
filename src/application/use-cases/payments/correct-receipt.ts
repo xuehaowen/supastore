@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
   orders,
@@ -7,7 +7,10 @@ import {
   confirmationFunding,
   payoutAllocations,
   auditRecords,
+  storeCreditAccounts,
 } from "@/infrastructure/db/schema";
+import { lockCreditAccount } from "../store-credit/credit-operations";
+import { reconcileOrderReward } from "../store-credit/reward-operations";
 import { acquireTransactionLocks } from "@/domain/locking/lock-order";
 import { computeOrderFinancialProjection } from "@/domain/financial-projection/projection";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
@@ -38,9 +41,12 @@ export interface CrossOrderTransferReceiptInput {
  * Corrects a payment receipt's effective funding while preserving historical settled payouts.
  */
 export async function correctReceipt(input: CorrectReceiptInput) {
-  if (!Number.isSafeInteger(input.deltaAmountCents) || input.deltaAmountCents === 0) {
+  if (
+    !Number.isSafeInteger(input.deltaAmountCents) ||
+    input.deltaAmountCents === 0
+  ) {
     throw new InvariantViolationError(
-      "Correction deltaAmountCents must be a non-zero integer."
+      "Correction deltaAmountCents must be a non-zero integer.",
     );
   }
 
@@ -50,9 +56,40 @@ export async function correctReceipt(input: CorrectReceiptInput) {
 
   return await db.transaction(async (tx) => {
     // 1. Owner verification
-    const owner = await verifyStaffInTransaction(tx, input.ownerUserId, "owner");
+    const owner = await verifyStaffInTransaction(
+      tx,
+      input.ownerUserId,
+      "owner",
+    );
 
-    // 2. Lock receipt
+    // Resolve ownership before acquiring locks in order → receipt sequence.
+    const [reference] = await tx
+      .select({ orderId: paymentReceipts.orderId })
+      .from(paymentReceipts)
+      .where(eq(paymentReceipts.id, input.receiptId))
+      .limit(1);
+    if (!reference)
+      throw new NotFoundError(`Receipt '${input.receiptId}' not found.`);
+    await acquireTransactionLocks(tx, { orderIds: [reference.orderId] });
+    const [rewardOrder] = await tx
+      .select()
+      .from(orders)
+      .where(eq(orders.id, reference.orderId));
+    if (rewardOrder?.customerId && rewardOrder.rewardSnapshot) {
+      const [account] = await tx
+        .select()
+        .from(storeCreditAccounts)
+        .where(
+          and(
+            eq(storeCreditAccounts.customerId, rewardOrder.customerId),
+            eq(
+              storeCreditAccounts.currency,
+              (rewardOrder.termsSnapshot as { currency: string }).currency,
+            ),
+          ),
+        );
+      if (account) await lockCreditAccount(tx, account.id);
+    }
     await acquireTransactionLocks(tx, { receiptIds: [input.receiptId] });
 
     const [receipt] = await tx
@@ -65,8 +102,10 @@ export async function correctReceipt(input: CorrectReceiptInput) {
       throw new NotFoundError(`Receipt '${input.receiptId}' not found.`);
     }
 
-    // Lock order
-    await acquireTransactionLocks(tx, { orderIds: [receipt.orderId] });
+    if (receipt.orderId !== reference.orderId)
+      throw new InvariantViolationError(
+        "Receipt ownership changed during correction.",
+      );
 
     const [order] = await tx
       .select()
@@ -82,14 +121,14 @@ export async function correctReceipt(input: CorrectReceiptInput) {
 
     const totalPriorCorrections = existingCorrections.reduce(
       (sum, c) => sum + c.deltaAmountCents,
-      0
+      0,
     );
     const newEffectiveAmount =
       receipt.amountCents + totalPriorCorrections + input.deltaAmountCents;
 
     if (newEffectiveAmount < 0) {
       throw new InvariantViolationError(
-        `Correction would result in negative effective receipt amount (${newEffectiveAmount} cents).`
+        `Correction would result in negative effective receipt amount (${newEffectiveAmount} cents).`,
       );
     }
 
@@ -115,32 +154,80 @@ export async function correctReceipt(input: CorrectReceiptInput) {
       .select()
       .from(confirmationFunding)
       .where(eq(confirmationFunding.orderId, order!.id));
+    if (
+      order!.rewardSnapshot &&
+      allFunding.some(
+        (funding) =>
+          funding.receiptId === receipt.id &&
+          funding.fundedAmountCents > newEffectiveAmount,
+      )
+    ) {
+      await tx
+        .update(orders)
+        .set({ rewardFundingReview: true })
+        .where(eq(orders.id, order!.id));
+      await reconcileOrderReward(
+        tx,
+        order!.id,
+        `reward:correction:${correction!.id}`,
+        owner.userId,
+      );
+    }
 
     const allAllocations = await tx
       .select()
       .from(payoutAllocations)
-      .where(eq(payoutAllocations.receiptId, receipt.id));
-
-    const settledPayouts = allAllocations.reduce(
-      (sum, a) => sum + a.settledAmountCents,
-      0
-    );
+      .where(
+        inArray(
+          payoutAllocations.receiptId,
+          allReceipts.map((r) => r.id),
+        ),
+      );
+    const allCorrections = await tx
+      .select()
+      .from(paymentReceiptCorrections)
+      .where(
+        inArray(
+          paymentReceiptCorrections.receiptId,
+          allReceipts.map((r) => r.id),
+        ),
+      );
 
     const projection = computeOrderFinancialProjection({
       purchaseTotalCents: order!.purchaseTotalCents,
-      isConfirmed: order!.lifecycleStatus === "confirmed" || order!.lifecycleStatus === "completed",
+      committedCreditCents: order!.creditAppliedCents ?? 0,
+      isConfirmed:
+        order!.lifecycleStatus === "confirmed" ||
+        order!.lifecycleStatus === "completed",
       isCancelled: order!.lifecycleStatus === "cancelled",
+      wasConfirmedBeforeCancellation:
+        order!.lifecycleStatus === "cancelled" && allFunding.length > 0,
       receipts: allReceipts.map((r) => {
-        const isTarget = r.id === receipt.id;
-        const fundingRow = allFunding.find((f) => f.receiptId === r.id);
+        const dispositions = allAllocations.filter((a) => a.receiptId === r.id);
+        const sum = (kind: "purchase" | "return", settled: boolean) =>
+          dispositions
+            .filter((a) =>
+              kind === "purchase" ? a.refundAuthorizationId : a.paymentReturnId,
+            )
+            .reduce(
+              (total, a) =>
+                total +
+                (settled ? a.settledAmountCents : a.authorizedAmountCents),
+              0,
+            );
         return {
           id: r.id,
           originalAmountCents: r.amountCents,
-          appliedCorrectionsCents: isTarget
-            ? totalPriorCorrections + input.deltaAmountCents
-            : 0,
-          frozenPurchaseFundingCents: fundingRow ? fundingRow.fundedAmountCents : 0,
-          settledPurchaseRefundsCents: isTarget ? settledPayouts : 0,
+          appliedCorrectionsCents: allCorrections
+            .filter((c) => c.receiptId === r.id)
+            .reduce((total, c) => total + c.deltaAmountCents, 0),
+          frozenPurchaseFundingCents: allFunding
+            .filter((f) => f.receiptId === r.id)
+            .reduce((total, f) => total + f.fundedAmountCents, 0),
+          effectivePurchaseRefundAuthorizationsCents: sum("purchase", false),
+          effectiveNonPurchaseReturnAuthorizationsCents: sum("return", false),
+          settledPurchaseRefundsCents: sum("purchase", true),
+          settledNonPurchaseReturnsCents: sum("return", true),
         };
       }),
     });
@@ -155,7 +242,16 @@ export async function correctReceipt(input: CorrectReceiptInput) {
         orderId: order!.id,
         deltaAmountCents: input.deltaAmountCents,
         newEffectiveAmountCents: newEffectiveAmount,
-        operationalFundingShortfallCents: projection.operationalFundingShortfallCents,
+        operationalFundingShortfallCents:
+          projection.operationalFundingShortfallCents,
+        rewardFundingReview: Boolean(
+          order!.rewardSnapshot &&
+          allFunding.some(
+            (funding) =>
+              funding.receiptId === receipt.id &&
+              funding.fundedAmountCents > newEffectiveAmount,
+          ),
+        ),
       },
     });
 
@@ -176,16 +272,20 @@ export async function correctReceipt(input: CorrectReceiptInput) {
  * to prevent deadlocks and moves/re-allocates payment atomically.
  */
 export async function crossOrderTransferReceipt(
-  input: CrossOrderTransferReceiptInput
+  input: CrossOrderTransferReceiptInput,
 ) {
   if (input.sourceOrderId === input.targetOrderId) {
     throw new InvariantViolationError(
-      "Source and target order IDs must be different."
+      "Source and target order IDs must be different.",
     );
   }
 
   return await db.transaction(async (tx) => {
-    const owner = await verifyStaffInTransaction(tx, input.ownerUserId, "owner");
+    const owner = await verifyStaffInTransaction(
+      tx,
+      input.ownerUserId,
+      "owner",
+    );
 
     // Acquire locks on both orders in canonical ascending UUID order
     await acquireTransactionLocks(tx, {
@@ -204,8 +304,19 @@ export async function crossOrderTransferReceipt(
       .where(eq(orders.id, input.targetOrderId))
       .limit(1);
 
-    if (!sourceOrder) throw new NotFoundError(`Source order '${input.sourceOrderId}' not found.`);
-    if (!targetOrder) throw new NotFoundError(`Target order '${input.targetOrderId}' not found.`);
+    if (!sourceOrder)
+      throw new NotFoundError(
+        `Source order '${input.sourceOrderId}' not found.`,
+      );
+    if (!targetOrder)
+      throw new NotFoundError(
+        `Target order '${input.targetOrderId}' not found.`,
+      );
+    if (sourceOrder.rewardSnapshot || targetOrder.rewardSnapshot) {
+      throw new InvariantViolationError(
+        "Reward-bearing receipt reassignment requires an explicit source-allocation repair; record an owner investigation instead.",
+      );
+    }
 
     const [receipt] = await tx
       .select()
@@ -213,14 +324,14 @@ export async function crossOrderTransferReceipt(
       .where(
         and(
           eq(paymentReceipts.id, input.receiptId),
-          eq(paymentReceipts.orderId, input.sourceOrderId)
-        )
+          eq(paymentReceipts.orderId, input.sourceOrderId),
+        ),
       )
       .limit(1);
 
     if (!receipt) {
       throw new NotFoundError(
-        `Receipt '${input.receiptId}' not found on source order.`
+        `Receipt '${input.receiptId}' not found on source order.`,
       );
     }
 

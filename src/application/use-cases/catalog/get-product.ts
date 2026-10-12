@@ -1,4 +1,10 @@
-import { eq, and, sql } from "drizzle-orm";
+import {
+  localizeCategories,
+  localizeVariants,
+  translatedField,
+  type LocalizedAttribute,
+} from "./localize";
+import { eq, and } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
   products,
@@ -20,6 +26,7 @@ export interface GetProductInput {
 export interface ProductDetailVariant {
   id: string;
   sku: string;
+  localizedAttributes: LocalizedAttribute[];
   title: string;
   priceCents: number;
   isAvailable: boolean;
@@ -55,13 +62,15 @@ export interface ProductDetail {
 export async function getProduct(
   input: GetProductInput,
 ): Promise<ProductDetail> {
-  const { handle, id, locale = "en" } = input;
+  const { handle, id } = input;
 
   if (!handle && !id) {
     throw new Error("Either handle or id must be provided");
   }
 
   const [settings] = await db.select().from(storeSettings).limit(1);
+  const defaultLocale = settings?.defaultLocale ?? "en";
+  const locale = input.locale ?? defaultLocale;
   const conditions = [];
   if (handle) {
     conditions.push(eq(products.handle, handle));
@@ -125,19 +134,32 @@ export async function getProduct(
         .orderBy(categories.sortOrder),
     ]);
 
-  const translation =
-    translationRows.find((t) => t.locale === locale) ??
-    translationRows.find((t) => t.locale === settings?.defaultLocale);
+  const [localizedVariants, localizedCategories] = await Promise.all([
+    localizeVariants(variantRows, locale, defaultLocale),
+    localizeCategories(categoryRows, locale, defaultLocale),
+  ]);
 
   return {
     id: product.id,
     handle: product.handle,
-    title: translation?.title ?? product.title,
-    description: translation?.description ?? product.description,
+    title: translatedField(
+      translationRows,
+      "title",
+      locale,
+      defaultLocale,
+      product.title,
+    ),
+    description: translatedField(
+      translationRows,
+      "description",
+      locale,
+      defaultLocale,
+      product.description,
+    ),
     isPublished: product.isPublished,
     quoteVersion: product.quoteVersion,
-    variants: variantRows,
+    variants: localizedVariants,
     images: imageRows,
-    categories: categoryRows,
+    categories: localizedCategories,
   };
 }

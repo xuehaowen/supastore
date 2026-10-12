@@ -1,21 +1,23 @@
-import { validatePickup } from "@/domain/checkout";
-import type { QuoteTerms } from "./get-quote";
-import { pickupLocation, storeSettings } from "@/infrastructure/db/schema";
-import { and, eq, sql } from "drizzle-orm";
-import * as v from "valibot";
-import { db } from "@/infrastructure/db";
-import {
-  orders,
-  orderProposals,
-  paymentReceipts,
-  refundAuthorizations,
-  paymentReturns,
-  auditRecords,
-} from "@/infrastructure/db/schema";
-import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
-import { verifyOrderAccess } from "@/application/common/guest-access";
 import { InvariantViolationError } from "@/application/common/errors";
 import { emitOrderEvent } from "@/application/common/events";
+import { verifyOrderAccess } from "@/application/common/guest-access";
+import { validatePickup } from "@/domain/checkout";
+import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
+import { db } from "@/infrastructure/db";
+import {
+  auditRecords,
+  orderProposals,
+  orders,
+  paymentReceipts,
+  paymentReturns,
+  pickupLocation,
+  quotes,
+  refundAuthorizations,
+  storeSettings,
+} from "@/infrastructure/db/schema";
+import { and, eq, sql } from "drizzle-orm";
+import * as v from "valibot";
+import type { QuoteTerms } from "./get-quote";
 export async function proposeOrderChange(input: {
   orderId: string;
   staffUserId: string;
@@ -33,6 +35,10 @@ export async function proposeOrderChange(input: {
       .for("update");
     if (!order || order.lifecycleStatus !== "unpaid")
       throw new InvariantViolationError("Only unpaid orders can be changed.");
+    if (order.creditAppliedCents)
+      throw new InvariantViolationError(
+        "An order with reserved store credit cannot be repriced. Cancel and review a new checkout instead.",
+      );
     const receipts = await tx
       .select()
       .from(paymentReceipts)
@@ -74,16 +80,14 @@ export async function proposeOrderChange(input: {
         actorId: input.staffUserId,
       })
       .returning();
-    await tx
-      .insert(auditRecords)
-      .values({
-        entityType: "order",
-        entityId: order.id,
-        actorId: input.staffUserId,
-        action: "order.change_proposed",
-        reason: input.reason,
-        details: { proposalId: proposal!.id },
-      });
+    await tx.insert(auditRecords).values({
+      entityType: "order",
+      entityId: order.id,
+      actorId: input.staffUserId,
+      action: "order.change_proposed",
+      reason: input.reason,
+      details: { proposalId: proposal!.id },
+    });
     await emitOrderEvent(
       tx,
       order.id,
@@ -124,6 +128,29 @@ export async function acceptOrderChange(input: {
       proposal.baseRevision !== order.financialRevision
     )
       throw new InvariantViolationError("These terms are no longer available.");
+    if (order.creditAppliedCents)
+      throw new InvariantViolationError(
+        "Reserved store credit blocks changed terms.",
+      );
+    if (
+      order.rewardSnapshot &&
+      proposal.proposedTotalCents !== order.purchaseTotalCents
+    )
+      throw new InvariantViolationError(
+        "Reward-bearing purchases require a new checkout for changed prices; cancel this unpaid order before creating the replacement.",
+      );
+    const [acceptedQuote] = await tx
+      .select()
+      .from(quotes)
+      .where(eq(quotes.id, order.quoteId));
+    if (
+      proposal.proposedTotalCents !== order.purchaseTotalCents &&
+      acceptedQuote &&
+      (acceptedQuote.inclusiveTaxCents || acceptedQuote.exclusiveTaxCents)
+    )
+      throw new InvariantViolationError(
+        "Taxable price changes require a new checkout to recalculate tax; cancel this unpaid order before creating the replacement.",
+      );
     if (
       (
         await tx
@@ -137,7 +164,7 @@ export async function acceptOrderChange(input: {
       );
     if (proposal.proposedTotalCents === 0) {
       const terms = order.termsSnapshot as QuoteTerms;
-      if (terms.pickup) {
+      if (terms.pickup?.date) {
         const [location] = await tx
           .select()
           .from(pickupLocation)
@@ -150,6 +177,7 @@ export async function acceptOrderChange(input: {
           terms.pickup.date,
           terms.pickup.startTime,
           settings!.timezone,
+          new Date(),
         );
       }
     }
@@ -168,19 +196,17 @@ export async function acceptOrderChange(input: {
       .set({ status: "accepted", resolvedAt: new Date() })
       .where(eq(orderProposals.id, proposal.id))
       .returning();
-    await tx
-      .insert(auditRecords)
-      .values({
-        entityType: "order",
-        entityId: order.id,
-        actorId: "guest:" + order.id,
-        action: "order.change_accepted",
-        details: {
-          proposalId: proposal.id,
-          previousTotalCents: proposal.previousTotalCents,
-          totalCents: proposal.proposedTotalCents,
-        },
-      });
+    await tx.insert(auditRecords).values({
+      entityType: "order",
+      entityId: order.id,
+      actorId: "guest:" + order.id,
+      action: "order.change_accepted",
+      details: {
+        proposalId: proposal.id,
+        previousTotalCents: proposal.previousTotalCents,
+        totalCents: proposal.proposedTotalCents,
+      },
+    });
     await emitOrderEvent(
       tx,
       order.id,

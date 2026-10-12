@@ -1,173 +1,22 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
-import { products, productVariants } from "@/infrastructure/db/schema";
+import {
+  products,
+  productVariants,
+  storeSettings,
+  productOptions,
+  auditRecords,
+} from "@/infrastructure/db/schema";
+import { importCatalogAssociations } from "./import-catalog-associations";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { InvariantViolationError } from "@/application/common/errors";
-
-// ---------------------------------------------------------------------------
-// CSV row shape after parsing
-// ---------------------------------------------------------------------------
-export interface ProductCsvRow {
-  handle: string;
-  sku: string;
-  variantTitle: string;
-  productTitle: string;
-  description: string;
-  priceCents: number;
-  isAvailable: boolean;
-  isPublished: boolean;
-}
-
-export interface CsvParseError {
-  line: number;
-  field: string;
-  message: string;
-}
-
-export interface CsvPreview {
-  rows: ProductCsvRow[];
-  errors: CsvParseError[];
-  newHandles: string[];
-  updatedHandles: string[];
-  newSkus: string[];
-  updatedSkus: string[];
-}
-
-// ---------------------------------------------------------------------------
-// Parse and validate CSV text (runs both in main thread and Web Worker)
-// ---------------------------------------------------------------------------
-export function parseProductCsv(csvText: string): {
-  rows: ProductCsvRow[];
-  errors: CsvParseError[];
-} {
-  const REQUIRED_HEADERS = ["handle", "sku", "title", "price_cents"] as const;
-  const rows: ProductCsvRow[] = [];
-  const errors: CsvParseError[] = [];
-
-  const lines = csvText.split(/\r?\n/);
-  if (lines.length === 0) {
-    errors.push({ line: 0, field: "header", message: "File is empty" });
-    return { rows, errors };
-  }
-
-  // Parse header line
-  const headerLine = lines[0]!.trim();
-  const headers = headerLine.split(",").map((h) => h.trim().toLowerCase());
-
-  for (const required of REQUIRED_HEADERS) {
-    if (!headers.includes(required)) {
-      errors.push({
-        line: 1,
-        field: required,
-        message: `Required column '${required}' is missing from header row`,
-      });
-    }
-  }
-
-  if (errors.length > 0) return { rows, errors };
-
-  // Index helpers
-  const idx = (col: string) => headers.indexOf(col);
-  const cell = (cols: string[], col: string) => cols[idx(col)]?.trim() ?? "";
-
-  // Track seen SKUs within this file for duplicate detection
-  const seenSkus = new Set<string>();
-
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i]!.trim();
-    if (!line) continue; // skip blank lines
-
-    // Simple CSV split (handles quoted fields)
-    const cols = parseCsvLine(line);
-    const lineNum = i + 1;
-
-    const handle = cell(cols, "handle");
-    const sku = cell(cols, "sku");
-    const productTitle = cell(cols, "title");
-    const variantTitle = cell(cols, "variant_title") || productTitle;
-    const description = cell(cols, "description");
-    const priceRaw = cell(cols, "price_cents");
-    const isAvailableRaw = cell(cols, "is_available");
-    const isPublishedRaw = cell(cols, "is_published");
-
-    if (!handle) {
-      errors.push({ line: lineNum, field: "handle", message: "handle is required" });
-    }
-    if (!sku) {
-      errors.push({ line: lineNum, field: "sku", message: "sku is required" });
-    }
-    if (!productTitle) {
-      errors.push({ line: lineNum, field: "title", message: "title is required" });
-    }
-
-    const priceCents = parseInt(priceRaw, 10);
-    if (isNaN(priceCents) || priceCents < 0) {
-      errors.push({
-        line: lineNum,
-        field: "price_cents",
-        message: `price_cents must be a non-negative integer (got '${priceRaw}')`,
-      });
-    }
-
-    if (sku && seenSkus.has(sku)) {
-      errors.push({ line: lineNum, field: "sku", message: `Duplicate SKU '${sku}' in this file` });
-    } else if (sku) {
-      seenSkus.add(sku);
-    }
-
-    if (errors.some((e) => e.line === lineNum)) continue;
-
-    rows.push({
-      handle,
-      sku,
-      variantTitle,
-      productTitle,
-      description,
-      priceCents,
-      isAvailable: parseBoolean(isAvailableRaw, true),
-      isPublished: parseBoolean(isPublishedRaw, true),
-    });
-  }
-
-  return { rows, errors };
-}
-
-function parseBoolean(val: string, defaultVal: boolean): boolean {
-  if (!val) return defaultVal;
-  const lower = val.trim().toLowerCase();
-  if (["true", "1", "yes", "y", "t"].includes(lower)) return true;
-  if (["false", "0", "no", "n", "f"].includes(lower)) return false;
-  return defaultVal;
-}
-
-function parseCsvLine(line: string): string[] {
-  const result: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i]!;
-    if (ch === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        current += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (ch === "," && !inQuotes) {
-      result.push(current);
-      current = "";
-    } else {
-      current += ch;
-    }
-  }
-  result.push(current);
-  return result;
-}
-
-// ---------------------------------------------------------------------------
-// Import execution use case — atomic upsert within a single transaction
-// ---------------------------------------------------------------------------
+import type { ProductCsvRow } from "@/domain/catalog/product-csv";
+export { parseProductCsv } from "@/domain/catalog/product-csv";
+export type {
+  ProductCsvRow,
+  CsvParseError,
+  CsvPreview,
+} from "@/domain/catalog/product-csv";
 export interface ImportProductsCsvInput {
   rows: ProductCsvRow[];
   staffUserId: string;
@@ -178,13 +27,47 @@ export interface ImportResult {
   updated: number;
 }
 
-export async function importProductsCsv(input: ImportProductsCsvInput): Promise<ImportResult> {
+export async function importProductsCsv(
+  input: ImportProductsCsvInput,
+): Promise<ImportResult> {
   if (input.rows.length === 0) {
     throw new InvariantViolationError("No rows to import.");
   }
+  if (input.rows.length > 100)
+    throw new InvariantViolationError(
+      "Import at most 100 rows per batch. Use the import page for automatic bounded batches.",
+    );
+  if (new Set(input.rows.map((r) => r.sku)).size !== input.rows.length)
+    throw new InvariantViolationError("Import SKUs must be unique.");
+  const details = new Map<string, string>();
+  for (const row of input.rows) {
+    const value = JSON.stringify([
+      row.productTitle,
+      row.description,
+      row.isPublished,
+    ]);
+    if (details.has(row.handle) && details.get(row.handle) !== value)
+      throw new InvariantViolationError(
+        `Rows for ${row.handle} must agree on product title, description and publication.`,
+      );
+    details.set(row.handle, value);
+  }
+  for (const row of input.rows)
+    if (
+      !Number.isSafeInteger(row.priceCents) ||
+      row.priceCents < 0 ||
+      row.priceCents > 2147483647 ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(row.handle) ||
+      !row.sku ||
+      row.sku.length > 200 ||
+      !row.productTitle ||
+      row.productTitle.length > 200
+    )
+      throw new InvariantViolationError("Invalid product import row.");
 
   return await db.transaction(async (tx) => {
-    await verifyStaffInTransaction(tx, input.staffUserId);
+    await verifyStaffInTransaction(tx, input.staffUserId, "owner");
+    await tx.select().from(storeSettings).for("update");
 
     let created = 0;
     let updated = 0;
@@ -201,7 +84,11 @@ export async function importProductsCsv(input: ImportProductsCsvInput): Promise<
     // Fetch existing variants by sku in one query
     const skus = input.rows.map((r) => r.sku);
     const existingVariants = await tx
-      .select({ id: productVariants.id, sku: productVariants.sku })
+      .select({
+        id: productVariants.id,
+        sku: productVariants.sku,
+        productId: productVariants.productId,
+      })
       .from(productVariants)
       .where(inArray(productVariants.sku, skus));
 
@@ -219,6 +106,7 @@ export async function importProductsCsv(input: ImportProductsCsvInput): Promise<
             title: row.productTitle,
             description: row.description,
             isPublished: row.isPublished,
+            quoteVersion: sql`${products.quoteVersion} + 1`,
             updatedAt: new Date(),
           })
           .where(eq(products.id, existing.id));
@@ -237,9 +125,13 @@ export async function importProductsCsv(input: ImportProductsCsvInput): Promise<
         productByHandle.set(row.handle, { id: productId, handle: row.handle });
       }
 
-      // Upsert variant
+      // Upsert variant while preserving its identity and canonical assignments.
       const existingVariant = variantBySku.get(row.sku);
       if (existingVariant) {
+        if (existingVariant.productId !== productId)
+          throw new InvariantViolationError(
+            `SKU ${row.sku} already belongs to another product.`,
+          );
         await tx
           .update(productVariants)
           .set({
@@ -249,17 +141,63 @@ export async function importProductsCsv(input: ImportProductsCsvInput): Promise<
             updatedAt: new Date(),
           })
           .where(eq(productVariants.id, existingVariant.id));
+        await tx
+          .update(products)
+          .set({
+            quoteVersion: sql`${products.quoteVersion} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(eq(products.id, productId));
         updated++;
-      } else {
-        await tx.insert(productVariants).values({
+        await importCatalogAssociations(
+          tx,
           productId,
-          sku: row.sku,
-          title: row.variantTitle,
-          priceCents: row.priceCents,
-          isAvailable: row.isAvailable,
-        });
+          existingVariant.id,
+          row,
+          false,
+        );
+      } else {
+        const [inserted] = await tx
+          .insert(productVariants)
+          .values({
+            productId,
+            sku: row.sku,
+            title: row.variantTitle,
+            priceCents: row.priceCents,
+            isAvailable: row.isAvailable,
+          })
+          .returning();
+        await importCatalogAssociations(tx, productId, inserted!.id, row, true);
         created++;
       }
+    }
+    for (const product of productByHandle.values()) {
+      const variants = await tx
+        .select()
+        .from(productVariants)
+        .where(eq(productVariants.productId, product.id));
+      if (variants.length > 50)
+        throw new InvariantViolationError(
+          `Product ${product.handle} exceeds 50 variants.`,
+        );
+      const options = await tx
+        .select()
+        .from(productOptions)
+        .where(eq(productOptions.productId, product.id));
+      if (options.length && variants.some((v) => !v.combinationKey))
+        throw new InvariantViolationError(
+          `Product ${product.handle} has unmapped legacy variants. Supply explicit option_values for every legacy SKU before configuring options.`,
+        );
+      await tx.insert(auditRecords).values({
+        entityType: "product",
+        entityId: product.id,
+        actorId: input.staffUserId,
+        action: "catalog.csv_imported",
+        details: {
+          rowCount: input.rows.filter((r) => r.handle === product.handle)
+            .length,
+        },
+      });
     }
 
     return { created, updated };

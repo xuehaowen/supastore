@@ -1,28 +1,49 @@
+import { textFor } from "@/i18n/messages";
+import { DocumentLanguage } from "../../../packages/i18n/src/document-language";
+import Link from "next/link";
 import { recoverOrder } from "@/app/actions";
-import { Field, Notice } from "@/app/components";
+import { Field, Notice, Hidden } from "@/app/components";
+import { localeOf } from "@/infrastructure/web";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+export const metadata = { robots: { index: false, follow: false } };
 export default async function Recover({
   searchParams,
 }: {
-  searchParams: Promise<{ sent?: string; error?: string }>;
+  searchParams: Promise<{ error?: string; sent?: string; locale?: string }>;
 }) {
   const q = await searchParams;
+  const locale = localeOf(q.locale);
   return (
-    <main className="narrow standalone">
-      <a href="/">← Shop</a>
-      <h1>Find your order</h1>
-      <Notice error={q.error} />
+    <main className="mx-auto my-12 min-h-[50vh] max-w-xl">
+      <DocumentLanguage locale={locale} />
+      <Link href={`/${locale}`}>← {textFor(locale).shop}</Link>
+      <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">
+        {textFor(locale).common.recoveryTitle}
+      </h1>
+      <Notice error={q.error} locale={locale} />
       {q.sent ? (
-        <p role="status">
-          If an order was found, a recovery link has been sent.
-        </p>
+        <p role="status">{textFor(locale).common.recoverySent}</p>
       ) : (
-        <p>Enter the email and payment reference used for your order.</p>
+        <p>{textFor(locale).common.recoveryInstructions}</p>
       )}
-      <form action={recoverOrder}>
-        <Field name="email" label="Email" type="email" />
-        <Field name="reference" label="Payment reference" />
-        <button>Send recovery link</button>
-      </form>
+      <Card>
+        <CardContent>
+          <form className="grid gap-4" action={recoverOrder}>
+            <Hidden name="locale" value={locale} />
+            <Field
+              name="email"
+              label={textFor(locale).auth.email}
+              type="email"
+            />
+            <Field
+              name="reference"
+              label={textFor(locale).common.paymentReference}
+            />
+            <Button type="submit">{textFor(locale).common.sendRecovery}</Button>
+          </form>
+        </CardContent>
+      </Card>
     </main>
   );
 }

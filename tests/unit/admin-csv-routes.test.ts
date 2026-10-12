@@ -1,0 +1,215 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DomainError, ForbiddenError } from "@/application/common/errors";
+
+const mocks = vi.hoisted(() => ({
+  getSession: vi.fn(),
+  transaction: vi.fn(),
+  verifyStaff: vi.fn(),
+  importProductsCsv: vi.fn(),
+  parseProductCsv: vi.fn(),
+  streamProductsCsv: vi.fn(),
+  streamOrdersCsv: vi.fn(),
+  exportOrdersXlsx: vi.fn(),
+}));
+
+vi.mock("next/headers", () => ({ headers: vi.fn(async () => new Headers()) }));
+vi.mock("@/infrastructure/auth", () => ({
+  auth: { api: { getSession: mocks.getSession } },
+}));
+vi.mock("@/infrastructure/db", () => ({
+  db: { transaction: mocks.transaction },
+}));
+vi.mock("@/infrastructure/auth/session", () => ({
+  verifyStaffInTransaction: mocks.verifyStaff,
+}));
+vi.mock("@/application/use-cases/catalog/import-products-csv", () => ({
+  importProductsCsv: mocks.importProductsCsv,
+  parseProductCsv: mocks.parseProductCsv,
+}));
+vi.mock("@/application/use-cases/catalog/export-csv", () => ({
+  streamProductsCsv: mocks.streamProductsCsv,
+  streamOrdersCsv: mocks.streamOrdersCsv,
+}));
+vi.mock("@/application/use-cases/catalog/export-orders-xlsx", () => ({
+  exportOrdersXlsx: mocks.exportOrdersXlsx,
+}));
+
+import { GET as getOrderExport } from "@/app/api/admin/exports/orders/route";
+import { GET as getProductExport } from "@/app/api/admin/exports/products/route";
+import { POST as importProducts } from "@/app/api/admin/imports/products/route";
+
+describe("admin CSV routes", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.stubEnv("APP_URL", "http://localhost");
+    mocks.getSession.mockResolvedValue({ user: { id: "customer-id" } });
+    mocks.transaction.mockImplementation(async (work) => work({}));
+    mocks.verifyStaff.mockResolvedValue({ userId: "staff-id", role: "staff" });
+    mocks.streamProductsCsv.mockImplementation(async function* () {
+      yield "header\n";
+    });
+    mocks.streamOrdersCsv.mockImplementation(async function* () {
+      yield "header\n";
+    });
+    mocks.exportOrdersXlsx.mockResolvedValue(Buffer.from("xlsx-data"));
+  });
+
+  it.each([
+    ["products", getProductExport],
+    ["orders", getOrderExport],
+  ])("returns 401 when the %s export has no session", async (_, handler) => {
+    mocks.getSession.mockResolvedValueOnce(null);
+    const response = await handler(
+      new Request("http://localhost/api/admin/exports") as never,
+    );
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: "Unauthorized" });
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["products", getProductExport],
+    ["orders", getOrderExport],
+  ])(
+    "returns 403 to non-staff callers of the %s export",
+    async (_, handler) => {
+      mocks.verifyStaff.mockRejectedValueOnce(new ForbiddenError("forbidden"));
+      const response = await handler(
+        new Request("http://localhost/api/admin/exports") as never,
+      );
+      expect(response.status).toBe(403);
+      await expect(response.json()).resolves.toEqual({
+        error: "Staff access required",
+      });
+    },
+  );
+
+  it.each([
+    ["products", getProductExport],
+    ["orders", getOrderExport],
+  ])(
+    "returns 500 when %s export access verification fails",
+    async (_, handler) => {
+      mocks.transaction.mockRejectedValueOnce(new Error("database offline"));
+      const response = await handler(
+        new Request("http://localhost/api/admin/exports") as never,
+      );
+      expect(response.status).toBe(500);
+      await expect(response.json()).resolves.toEqual({
+        error: "Unable to verify access",
+      });
+    },
+  );
+
+  it("returns a readable limit error for oversized XLSX exports", async () => {
+    mocks.exportOrdersXlsx.mockRejectedValueOnce(
+      new DomainError("Use CSV for more than 10,000 rows."),
+    );
+    const response = await getOrderExport(
+      new Request(
+        "http://localhost/api/admin/exports/orders?format=xlsx",
+      ) as never,
+    );
+    expect(response.status).toBe(422);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    await expect(response.json()).resolves.toEqual({
+      error: "Use CSV for more than 10,000 rows.",
+    });
+  });
+  it("streams an authenticated order export as a dated CSV download", async () => {
+    mocks.streamOrdersCsv.mockImplementation(async function* () {
+      yield "reference_code,discount_cents\n";
+      yield "SP-100,250\n";
+    });
+    const response = await getOrderExport(
+      new Request("http://localhost/api/admin/exports/orders") as never,
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe(
+      "text/csv; charset=utf-8",
+    );
+    expect(response.headers.get("content-disposition")).toMatch(
+      /^attachment; filename="orders-\d{4}-\d{2}-\d{2}\.csv"$/,
+    );
+    await expect(response.text()).resolves.toBe(
+      "reference_code,discount_cents\nSP-100,250\n",
+    );
+  });
+
+  it("returns an authenticated XLSX order download", async () => {
+    const response = await getOrderExport(
+      new Request(
+        "http://localhost/api/admin/exports/orders?format=xlsx",
+      ) as never,
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe(
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    expect(response.headers.get("content-disposition")).toMatch(
+      /^attachment; filename="orders-\d{4}-\d{2}-\d{2}\.xlsx"$/,
+    );
+    expect(Buffer.from(await response.arrayBuffer()).toString()).toBe(
+      "xlsx-data",
+    );
+  });
+
+  it("returns 401 for an unauthenticated product import", async () => {
+    mocks.getSession.mockResolvedValueOnce(null);
+    const response = await importProducts(
+      new Request("http://localhost/api/admin/imports/products", {
+        method: "POST",
+        headers: { origin: "http://localhost" },
+        body: new FormData(),
+      }) as never,
+    );
+    expect(response.status).toBe(401);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 to a signed-in non-staff product importer", async () => {
+    mocks.verifyStaff.mockRejectedValueOnce(new ForbiddenError("forbidden"));
+    const response = await importProducts(
+      new Request("http://localhost/api/admin/imports/products", {
+        method: "POST",
+        headers: { origin: "http://localhost" },
+      }) as never,
+    );
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: "Staff access required",
+    });
+    expect(mocks.importProductsCsv).not.toHaveBeenCalled();
+  });
+
+  it("returns 500 when product-import access verification fails", async () => {
+    mocks.transaction.mockRejectedValueOnce(new Error("database offline"));
+    const response = await importProducts(
+      new Request("http://localhost/api/admin/imports/products", {
+        method: "POST",
+        headers: { origin: "http://localhost" },
+      }) as never,
+    );
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: "Unable to verify access",
+    });
+    expect(mocks.importProductsCsv).not.toHaveBeenCalled();
+  });
+
+  it.each([null, "https://foreign.example"])(
+    "rejects an import with origin %s before authentication or body parsing",
+    async (origin) => {
+      const response = await importProducts(
+        new Request("http://localhost/api/admin/imports/products", {
+          method: "POST",
+          headers: origin ? { origin } : {},
+        }) as never,
+      );
+      expect(response.status).toBe(403);
+      expect(mocks.getSession).not.toHaveBeenCalled();
+      expect(mocks.transaction).not.toHaveBeenCalled();
+      expect(mocks.importProductsCsv).not.toHaveBeenCalled();
+    },
+  );
+});

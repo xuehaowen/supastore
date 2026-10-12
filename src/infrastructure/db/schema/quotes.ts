@@ -20,6 +20,7 @@ export const quotes = pgTable("quotes", {
   exclusiveTaxCents: integer("exclusive_tax_cents").notNull(),
   inclusiveTaxCents: integer("inclusive_tax_cents").notNull(),
   totalPayableCents: integer("total_payable_cents").notNull(),
+  discountCents: integer("discount_cents").notNull().default(0),
   itemsSnapshot: jsonb("items_snapshot").notNull(),
   shippingSnapshot: jsonb("shipping_snapshot").notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(), // 15-minute TTL

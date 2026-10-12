@@ -1,8 +1,5 @@
 import Catalog from "@/app/catalog";
-export const revalidate = 3600;
-export function generateStaticParams() {
-  return [{ locale: "en" }, { locale: "zh" }];
-}
+export const dynamic = "force-dynamic";
 export default async function Page({
   params,
 }: {

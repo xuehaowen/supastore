@@ -1,14 +1,19 @@
-import { and, eq } from "drizzle-orm";
-import { db } from "@/infrastructure/db";
 import type { Transaction } from "@/application/common/transaction";
+import { commercePolicy } from "@/domain/commerce-policy";
+import { db } from "@/infrastructure/db";
 import {
-  storeSettings,
+  deliveryAreas,
+  paymentAccounts,
+  pickupLocation,
   products,
   productVariants,
-  paymentAccounts,
   shippingZones,
-  pickupLocation,
+  storeSettings,
 } from "@/infrastructure/db/schema";
+import { stripeConfiguredFor } from "@/infrastructure/payments/configuration";
+import { and, eq } from "drizzle-orm";
+
+import { publishedTemplateCoverage } from "@/application/notifications/template-manager";
 export async function getLaunchReadiness(tx: Transaction | typeof db = db) {
   const [settings] = await tx.select().from(storeSettings).limit(1);
   const available = await tx
@@ -28,7 +33,20 @@ export async function getLaunchReadiness(tx: Transaction | typeof db = db) {
     .where(eq(paymentAccounts.isActive, true));
   const zones = await tx.select().from(shippingZones);
   const locations = await tx.select().from(pickupLocation);
+  const areas = await tx
+    .select()
+    .from(deliveryAreas)
+    .where(eq(deliveryAreas.isActive, true));
+  const policy = commercePolicy(settings?.commercePolicy);
+  const missingEmailTemplates = (await publishedTemplateCoverage(tx)).filter(
+    (key) => key.channel === "email",
+  );
   const checklist = [
+    {
+      key: "templates",
+      label: "Required email notification templates published",
+      isReady: missingEmailTemplates.length === 0,
+    },
     {
       key: "settings",
       label: "Store profile complete",
@@ -42,16 +60,27 @@ export async function getLaunchReadiness(tx: Transaction | typeof db = db) {
     {
       key: "payment",
       label: "Active payment method",
-      isReady: accounts.length > 0,
+      isReady:
+        accounts.some((account) => account.accountType !== "stripe") ||
+        stripeConfiguredFor(settings),
     },
     {
       key: "fulfillment",
-      label: "Shipping or pickup configured",
+      label: "Enabled fulfillment method configured",
       isReady:
-        zones.length > 0 ||
-        locations.some((l) =>
-          Object.values(l.weeklySchedule).some((s) => s.length > 0),
-        ),
+        (policy.shippingEnabled && zones.length > 0) ||
+        (policy.pickupEnabled &&
+          locations.some(
+            (l) =>
+              !l.scheduleRequired ||
+              Object.values(l.weeklySchedule).some((s) => s.length > 0),
+          )) ||
+        (policy.deliveryEnabled &&
+          areas.some(
+            (a) =>
+              !a.scheduleRequired ||
+              Object.values(a.weeklySchedule).some((s) => s.length > 0),
+          )),
     },
     {
       key: "email",

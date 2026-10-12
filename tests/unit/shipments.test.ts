@@ -1,0 +1,100 @@
+import { expect, it } from "vitest";
+import { createHmac } from "node:crypto";
+import { validCarrierSignature } from "@/domain/carrier-webhook";
+import {
+  validateShipmentQuantities,
+  shipmentCoverageComplete,
+} from "@/domain/shipment";
+it("authenticates raw carrier event body and rejects stale/replayed timestamps or forged payloads", () => {
+  const raw = JSON.stringify({ shipmentId: "id", status: "delivered" }),
+    timestamp = "1791273600",
+    secret = "synthetic-test-secret";
+  const signature = createHmac("sha256", secret)
+    .update(`${timestamp}.${raw}`)
+    .digest("hex");
+  expect(
+    validCarrierSignature(
+      raw,
+      timestamp,
+      signature,
+      secret,
+      Number(timestamp) * 1000,
+    ),
+  ).toBe(true);
+  expect(
+    validCarrierSignature(
+      raw + " ",
+      timestamp,
+      signature,
+      secret,
+      Number(timestamp) * 1000,
+    ),
+  ).toBe(false);
+  expect(
+    validCarrierSignature(
+      raw,
+      timestamp,
+      signature,
+      secret,
+      Number(timestamp) * 1000 + 301000,
+    ),
+  ).toBe(false);
+  expect(
+    validCarrierSignature(
+      raw,
+      timestamp,
+      "invalid",
+      secret,
+      Number(timestamp) * 1000,
+    ),
+  ).toBe(false);
+});
+it("rejects overshipment, duplicate item input and foreign item IDs", () => {
+  const items = [{ id: "a", quantity: 3 }];
+  expect(() =>
+    validateShipmentQuantities(
+      items,
+      [{ orderItemId: "a", quantity: 2 }],
+      [{ orderItemId: "a", quantity: 2 }],
+    ),
+  ).toThrow();
+  expect(() =>
+    validateShipmentQuantities(items, [], [{ orderItemId: "b", quantity: 1 }]),
+  ).toThrow();
+  expect(() =>
+    validateShipmentQuantities(
+      items,
+      [],
+      [
+        { orderItemId: "a", quantity: 1 },
+        { orderItemId: "a", quantity: 1 },
+      ],
+    ),
+  ).toThrow();
+  expect(() =>
+    validateShipmentQuantities(
+      items,
+      [],
+      [{ orderItemId: "a", quantity: 1.5 }],
+    ),
+  ).toThrow();
+});
+it("partial units never satisfy final delivery coverage", () => {
+  const items = [
+    { id: "a", quantity: 3 },
+    { id: "b", quantity: 1 },
+  ];
+  expect(
+    shipmentCoverageComplete(items, [
+      { orderItemId: "a", quantity: 1 },
+      { orderItemId: "b", quantity: 1 },
+    ]),
+  ).toBe(false);
+  expect(
+    shipmentCoverageComplete(items, [
+      { orderItemId: "a", quantity: 1 },
+      { orderItemId: "a", quantity: 2 },
+      { orderItemId: "b", quantity: 1 },
+    ]),
+  ).toBe(true);
+});

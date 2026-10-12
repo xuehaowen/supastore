@@ -29,6 +29,10 @@ export async function staffIdentity() {
   if (!session) throw new UnauthorizedError("Sign in to continue.");
   return session.user.id;
 }
+export async function customerIdentity() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  return session?.user.emailVerified ? session.user.id : "";
+}
 export async function orderToken(id: string) {
   return (await cookies()).get("shop-order-" + id)?.value ?? "";
 }
@@ -44,8 +48,13 @@ export async function setOrderToken(id: string, token: string) {
 export function localeOf(value: unknown) {
   return value === "zh" ? "zh" : "en";
 }
-export function money(amount: number, currency = "USD", precision = 2) {
-  return new Intl.NumberFormat("en", {
+export function money(
+  amount: number,
+  currency = "USD",
+  precision = 2,
+  locale = "en",
+) {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     minimumFractionDigits: precision,

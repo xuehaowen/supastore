@@ -1,11 +1,34 @@
-import { trackOrder } from "@/application/use-cases/tracking";
-import { orderToken, money } from "@/infrastructure/web";
-import { UnauthorizedError } from "@/application/common/errors";
-import { redirect } from "next/navigation";
-import type { QuoteTerms } from "@/application/use-cases/get-quote";
-import { CopyButton, Uploader } from "@/app/interactive";
-import { Hidden, Notice } from "@/app/components";
 import { acceptProposal } from "@/app/actions";
+import { Field, Hidden, Notice } from "@/app/components";
+import { claimOrderAction } from "@/app/customer-actions";
+import { CopyButton, Uploader } from "@/app/interactive";
+import { requestReturnAction } from "@/app/return-actions";
+import { UnauthorizedError } from "@/application/common/errors";
+import type { QuoteTerms } from "@/application/use-cases/get-quote";
+import { trackOrder } from "@/application/use-cases/tracking";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { orderItemName } from "@/domain/catalog/order-item-name";
+import { formatLocalDate, statusLabel } from "@/i18n/customer";
+import { textFor } from "@/i18n/messages";
+import { db } from "@/infrastructure/db";
+import {
+  storeSettings,
+  stripeCheckoutAttempts,
+} from "@/infrastructure/db/schema";
+import { stripeConfiguredFor } from "@/infrastructure/payments/configuration";
+import { money, orderToken } from "@/infrastructure/web";
+import { eq } from "drizzle-orm";
+import { getTranslations } from "next-intl/server";
+import { redirect } from "next/navigation";
+import { randomUUID } from "node:crypto";
+export const metadata = { robots: { index: false, follow: false } };
+
+import { OrderPayment } from "@/app/order-payment";
+import { getStorefrontMessages } from "../../../../../apps/storefront/lib/i18n";
 export default async function OrderPage({
   params,
   searchParams,
@@ -15,105 +38,381 @@ export default async function OrderPage({
 }) {
   const { locale, id } = await params;
   const query = await searchParams;
+  const t = await getTranslations({ locale });
   const result = await trackOrder(id, await orderToken(id)).catch((error) => {
-    if (error instanceof UnauthorizedError) redirect("/recover");
+    if (error instanceof UnauthorizedError)
+      redirect(`/recover?locale=${locale}`);
     throw error;
   });
-  const { order, proposal, receivedCents, fulfillment, evidence } = result;
+  const {
+    order,
+    proposal,
+    receivedCents,
+    fulfillment,
+    evidence,
+    items,
+    quoteItems,
+    goodsReturns,
+    returnItems,
+  } = result;
+  const returnableQuantities = new Map(
+    items.map((item) => {
+      const committed = returnItems
+        .filter(
+          (ri) =>
+            ri.orderItemId === item.id &&
+            goodsReturns.some(
+              (r) =>
+                r.id === ri.returnId &&
+                ["requested", "approved", "received"].includes(r.status),
+            ),
+        )
+        .reduce((sum, ri) => sum + ri.quantity, 0);
+      const available = item.quantity - committed;
+      return [item.id, available] as const;
+    }),
+  );
   const terms = order.termsSnapshot as QuoteTerms;
+  const [store] = await db.select().from(storeSettings).limit(1);
+  const [paymentAttempt] = await db
+    .select({ status: stripeCheckoutAttempts.status })
+    .from(stripeCheckoutAttempts)
+    .where(eq(stripeCheckoutAttempts.orderId, id))
+    .limit(1);
+  const support = getStorefrontMessages(locale).order;
   return (
-    <section className="narrow">
-      <p className="eyebrow">YOUR ORDER IS SAVED</p>
-      <h1>{order.referenceCode}</h1>
-      <Notice error={query.error} />
-      <p className="badge">
-        {order.lifecycleStatus} · {fulfillment?.status.replaceAll("_", " ")}
+    <section className="mx-auto my-12 min-h-[50vh] max-w-3xl">
+      <p className="mb-6 text-[10px] font-bold tracking-[0.2em]">
+        {t("order.saved")}
       </p>
-      <dl>
-        <dt>Order total</dt>
-        <dd>
-          {money(order.purchaseTotalCents, terms.currency, terms.precision)}
-        </dd>
-        <dt>Received</dt>
-        <dd>{money(receivedCents, terms.currency, terms.precision)}</dd>
-        <dt>Balance</dt>
-        <dd>
+      <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">
+        {order.referenceCode}
+      </h1>
+      <Notice error={query.error} locale={locale} />
+      {store?.supportEmail && (
+        <section className="mb-6">
+          <a
+            href={`mailto:${store.supportEmail}?subject=${encodeURIComponent(`Order ${order.referenceCode}`)}`}
+          >
+            {support.contactSupport}
+          </a>
+          <p>{support.supportHelp}</p>
+        </section>
+      )}
+      {order.lifecycleStatus === "unpaid" && !proposal && (
+        <OrderPayment
+          id={id}
+          locale={locale}
+          status={paymentAttempt?.status || null}
+          enabled={Boolean(store && stripeConfiguredFor(store))}
+        />
+      )}
+
+      {/* Visual Order Lifecycle Stepper */}
+      {order.lifecycleStatus === "cancelled" ? (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTitle>{t("order.cancelled")}</AlertTitle>
+          <AlertDescription>{t("order.cancelledMsg")}</AlertDescription>
+        </Alert>
+      ) : (
+        <div className="mb-8 rounded-xl border bg-card p-5">
+          <div className="grid grid-cols-4 gap-2 text-center">
+            {[
+              {
+                step: 1,
+                label: t("order.placed"),
+                done: true,
+                current: false,
+              },
+              {
+                step: 2,
+                label: t("order.payment"),
+                done: order.lifecycleStatus !== "unpaid",
+                current: order.lifecycleStatus === "unpaid",
+              },
+              {
+                step: 3,
+                label: t("order.fulfillment"),
+                done:
+                  fulfillment?.status === "fulfilled" ||
+                  order.lifecycleStatus === "completed",
+                current:
+                  order.lifecycleStatus === "confirmed" &&
+                  fulfillment?.status !== "fulfilled",
+              },
+              {
+                step: 4,
+                label: t("order.completed"),
+                done: order.lifecycleStatus === "completed",
+                current: false,
+              },
+            ].map((item, idx) => (
+              <div key={idx} className="flex flex-col items-center">
+                <div
+                  className={`flex size-7 items-center justify-center rounded-full text-xs font-semibold ${
+                    item.done
+                      ? "bg-primary text-primary-foreground"
+                      : item.current
+                        ? "border-2 border-primary text-primary"
+                        : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {item.done ? "✓" : item.step}
+                </div>
+                <span
+                  className={`mt-2 text-xs ${
+                    item.done || item.current
+                      ? "font-medium text-foreground"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {item.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!order.customerId && (
+        <form action={claimOrderAction} className="mb-5">
+          <Hidden name="locale" value={locale} />
+          <Hidden name="orderId" value={id} />
+          <Button type="submit" variant="outline">
+            {t("order.addToAccount")}
+          </Button>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {t("order.claimHint")}
+          </p>
+        </form>
+      )}
+      <Badge variant="secondary" className="mb-6">
+        {statusLabel(order.lifecycleStatus, locale)} ·{" "}
+        {statusLabel(fulfillment?.status, locale)}
+      </Badge>
+      <dl className="grid grid-cols-2 gap-4 border-t pt-5">
+        <dt>{t("order.total")}</dt>
+        <dd className="m-0 text-right">
           {money(
-            order.purchaseTotalCents - receivedCents,
+            order.purchaseTotalCents,
             terms.currency,
             terms.precision,
+            locale,
+          )}
+        </dd>
+        <dt>{t("order.received")}</dt>
+        <dd className="m-0 text-right">
+          {money(receivedCents, terms.currency, terms.precision, locale)}
+        </dd>
+        {order.creditAppliedCents > 0 && (
+          <>
+            <dt>{t("order.creditApplied")}</dt>
+            <dd className="m-0 text-right">
+              {money(
+                order.creditAppliedCents,
+                terms.currency,
+                terms.precision,
+                locale,
+              )}
+            </dd>
+          </>
+        )}
+        <dt>{t("order.balance")}</dt>
+        <dd className="m-0 text-right">
+          {money(
+            order.lifecycleStatus === "unpaid"
+              ? Math.max(
+                  0,
+                  order.purchaseTotalCents -
+                    order.creditAppliedCents -
+                    receivedCents,
+                )
+              : 0,
+            terms.currency,
+            terms.precision,
+            locale,
           )}
         </dd>
       </dl>
-      {proposal ? (
-        <section className="notice">
-          <h2>Order Terms Updated</h2>
-          <p>{proposal.reason}</p>
-          <p>
-            New total:{" "}
-            <strong>
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>{t("order.items")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {items.map((item) => (
+            <p key={item.id}>
+              {orderItemName(item, quoteItems)} · {item.quantity} ×{" "}
               {money(
-                proposal.proposedTotalCents,
+                item.unitPriceCents,
                 terms.currency,
                 terms.precision,
+                locale,
               )}
-            </strong>
-          </p>
-          <p>Payment instructions are paused until you accept.</p>
-          <form action={acceptProposal}>
-            <Hidden name="locale" value={locale} />
-            <Hidden name="orderId" value={id} />
-            <Hidden name="proposalId" value={proposal.id} />
-            <button>Accept New Total</button>
-          </form>
-        </section>
+            </p>
+          ))}
+        </CardContent>
+      </Card>
+      {result.refunds.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>{t("order.refunds")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {result.refunds.map((r) => (
+              <p key={r.id}>
+                {r.reason} ·{" "}
+                {money(r.amountCents, terms.currency, terms.precision, locale)}{" "}
+                {textFor(locale).common.approved}·{" "}
+                {money(r.settledCents, terms.currency, terms.precision, locale)}{" "}
+                {textFor(locale).common.settled}
+                {r.settledCents < r.amountCents
+                  ? ` · ${textFor(locale).common.settlementPending}`
+                  : ` · ${textFor(locale).common.complete}`}
+              </p>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+      {goodsReturns.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>{t("order.returns")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {goodsReturns.map((r) => (
+              <p key={r.id}>
+                {r.reason} · {statusLabel(r.status, locale)}
+                {r.reviewReason ? ` · ${r.reviewReason}` : ""}
+              </p>
+            ))}
+            <p>{textFor(locale).common.returnSettlementNotice}</p>
+          </CardContent>
+        </Card>
+      )}
+      {fulfillment?.status === "fulfilled" &&
+        [...returnableQuantities.values()].some((quantity) => quantity > 0) && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>{t("order.requestReturn")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form action={requestReturnAction} className="grid gap-4">
+                <Hidden name="locale" value={locale} />
+                <Hidden name="orderId" value={id} />
+                <Hidden name="requestKey" value={randomUUID()} />
+                {items.map((item) => {
+                  const available = returnableQuantities.get(item.id) ?? 0;
+                  return available > 0 ? (
+                    <label key={item.id}>
+                      <Hidden name="itemIds" value={item.id} />
+                      {orderItemName(item, quoteItems)} ·{" "}
+                      {textFor(locale).common.returnLimit.replace(
+                        "{count}",
+                        String(available),
+                      )}
+                      <Input
+                        name={`quantity.${item.id}`}
+                        type="number"
+                        min="0"
+                        max={available}
+                        defaultValue="0"
+                        required
+                      />
+                    </label>
+                  ) : null;
+                })}
+                <Field name="reason" label={t("order.returnReason")} />
+                <Button type="submit">{t("order.submitReturn")}</Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+      {proposal ? (
+        <Alert className="mt-6">
+          <AlertTitle>{textFor(locale).common.termsUpdated}</AlertTitle>
+          <AlertDescription>
+            <p>{proposal.reason}</p>
+            <p>
+              {textFor(locale).common.newTotal}:{" "}
+              <strong>
+                {money(
+                  proposal.proposedTotalCents,
+                  terms.currency,
+                  terms.precision,
+                  locale,
+                )}
+              </strong>
+            </p>
+            <p>{textFor(locale).common.paymentPaused}</p>
+            <form action={acceptProposal}>
+              <Hidden name="locale" value={locale} />
+              <Hidden name="orderId" value={id} />
+              <Hidden name="proposalId" value={proposal.id} />
+              <Button type="submit">
+                {textFor(locale).common.acceptNewTotal}
+              </Button>
+            </form>
+          </AlertDescription>
+        </Alert>
       ) : order.purchaseTotalCents > 0 &&
         order.lifecycleStatus === "unpaid" &&
-        terms.payment ? (
-        <section className="panel">
-          <h2>Payment instructions</h2>
-          <p>{terms.payment.name}</p>
-          <p className="description">{terms.payment.instructions}</p>
-          <div className="actions">
-            <CopyButton
-              value={(order.purchaseTotalCents / 10 ** terms.precision).toFixed(
-                terms.precision,
-              )}
-              label="Copy exact amount"
-            />
-            <CopyButton
-              value={order.referenceCode}
-              label="Copy payment reference"
-            />
-          </div>
-          <p>
-            Use this reference for your payment. If you already paid, wait for
-            the store to verify it; do not send a second payment.
-          </p>
-        </section>
+        terms.payment &&
+        !paymentAttempt ? (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>{t("order.paymentInstructions")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p>{terms.payment.name}</p>
+            <p className="whitespace-pre-line text-muted-foreground">
+              {terms.payment.instructions}
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <CopyButton
+                locale={locale}
+                value={(
+                  (order.purchaseTotalCents - order.creditAppliedCents) /
+                  10 ** terms.precision
+                ).toFixed(terms.precision)}
+                label={t("order.copyAmount")}
+              />
+              <CopyButton
+                locale={locale}
+                value={order.referenceCode}
+                label={t("order.copyRef")}
+              />
+            </div>
+            <p>{textFor(locale).common.paymentReferenceNotice}</p>
+          </CardContent>
+        </Card>
       ) : null}
       {terms.pickup && (
         <p>
-          Pickup: {terms.pickup.address} · {terms.pickup.date}{" "}
-          {terms.pickup.startTime}–{terms.pickup.endTime}
+          {t("pickup")}: {terms.pickup.address} ·{" "}
+          {formatLocalDate(terms.pickup.date, locale)} {terms.pickup.startTime}–
+          {terms.pickup.endTime}
         </p>
       )}
       {order.purchaseTotalCents === 0 && (
-        <p>No payment or payment evidence is required.</p>
+        <p>{textFor(locale).common.noPaymentRequired}</p>
       )}
-      {order.purchaseTotalCents > 0 && (
-        <section>
-          <h2>Payment evidence</h2>
-          <p>
-            {evidence.length} image(s) received. Evidence does not confirm
-            payment.
-          </p>
-          <Uploader orderId={id} />
-        </section>
-      )}
-      <p className="muted">
-        Bookmark this page. Your order remains available here even if an email
-        is delayed.
+      {order.lifecycleStatus === "unpaid" &&
+        !proposal &&
+        !paymentAttempt &&
+        order.purchaseTotalCents > order.creditAppliedCents && (
+          <section className="mt-8">
+            <h2>{textFor(locale).common.paymentEvidence}</h2>
+            <p>
+              {textFor(locale).common.evidenceCount.replace(
+                "{count}",
+                String(evidence.length),
+              )}
+            </p>
+            <Uploader orderId={id} locale={locale} />
+          </section>
+        )}
+      <p className="mt-8 text-sm text-muted-foreground">
+        {t("order.bookmarkHint")}
       </p>
     </section>
   );

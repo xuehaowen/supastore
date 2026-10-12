@@ -1,4 +1,5 @@
 import { verifyEmail } from "@/app/actions";
+import { Button } from "@/components/ui/button";
 import { Hidden } from "@/app/components";
 export default async function Verify({
   searchParams,
@@ -6,11 +7,11 @@ export default async function Verify({
   searchParams: Promise<{ token?: string }>;
 }) {
   return (
-    <main className="narrow standalone">
+    <main className="mx-auto my-12 min-h-[50vh] max-w-xl">
       <h1>Verify email delivery</h1>
-      <form action={verifyEmail}>
+      <form className="grid gap-4" action={verifyEmail}>
         <Hidden name="token" value={(await searchParams).token ?? ""} />
-        <button>Confirm email delivery</button>
+        <Button type="submit">Confirm email delivery</Button>
       </form>
     </main>
   );

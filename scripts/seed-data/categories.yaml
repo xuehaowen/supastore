@@ -1,0 +1,24 @@
+# Categories are seeded before products.
+# Products reference categories by slug.
+# parentSlug is optional — set to another category's slug for subcategories.
+
+- slug: apparel
+  name: Apparel
+  translations:
+    - locale: zh
+      name: 服装
+  sortOrder: 0
+
+- slug: homeware
+  name: Homeware
+  translations:
+    - locale: zh
+      name: 家居
+  sortOrder: 1
+
+- slug: accessories
+  name: Accessories
+  translations:
+    - locale: zh
+      name: 配饰
+  sortOrder: 2

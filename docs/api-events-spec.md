@@ -1,25 +1,41 @@
 # Events and notification contracts
 
+## Transport acceptance, attempts and callback evidence
+
+Email/SMS workers use provider-neutral sender ports and prepared messages; they do not choose templates through provider SDKs. Pin provider name, configuration profile, declared delivery tracking and idempotency window on the first claim. Retain the exact prepared content and stable delivery request identity on retries. An unconfigured transport leaves work pending; it never defaults to mock success.
+
+Claim one delivery immediately before its network call. Recheck its fenced lease, current SMS consent/verified number and quiet hours, then persist an immutable IO-start attempt before sending outside the transaction. Persist immutable provider outcomes even if a late response no longer owns the lease. Expired claims with no matching IO-start attempt can be safely reclaimed; expired started submissions are uncertain. Unknown outcomes require review unless the same provider/profile explicitly guarantees the original request identity within a still-live bounded idempotency window. Exhausted uncertainty remains review. Definite retryable rejections use bounded backoff and provider retry-after; permanent rejections are failed.
+
+SMTP acceptance is recorded as accepted, not delivered. A tracked SMS acceptance waits for callback evidence. Historical email rows formerly called delivered are migrated to accepted with `legacy_success_unverified`; do not resend them automatically. Verified callbacks enter a durable inbox before acknowledgment. Keep unmatched early callbacks and verified unsupported events; reconcile after a provider message identity appears. Delivered facts never regress on failed/sent duplicates or reordered callbacks. STOP invalidates consent and in-flight phone-verification claims and suppresses unsent SMS; already accepted delivery facts remain recorded.
+
+## Generic expansion events (release acceptance pending)
+
+Backend exclusively owns provider inbox, domain mutations and outbox worker. Authenticated provider events persist a deduplicated inbox identity before settlement; retries call the same authoritative payment use case. Browser redirects and payment evidence never emit settled-payment facts. Provider network calls occur outside transactions; reconciliation resolves uncertain sends and late success after expiry.
+
+Dispatch events (`fulfillment.shipped` or `fulfillment.out_for_delivery`) consume stock once and do not release rewards. Recorded delivery or verified pickup handoff emits fulfillment completion/order completion and releases eligible rewards exactly once. Historical completed orders are not replayed for reward backfill. Reward events record gross earned entitlement, debt recovered, net issued and cumulative reversal separately using durable identities; reports reconcile against the ledger, never notification delivery counts.
+
+Manual review-deadline events notify staff without cancelling reservations. Slot rescheduling emits an audited event only after destination acquisition/source release commits. Worker leases must coordinate overlapping backend instances; storefront runs no worker or financial side effect. Existing recipient ordering and delivery deduplication below apply to new events. See [workflows](business-workflows.md) and [transactions](transaction-contracts.md) for authoritative semantics.
+
 ## Event catalog
 
-| Event | Source | Recipient |
-| --- | --- | --- |
-| order.submitted | Durable order creation | Admin; customer acknowledgment/instructions unless immediately confirmed |
-| order.confirmed | Payment or valid zero-total confirmation | Customer |
-| order.change_proposed / order.change_accepted | Eligible unpaid-term proposal or acceptance | Customer |
-| order.change_invalidated | Receipt arrives while a proposal is pending | Owner; customer explanation |
-| order.unpaid_review_due | Unpaid deadline revision | Admin |
-| payment.correction_requested / payment.correction_overdue | Evidence review or expired correction deadline | Customer / admin respectively |
-| fulfillment.review_overdue | Pickup deadline revision | Admin |
-| fulfillment.rescheduled / fulfillment.address_updated | Audited agreed change | Customer |
-| fulfillment.ready_for_pickup / fulfillment.shipped | Fulfillment transition | Customer |
-| fulfillment.tracking_updated | Audited tracking correction | Customer |
-| order.completed | Handoff or manually recorded delivery | Customer if enabled |
-| order.cancelled | Owner cancellation | Customer |
-| refund.authorized / refund.settled | Purchase/cancellation refund obligation or final reconciliation | Customer |
-| payment_return.authorized / payment_return.settled | Excess, late or supplemental return obligation/completion | Customer |
-| receipt.correction_applied | Reviewed receipt and allocation corrections commit | Owner; customer if balance or promised return changed |
-| receipt.correction_dismissed | No-change investigation closes | Owner |
+| Event                                                     | Source                                                                                      | Recipient                                                                                                                |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| order.submitted                                           | Durable order creation                                                                      | Admin; customer acknowledgment/instructions unless immediately confirmed                                                 |
+| order.confirmed                                           | Payment or valid zero-total confirmation                                                    | Customer                                                                                                                 |
+| order.change_proposed / order.change_accepted             | Eligible unpaid-term proposal or acceptance                                                 | Customer                                                                                                                 |
+| order.change_invalidated                                  | Receipt arrives while a proposal is pending                                                 | Owner; customer explanation                                                                                              |
+| order.unpaid_review_due                                   | Unpaid deadline revision                                                                    | Admin                                                                                                                    |
+| payment.correction_requested / payment.correction_overdue | Evidence review or expired correction deadline                                              | Customer / admin respectively                                                                                            |
+| fulfillment.review_overdue                                | Pickup deadline revision                                                                    | Admin                                                                                                                    |
+| fulfillment.rescheduled / fulfillment.address_updated     | Audited agreed change                                                                       | Customer                                                                                                                 |
+| fulfillment.ready_for_pickup / fulfillment.shipped        | Fulfillment transition                                                                      | Customer                                                                                                                 |
+| fulfillment.tracking_updated                              | Audited tracking correction                                                                 | Customer                                                                                                                 |
+| order.completed                                           | Handoff or manually recorded delivery                                                       | Customer if enabled                                                                                                      |
+| order.cancelled                                           | Owner cancellation                                                                          | Customer                                                                                                                 |
+| refund.authorized / refund.settled                        | Purchase/cancellation refund obligation or final reconciliation                             | Customer                                                                                                                 |
+| payment_return.authorized / payment_return.settled        | Excess, late or supplemental return obligation/completion                                   | Customer                                                                                                                 |
+| receipt.correction_applied                                | Reviewed receipt and allocation corrections commit                                          | Owner; customer if balance or promised return changed                                                                    |
+| receipt.correction_dismissed                              | No-change investigation closes                                                              | Owner                                                                                                                    |
 | payout.discrepancy_recorded / payout.discrepancy_resolved | Monetary error, claim-limit breach or late-evidence review / owner completes reconciliation | Owner, including stop/reconcile instructions for affected replacements; customer only if their settlement status changes |
 
 Creation always emits order.submitted once, including owner-created and free orders. Immediate confirmation sends the admin submission message and one customer confirmation. Do not send a separate customer acknowledgment with payment instructions in that case. Cancellation messages link to existing refund/return status instead of implying that money has already been sent.

@@ -103,6 +103,7 @@ export async function recordReceipt(input: RecordReceiptInput) {
 
     const projection = computeOrderFinancialProjection({
       purchaseTotalCents: order.purchaseTotalCents,
+      committedCreditCents: order.creditAppliedCents ?? 0,
       isConfirmed:
         order.lifecycleStatus === "confirmed" ||
         order.lifecycleStatus === "completed",
@@ -123,7 +124,10 @@ export async function recordReceipt(input: RecordReceiptInput) {
           orderId: order.id,
           receivedCents: projection.netReceivedCents,
           purchaseTotalCents: order.purchaseTotalCents,
-          balanceCents: order.purchaseTotalCents - projection.netReceivedCents,
+          balanceCents:
+            order.purchaseTotalCents -
+            (order.creditAppliedCents ?? 0) -
+            projection.netReceivedCents,
         },
       );
     // Record audit record

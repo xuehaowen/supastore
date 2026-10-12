@@ -10,6 +10,7 @@ import { acquireTransactionLocks } from "@/domain/locking/lock-order";
 export async function requestTrackingLink(input: {
   email: string;
   referenceCode: string;
+  locale?: string;
 }) {
   const email = v
     .parse(v.pipe(v.string(), v.trim(), v.email()), input.email)
@@ -48,8 +49,9 @@ export async function requestTrackingLink(input: {
       {
         orderId: order.id,
         referenceCode: order.referenceCode,
-        recoveryUrl: `${process.env.BETTER_AUTH_URL ?? "http://localhost:3000"}/recover/exchange?token=${token}`,
+        recoveryUrl: `${process.env.BETTER_AUTH_URL ?? "http://localhost:3000"}/recover/exchange?token=${token}&locale=${input.locale === "zh" ? "zh" : "en"}`,
         expiresAt: expiresAt.toISOString(),
+        locale: input.locale === "zh" ? "zh" : "en",
       },
     );
   });

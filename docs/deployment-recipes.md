@@ -1,80 +1,60 @@
-# Deployment Recipes
+# Deployment recipes
 
-Supastore is packaged as a standalone, zero-external-cache Next.js 15 application running with PostgreSQL and S3-compatible object storage.
+Supastore runs as two standalone Next.js services: a public storefront and a
+private backend. PostgreSQL and S3-compatible storage retain application data.
+The backend also runs the outbox worker when explicitly enabled. No Redis or
+external cache is required.
 
-## Target Resource Footprint
-- **Memory Ceiling:** 256MB–512MB RAM for application container (`node server.js`).
-- **CPU:** 0.5–1.0 vCPU.
-- **Base Image:** Node.js 22 Alpine (<80MB compressed).
+## Docker Compose
 
----
+Follow [two-service deployment](two-service-deployment.md) for environment
+configuration, PostgreSQL upgrades, public origins and trusted ingress.
 
-## 1. Docker Compose (Self-Hosted / VPS)
+1. Copy `.env.example` to `.env` and configure unique secrets, database/storage
+   credentials and the public HTTPS storefront origin.
+2. Build the explicit targets with
+   `docker compose build backend storefront migrate`.
+3. Start PostgreSQL and object storage with
+   `docker compose up -d postgres rustfs`.
+4. Back up an existing installation and rehearse recovery before applying
+   `docker compose --profile migration run --rm migrate`.
+5. Start the application with `docker compose up -d backend storefront`.
+6. Verify `/en`, `/api/health/ready`, admin authentication and a controlled
+   checkout through the public HTTPS origin.
 
-Run Supastore with local PostgreSQL via Docker Compose:
+Publish only the storefront through the HTTPS ingress. Keep the backend,
+database and private storage interfaces inaccessible from the public network.
+Configure the trusted client-IP contract described in the deployment guide;
+unverified forwarding headers must not determine identity or rate limits.
 
-```bash
-# 1. Copy environment template
-cp .env.example .env
+## Other container platforms
 
-# 2. Start services in background
-docker compose up -d
+Create separate services from Dockerfile targets `backend` and `storefront`,
+plus a one-shot job from target `migrations`. Both application containers listen
+on port 3000. Route public traffic to the storefront and provide its private
+backend origin using the `BACKEND_URL` build argument and runtime variable.
 
-# 3. Verify health
-curl -f http://localhost:3000/api/health/ready
-```
+Run the migration job explicitly before application replacement. Configure
+backend database/provider/storage credentials and the same public HTTPS origin
+for `APP_URL`, `BETTER_AUTH_URL` and `STOREFRONT_ORIGIN`. Give the storefront only
+its backend connection, public origin and trusted `EDGE_PROXY_SECRET` settings.
+Supervise the enabled backend
+worker and verify its health separately from basic application liveness.
 
----
+Use `/api/health/ready` for readiness and `/api/health/live` for liveness. Preserve
+cookies, request bodies and browser origins through ingress. Validate provider
+callbacks against the public origin before enabling delivery.
 
-## 2. Coolify / CapRover / Dokku
+## Resource sizing and recovery
 
-1. **Build Pack:** Dockerfile (use the root `Dockerfile`).
-2. **Port Mapping:** Expose container port `3000`.
-3. **Environment Variables:**
-   - `DATABASE_URL=postgresql://user:password@postgres-host:5432/dbname?sslmode=require`
-   - `ADMIN_SETUP_SECRET=your_secure_random_string`
-   - `BETTER_AUTH_SECRET=your_32_char_random_secret`
-   - `BETTER_AUTH_URL=https://your-domain.com`
-   - `ENABLE_OUTBOX_WORKER=true`
-4. **Health Check:** `/api/health/ready` (HTTP 200).
+The images default to a 256 MiB Node heap per application process. Heap size is
+not total process or container memory. Size PostgreSQL, storage and the host
+separately, then measure representative sustained traffic on the target host.
+See [current verification evidence](maintenance-hardening-evidence-2026-10-11.md)
+for the measured fixture limits; those measurements are not production ceilings.
 
----
-
-## 3. Railway / Fly.io / Render
-
-### Railway
-1. Create a **PostgreSQL** database service.
-2. Deploy the Supastore repository. Railway detects the `Dockerfile` automatically.
-3. Link `DATABASE_URL` from the PostgreSQL service.
-4. Set `BETTER_AUTH_URL` to your Railway public domain (`https://*.up.railway.app`).
-
-### Fly.io
-Deploy with `fly.toml`:
-```toml
-app = "supastore"
-primary_region = "iad"
-
-[build]
-  dockerfile = "Dockerfile"
-
-[http_service]
-  internal_port = 3000
-  force_https = true
-  auto_stop_machines = false
-  auto_start_machines = true
-  min_machines_running = 1
-
-[[vm]]
-  memory = "512mb"
-  cpu_kind = "shared"
-  cpus = 1
-```
-
----
-
-## 4. Managed PostgreSQL (Supabase / Neon / AWS RDS)
-
-When using connection poolers or serverless PostgreSQL:
-- Ensure session isolation is configured for transactional locks (`SELECT ... FOR UPDATE`).
-- Use direct connection string (port `5432` or session mode) rather than transaction mode poolers if row-level locking is required.
-- Set `sslmode=require` in production `DATABASE_URL`.
+For an existing store, use the [disaster recovery playbook](playbooks/disaster-recovery.md)
+and retain matching database and object-storage backups. Restore with outbound
+delivery suppressed in the actual service configuration. Keep immutable image
+identifiers for rollback, and preserve financial history when rolling back the
+application. A real production-copy drill requires access to that store's backup.

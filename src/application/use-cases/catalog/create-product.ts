@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { parseActionRequiredText } from "@/application/common/request-validation";
 import { storeSettings } from "@/infrastructure/db/schema";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { eq } from "drizzle-orm";
@@ -53,8 +54,15 @@ export async function createProduct(input: CreateProductInput) {
     v.pipe(v.string(), v.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)),
     input.handle,
   );
-  for (const variant of input.variants)
-    v.parse(v.pipe(v.number(), v.integer(), v.minValue(0)), variant.priceCents);
+  parseActionRequiredText(input.title, "Product title", 200);
+  for (const variant of input.variants) {
+    parseActionRequiredText(variant.sku, "SKU", 200);
+    parseActionRequiredText(variant.title, "Variant title", 200);
+    v.parse(
+      v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(2147483647)),
+      variant.priceCents,
+    );
+  }
   const {
     handle,
     title,
@@ -66,11 +74,19 @@ export async function createProduct(input: CreateProductInput) {
     images = [],
   } = input;
 
-  if (!variants || variants.length === 0) {
+  if (
+    !variants ||
+    variants.length > 50 ||
+    (isPublished && variants.length === 0)
+  ) {
     throw new InvariantViolationError(
-      "A product must have at least one variant",
+      "Published products need 1–50 variants; drafts can have zero.",
     );
   }
+  if (images.length)
+    throw new InvariantViolationError(
+      "Create the product, then upload images through its image controls.",
+    );
 
   return db.transaction(async (tx) => {
     await verifyStaffInTransaction(tx, input.staffUserId, "owner");
@@ -99,20 +115,22 @@ export async function createProduct(input: CreateProductInput) {
       .returning();
 
     // Insert variants
-    const insertedVariants = await tx
-      .insert(productVariants)
-      .values(
-        variants.map((v, idx) => ({
-          productId: product.id,
-          sku: v.sku,
-          attributes: v.attributes ?? {},
-          title: v.title,
-          priceCents: v.priceCents,
-          isAvailable: v.isAvailable ?? true,
-          sortOrder: v.sortOrder ?? idx,
-        })),
-      )
-      .returning();
+    const insertedVariants = variants.length
+      ? await tx
+          .insert(productVariants)
+          .values(
+            variants.map((v, idx) => ({
+              productId: product.id,
+              sku: v.sku,
+              attributes: v.attributes ?? {},
+              title: v.title,
+              priceCents: v.priceCents,
+              isAvailable: v.isAvailable ?? true,
+              sortOrder: v.sortOrder ?? idx,
+            })),
+          )
+          .returning()
+      : [];
 
     // Insert categories if any
     if (categoryIds.length > 0) {

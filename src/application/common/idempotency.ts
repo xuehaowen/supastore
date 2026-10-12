@@ -1,12 +1,12 @@
-import crypto from 'node:crypto';
-import { eq, and } from 'drizzle-orm';
-import type { PgTransaction } from 'drizzle-orm/pg-core';
-import { operationRequests } from '@/infrastructure/db/schema';
-import { ConflictError } from './errors';
+import crypto from "node:crypto";
+import { eq, and } from "drizzle-orm";
+import type { PgTransaction } from "drizzle-orm/pg-core";
+import { operationRequests } from "@/infrastructure/db/schema";
+import { ConflictError } from "./errors";
 
 export function computeInputFingerprint(input: unknown): string {
   const normalized = JSON.stringify(input, Object.keys(input as object).sort());
-  return crypto.createHash('sha256').update(normalized).digest('hex');
+  return crypto.createHash("sha256").update(normalized).digest("hex");
 }
 
 export interface HandleIdempotencyOptions<TInput, TResult> {
@@ -19,7 +19,7 @@ export interface HandleIdempotencyOptions<TInput, TResult> {
 }
 
 export async function withIdempotency<TInput, TResult>(
-  options: HandleIdempotencyOptions<TInput, TResult>
+  options: HandleIdempotencyOptions<TInput, TResult>,
 ): Promise<TResult> {
   const { tx, requestKey, actorScope, action, input, execute } = options;
 
@@ -37,8 +37,8 @@ export async function withIdempotency<TInput, TResult>(
       and(
         eq(operationRequests.requestKey, requestKey),
         eq(operationRequests.actorScope, actorScope),
-        eq(operationRequests.action, action)
-      )
+        eq(operationRequests.action, action),
+      ),
     )
     .limit(1);
 
@@ -46,15 +46,15 @@ export async function withIdempotency<TInput, TResult>(
     const record = existing[0]!;
     if (record.inputFingerprint !== fingerprint) {
       throw new ConflictError(
-        `Idempotency key '${requestKey}' was previously used with different input parameters.`
+        `Idempotency key '${requestKey}' was previously used with different input parameters.`,
       );
     }
-    if (record.status === 'completed' && record.resultPayload) {
+    if (record.status === "completed" && record.resultPayload) {
       return record.resultPayload as TResult;
     }
-    if (record.status === 'processing') {
+    if (record.status === "processing") {
       throw new ConflictError(
-        `An operation with key '${requestKey}' is currently in progress. Please retry shortly.`
+        `An operation with key '${requestKey}' is currently in progress. Please retry shortly.`,
       );
     }
   }
@@ -67,7 +67,7 @@ export async function withIdempotency<TInput, TResult>(
       actorScope,
       action,
       inputFingerprint: fingerprint,
-      status: 'processing',
+      status: "processing",
     })
     .returning();
 
@@ -77,7 +77,7 @@ export async function withIdempotency<TInput, TResult>(
     await tx
       .update(operationRequests)
       .set({
-        status: 'completed',
+        status: "completed",
         resultPayload: result as any,
         updatedAt: new Date(),
       })
@@ -88,7 +88,7 @@ export async function withIdempotency<TInput, TResult>(
     await tx
       .update(operationRequests)
       .set({
-        status: 'failed',
+        status: "failed",
         updatedAt: new Date(),
       })
       .where(eq(operationRequests.id, newRecord!.id));

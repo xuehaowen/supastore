@@ -1,0 +1,14 @@
+node_modules
+.pnpm-store
+.next
+.next-cuj
+dist
+build
+coverage
+test-results
+playwright-report
+.test-*
+.tmp-*
+*.log
+pnpm-lock.yaml
+src/infrastructure/db/migrations/meta

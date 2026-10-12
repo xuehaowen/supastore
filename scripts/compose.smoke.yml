@@ -1,0 +1,45 @@
+# Isolated container acceptance fixture. No developer volumes or external credentials.
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: supastore_smoke
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: fixture-only
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres -d supastore_smoke"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  migrate:
+    image: supastore-migrate
+    environment:
+      DATABASE_URL: postgresql://postgres:fixture-only@postgres:5432/supastore_smoke
+      APP_DATABASE_USER: supastore_app
+      APP_DATABASE_PASSWORD: fixture-runtime-only
+    depends_on:
+      postgres:
+        condition: service_healthy
+  backend:
+    image: supastore-backend:latest
+    environment:
+      DATABASE_URL: postgresql://supastore_app:fixture-runtime-only@postgres:5432/supastore_smoke
+      APP_URL: http://localhost:3097
+      STOREFRONT_ORIGIN: http://localhost:3097
+      BETTER_AUTH_URL: http://localhost:3097
+      BETTER_AUTH_SECRET: fixture-only-auth-secret-at-least-32-characters
+      ADMIN_SETUP_SECRET: fixture-only-setup-secret
+      ENABLE_OUTBOX_WORKER: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+  storefront:
+    image: supastore-storefront:latest
+    environment:
+      BACKEND_URL: http://backend:3000
+      STOREFRONT_ORIGIN: http://localhost:3097
+    ports:
+      - "127.0.0.1:3097:3000"
+    depends_on:
+      backend:
+        condition: service_healthy

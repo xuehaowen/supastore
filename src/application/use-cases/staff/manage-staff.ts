@@ -31,7 +31,7 @@ export interface RemoveStaffMembershipInput {
 async function assertRemainingActiveOwnerGuard(
   tx: any,
   targetUserId: string,
-  operation: "deactivate" | "demote" | "delete"
+  operation: "deactivate" | "demote" | "delete",
 ) {
   // Lock all active owners to serialize guard check against concurrent operations
   const activeOwners = await tx
@@ -43,13 +43,13 @@ async function assertRemainingActiveOwnerGuard(
     .where(
       and(
         eq(staffMemberships.role, "owner"),
-        eq(staffMemberships.isActive, true)
-      )
+        eq(staffMemberships.isActive, true),
+      ),
     )
     .for("update");
 
   const otherActiveOwners = activeOwners.filter(
-    (o: { userId: string }) => o.userId !== targetUserId
+    (o: { userId: string }) => o.userId !== targetUserId,
   );
 
   if (otherActiveOwners.length === 0) {
@@ -57,10 +57,10 @@ async function assertRemainingActiveOwnerGuard(
       operation === "deactivate"
         ? "deactivate"
         : operation === "demote"
-        ? "demote"
-        : "delete";
+          ? "demote"
+          : "delete";
     throw new InvariantViolationError(
-      `Cannot ${actionVerb} the last remaining active owner membership. The store must always retain at least one active owner.`
+      `Cannot ${actionVerb} the last remaining active owner membership. The store must always retain at least one active owner.`,
     );
   }
 }
@@ -90,7 +90,11 @@ export async function updateStaffMembership(input: UpdateStaffMembershipInput) {
     // Check last active owner guard if target is an active owner and is being deactivated or demoted
     if (isCurrentActiveOwner) {
       if (input.isActive === false) {
-        await assertRemainingActiveOwnerGuard(tx, input.targetUserId, "deactivate");
+        await assertRemainingActiveOwnerGuard(
+          tx,
+          input.targetUserId,
+          "deactivate",
+        );
       }
       if (input.role === "staff") {
         await assertRemainingActiveOwnerGuard(tx, input.targetUserId, "demote");
@@ -151,9 +155,7 @@ export async function removeStaffMembership(input: RemoveStaffMembershipInput) {
       await assertRemainingActiveOwnerGuard(tx, input.targetUserId, "delete");
     }
 
-    await tx
-      .delete(staffMemberships)
-      .where(eq(staffMemberships.id, target.id));
+    await tx.delete(staffMemberships).where(eq(staffMemberships.id, target.id));
 
     await tx.insert(auditRecords).values({
       entityType: "staff_memberships",

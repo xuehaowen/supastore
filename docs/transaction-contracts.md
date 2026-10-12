@@ -8,7 +8,21 @@ Use one pure calculation function for quotes and eligible price changes. Define 
 
 For initial supported configurations, calculate tax per adjusted line total and shipping component using exact decimal/rational arithmetic, round each tax component half-up to the currency minor unit, and sum. Inclusive tax extraction uses the same component rounding. Display the policy in setup. Free-shipping thresholds use adjusted merchandise subtotal before separately added exclusive tax. Do not use binary floating-point arithmetic for money. Quantities must be positive safe integers with an enforced upper bound. Reject overflow at API and persistence boundaries.
 
-Snapshot the currency/precision, rates, rounding policy, inputs, components and result. Refund component allocations cannot exceed purchased component amounts after earlier authorizations. There is no credit or promotion term in core.
+Snapshot the currency/precision, rates, rounding policy, inputs, components and result. Refund component allocations cannot exceed purchased component amounts after earlier authorizations. Credit is a funding source, never a discount; promotions alter merchandise before tax/funding allocation.
+
+## Generic reward/provenance contract
+
+These expansion contracts require migration/use-case acceptance before release. At accepted order creation snapshot policy version, rate (0–10000 basis points), verified linked customer identity and discounted line eligibility. Components include merchandise excluding extracted inclusive tax, tax and fulfillment fees. Let P be their sum and E accepted external funding excluding overpayments. Allocate floor(E*c_i/P), then remaining units by descending remainder, ties lexical component type/immutable ID. P=0 yields zero. Integer minor units and overflow-safe intermediate arithmetic are mandatory. Freeze funding at confirmation; extra receipts do not earn.
+
+Eligible external merchandise basis B earns floor(B*rate/10000), once per order. Completion releases pending entitlement. Original per-component external refunds reduce remaining basis; cumulative target is floor(remainingBasis*originalRate/10000), and incremental reversal is original entitlement minus target minus previously reversed. Tax/fee-only refunds do not reverse merchandise rewards. Later configuration changes do not rewrite accepted snapshots; uncertain source corrections require review.
+
+Every positive credit issuance has a source lot. Holds allocate reward lots first, then other sources, FIFO timestamp/ID. Capture/release retain exact lot allocations; cumulative source refunds restore capped original lineage. Legacy origins require replay/reconciliation, with unknown origins classified legacy rather than invented rewards.
+
+Revoke unreserved available value from the affected reward lot only; held/consumed entitlement becomes associated debt. Hold release or refund restoring revoked value recovers only remaining associated debt; if later earnings already repaid debt, preserve restored entitlement without another recovery. Future earnings record gross, debt recovery and net spendable credit separately. Unique recovery identities and account/lot locks prevent duplicate recovery; debt never reduces cash refund entitlement.
+
+Extend the global lock order with sorted slot keys before credit accounts/lots/debt, and provider intent locks before receipts; lower-rank helpers must not run after receipt locking. No network call holds financial locks. Manual deadlines prompt review only; provider expiry requires reconciled terminal status. See [storage responsibilities](database-schema.md) and [workflow transitions](business-workflows.md).
+
+Funding-review resolution locks order, customer credit account, then original receipts. It verifies the frozen external total matches the accepted component funding and every effective original receipt covers its frozen amount; new receipts cannot replace lost sources. The owner records evidence and a durable request identity. Net reversed entitlement is cumulative reversals minus cumulative reinstatements. Reinstatement cancels associated outstanding debt first, clears the corresponding revoked pending value and restores the remaining credit to the same reward source, offsetting other valid debt before spendability. Previously recovered debt is compensated exactly once. Active checkout holds remain unchanged, and later refunds use the adjusted cumulative entitlement. If funding remains short or lineage is uncertain, the review stays pending.
 
 ## Canonical financial projection
 
@@ -89,17 +103,27 @@ Cross-attempt examples: (1) A $50 authorization with a $30 claim actually paid a
 
 ## Required executable examples
 
-| Scenario | Expected result |
-| --- | --- |
-| $40 order submission response lost | Retry recovers one unpaid order; no second payment request |
-| $40 order, $50 received | Return $10 excess; confirm only after it settles |
-| Confirmed $40, refund $40, late additional $10 | Original funding remains consumed; only new $10 is excess |
-| Unpaid $40 order cancelled | No refund row; late $40 creates a separate return |
-| Open order receives $10 of $40, then cancels | Actual-funds cancellation entitlement is $10 |
-| $50 handover entered twice | Void duplicate; retain $50 received, no invented $50 payout |
-| Confirmed $100 corrected to actual $10 | Preserve P; future purchase funding capped at $10; funding loss $90 |
-| Same correction after $30 purchase refund settled | Keep $30 sent; no further entitlement; total funding loss remains $90, not $110 |
-| Cancelled open order had $10 refunded, receipt corrected to $100 | Authorize separate $90 return, whether the $10 is pending or settled |
-| Two payout claims race | One unresolved attempt; total sent cannot exceed authorization |
+### Lightweight commerce extensions
+
+Customer ownership is a stable customer UUID linked uniquely to a verified Better Auth user. New authenticated orders attach that UUID from the server session. Historical guest orders can only be claimed under the order lock with both a verified customer session and the existing unexpired, unrevoked tracking proof. Matching an email never conveys ownership. Address-book records are customer-scoped; checkout stores a separate immutable address snapshot.
+
+Stock uses one pool per variant. Existing variants remain untracked until an owner records a counted balance. Placement locks sorted variants and reserves all tracked quantities atomically. Confirmation keeps reservations; physical handoff consumes them once. Cancellation releases only active reservations. Manual payment deadlines create a review queue and never release stock merely because time elapsed. Downward counts below reserved quantities create a visible shortage and block handoff.
+
+Lock ranks for the extensions: store gate → cart → order → catalog products and variant stock → customer/credit accounts → case/upload records → payment accounts and receipts → refund allocations and payout attempts. Promotion locks remain inside quote calculation while the placement store gate serializes ordering and catalog/promotion mutations. Helpers called after receipt locks must not acquire stock/credit locks.
+
+Credit is typed funding, not a discount or a synthetic receipt. Purchase totals and immutable quote terms remain unchanged. An active credit hold reduces only external due; confirmation captures it exactly once and freezes funding sources. Cancellation of unpaid orders releases holds; captured credit refunds use capped source allocations and compensating ledger entries. External surplus and late transfers retain original-source return rules. Currency and precision changes share the first-credit/first-order store gate. Provider and notification network calls occur outside these transactions.
+
+| Scenario                                                         | Expected result                                                                 |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| $40 order submission response lost                               | Retry recovers one unpaid order; no second payment request                      |
+| $40 order, $50 received                                          | Return $10 excess; confirm only after it settles                                |
+| Confirmed $40, refund $40, late additional $10                   | Original funding remains consumed; only new $10 is excess                       |
+| Unpaid $40 order cancelled                                       | No refund row; late $40 creates a separate return                               |
+| Open order receives $10 of $40, then cancels                     | Actual-funds cancellation entitlement is $10                                    |
+| $50 handover entered twice                                       | Void duplicate; retain $50 received, no invented $50 payout                     |
+| Confirmed $100 corrected to actual $10                           | Preserve P; future purchase funding capped at $10; funding loss $90             |
+| Same correction after $30 purchase refund settled                | Keep $30 sent; no further entitlement; total funding loss remains $90, not $110 |
+| Cancelled open order had $10 refunded, receipt corrected to $100 | Authorize separate $90 return, whether the $10 is pending or settled            |
+| Two payout claims race                                           | One unresolved attempt; total sent cannot exceed authorization                  |
 
 Implement table-driven examples and generated operation sequences for money invariants. Test allocation sums, component caps, reference uniqueness, repeated commands, correction reversals, concurrent receipt/cancellation, and fulfillment/cancellation races. Every rule above requires executable evidence before release.

@@ -1,23 +1,29 @@
-import { sql } from 'drizzle-orm';
-import type { PgTransaction } from 'drizzle-orm/pg-core';
+import { sql } from "drizzle-orm";
+import type { PgTransaction } from "drizzle-orm/pg-core";
 
 /**
  * Shared Lock Ordering Manager for PostgreSQL Transactions.
- * Enforces strict ascending lock acquisition to guarantee deadlock-free operations.
+ * Acquires the listed financial locks in the shared order. Callers acquiring
+ * direct locks must follow the same ranks; this helper cannot police them.
  *
  * Ordering:
  * 1. Store settings / ordering gate
  * 2. Carts (sorted by UUID)
  * 3. Orders (sorted by UUID)
  * 4. Correction cases / upload intents (sorted by type, UUID)
- * 5. Payment accounts, then receipts (sorted by UUID)
- * 6. Refund/return allocations and payout attempts (sorted by UUID)
+ * 5. Fulfillment slots, then stock variants (sorted by UUID)
+ * 6. Customer credit accounts and their source lots/debt
+ * 7. Payment accounts, then receipts (sorted by UUID)
+ * 8. Refund/return allocations and payout attempts (sorted by UUID)
  */
 
 export interface LockTargets {
   lockStoreSettings?: boolean;
   cartIds?: string[];
   orderIds?: string[];
+  stockVariantIds?: string[];
+  fulfillmentSlotIds?: string[];
+  creditAccountIds?: string[];
   paymentAccountIds?: string[];
   receiptIds?: string[];
   allocationIds?: string[];
@@ -31,7 +37,7 @@ export function sortUniqueUuids(ids?: string[]): string[] {
 
 export async function acquireTransactionLocks(
   tx: PgTransaction<any, any, any>,
-  targets: LockTargets
+  targets: LockTargets,
 ): Promise<void> {
   // 1. Store settings / gate
   if (targets.lockStoreSettings) {
@@ -50,25 +56,52 @@ export async function acquireTransactionLocks(
     await tx.execute(sql`SELECT id FROM orders WHERE id = ${id} FOR UPDATE`);
   }
 
-  // 5. Payment accounts then receipts
+  for (const id of sortUniqueUuids(targets.fulfillmentSlotIds)) {
+    await tx.execute(
+      sql`SELECT id FROM fulfillment_slots WHERE id = ${id} FOR UPDATE`,
+    );
+  }
+  // 5. Stock variants
+  for (const id of sortUniqueUuids(targets.stockVariantIds)) {
+    await tx.execute(
+      sql`SELECT id FROM product_variants WHERE id = ${id} FOR UPDATE`,
+    );
+    await tx.execute(
+      sql`SELECT variant_id FROM variant_stock WHERE variant_id = ${id} FOR UPDATE`,
+    );
+  }
+  for (const id of sortUniqueUuids(targets.creditAccountIds)) {
+    await tx.execute(
+      sql`SELECT id FROM store_credit_accounts WHERE id = ${id} FOR UPDATE`,
+    );
+  }
+  // 7. Payment accounts then receipts
   const paymentAccountIds = sortUniqueUuids(targets.paymentAccountIds);
   for (const id of paymentAccountIds) {
-    await tx.execute(sql`SELECT id FROM payment_accounts WHERE id = ${id} FOR UPDATE`);
+    await tx.execute(
+      sql`SELECT id FROM payment_accounts WHERE id = ${id} FOR UPDATE`,
+    );
   }
 
   const receiptIds = sortUniqueUuids(targets.receiptIds);
   for (const id of receiptIds) {
-    await tx.execute(sql`SELECT id FROM payment_receipts WHERE id = ${id} FOR UPDATE`);
+    await tx.execute(
+      sql`SELECT id FROM payment_receipts WHERE id = ${id} FOR UPDATE`,
+    );
   }
 
   // 6. Allocations & payout attempts
   const allocationIds = sortUniqueUuids(targets.allocationIds);
   for (const id of allocationIds) {
-    await tx.execute(sql`SELECT id FROM payout_allocations WHERE id = ${id} FOR UPDATE`);
+    await tx.execute(
+      sql`SELECT id FROM payout_allocations WHERE id = ${id} FOR UPDATE`,
+    );
   }
 
   const payoutAttemptIds = sortUniqueUuids(targets.payoutAttemptIds);
   for (const id of payoutAttemptIds) {
-    await tx.execute(sql`SELECT id FROM payout_attempts WHERE id = ${id} FOR UPDATE`);
+    await tx.execute(
+      sql`SELECT id FROM payout_attempts WHERE id = ${id} FOR UPDATE`,
+    );
   }
 }

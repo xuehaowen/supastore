@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
 import { shippingPrice, validatePickup } from "@/domain/checkout";
 import { validateEvidence } from "@/domain/evidence";
+import { describe, expect, it } from "vitest";
 describe("checkout boundaries", () => {
   it("rejects unsupported destinations", () =>
     expect(() =>
@@ -35,7 +35,7 @@ describe("checkout boundaries", () => {
       ),
     ).toThrow();
     expect(() =>
-      validatePickup(location, "2026-09-07", "99:99", "UTC"),
+      validatePickup(location, "2026-09-07", "99:99", "UTC", new Date()),
     ).toThrow();
     expect(
       validatePickup(

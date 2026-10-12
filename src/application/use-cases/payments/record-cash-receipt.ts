@@ -32,7 +32,7 @@ export interface RecordCashReceiptInput {
 export async function recordCashReceipt(input: RecordCashReceiptInput) {
   if (!Number.isSafeInteger(input.amountCents) || input.amountCents <= 0) {
     throw new InvariantViolationError(
-      `Receipt amount must be greater than 0. Received: ${input.amountCents}`
+      `Receipt amount must be greater than 0. Received: ${input.amountCents}`,
     );
   }
 
@@ -41,7 +41,7 @@ export async function recordCashReceipt(input: RecordCashReceiptInput) {
     input.tenderedAmountCents < input.amountCents
   ) {
     throw new InvariantViolationError(
-      `Tendered amount (${input.tenderedAmountCents}) cannot be less than receipt amount (${input.amountCents}).`
+      `Tendered amount (${input.tenderedAmountCents}) cannot be less than receipt amount (${input.amountCents}).`,
     );
   }
 
@@ -74,12 +74,12 @@ export async function recordCashReceipt(input: RecordCashReceiptInput) {
       .limit(1);
     if (!account) {
       throw new NotFoundError(
-        `Payment account '${input.paymentAccountId}' not found.`
+        `Payment account '${input.paymentAccountId}' not found.`,
       );
     }
     if (!account.isActive) {
       throw new InvariantViolationError(
-        `Payment account '${account.accountName}' is currently inactive.`
+        `Payment account '${account.accountName}' is currently inactive.`,
       );
     }
 
@@ -137,8 +137,8 @@ export async function recordCashReceipt(input: RecordCashReceiptInput) {
       .where(
         and(
           eq(orderProposals.orderId, order.id),
-          eq(orderProposals.status, "pending")
-        )
+          eq(orderProposals.status, "pending"),
+        ),
       )
       .returning();
 
@@ -149,6 +149,7 @@ export async function recordCashReceipt(input: RecordCashReceiptInput) {
 
     const projection = computeOrderFinancialProjection({
       purchaseTotalCents: order.purchaseTotalCents,
+      committedCreditCents: order.creditAppliedCents ?? 0,
       isConfirmed:
         order.lifecycleStatus === "confirmed" ||
         order.lifecycleStatus === "completed",
@@ -169,8 +170,11 @@ export async function recordCashReceipt(input: RecordCashReceiptInput) {
           orderId: order.id,
           receivedCents: projection.netReceivedCents,
           purchaseTotalCents: order.purchaseTotalCents,
-          balanceCents: order.purchaseTotalCents - projection.netReceivedCents,
-        }
+          balanceCents:
+            order.purchaseTotalCents -
+            (order.creditAppliedCents ?? 0) -
+            projection.netReceivedCents,
+        },
       );
     }
 

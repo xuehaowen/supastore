@@ -1,14 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from "vitest";
 import {
   computeOrderFinancialProjection,
   computeReceiptProjection,
-} from '@/domain/financial-projection/projection';
-import {
-  classifyPayoutTransfer,
-} from '@/domain/financial-projection/discrepancies';
+} from "@/domain/financial-projection/projection";
+import { classifyPayoutTransfer } from "@/domain/financial-projection/discrepancies";
 
-describe('Canonical Financial Projection Engine', () => {
-  it('Scenario 1: $40 order, $50 received -> return $10 excess, confirm only after it settles', () => {
+describe("Canonical Financial Projection Engine", () => {
+  it("Scenario 1: $40 order, $50 received -> return $10 excess, confirm only after it settles", () => {
     // $40 order (4000 cents), receipt 1 for $50 (5000 cents)
     const projBeforeReturn = computeOrderFinancialProjection({
       purchaseTotalCents: 4000,
@@ -16,7 +14,7 @@ describe('Canonical Financial Projection Engine', () => {
       isCancelled: false,
       receipts: [
         {
-          id: 'rcpt-1',
+          id: "rcpt-1",
           originalAmountCents: 5000,
           effectiveNonPurchaseReturnAuthorizationsCents: 0,
           settledNonPurchaseReturnsCents: 0,
@@ -35,7 +33,7 @@ describe('Canonical Financial Projection Engine', () => {
       isCancelled: false,
       receipts: [
         {
-          id: 'rcpt-1',
+          id: "rcpt-1",
           originalAmountCents: 5000,
           effectiveNonPurchaseReturnAuthorizationsCents: 1000,
           settledNonPurchaseReturnsCents: 0,
@@ -44,7 +42,9 @@ describe('Canonical Financial Projection Engine', () => {
     });
 
     // Net received is still 5000 before settlement, but Ui=1000 so there is an unsettled return
-    expect(projWithAuthorizedReturn.receipts[0]!.unsentRemainderCents).toBe(1000);
+    expect(projWithAuthorizedReturn.receipts[0]!.unsentRemainderCents).toBe(
+      1000,
+    );
 
     // Once $10 return is settled: net received becomes exactly 4000 = P, allowing confirmation!
     const projWithSettledReturn = computeOrderFinancialProjection({
@@ -53,7 +53,7 @@ describe('Canonical Financial Projection Engine', () => {
       isCancelled: false,
       receipts: [
         {
-          id: 'rcpt-1',
+          id: "rcpt-1",
           originalAmountCents: 5000,
           effectiveNonPurchaseReturnAuthorizationsCents: 1000,
           settledNonPurchaseReturnsCents: 1000,
@@ -66,7 +66,7 @@ describe('Canonical Financial Projection Engine', () => {
     expect(projWithSettledReturn.receipts[0]!.unsentRemainderCents).toBe(0);
   });
 
-  it('Scenario 2: Confirmed $40, refund $40, late additional $10 -> original funding consumed, only new $10 is excess', () => {
+  it("Scenario 2: Confirmed $40, refund $40, late additional $10 -> original funding consumed, only new $10 is excess", () => {
     // Confirmed $40 with $40 receipt 1 (F1 = 4000), fully refunded (eff purchase refund = 4000, settled = 4000)
     // Then late receipt 2 arrives for $10 (1000 cents)
     const proj = computeOrderFinancialProjection({
@@ -75,14 +75,14 @@ describe('Canonical Financial Projection Engine', () => {
       isCancelled: false,
       receipts: [
         {
-          id: 'rcpt-1',
+          id: "rcpt-1",
           originalAmountCents: 4000,
           frozenPurchaseFundingCents: 4000,
           effectivePurchaseRefundAuthorizationsCents: 4000,
           settledPurchaseRefundsCents: 4000,
         },
         {
-          id: 'rcpt-2',
+          id: "rcpt-2",
           originalAmountCents: 1000,
           frozenPurchaseFundingCents: 0, // recorded after confirmation
           isRecordedAfterConfirmation: true,
@@ -103,14 +103,14 @@ describe('Canonical Financial Projection Engine', () => {
     expect(r2.availablePayoutCapacityCents).toBe(1000);
   });
 
-  it('Scenario 3: Confirmed $100 corrected to actual $10 -> preserve P; future purchase funding capped at $10; funding loss $90', () => {
+  it("Scenario 3: Confirmed $100 corrected to actual $10 -> preserve P; future purchase funding capped at $10; funding loss $90", () => {
     const proj = computeOrderFinancialProjection({
       purchaseTotalCents: 10000,
       isConfirmed: true,
       isCancelled: false,
       receipts: [
         {
-          id: 'rcpt-1',
+          id: "rcpt-1",
           originalAmountCents: 10000,
           appliedCorrectionsCents: -9000, // corrected down to 1000 ($10)
           frozenPurchaseFundingCents: 10000,
@@ -128,14 +128,14 @@ describe('Canonical Financial Projection Engine', () => {
     expect(proj.operationalFundingShortfallCents).toBe(9000);
   });
 
-  it('Scenario 4: Same correction after $30 purchase refund settled -> keep $30 sent; total funding loss remains $90, not $110', () => {
+  it("Scenario 4: Same correction after $30 purchase refund settled -> keep $30 sent; total funding loss remains $90, not $110", () => {
     const proj = computeOrderFinancialProjection({
       purchaseTotalCents: 10000,
       isConfirmed: true,
       isCancelled: false,
       receipts: [
         {
-          id: 'rcpt-1',
+          id: "rcpt-1",
           originalAmountCents: 10000,
           appliedCorrectionsCents: -9000, // Ri = 1000
           frozenPurchaseFundingCents: 10000,
@@ -159,14 +159,20 @@ describe('Canonical Financial Projection Engine', () => {
   });
 });
 
-describe('Payout Discrepancy & Transfer Classification', () => {
-  it('Scenario A: $50 claim sent to wrong destination -> T=50, C=0, E=50, leaves $50 owed', () => {
+describe("Payout Discrepancy & Transfer Classification", () => {
+  it("Scenario A: $50 claim sent to wrong destination -> T=50, C=0, E=50, leaves $50 owed", () => {
     const result = classifyPayoutTransfer({
       actualAmountCents: 5000,
       allocationAuthorizedCents: 5000,
       priorSettledCentsAcrossAttempts: 0,
-      claimedDestination: { type: 'bank_account', accountNumberHash: 'verified-hash-123' },
-      actualDestination: { type: 'bank_account', accountNumberHash: 'WRONG-hash-999' },
+      claimedDestination: {
+        type: "bank_account",
+        accountNumberHash: "verified-hash-123",
+      },
+      actualDestination: {
+        type: "bank_account",
+        accountNumberHash: "WRONG-hash-999",
+      },
       attemptClaimedAmountCents: 5000,
       priorActualTransfersForAttemptCents: 0,
     });
@@ -178,13 +184,19 @@ describe('Payout Discrepancy & Transfer Classification', () => {
     expect(result.isClaimLimitBreached).toBe(false);
   });
 
-  it('Scenario B: $50 claim actually sent as $70 to verified source -> C=50, E=20, breaches claim limit', () => {
+  it("Scenario B: $50 claim actually sent as $70 to verified source -> C=50, E=20, breaches claim limit", () => {
     const result = classifyPayoutTransfer({
       actualAmountCents: 7000,
       allocationAuthorizedCents: 5000,
       priorSettledCentsAcrossAttempts: 0,
-      claimedDestination: { type: 'bank_account', accountNumberHash: 'verified-hash-123' },
-      actualDestination: { type: 'bank_account', accountNumberHash: 'verified-hash-123' },
+      claimedDestination: {
+        type: "bank_account",
+        accountNumberHash: "verified-hash-123",
+      },
+      actualDestination: {
+        type: "bank_account",
+        accountNumberHash: "verified-hash-123",
+      },
       attemptClaimedAmountCents: 5000,
       priorActualTransfersForAttemptCents: 0,
     });
@@ -195,13 +207,19 @@ describe('Payout Discrepancy & Transfer Classification', () => {
     expect(result.isClaimLimitBreached).toBe(true); // 7000 > 5000
   });
 
-  it('Scenario C: Verified $50 transfer against $50 claim -> C=50, E=0', () => {
+  it("Scenario C: Verified $50 transfer against $50 claim -> C=50, E=0", () => {
     const result = classifyPayoutTransfer({
       actualAmountCents: 5000,
       allocationAuthorizedCents: 5000,
       priorSettledCentsAcrossAttempts: 0,
-      claimedDestination: { type: 'bank_account', accountNumberHash: 'verified-hash-123' },
-      actualDestination: { type: 'bank_account', accountNumberHash: 'verified-hash-123' },
+      claimedDestination: {
+        type: "bank_account",
+        accountNumberHash: "verified-hash-123",
+      },
+      actualDestination: {
+        type: "bank_account",
+        accountNumberHash: "verified-hash-123",
+      },
       attemptClaimedAmountCents: 5000,
       priorActualTransfersForAttemptCents: 0,
     });
@@ -212,13 +230,19 @@ describe('Payout Discrepancy & Transfer Classification', () => {
     expect(result.isClaimLimitBreached).toBe(false);
   });
 
-  it('Scenario D: $30 partial transfer on $50 claim -> C=30, E=0, U=20', () => {
+  it("Scenario D: $30 partial transfer on $50 claim -> C=30, E=0, U=20", () => {
     const result = classifyPayoutTransfer({
       actualAmountCents: 3000,
       allocationAuthorizedCents: 5000,
       priorSettledCentsAcrossAttempts: 0,
-      claimedDestination: { type: 'bank_account', accountNumberHash: 'verified-hash-123' },
-      actualDestination: { type: 'bank_account', accountNumberHash: 'verified-hash-123' },
+      claimedDestination: {
+        type: "bank_account",
+        accountNumberHash: "verified-hash-123",
+      },
+      actualDestination: {
+        type: "bank_account",
+        accountNumberHash: "verified-hash-123",
+      },
       attemptClaimedAmountCents: 5000,
       priorActualTransfersForAttemptCents: 0,
     });

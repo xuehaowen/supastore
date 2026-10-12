@@ -5,13 +5,41 @@ import {
   boolean,
   timestamp,
   uuid,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 export const storeSettings = pgTable("store_settings", {
   id: uuid("id").primaryKey().defaultRandom(),
   storeName: text("store_name").notNull(),
+  commercePolicy: jsonb("commerce_policy")
+    .$type<import("@/domain/commerce-policy").CommercePolicy>()
+    .notNull()
+    .default({
+      guestCheckout: true,
+      rewardsEnabled: false,
+      rewardRateBasisPoints: 500,
+      shippingEnabled: true,
+      pickupEnabled: true,
+      deliveryEnabled: false,
+      salesThresholdCents: null,
+      fiscalYearStartMonth: 1,
+      rewardEligibleCategoryIds: [],
+      rewardsStartAt: null,
+      rewardsEndAt: null,
+    }),
   logoKey: text("logo_key"),
   supportEmail: text("support_email").notNull().default(""),
+  publicContent: jsonb("public_content")
+    .$type<
+      Partial<
+        Record<
+          "en" | "zh",
+          Partial<Record<"about" | "shipping" | "returns" | "privacy", string>>
+        >
+      >
+    >()
+    .notNull()
+    .default({}),
   pauseMessage: text("pause_message")
     .notNull()
     .default("The store is currently paused. Please check back soon."),

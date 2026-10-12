@@ -8,14 +8,23 @@ import {
   storeSettings,
   orderFulfillments,
 } from "@/infrastructure/db/schema";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { money } from "@/infrastructure/web";
+import { PrintSlipButton } from "../../print-slip-button";
+import { staffIdentity } from "@/infrastructure/web";
+import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 
 interface PackingSlipPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function PackingSlipPage({ params }: PackingSlipPageProps) {
+export default async function PackingSlipPage({
+  params,
+}: PackingSlipPageProps) {
+  const staff = await staffIdentity().catch(() => redirect("/admin/login"));
+  await db
+    .transaction((tx) => verifyStaffInTransaction(tx, staff))
+    .catch(() => redirect("/admin/login"));
   const { id } = await params;
 
   const [order] = await db
@@ -81,15 +90,14 @@ export default async function PackingSlipPage({ params }: PackingSlipPageProps) 
       {/* Action bar for screen view */}
       <div className="no-print mx-auto mb-4 flex max-w-sm items-center justify-between rounded bg-white p-3 shadow">
         <div>
-          <span className="font-semibold text-neutral-800">Thermal Packing Slip</span>
-          <p className="text-[10px] text-neutral-500">Optimized for 58mm / 80mm printers</p>
+          <span className="font-semibold text-neutral-800">
+            Thermal Packing Slip
+          </span>
+          <p className="text-[10px] text-neutral-500">
+            Optimized for 58mm / 80mm printers
+          </p>
         </div>
-        <button
-          onClick={() => window.print()}
-          className="rounded bg-black px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-800"
-        >
-          Print Slip
-        </button>
+        <PrintSlipButton />
       </div>
 
       {/* 80mm / 58mm Thermal Print Container */}
@@ -99,7 +107,9 @@ export default async function PackingSlipPage({ params }: PackingSlipPageProps) 
           <h1 className="text-sm font-bold uppercase tracking-wider">
             {store?.storeName || "SupaStore"}
           </h1>
-          <p className="text-[10px] text-neutral-600">PACKING SLIP / DISPATCH</p>
+          <p className="text-[10px] text-neutral-600">
+            PACKING SLIP / DISPATCH
+          </p>
         </div>
 
         {/* Order Meta */}
@@ -129,10 +139,12 @@ export default async function PackingSlipPage({ params }: PackingSlipPageProps) 
           <p className="font-bold">DELIVER TO:</p>
           <p>{order.guestName}</p>
           <p className="text-neutral-600">{order.guestEmail}</p>
-          {shipping?.street && <p>{shipping.street}</p>}
-          {(shipping?.city || shipping?.postalCode) && (
+          {(shipping?.address || shipping?.street) && (
+            <p>{shipping.address || shipping.street}</p>
+          )}
+          {(shipping?.city || shipping?.region || shipping?.postalCode) && (
             <p>
-              {shipping.city} {shipping.postalCode}
+              {shipping.city} {shipping.region} {shipping.postalCode}
             </p>
           )}
           {shipping?.country && <p>{shipping.country}</p>}
@@ -150,9 +162,15 @@ export default async function PackingSlipPage({ params }: PackingSlipPageProps) 
               <div key={item.id} className="py-1">
                 <div className="flex justify-between">
                   <span className="w-8 font-bold">{item.quantity}x</span>
-                  <span className="flex-1 font-medium">{item.productTitle}</span>
+                  <span className="flex-1 font-medium">
+                    {item.productTitle}
+                  </span>
                   <span className="w-14 text-right">
-                    {money(item.lineTotalCents, store?.currency, store?.precision)}
+                    {money(
+                      item.lineTotalCents,
+                      store?.currency,
+                      store?.precision,
+                    )}
                   </span>
                 </div>
                 {item.variantTitle && (
@@ -169,7 +187,13 @@ export default async function PackingSlipPage({ params }: PackingSlipPageProps) 
         <div className="space-y-1 text-right">
           <div className="flex justify-between font-bold text-sm">
             <span>TOTAL:</span>
-            <span>{money(order.purchaseTotalCents, store?.currency, store?.precision)}</span>
+            <span>
+              {money(
+                order.purchaseTotalCents,
+                store?.currency,
+                store?.precision,
+              )}
+            </span>
           </div>
         </div>
 
@@ -178,7 +202,9 @@ export default async function PackingSlipPage({ params }: PackingSlipPageProps) 
           <div className="inline-block tracking-widest font-mono text-[10px] border border-black px-4 py-1">
             * {order.referenceCode} *
           </div>
-          <p className="mt-1 text-[9px] text-neutral-500">Thank you for your order!</p>
+          <p className="mt-1 text-[9px] text-neutral-500">
+            Thank you for your order!
+          </p>
         </div>
       </div>
     </div>

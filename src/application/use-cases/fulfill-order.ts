@@ -1,11 +1,17 @@
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
+import { settleOrderStock } from "./inventory/stock-operations";
+import { settleSlot } from "./inventory/slot-operations";
+import { releaseOrderReward } from "./store-credit/reward-operations";
 import {
   orders,
   orderFulfillments,
   outboxEvents,
   eventDeliveries,
   auditRecords,
+  orderShipments,
+  orderItems,
+  shipmentItems,
 } from "@/infrastructure/db/schema";
 import { acquireTransactionLocks } from "@/domain/locking/lock-order";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
@@ -13,6 +19,8 @@ import {
   NotFoundError,
   InvariantViolationError,
 } from "@/application/common/errors";
+import { shipmentCoverageComplete } from "@/domain/shipment";
+import { shipmentLines } from "./fulfillment/shipments";
 
 export interface FulfillOrderInput {
   orderId: string;
@@ -22,6 +30,12 @@ export interface FulfillOrderInput {
 }
 
 export async function fulfillOrder(input: FulfillOrderInput) {
+  if (!input.carrier?.trim()) {
+    throw new InvariantViolationError(
+      "Carrier or manual delivery method is required.",
+    );
+  }
+  const carrier = input.carrier.trim();
   return await db.transaction(async (tx) => {
     // 1. Staff verification
     const staff = await verifyStaffInTransaction(tx, input.staffUserId);
@@ -37,6 +51,10 @@ export async function fulfillOrder(input: FulfillOrderInput) {
     if (!order) {
       throw new NotFoundError(`Order with ID '${input.orderId}' not found.`);
     }
+    if (order.fulfillmentType === "pickup")
+      throw new InvariantViolationError(
+        "Complete verified pickup handoff to deliver this order.",
+      );
 
     if (order.lifecycleStatus !== "confirmed") {
       throw new InvariantViolationError(
@@ -45,12 +63,51 @@ export async function fulfillOrder(input: FulfillOrderInput) {
     }
 
     // Update fulfillment record
+    const shipments = await tx
+      .select()
+      .from(orderShipments)
+      .where(eq(orderShipments.orderId, order.id));
+    const items = await tx
+      .select()
+      .from(orderItems)
+      .where(eq(orderItems.orderId, order.id));
+    if (!shipments.length) {
+      const [manual] = await tx
+        .insert(orderShipments)
+        .values({
+          orderId: order.id,
+          requestKey: "manual-completed-delivery",
+          carrier,
+          trackingNumber: input.trackingNumber?.trim() || null,
+          status: "delivered",
+          deliveredAt: new Date(),
+        })
+        .returning();
+      await tx.insert(shipmentItems).values(
+        items.map((item) => ({
+          shipmentId: manual!.id,
+          orderItemId: item.id,
+          quantity: item.quantity,
+        })),
+      );
+    } else if (
+      !shipmentCoverageComplete(items, await shipmentLines(tx, order.id))
+    )
+      throw new InvariantViolationError(
+        "Dispatch every ordered unit before recording completed delivery.",
+      );
+    await tx
+      .update(orderShipments)
+      .set({ status: "delivered", deliveredAt: new Date() })
+      .where(eq(orderShipments.orderId, order.id));
+    await settleSlot(tx, order.id, "consumed");
+    await settleOrderStock(tx, order.id, "consumed", staff.userId);
     await tx
       .update(orderFulfillments)
       .set({
         status: "fulfilled",
-        carrier: input.carrier ?? "Standard",
-        trackingNumber: input.trackingNumber ?? "MOCK-TRACK-123",
+        carrier,
+        trackingNumber: input.trackingNumber?.trim() || null,
         fulfilledAt: new Date(),
         updatedAt: new Date(),
       })
@@ -67,6 +124,7 @@ export async function fulfillOrder(input: FulfillOrderInput) {
       .returning();
 
     // Outbox event
+    await releaseOrderReward(tx, order.id, staff.userId);
     const [event] = await tx
       .insert(outboxEvents)
       .values({
@@ -86,8 +144,8 @@ export async function fulfillOrder(input: FulfillOrderInput) {
         payload: {
           orderId: order.id,
           referenceCode: order.referenceCode,
-          carrier: input.carrier ?? "Standard",
-          trackingNumber: input.trackingNumber ?? "MOCK-TRACK-123",
+          carrier,
+          trackingNumber: input.trackingNumber?.trim() || null,
           completedAt: new Date().toISOString(),
         },
       })

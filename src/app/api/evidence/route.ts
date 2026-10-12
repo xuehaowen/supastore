@@ -5,11 +5,11 @@ import { createUploadIntent } from "@/application/use-cases/uploads/create-uploa
 import { finalizeUpload } from "@/application/use-cases/uploads/finalize-upload";
 import { orderToken } from "@/infrastructure/web";
 import { DomainError } from "@/application/common/errors";
+import { assertMutationOrigin } from "@/infrastructure/http/commerce-api";
 const uuid = v.pipe(v.string(), v.uuid());
 async function handle(request: NextRequest, finalize: boolean) {
   try {
-    if (request.headers.get("origin") !== request.nextUrl.origin)
-      return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
+    assertMutationOrigin(request);
     const body = await request.json();
     const orderId = v.parse(uuid, body.orderId);
     const sessionToken = await orderToken(orderId);
@@ -45,7 +45,9 @@ async function handle(request: NextRequest, finalize: boolean) {
         status:
           error instanceof DomainError && error.code === "UNAUTHORIZED"
             ? 401
-            : 400,
+            : error instanceof DomainError && error.code === "FORBIDDEN"
+              ? 403
+              : 400,
       },
     );
   }
