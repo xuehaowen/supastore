@@ -15,7 +15,7 @@ Keep recovery responses privacy preserving. An order reference is not access aut
 ## Related paths and checks
 
 - Storage: guest/private-access records and order access associations; see the database schema and guest-access helper.
-- Checks: unit `public-registration.test.ts` and browser `cross-service-storefront.spec.ts` exercise related identity/private-access boundaries.
+- Checks: unit `public-registration.test.ts` and browser `boundaries.spec.ts` exercise related identity/private-access boundaries.
 - Recovery requests use `/api/v1/recovery`; proof exchange is served by the recovery pages in both customer interfaces.
 
 ## More context

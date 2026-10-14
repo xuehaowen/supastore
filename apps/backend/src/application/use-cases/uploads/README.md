@@ -15,7 +15,7 @@ Perform storage I/O outside financial transactions, then recheck authorization/e
 ## Related paths and checks
 
 - Storage: `payment-uploads.ts`, payment evidence associations and private S3-compatible objects.
-- Checks: unit `evidence-upload-route.test.ts` / `evidence-view-route.test.ts`, and browser `cross-service-storefront.spec.ts`.
+- Checks: unit `evidence-upload-route.test.ts` / `evidence-view-route.test.ts`, and browser `cuj.spec.ts`.
 - Evidence endpoints live under `/api/evidence`. Uploaded proof is not a receipt of money. Staging writes cannot alter the immutable finalized object.
 
 ## More context

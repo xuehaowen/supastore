@@ -15,7 +15,7 @@ Derive the customer from verified server identity. Guest-order claims additional
 ## Related paths and checks
 
 - Storage: `auth.ts`, `customers.ts`, `sms.ts` and customer associations on orders.
-- Checks: unit `customer-profile.test.ts`, integration `sms-verification.test.ts`, browser `storefront-journey-updates.spec.ts`.
+- Checks: unit `customer-profile.test.ts`, integration `sms-verification.test.ts`, browser `boundaries.spec.ts` and `i18n.spec.ts`.
 - API entry points: `/api/v1/account`, `/api/v1/account/addresses`, `/api/v1/account/orders`, `/api/v1/account/sms`. Profile/address edits leave purchase snapshots intact; phone changes and opt-out fence pending verification approvals.
 
 ## More context
