@@ -5,4 +5,4 @@ export {
   formatMoney,
   formatLocalDate,
   localeFromPath,
-} from "../../packages/i18n/src/customer";
+} from "../customer";

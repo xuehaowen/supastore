@@ -1,6 +1,6 @@
 import en from "./locales/en.json";
 import zh from "./locales/zh.json";
-import { sharedMessages } from "../../packages/i18n/src/customer";
+import { sharedMessages } from "../customer";
 
 export const messages = {
   en: { ...en, ...sharedMessages.en },

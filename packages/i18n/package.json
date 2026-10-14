@@ -1,0 +1,31 @@
+{
+  "name": "@supastore/i18n",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./customer": {
+      "types": "./src/customer.ts",
+      "default": "./src/customer.ts"
+    },
+    "./document-language": {
+      "types": "./src/document-language.tsx",
+      "default": "./src/document-language.tsx"
+    },
+    "./messages": {
+      "types": "./src/app/messages.ts",
+      "default": "./src/app/messages.ts"
+    },
+    "./request": {
+      "types": "./src/app/request.ts",
+      "default": "./src/app/request.ts"
+    }
+  },
+  "dependencies": {
+    "next-intl": "^4.9.2"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "next": "^15.5.27"
+  }
+}

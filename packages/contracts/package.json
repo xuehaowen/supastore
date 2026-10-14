@@ -1,11 +1,16 @@
 {
   "name": "@supastore/contracts",
-  "version": "0.1.0",
   "private": true,
+  "version": "0.1.0",
   "type": "module",
   "exports": {
     ".": {
-      "types": "./src/index.ts"
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./sitemap": {
+      "types": "./src/sitemap.ts",
+      "default": "./src/sitemap.ts"
     }
   }
 }

@@ -1,6 +1,11 @@
 /** Serializable HTTP DTOs and pure validation. No server code or external dependencies. */
 export * from "./checkout";
 export * from "./responses";
+export type {
+  CustomerPageModels,
+  QuoteTerms,
+  ProductDetail,
+} from "./customer-pages";
 export interface CustomerAccountDto {
   customer: { name: string; email: string; phone: string | null };
   orders: {

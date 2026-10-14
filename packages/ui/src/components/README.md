@@ -12,4 +12,4 @@ Keep business mutations and authorization in application workflows; component re
 
 ## More context
 
-[Parent overview](../README.md)
+[Parent overview](../../README.md)

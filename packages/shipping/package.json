@@ -1,0 +1,15 @@
+{
+  "name": "@supastore/shipping",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "@supastore/i18n": "workspace:*"
+  },
+  "exports": {
+    "./destination": {
+      "types": "./src/destination.ts",
+      "default": "./src/destination.ts"
+    }
+  }
+}
