@@ -13,6 +13,10 @@ services:
       retries: 20
   migrate:
     image: supastore-migrate
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: migrations
     environment:
       DATABASE_URL: postgresql://postgres:fixture-only@postgres:5432/supastore_smoke
       APP_DATABASE_USER: supastore_app
@@ -22,6 +26,10 @@ services:
         condition: service_healthy
   backend:
     image: supastore-backend:latest
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: backend
     environment:
       DATABASE_URL: postgresql://supastore_app:fixture-runtime-only@postgres:5432/supastore_smoke
       APP_URL: http://localhost:3097
@@ -35,6 +43,10 @@ services:
         condition: service_healthy
   storefront:
     image: supastore-storefront:latest
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: storefront
     environment:
       BACKEND_URL: http://backend:3000
       STOREFRONT_ORIGIN: http://localhost:3097

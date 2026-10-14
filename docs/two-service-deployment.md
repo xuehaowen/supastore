@@ -35,7 +35,7 @@ production backend rejects short or known placeholder authentication secrets.
 Install with `pnpm install --frozen-lockfile`. Start dependencies with
 `docker compose up -d postgres rustfs`, run `pnpm db:migrate` against the development
 database, then run `pnpm dev:backend` and `pnpm dev:storefront` separately.
-The development launchers default `APP_URL`, `STOREFRONT_ORIGIN` and `BETTER_AUTH_URL` to `http://localhost:3001` without editing `.env`. Explicit shell environment values override these defaults. Use
+The development and production start launchers default `APP_URL`, `STOREFRONT_ORIGIN` and `BETTER_AUTH_URL` to `http://localhost:3001` without editing `.env`. Explicit shell environment values override these defaults. Use
 `http://127.0.0.1:3000` for the storefront's `BACKEND_URL`. `pnpm dev` starts both services. The backend has no customer page routes; its root opens `/admin`. The storefront now renders the original customer UI, including search, categories, collections and policy pages. Customer pages and
 `/admin` use the storefront origin. Optional Adminer uses port 9002 with
 `docker compose --profile tools up -d adminer`; RustFS retains port 9001.
@@ -112,17 +112,17 @@ verification require an operator acceptance run; local tests alone do not verify
 external deployment configuration.
 
 Run `pnpm test:storefront` for the production-build browser journeys across both
-services. Its default selection includes `cross-service-storefront.spec.ts`,
-`cross-service-i18n.spec.ts`, and `storefront-journey-updates.spec.ts`; the CI browser
+services. Its default selection includes `original-storefront-separation.spec.ts`,
+`cuj.spec.ts`, `boundaries.spec.ts`, `i18n.spec.ts`, sitemap and scale checks; the CI browser
 job runs this command. The runner uses an isolated database, local SMTP inbox and
 storage fixture. Customer requests use the storefront proxy and merchant actions
 use a separate authenticated backend browser session.
 
-The journeys cover payment evidence, actual-receipt recording, confirmation,
-shipment and delivery, goods return approval/receipt and refund settlement;
-registration and password reset follow links delivered to the local inbox.
-Account history uses persisted orders, and saved-address/mixed-credit checkout
-checks reservation, submission, capture and reopening from account history.
+The journeys cover catalog/cart edits, shipping and pickup checkout, private order
+tracking, payment evidence, receipts, confirmation, cancellation and refunds,
+merchant permissions, localization and accessibility. Registration and password
+reset follow links delivered to the local inbox. Database integration checks also
+exercise store credit, rewards and return accounting.
 The synthetic lifecycle in `tests/unit/synthetic-order-lifecycle.test.ts` is a
 domain simulation, not evidence of a browser or provider journey.
 

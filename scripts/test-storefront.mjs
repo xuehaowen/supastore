@@ -265,19 +265,6 @@ try {
       start(["node_modules/next/dist/bin/next", "build", "apps/storefront"]),
     );
   if (standalone) {
-    // Next's generated entry point is CommonJS even when the source package is ESM.
-    cpSync(
-      join(
-        "apps/backend",
-        env.NEXT_DIST_DIR,
-        "standalone/apps/backend/server.js",
-      ),
-      join(
-        "apps/backend",
-        env.NEXT_DIST_DIR,
-        "standalone/apps/backend/server.cjs",
-      ),
-    );
     cpSync(
       join("apps/backend", env.NEXT_DIST_DIR, "static"),
       join(
@@ -319,7 +306,7 @@ try {
           join(
             "apps/backend",
             env.NEXT_DIST_DIR,
-            "standalone/apps/backend/server.cjs",
+            "standalone/apps/backend/server.js",
           ),
         ]
       : [
