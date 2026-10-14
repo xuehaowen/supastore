@@ -4,7 +4,9 @@ import { readFileSync } from "node:fs";
 import { parseEnv } from "node:util";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../", import.meta.url));
-export function startStorefront() {
+export function startStorefront(command = "dev") {
+  if (!["dev", "build", "start"].includes(command))
+    throw new Error("Expected dev, build or start");
   let settings = {};
   try {
     settings = parseEnv(
@@ -19,10 +21,11 @@ export function startStorefront() {
       fileURLToPath(
         new URL("../node_modules/next/dist/bin/next", import.meta.url),
       ),
-      "dev",
+      command,
       "apps/storefront",
-      "-p",
-      process.env.STOREFRONT_PORT || "3001",
+      ...(command === "build"
+        ? []
+        : ["-p", process.env.STOREFRONT_PORT || "3001"]),
     ],
     {
       cwd: root,
@@ -54,7 +57,7 @@ if (
   process.argv[1] &&
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
-  const child = startStorefront();
+  const child = startStorefront(process.argv[2]);
   for (const signal of ["SIGINT", "SIGTERM"])
     process.once(signal, () => child.kill(signal));
 }

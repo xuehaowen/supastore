@@ -27,7 +27,7 @@ export function startBackend(command = "dev") {
       windowsHide: true,
       env: {
         ...process.env,
-        ...(command === "dev"
+        ...(command !== "build"
           ? {
               APP_URL: process.env.APP_URL || publicOrigin,
               STOREFRONT_ORIGIN: process.env.STOREFRONT_ORIGIN || publicOrigin,

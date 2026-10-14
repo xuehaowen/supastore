@@ -1,6 +1,9 @@
 import { startBackend } from "./backend.mjs";
 import { startStorefront } from "./storefront.mjs";
-const children = [startBackend("dev"), startStorefront()];
+const command = process.argv[2] || "dev";
+if (!["dev", "start"].includes(command))
+  throw new Error("Expected dev or start");
+const children = [startBackend(command), startStorefront(command)];
 let stopping = false;
 function stop() {
   if (stopping) return;

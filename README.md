@@ -69,6 +69,12 @@ pnpm dev
 
 This starts the backend on port 3000 and the original customer storefront on port 3001. To run them in separate terminals, use `pnpm dev:backend` and `pnpm dev:storefront`. Development launchers set the public origin to port 3001 without changing `.env`.
 
+`pnpm build` builds both apps, and `pnpm start` runs both production servers.
+Use `build:backend`, `build:storefront`, `start:backend` and `start:storefront`
+for individual services. `BACKEND_PORT` and `STOREFRONT_PORT` select their ports.
+For production commands, set `APP_URL`, `BETTER_AUTH_URL` and `STOREFRONT_ORIGIN` in the shell environment to the
+public storefront origin. `pnpm test:all` runs each verification suite once.
+
 - Storefront: [http://localhost:3001](http://localhost:3001)
 - Admin Portal: [http://localhost:3001/admin](http://localhost:3001/admin)
 - Health Check: [http://localhost:3000/api/health/ready](http://localhost:3000/api/health/ready)
