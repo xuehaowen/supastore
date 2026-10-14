@@ -56,8 +56,8 @@ Whole-repository formatting now passes and is enforced by CI.
 
 ## Checkout request and response contracts
 
-`src/application/common/quote-request.ts` owns validation of public quote fields
-for the JSON API and combined checkout form. Both trim text, uppercase country
+`apps/backend/src/application/common/quote-request.ts` owns validation of public quote fields
+for the JSON API and original checkout form. Both trim text, uppercase country
 and region, validate UUIDs and fulfillment types, and apply the same length
 limits: country 2, address 2,000, region 12, postal code 40, pickup date 10,
 pickup time 20 and promotion code 100 characters. Missing optional text becomes
@@ -94,9 +94,9 @@ The forward rollback is to drop only these two indexes in a later migration;
 order data and query semantics are unchanged. On an online rollback, use
 `DROP INDEX CONCURRENTLY` outside a transaction.
 
-## Combined application sitemap
+## Customer storefront sitemap
 
-The combined application serves `/sitemap.xml` as a streamed index. Its child
+The separate storefront serves `/sitemap.xml` as a streamed index using the backend `/api/v1/customer-sitemap` read API. Its child
 routes are `/sitemaps/static.xml` and `/sitemaps/{resource}-{page}.xml`, where
 resource is `products`, `collections`, or `categories`. Each resource page reads
 at most 1,000 projected records ordered by ID and emits both supported locales.
@@ -185,8 +185,7 @@ The separate storefront's `/sitemap.xml` is a streamed index of
 `/sitemaps/{page}.xml` files. Discovery reads only published product handles,
 at most 1,000 per API request. Each XML page contains up to 2,002 bilingual URLs,
 including the two home URLs on the first page. Publication changes can move
-records between pages during a crawl. The combined application's existing
-category/collection sitemap still needs migration to this paged structure.
+records between pages during a crawl. Category, collection and static policy shards use the same bounded backend queries.
 
 Storefront JSON reads and writes have a 15-second deadline covering connection,
 headers and response-body reads. Responses are limited to 2 MiB, using both the
@@ -209,7 +208,7 @@ these runtime budgets. Budget total connections across all backend instances.
 
 ## Establish the current state
 
-Start with the relevant directory README, current diff, deployed image revision, environment configuration, and migration journal. Determine whether the problem affects the combined app, separate storefront, backend, worker, storage, or provider. Record the request/order/reference and timestamps without exposing private access tokens or credentials.
+Start with the relevant directory README, current diff, deployed image revision, environment configuration, and migration journal. Determine whether the problem affects the backend, storefront, backend, worker, storage, or provider. Record the request/order/reference and timestamps without exposing private access tokens or credentials.
 
 Documentation priority is explicit: scope/workflows/transactions/schema/events own intended rules; code and migrations show implementation; automated checks and dated release evidence show tested outcomes. Plans explain history/dependencies and are not an inventory of shipped functionality. Resolve discrepancies deliberately; do not copy historical test counts or resource estimates into current release claims.
 
@@ -218,7 +217,7 @@ Documentation priority is explicit: scope/workflows/transactions/schema/events o
 | Purpose                        | Command                                                           | What it establishes                                                                                               |
 | ------------------------------ | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | Install                        | `pnpm install --frozen-lockfile`                                  | Reproducible locked dependencies                                                                                  |
-| Combined development           | `pnpm dev`                                                        | Root Next application, including customer/admin/API routes                                                        |
+| Two-service development        | `pnpm dev`                                                        | Starts backend and original customer storefront in separate processes                                             |
 | Separate development           | `pnpm dev:backend` and `pnpm dev:storefront`                      | Backend on 3000 and storefront on 3001 by default                                                                 |
 | Backend/root types             | `pnpm typecheck`                                                  | Root TypeScript compilation checks                                                                                |
 | Separate storefront types      | `pnpm typecheck:storefront`                                       | Storefront compilation checks                                                                                     |
@@ -230,7 +229,7 @@ Documentation priority is explicit: scope/workflows/transactions/schema/events o
 | Existing-server browser checks | `pnpm test:browser:existing`                                      | Direct Playwright invocation; inspect fixture assumptions first                                                   |
 | Combined verification          | `pnpm test:all`                                                   | Both type checks, unit suites, integration and browser commands; excludes lint, coverage and container acceptance |
 | Lint/format                    | `pnpm lint`, `pnpm format:check`                                  | Source style/static checks; use targeted Prettier for a small documentation change                                |
-| Domain coverage                | `pnpm test:coverage`                                              | 90% lines/statements/functions/branches for `src/domain/**/*.ts`; not whole-system coverage                       |
+| Domain coverage                | `pnpm test:coverage`                                              | 90% lines/statements/functions/branches for `apps/backend/src/domain/**/*.ts`; not whole-system coverage          |
 | Builds                         | `pnpm build:backend`, `pnpm build:storefront`                     | Both application production builds                                                                                |
 | Container acceptance           | `pnpm test:containers`                                            | Disposable container acceptance runner; inspect its fixture/project scope                                         |
 | Service configuration          | `pnpm check:services`                                             | Configuration report without connectivity probing                                                                 |

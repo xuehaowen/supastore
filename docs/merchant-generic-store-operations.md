@@ -46,7 +46,7 @@ Stripe uses provider-native minor units. Configure USD/CNY with precision 2,
 JPY with precision 0, and ISK/UGX with precision 2 and whole-unit amounts
 (multiples of 100 internally). Checkout and refunds reject incompatible or
 unverified currency units instead of converting or rounding. The initial
-adapter supports the currencies listed in `src/domain/stripe-currency.ts`;
+adapter supports the currencies listed in `apps/backend/src/domain/stripe-currency.ts`;
 other currencies retain manual payment support until their provider units are
 verified. Account availability and provider minimum amounts still require live
 acceptance. See [Stripe's currency rules](https://docs.stripe.com/currencies).

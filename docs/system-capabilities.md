@@ -15,9 +15,9 @@ Specifications describe intended rules; code establishes what is implemented; te
 
 SupaStore is a self-hosted physical-goods commerce system for one merchant business, one currency, and one stock pool per variant. It provides customer shopping, merchant administration, financial reconciliation, fulfillment, and durable notifications without Redis or an external message broker.
 
-There are two independently buildable Next.js applications. The backend uses the root `src/` application and owns admin, authentication, APIs, PostgreSQL transactions, storage access, provider secrets, and the worker. `apps/backend` is a launcher, not a separate business implementation. `apps/storefront` renders customer pages through backend HTTP APIs and proxies browser API traffic. Root customer pages also remain available in the combined development application; the two customer interfaces need regression coverage when changing a shared journey.
+There are two independently buildable Next.js applications. The backend uses the root `src/` application and owns admin, authentication, APIs, PostgreSQL transactions, storage access, provider secrets, and the worker. `apps/backend` is a launcher, not a separate business implementation. `apps/storefront` renders customer pages through backend HTTP APIs and proxies browser API traffic. The original customer pages live in `apps/storefront`; the backend route tree contains admin and APIs.
 
-The stack uses Next.js 15, React 19, TypeScript, Valibot, Drizzle, postgres.js, Better Auth, S3-compatible storage, and Nodemailer. Exact installed versions belong to the lockfile. Root `pnpm dev` runs the combined application; separate development uses `pnpm dev:backend` and `pnpm dev:storefront`. Docker builds backend, storefront, and a one-shot migration image.
+The stack uses Next.js 15, React 19, TypeScript, Valibot, Drizzle, postgres.js, Better Auth, S3-compatible storage, and Nodemailer. Exact installed versions belong to the lockfile. Root `pnpm dev` starts both services; separate development uses `pnpm dev:backend` and `pnpm dev:storefront`. Docker builds backend, storefront, and a one-shot migration image.
 
 ```mermaid
 flowchart LR

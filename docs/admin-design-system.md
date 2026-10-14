@@ -16,5 +16,5 @@ operational counts; do not invent revenue, trends, or status indicators.
 Panels use 12px corners and 16–24px padding. Forms retain their existing labels,
 validation, permissions, and server actions. Focus rings remain visible and
 motion respects the reduced-motion preference. The console uses a light theme;
-all theme variables are scoped to .admin-workspace in src/app/admin/admin.css.
+all theme variables are scoped to .admin-workspace in apps/backend/src/app/admin/admin.css.
 Print layouts hide navigation.

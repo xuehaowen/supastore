@@ -6,7 +6,7 @@ This audit maps the implemented customer and admin interfaces to executable chec
 
 - `pnpm run typecheck`
 - `pnpm test` — unit tests and the synthetic lifecycle.
-- `pnpm run test:frontend:coverage` — 90% minimum line, statement, function and branch coverage for `src/app/actions.ts` and `src/app/client-requests.ts`.
+- `pnpm run test:frontend:coverage` — 90% minimum line, statement, function and branch coverage for `apps/backend/src/app/actions.ts` and `apps/backend/src/app/client-requests.ts`.
 - `pnpm run test:coverage` — existing independent domain coverage gate.
 - `pnpm run test:integration` — dedicated PostgreSQL cluster on port 55438.
 - `pnpm run test:browser` — creates a fresh UTF-8 database, seeds synthetic products and accounts, starts Next on 3100, private storage on 9009, and a loopback-only mail sink on SMTP 25259 / HTTP 9010. No mail is relayed externally. The outbox worker is disabled. Test PostgreSQL uses port 55439 and an isolated Next cache; application database settings are not reused.

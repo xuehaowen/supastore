@@ -10,13 +10,13 @@ tests use injected fakes and local SMTP. No production provider request was made
 
 ## Ownership and dependency direction
 
-`src/application/ports/notifications.ts` defines `EmailSender`, `SmsSender`,
+`apps/backend/src/application/ports/notifications.ts` defines `EmailSender`, `SmsSender`,
 `PhoneVerifier`, transport outcomes and normalized delivery events. Application
 workflows use these contracts and never import provider SDKs or response types.
 
-`src/application/notifications` owns content rendering, consent/quiet-hour policy,
+`apps/backend/src/application/notifications` owns content rendering, consent/quiet-hour policy,
 retry decisions, durable delivery processing and callback reconciliation.
-`src/infrastructure/notifications` implements Nodemailer, Telnyx and explicit test
+`apps/backend/src/infrastructure/notifications` implements Nodemailer, Telnyx and explicit test
 fakes. The bootstrap validates configuration and constructs a process-wide
 registry shared across Next.js entrypoint bundles. There is no implicit fake
 success when a channel is unconfigured. The old SMTP interface is a small

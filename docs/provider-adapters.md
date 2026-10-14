@@ -19,7 +19,7 @@ existing receipt/confirmation workflows and do not require an online adapter.
 
 ## Adding an adapter
 
-1. Implement the capability interface from `src/application/ports`. Keep vendor
+1. Implement the capability interface from `apps/backend/src/application/ports`. Keep vendor
    response mapping, authentication, deadlines and sanitized errors in the adapter.
 2. Define a configuration discriminator and add it to the capability's config union.
 3. Register an `AdapterDefinition` with a stable `handle`, `parseEnvironment`,

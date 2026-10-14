@@ -27,7 +27,7 @@ Task checkboxes track implementation, not alternative specifications. Section-le
   - _Details:_ Create root `package.json` pinned to Node.js 22 LTS, pnpm, Next.js 15 with App Router and `output: 'standalone'`, React 19, and TypeScript 5.7+ with strict mode enabled (`noImplicitAny`, `strictNullChecks`, `exactOptionalPropertyTypes`).
   - _Verification:_ Run `pnpm build` and `pnpm tsc --noEmit` cleanly with zero type errors.
 - [x] **Configure Drizzle ORM and PostgreSQL driver**
-  - _Details:_ Set up `drizzle-orm` with `postgres.js` driver in `src/infrastructure/db/`. Create `drizzle.config.ts`, migration generator/runner scripts (`pnpm db:generate`, `pnpm db:migrate`), and connection pooling with session isolation for transactional row locks (`SELECT ... FOR UPDATE`).
+  - _Details:_ Set up `drizzle-orm` with `postgres.js` driver in `apps/backend/src/infrastructure/db/`. Create `drizzle.config.ts`, migration generator/runner scripts (`pnpm db:generate`, `pnpm db:migrate`), and connection pooling with session isolation for transactional row locks (`SELECT ... FOR UPDATE`).
   - _Verification:_ Execute migration runner against a local PostgreSQL instance; verify connection lifecycle and connection-pinned transaction rollback.
 - [x] **Configure Valibot schema validation**
   - _Details:_ Configure `valibot` (v1.0+) as the canonical runtime schema validation library across API endpoints, use cases, and client form inputs and measure the resulting validation bundle overhead.
@@ -39,7 +39,7 @@ Task checkboxes track implementation, not alternative specifications. Section-le
   - _Details:_ Set up Vitest (`vitest.config.ts`) for fast ESM unit testing. Configure test helper scripts with Docker PostgreSQL or Testcontainers for integration tests requiring real transactional row locks and advisory locks.
   - _Verification:_ `pnpm test` passes sample unit and database integration tests; record runtime and database startup cost separately.
 - [x] **Environment configuration template and startup validation**
-  - _Details:_ Create `.env.example` defining `DATABASE_URL`, `ADMIN_SETUP_SECRET`, `S3_*`, and `SMTP_*`. Implement a strict startup configuration validator (`src/infrastructure/config.ts`) that asserts valid URLs, non-default secrets in production, and halts boot immediately if required variables are missing.
+  - _Details:_ Create `.env.example` defining `DATABASE_URL`, `ADMIN_SETUP_SECRET`, `S3_*`, and `SMTP_*`. Implement a strict startup configuration validator (`apps/backend/src/infrastructure/config.ts`) that asserts valid URLs, non-default secrets in production, and halts boot immediately if required variables are missing.
   - _Verification:_ Server fails boot with human-readable errors when mandatory environment variables are omitted.
 
 ### Slice M0 Data Model & Drizzle Schema
@@ -113,7 +113,7 @@ Contract: [Authorization boundary](architecture-overview.md#authorization-bounda
   - _Details:_ Owner command authorizing full/partial original-source refund capped by available receipt capacity $\max(0, R_i - A_i)$. Creates `payout_allocations` and executes `claimPayout` with exclusive single-sender lock, followed by `reconcilePayout` to record settled outgoing transfer.
   - _Verification:_ Verifies that refund cannot exceed original receipt funding and concurrent payout claims block duplicate execution. Claims require an immutable verified original-source destination revision; unverified or mismatched destinations fail, and retry retains the same destination.
 - [x] **In-process transactional outbox worker loop**
-  - _Details:_ Implement `src/infrastructure/worker/outbox.ts` running an asynchronous timer loop (e.g. 5-second interval, initialized via Next.js `instrumentation.ts` on Node runtime) polling `event_deliveries` using `SELECT ... FOR UPDATE SKIP LOCKED` inside a short claim transaction. Persist a unique lease token and expiry, enforce order+recipient+channel sequencing, commit, then call the provider outside the transaction. Only the current lease owner may acknowledge; reuse the delivery identity for provider retries.
+  - _Details:_ Implement `apps/backend/src/infrastructure/worker/outbox.ts` running an asynchronous timer loop (e.g. 5-second interval, initialized via Next.js `instrumentation.ts` on Node runtime) polling `event_deliveries` using `SELECT ... FOR UPDATE SKIP LOCKED` inside a short claim transaction. Persist a unique lease token and expiry, enforce order+recipient+channel sequencing, commit, then call the provider outside the transaction. Only the current lease owner may acknowledge; reuse the delivery identity for provider retries.
   - _Verification:_ Spin up 3 concurrent worker processes; verify one current lease owner per delivery, stale acknowledgments rejected, expired leases recoverable and no repeated business effects. Simulate an uncertain send: reuse provider idempotency where supported and explicitly allow at-least-once email delivery otherwise.
 - [x] **Mock email notification provider adapter**
   - _Details:_ Implement `MockEmailAdapter` recording sent message payloads in memory/database for test verification, logging only redacted metadata to stdout during development.

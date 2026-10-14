@@ -9,7 +9,7 @@ Inspect target database, Compose project and outbound suppression before mutatio
 ## Where to start
 
 - [init-db.mjs](init-db.mjs): Run `pnpm db:init` and enter a dedicated local demo database name, or run `pnpm db:init supastore_dev`. Uses `MIGRATION_DATABASE_URL` (falling back to `DATABASE_URL`) from `.env` to connect to the existing PostgreSQL server, creates the database if needed, applies migrations, and seeds the demo store. Existing databases are preserved. Requires administrator credentials with database-creation privileges. Seed runs with outbound providers and the worker disabled. The entered database name is used only for this command; `.env` is never modified. To run the app against that database, set its name in `DATABASE_URL` yourself. New demo owner: `owner@example.test` / `AdminSetupSecret123!`; set `DEMO_OWNER_PASSWORD` before running to override the password. Existing owners keep their current password. Stop the app before initializing and restart it afterward. No Docker volumes or storage buckets are changed.
-- [backend.mjs](backend.mjs): Backend launcher using root Next.js source.
+- [backend.mjs](backend.mjs): Backend launcher for `apps/backend`.
 - [test-integration.mjs](test-integration.mjs): Isolated PostgreSQL integration runner.
 - [test-browser.mjs](test-browser.mjs): Main production browser fixture runner.
 - [test-storefront.mjs](test-storefront.mjs): Two-service browser runner.

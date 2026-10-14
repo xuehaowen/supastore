@@ -4,6 +4,8 @@ A self-hosted commerce application for independent merchants, with catalog optio
 
 Start with [Current System Capabilities](docs/system-capabilities.md) for implemented features and limits, and the [Maintenance Guide](docs/system-maintenance.md) for operational workflows. Directory READMEs explain the code beside each module; the navigation index below links their entry points.
 
+The workspace contains `apps/backend` for admin, APIs and workers, `apps/storefront` for the original customer pages, and `packages/{ui,i18n,shipping,contracts}` for shared presentation and public contracts. Root scripts coordinate development, database setup and testing. The backend reads the existing root `.env`; the storefront communicates through HTTP.
+
 Licensed under MIT.
 
 ---
@@ -65,8 +67,10 @@ M1_DEMO=true DEMO_OWNER_PASSWORD=AdminSetupSecret123! pnpm db:seed
 pnpm dev
 ```
 
-- Storefront: [http://localhost:3000](http://localhost:3000)
-- Admin Portal: [http://localhost:3000/admin](http://localhost:3000/admin)
+This starts the backend on port 3000 and the original customer storefront on port 3001. To run them in separate terminals, use `pnpm dev:backend` and `pnpm dev:storefront`. Development launchers set the public origin to port 3001 without changing `.env`.
+
+- Storefront: [http://localhost:3001](http://localhost:3001)
+- Admin Portal: [http://localhost:3001/admin](http://localhost:3001/admin)
 - Health Check: [http://localhost:3000/api/health/ready](http://localhost:3000/api/health/ready)
 
 Customers can check out as guests using private order links or register and verify an account. Verified accounts have an address book, owned order history, and store credit. Claiming a guest order requires its private access proof; matching an email address does not transfer ownership. The admin login is sign-in only; trusted server-side tooling provisions the owner.
@@ -122,7 +126,7 @@ pnpm test:e2e
 
 For short explanations beside the code, open the directory READMEs:
 
-- [Backend source](src/README.md): routes, business workflows, domain rules, and integrations.
+- [Backend source](apps/backend/src/README.md): routes, business workflows, domain rules, and integrations.
 - [Applications](apps/README.md): backend launcher and separate customer storefront.
 - [Shared packages](packages/README.md): HTTP contracts, localization, and destination helpers.
 - [Scripts](scripts/README.md): development, deployment, migration, and recovery tools.

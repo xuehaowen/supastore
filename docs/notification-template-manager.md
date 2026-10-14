@@ -25,7 +25,7 @@ Template creation, draft changes, publication, rollback, and review requeue are 
 
 ## Adding an event
 
-Declare its audience/channel requirements and allowed/required variables in `src/application/notifications/templates.ts`; add bilingual default copy to `default-templates.json` and seed it in a forward migration. An automated source/event coverage test rejects new literal notification events without registered/default templates. There is no generic notification fallback. Business workflows emit event data, not customer-facing copy.
+Declare its audience/channel requirements and allowed/required variables in `apps/backend/src/application/notifications/templates.ts`; add bilingual default copy to `default-templates.json` and seed it in a forward migration. An automated source/event coverage test rejects new literal notification events without registered/default templates. There is no generic notification fallback. Business workflows emit event data, not customer-facing copy.
 
 ## Rollout and validation
 

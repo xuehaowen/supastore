@@ -78,7 +78,7 @@ durable review; no conversion or rounding rewrites an accepted order. USD/CNY
 precision 2 and JPY precision 0 are supported; ISK/UGX require precision 2 and
 whole-unit amounts. Unknown/unverified currency codes fail closed for cards and
 retain manual payment support. See [Stripe's currency documentation](https://docs.stripe.com/currencies)
-and the supported set in `src/domain/stripe-currency.ts`. Provider account
+and the supported set in `apps/backend/src/domain/stripe-currency.ts`. Provider account
 availability/minimum amounts remain part of live acceptance. Provider receiving
 accounts are also excluded from manual payment choices. Independent review and
 ten PostgreSQL Stripe lifecycle cases passed, including pre-network rejection

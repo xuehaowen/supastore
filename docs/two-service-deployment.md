@@ -17,6 +17,11 @@ can complete bounded provider calls before closing pooled transports.
 
 ## Local development
 
+Each application owns its source and Next.js configuration under `apps/backend`
+and `apps/storefront`. Shared UI, localization, shipping helpers and HTTP contracts
+are workspace packages. The backend reads the existing root `.env`; app folders
+do not require copied environment files.
+
 Generate separate random values for `POSTGRES_PASSWORD`, `APP_DATABASE_PASSWORD`, `ADMIN_SETUP_SECRET`,
 `BETTER_AUTH_SECRET`, `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` in `.env`.
 For example, run `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`
@@ -30,8 +35,8 @@ production backend rejects short or known placeholder authentication secrets.
 Install with `pnpm install --frozen-lockfile`. Start dependencies with
 `docker compose up -d postgres rustfs`, run `pnpm db:migrate` against the development
 database, then run `pnpm dev:backend` and `pnpm dev:storefront` separately.
-Use `http://localhost:3001` for `APP_URL`, `STOREFRONT_ORIGIN` and `BETTER_AUTH_URL`,
-and `http://127.0.0.1:3000` for the storefront's `BACKEND_URL`. Customer pages and
+The development launchers default `APP_URL`, `STOREFRONT_ORIGIN` and `BETTER_AUTH_URL` to `http://localhost:3001` without editing `.env`. Explicit shell environment values override these defaults. Use
+`http://127.0.0.1:3000` for the storefront's `BACKEND_URL`. `pnpm dev` starts both services. The backend has no customer page routes; its root opens `/admin`. The storefront now renders the original customer UI, including search, categories, collections and policy pages. Customer pages and
 `/admin` use the storefront origin. Optional Adminer uses port 9002 with
 `docker compose --profile tools up -d adminer`; RustFS retains port 9001.
 
