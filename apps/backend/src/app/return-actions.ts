@@ -1,9 +1,8 @@
 "use server";
 import { redirect } from "next/navigation";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { staffIdentity, orderToken, localeOf } from "@/infrastructure/web";
+import { staffIdentity } from "@/infrastructure/web";
 import {
-  requestGoodsReturn,
   reviewGoodsReturn,
   receiveGoodsReturn,
 } from "@/application/use-cases/returns/manage-returns";
@@ -17,42 +16,11 @@ async function perform(path: string, work: () => Promise<void>) {
     await work();
     destination += (destination.includes("?") ? "&" : "?") + "saved=1";
     revalidatePath("/admin", "layout");
-    revalidatePath("/[locale]/orders/[id]", "page");
     revalidateTag("catalog");
   } catch (e) {
     destination += `${destination.includes("?") ? "&" : "?"}error=${encodeURIComponent(e instanceof DomainError ? e.message : "Unable to save return.")}`;
   }
   redirect(destination);
-}
-export async function requestReturnAction(form: FormData) {
-  const id = text(form, "orderId"),
-    locale = localeOf(form.get("locale"));
-  const path = /^[0-9a-f-]{36}$/i.test(id)
-    ? `/${locale}/orders/${id}`
-    : locale === "zh"
-      ? "/recover?locale=zh"
-      : "/recover";
-  return perform(path, async () => {
-    const items = form
-      .getAll("itemIds")
-      .map((value) => ({
-        orderItemId: String(value),
-        quantity: parseActionInteger(
-          text(form, `quantity.${value}`) || "0",
-          "Return quantity",
-          0,
-          999,
-        ),
-      }))
-      .filter((i) => i.quantity > 0);
-    await requestGoodsReturn({
-      orderId: id,
-      token: await orderToken(id),
-      requestKey: text(form, "requestKey"),
-      reason: text(form, "reason"),
-      items,
-    });
-  });
 }
 export async function reviewReturnAction(form: FormData) {
   const id = text(form, "returnId");
