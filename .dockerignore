@@ -5,6 +5,8 @@ node_modules
 .tmp-*
 .tsconfig-*
 **/.next
+**/.next-*
+**/.tsconfig-*
 **/node_modules
 .test-integration-postgres
 .git

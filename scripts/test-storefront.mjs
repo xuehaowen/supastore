@@ -23,11 +23,14 @@ const pg = new EmbeddedPostgres({
 const database = "supastore_cuj_" + Date.now();
 const production = true;
 const measure = process.argv.includes("--measure");
-const standalone = measure && process.platform === "linux";
+const standalone =
+  process.argv.includes("--standalone") ||
+  (measure && process.platform === "linux");
 const testArguments = process.argv
   .slice(2)
   .filter(
-    (argument) => argument !== "--production" && argument !== "--measure",
+    (argument) =>
+      !["--production", "--measure", "--standalone"].includes(argument),
   );
 const env = {
   ...process.env,
@@ -41,8 +44,8 @@ const env = {
   STOREFRONT_TSCONFIG: ".tsconfig-cuj.json",
   DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:55449/" + database,
   APP_URL: "http://localhost:3103",
-  BETTER_AUTH_URL: "http://localhost:3102",
-  ADMIN_BASE_URL: "http://localhost:3102",
+  BETTER_AUTH_URL: "http://localhost:3103",
+  ADMIN_BASE_URL: "http://localhost:3103",
   PLAYWRIGHT_BASE_URL: "http://localhost:3103",
   ADMIN_SETUP_SECRET: "SyntheticSetupSecret123!",
   BETTER_AUTH_SECRET: "SyntheticAuthSecretForBrowserTests123!",
@@ -237,7 +240,10 @@ try {
   } finally {
     await admin.end();
   }
-  writeFileSync(env.NEXT_TSCONFIG, readFileSync("tsconfig.json"));
+  writeFileSync(
+    "apps/backend/" + env.NEXT_TSCONFIG,
+    readFileSync("apps/backend/tsconfig.json"),
+  );
   writeFileSync(
     "apps/storefront/" + env.STOREFRONT_TSCONFIG,
     readFileSync("apps/storefront/tsconfig.json"),
@@ -251,7 +257,9 @@ try {
   );
 
   if (production)
-    await completed(start(["node_modules/next/dist/bin/next", "build"]));
+    await completed(
+      start(["node_modules/next/dist/bin/next", "build", "apps/backend"]),
+    );
   if (production)
     await completed(
       start(["node_modules/next/dist/bin/next", "build", "apps/storefront"]),
@@ -259,12 +267,26 @@ try {
   if (standalone) {
     // Next's generated entry point is CommonJS even when the source package is ESM.
     cpSync(
-      join(env.NEXT_DIST_DIR, "standalone/server.js"),
-      join(env.NEXT_DIST_DIR, "standalone/server.cjs"),
+      join(
+        "apps/backend",
+        env.NEXT_DIST_DIR,
+        "standalone/apps/backend/server.js",
+      ),
+      join(
+        "apps/backend",
+        env.NEXT_DIST_DIR,
+        "standalone/apps/backend/server.cjs",
+      ),
     );
     cpSync(
-      join(env.NEXT_DIST_DIR, "static"),
-      join(env.NEXT_DIST_DIR, "standalone", env.NEXT_DIST_DIR, "static"),
+      join("apps/backend", env.NEXT_DIST_DIR, "static"),
+      join(
+        "apps/backend",
+        env.NEXT_DIST_DIR,
+        "standalone/apps/backend",
+        env.NEXT_DIST_DIR,
+        "static",
+      ),
       { recursive: true },
     );
     cpSync(
@@ -278,17 +300,32 @@ try {
       ),
       { recursive: true },
     );
-    if (existsSync("public"))
-      cpSync("public", join(env.NEXT_DIST_DIR, "standalone/public"), {
-        recursive: true,
-      });
+    if (existsSync("apps/backend/public"))
+      cpSync(
+        "apps/backend/public",
+        join(
+          "apps/backend",
+          env.NEXT_DIST_DIR,
+          "standalone/apps/backend/public",
+        ),
+        {
+          recursive: true,
+        },
+      );
   }
   const server = start(
     standalone
-      ? [join(env.NEXT_DIST_DIR, "standalone/server.cjs")]
+      ? [
+          join(
+            "apps/backend",
+            env.NEXT_DIST_DIR,
+            "standalone/apps/backend/server.cjs",
+          ),
+        ]
       : [
           "node_modules/next/dist/bin/next",
           production ? "start" : "dev",
+          "apps/backend",
           "--port",
           "3102",
         ],
@@ -320,11 +357,13 @@ try {
     testArguments.length > 0
       ? testArguments
       : [
-          "tests/browser/cross-service-storefront.spec.ts",
-          "tests/browser/cross-service-i18n.spec.ts",
+          "tests/browser/original-storefront-separation.spec.ts",
+          "tests/browser/cuj.spec.ts",
+          "tests/browser/i18n.spec.ts",
+          "tests/browser/boundaries.spec.ts",
           "tests/browser/cross-service-sitemap.spec.ts",
+          "tests/browser/sitemap.spec.ts",
           "tests/browser/cross-service-scale.spec.ts",
-          "tests/browser/storefront-journey-updates.spec.ts",
         ];
   await completed(
     start([
