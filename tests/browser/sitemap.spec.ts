@@ -1,6 +1,6 @@
 import { test, expect } from "./fixtures";
 
-test("combined sitemap exposes bounded bilingual child pages", async ({
+test("original storefront sitemap exposes bounded bilingual child pages", async ({
   page,
 }) => {
   const index = await page.request.get("/sitemap.xml");

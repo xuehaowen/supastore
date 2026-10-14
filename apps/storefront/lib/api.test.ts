@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { parseOptionalCartDto } from "../../../packages/contracts/src";
+import { parseOptionalCartDto } from "../../../packages/contracts/src/index";
 import { BackendApiError, readApi, readPublicApi } from "./api";
 import { ApiError, request } from "./client";
 vi.mock("next/headers", () => ({

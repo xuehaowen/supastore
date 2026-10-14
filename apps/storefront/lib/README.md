@@ -8,6 +8,9 @@ No direct database/provider imports. Preserve approved cookies/origin and reject
 
 ## Where to start
 
+- [page-data.ts](page-data.ts): Typed HTTP reads for the original customer pages; backend loader type imports are erased.
+- [server-request.ts](server-request.ts): Server-action mutations through the backend API proxy, relaying private cookies.
+- [customer-sitemap.ts](customer-sitemap.ts): Bounded original product/category/collection/policy discovery through backend read APIs.
 - [api.ts](api.ts): Server-side backend reads forwarding the incoming cookie context and requiring a shared response decoder.
 - [client.ts](client.ts): Browser commerce requests; decoded results are typed, unconsumed results remain unknown.
 - [response.ts](response.ts): Envelope checks and safe upstream error messages.

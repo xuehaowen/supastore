@@ -1,0 +1,69 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { serverRequest } from "./server-request";
+const { proxy, setCookie } = vi.hoisted(() => ({
+  proxy: vi.fn(),
+  setCookie: vi.fn(),
+}));
+vi.mock("next/headers", () => ({
+  headers: async () =>
+    new Headers({
+      cookie: "shop-cart=synthetic",
+      "x-forwarded-for": "spoofed",
+    }),
+  cookies: async () => ({ set: setCookie }),
+}));
+vi.mock("./backend-proxy", () => ({ proxyBackendApi: proxy }));
+beforeEach(() => {
+  proxy.mockReset();
+  setCookie.mockReset();
+});
+describe("original customer server actions across services", () => {
+  it("forwards session cookies and relays all private response cookies with their options", async () => {
+    const response = Response.json({ data: { id: "new-order" } });
+    response.headers.append(
+      "set-cookie",
+      "shop-cart=cart; Path=/; HttpOnly; SameSite=Lax",
+    );
+    response.headers.append(
+      "set-cookie",
+      "shop-order-new-order=proof; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000",
+    );
+    proxy.mockResolvedValue(response);
+    await expect(serverRequest("orders", { accepted: true })).resolves.toEqual({
+      id: "new-order",
+    });
+    const request = proxy.mock.calls[0]![0] as Request;
+    expect(request.headers.get("cookie")).toBe("shop-cart=synthetic");
+    expect(request.headers.get("x-forwarded-for")).toBeNull();
+    expect(await request.json()).toEqual({ accepted: true });
+    expect(setCookie).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "shop-cart",
+        httpOnly: true,
+        path: "/",
+        sameSite: "lax",
+      }),
+    );
+    expect(setCookie).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "shop-order-new-order",
+        httpOnly: true,
+        secure: true,
+        maxAge: 2592000,
+      }),
+    );
+  });
+  it("propagates backend validation errors rather than reporting success", async () => {
+    proxy.mockResolvedValue(
+      Response.json(
+        { error: { message: "Choose an active payment method." } },
+        { status: 400 },
+      ),
+    );
+    await expect(serverRequest("quotes", {})).rejects.toMatchObject({
+      status: 400,
+      message: "Choose an active payment method.",
+    });
+    expect(setCookie).not.toHaveBeenCalled();
+  });
+});

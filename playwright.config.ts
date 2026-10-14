@@ -15,7 +15,7 @@ export default defineConfig({
   workers: 1,
   timeout: 60_000, // Complete multi-step journeys, including cold route compilation.
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3001",
     trace: "retain-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],

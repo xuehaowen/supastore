@@ -11,7 +11,7 @@ const workspaceRoot = path.resolve(
 describe("frontend visual foundations", () => {
   it("provides component styles for every legacy admin layout hook", async () => {
     const stylesheet = await readFile(
-      path.join(workspaceRoot, "src/app/globals.css"),
+      path.join(workspaceRoot, "apps/backend/src/app/globals.css"),
       "utf8",
     );
 
@@ -33,7 +33,7 @@ describe("frontend visual foundations", () => {
 
   it("gives the storefront shell a labeled support landmark", async () => {
     const shopLayout = await readFile(
-      path.join(workspaceRoot, "src/app/[locale]/layout.tsx"),
+      path.join(workspaceRoot, "apps/storefront/app/[locale]/layout.tsx"),
       "utf8",
     );
 
@@ -45,7 +45,7 @@ describe("frontend visual foundations", () => {
 
   it("marks the active catalog filter for assistive technology", async () => {
     const catalog = await readFile(
-      path.join(workspaceRoot, "src/app/catalog.tsx"),
+      path.join(workspaceRoot, "apps/storefront/app/catalog.tsx"),
       "utf8",
     );
 
@@ -59,7 +59,7 @@ describe("frontend visual foundations", () => {
 
   it("provides responsive image sizing on product detail pages", async () => {
     const productPage = await readFile(
-      path.join(workspaceRoot, "src/app/product-purchase.tsx"),
+      path.join(workspaceRoot, "apps/storefront/app/product-purchase.tsx"),
       "utf8",
     );
 
@@ -68,7 +68,7 @@ describe("frontend visual foundations", () => {
 
   it("uses an order-summary landmark in the cart", async () => {
     const cartPage = await readFile(
-      path.join(workspaceRoot, "src/app/[locale]/cart/page.tsx"),
+      path.join(workspaceRoot, "apps/storefront/app/[locale]/cart/page.tsx"),
       "utf8",
     );
 
@@ -77,7 +77,7 @@ describe("frontend visual foundations", () => {
 
   it("offers the order CSV export from the order management page", async () => {
     const operations = await readFile(
-      path.join(workspaceRoot, "src/app/admin/orders-view.tsx"),
+      path.join(workspaceRoot, "apps/backend/src/app/admin/orders-view.tsx"),
       "utf8",
     );
     expect(operations).toContain('href="/api/admin/exports/orders"');
@@ -91,19 +91,19 @@ describe("frontend visual foundations", () => {
   it("does not render raw buttons, selects, or textareas in application pages", async () => {
     const pages = await Promise.all(
       [
-        "src/app/admin/page.tsx",
-        "src/app/admin/operations.tsx",
-        "src/app/admin/orders-view.tsx",
-        "src/app/admin/payments-view.tsx",
-        "src/app/admin/overview-view.tsx",
-        "src/app/admin/fulfillment-operations.tsx",
-        "src/app/admin/products/[id]/edit/page.tsx",
-        "src/app/admin/products/page.tsx",
-        "src/app/admin/products/import/page.tsx",
-        "src/app/admin/orders/[id]/packing-slip/page.tsx",
-        "src/app/admin/setup/page.tsx",
-        "src/app/[locale]/checkout/page.tsx",
-        "src/app/checkout-fields.tsx",
+        "apps/backend/src/app/admin/page.tsx",
+        "apps/backend/src/app/admin/operations.tsx",
+        "apps/backend/src/app/admin/orders-view.tsx",
+        "apps/backend/src/app/admin/payments-view.tsx",
+        "apps/backend/src/app/admin/overview-view.tsx",
+        "apps/backend/src/app/admin/fulfillment-operations.tsx",
+        "apps/backend/src/app/admin/products/[id]/edit/page.tsx",
+        "apps/backend/src/app/admin/products/page.tsx",
+        "apps/backend/src/app/admin/products/import/page.tsx",
+        "apps/backend/src/app/admin/orders/[id]/packing-slip/page.tsx",
+        "apps/backend/src/app/admin/setup/page.tsx",
+        "apps/storefront/app/[locale]/checkout/page.tsx",
+        "apps/backend/src/app/checkout-fields.tsx",
       ].map((file) => readFile(path.join(workspaceRoot, file), "utf8")),
     );
 

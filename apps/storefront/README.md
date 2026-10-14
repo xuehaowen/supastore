@@ -4,7 +4,7 @@ Independent Next.js customer app using backend APIs and same-origin proxying.
 
 ## When working here
 
-Backend URL affects compiled rewrites and runtime traffic. Check both customer surfaces when changing a shared journey.
+Backend URL affects compiled rewrites and runtime traffic. The original customer page tree is the canonical customer surface. All runtime data access uses backend HTTP APIs; backend model imports in `lib/page-data.ts` are type-only and erased from the bundle.
 
 ## Where to start
 

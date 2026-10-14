@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { messages } from "@/i18n/messages";
+import { messages } from "@supastore/i18n/messages";
 import { storefrontMessages } from "../../apps/storefront/lib/i18n";
 import {
   customerError,
@@ -10,7 +10,7 @@ import {
   sharedMessages,
   activityLabel,
 } from "../../packages/i18n/src/customer";
-import { stateOptions } from "@/domain/shipping-destination";
+import { stateOptions } from "@supastore/shipping/destination";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import ts from "typescript";
@@ -97,19 +97,7 @@ describe("complete customer locale resources", () => {
         else if (file.endsWith(".tsx")) files.push(file);
       }
     }
-    walk("src/app/[locale]");
-    walk("src/app/recover");
     walk("apps/storefront/app");
-    files.push(
-      ...[
-        "catalog",
-        "product-purchase",
-        "customer-auth",
-        "address-book",
-        "shipping-address",
-        "interactive",
-      ].map((name) => `src/app/${name}.tsx`),
-    );
     const violations: string[] = [];
     for (const file of files) {
       const source = readFileSync(file, "utf8"),
