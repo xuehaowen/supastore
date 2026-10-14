@@ -103,7 +103,7 @@ describe("frontend visual foundations", () => {
         "apps/backend/src/app/admin/orders/[id]/packing-slip/page.tsx",
         "apps/backend/src/app/admin/setup/page.tsx",
         "apps/storefront/app/[locale]/checkout/page.tsx",
-        "apps/backend/src/app/checkout-fields.tsx",
+        "apps/storefront/app/checkout-fields.tsx",
       ].map((file) => readFile(path.join(workspaceRoot, file), "utf8")),
     );
 

@@ -9,7 +9,8 @@ Keep routes thin: parse inputs and establish identity, then call application use
 ## Where to start
 
 - [actions.ts](actions.ts): Compatibility exports for feature-specific server actions in [actions](actions/README.md).
-- [customer-actions.ts](customer-actions.ts): Customer profile/account operations.
+- [interactive.tsx](interactive.tsx) and [client-requests.ts](client-requests.ts): Admin sign-in, product variants and CSV requests.
+- [return-actions.ts](return-actions.ts): Merchant return review and receipt actions.
 
 - [Merchant administration](admin/README.md): Authenticated merchant screens and actions for setup, catalog, orders, payments, inventory, fulfillment, returns, reports, and notifications.
 - [Backend HTTP endpoints](api/README.md): Commerce, authentication, evidence, assets, health, and signed provider callback routes.

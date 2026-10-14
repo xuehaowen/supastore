@@ -1,6 +1,5 @@
 "use server";
 import { parseQuoteRequest } from "@/application/common/quote-request";
-import type { CheckoutActionState } from "@/app/checkout-state";
 import { DomainError } from "@/application/common/errors";
 import { allowRequest } from "@/application/common/rate-limit";
 import {
@@ -30,6 +29,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ValiError } from "valibot";
 import { field, perform } from "./common";
+interface CheckoutActionState {
+  error?: string;
+}
 export async function addItem(form: FormData) {
   const locale = localeOf(field(form, "locale"));
   return perform("/" + locale + "/cart", async () => {
