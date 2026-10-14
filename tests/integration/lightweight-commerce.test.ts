@@ -88,7 +88,7 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
     client = postgres(url.toString(), { max: 10, onnotice: () => {} });
     active.db = drizzle(client, { schema });
     await migrate(active.db as ReturnType<typeof drizzle>, {
-      migrationsFolder: "src/infrastructure/db/migrations",
+      migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
     });
     await client`insert into staff_memberships(user_id,email,role) values(${owner},'owner@example.test','owner')`;
     await client`insert into store_settings(store_name,support_email,setup_completed,email_verified_at) values('Commerce tests','support@example.test',true,now())`;
@@ -384,13 +384,13 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
     await client`delete from slot_reservations where order_id=${accepted.value.id}`;
     await client.unsafe(
       readFileSync(
-        "src/infrastructure/db/migrations/0029_legacy_slot_bookings.sql",
+        "apps/backend/src/infrastructure/db/migrations/0029_legacy_slot_bookings.sql",
         "utf8",
       ),
     );
     await client.unsafe(
       readFileSync(
-        "src/infrastructure/db/migrations/0029_legacy_slot_bookings.sql",
+        "apps/backend/src/infrastructure/db/migrations/0029_legacy_slot_bookings.sql",
         "utf8",
       ),
     );

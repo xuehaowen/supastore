@@ -5,7 +5,7 @@ import {
   parseSmtpConfig,
   emailAuthentication,
   smtpRequiresTls,
-} from "../src/infrastructure/notifications/smtp-settings.mjs";
+} from "../apps/backend/src/infrastructure/notifications/smtp-settings.mjs";
 
 // Read-only probes: no payment, notification, database mutation or secret output.
 /** @param {Record<string, string | undefined>} env

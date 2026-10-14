@@ -13,7 +13,9 @@ import {
 beforeAll(async () => {
   if (!process.env.DATABASE_URL?.endsWith("/supastore_test"))
     throw new Error("Export tests require the isolated integration database");
-  await migrate(db, { migrationsFolder: "src/infrastructure/db/migrations" });
+  await migrate(db, {
+    migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
+  });
 });
 afterAll(async () => {
   await queryClient.end();

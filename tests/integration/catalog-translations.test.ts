@@ -12,7 +12,7 @@ vi.mock("@/infrastructure/db", () => ({
     return activeDatabase.current;
   },
 }));
-import * as schema from "../../src/infrastructure/db/schema";
+import * as schema from "../../apps/backend/src/infrastructure/db/schema/index";
 import { readFileSync } from "node:fs";
 import { load } from "js-yaml";
 import {
@@ -41,7 +41,9 @@ describe.skipIf(!server)("catalog translation database constraints", () => {
       client = postgres(url.toString(), { max: 1, onnotice: () => {} });
       const db = drizzle(client, { schema });
       activeDatabase.current = db;
-      const options = { migrationsFolder: "src/infrastructure/db/migrations" };
+      const options = {
+        migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
+      };
       await migrate(db, options);
       await migrate(db, options);
       const [product] =

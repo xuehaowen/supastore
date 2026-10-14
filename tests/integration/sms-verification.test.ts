@@ -30,7 +30,7 @@ describe.skipIf(!server)("provider-neutral phone consent claims", () => {
     client = postgres(url.toString(), { onnotice: () => {} });
     active.db = drizzle(client, { schema });
     await migrate(active.db as ReturnType<typeof drizzle>, {
-      migrationsFolder: "src/infrastructure/db/migrations",
+      migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
     });
     await client`insert into store_settings(store_name) values('SMS tests')`;
   }, 30000);

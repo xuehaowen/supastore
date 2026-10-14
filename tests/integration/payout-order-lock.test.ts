@@ -17,7 +17,9 @@ beforeAll(async () => {
     !["127.0.0.1", "localhost"].includes(url.hostname)
   )
     throw new Error("Requires isolated integration database");
-  await migrate(db, { migrationsFolder: "src/infrastructure/db/migrations" });
+  await migrate(db, {
+    migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
+  });
 });
 afterAll(() => sql.end());
 it.each(["claim", "reconcile", "close", "resolve", "correct"])(

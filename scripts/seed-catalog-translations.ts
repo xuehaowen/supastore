@@ -1,5 +1,5 @@
 import { eq, and } from "drizzle-orm";
-import type { db as database } from "../src/infrastructure/db";
+import type { db as database } from "../apps/backend/src/infrastructure/db/index";
 import {
   attributes,
   attributeValues,
@@ -11,7 +11,7 @@ import {
   productVariants,
   variantTranslations,
   variantAttributeValues,
-} from "../src/infrastructure/db/schema";
+} from "../apps/backend/src/infrastructure/db/schema/index";
 
 type NamedTranslation = { locale: string; name: string };
 export interface AttributeSeed {

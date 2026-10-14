@@ -9,7 +9,7 @@ import {
   parsePaymentCheckoutDto,
   parseUploadIntentDto,
   parseRecoveryOrderDto,
-} from "../../packages/contracts/src";
+} from "../../packages/contracts/src/index";
 
 const store = {
   storeName: "Fixture",

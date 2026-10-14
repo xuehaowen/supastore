@@ -9,9 +9,9 @@ import { fileURLToPath } from "node:url";
 import { load } from "js-yaml";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { eq } from "drizzle-orm";
-import { db, queryClient } from "../src/infrastructure/db";
-import { auth } from "../src/infrastructure/auth";
-import { loadConfig } from "../src/infrastructure/config";
+import { db, queryClient } from "../apps/backend/src/infrastructure/db/index";
+import { auth } from "../apps/backend/src/infrastructure/auth/index";
+import { loadConfig } from "../apps/backend/src/infrastructure/config";
 import {
   user,
   staffMemberships,
@@ -21,8 +21,8 @@ import {
   pickupLocation,
   products,
   categories,
-} from "../src/infrastructure/db/schema";
-import { createProduct } from "../src/application/use-cases/catalog/create-product";
+} from "../apps/backend/src/infrastructure/db/schema/index";
+import { createProduct } from "../apps/backend/src/application/use-cases/catalog/create-product";
 
 // ============================================================================
 // Types (mirroring YAML structure)
@@ -146,7 +146,9 @@ function defined<T extends object>(obj: T): Partial<T> {
 // ============================================================================
 
 console.log("▶ Running migrations…");
-await migrate(db, { migrationsFolder: "src/infrastructure/db/migrations" });
+await migrate(db, {
+  migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
+});
 
 // ============================================================================
 // 2. Owner account + staff membership

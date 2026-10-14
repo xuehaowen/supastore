@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { checkoutReducer } from "../../apps/storefront/app/checkout/checkout-state";
-import type { QuoteDto } from "../../packages/contracts/src";
+import type { QuoteDto } from "../../packages/contracts/src/index";
 
 const quote: QuoteDto = {
   id: "quote",

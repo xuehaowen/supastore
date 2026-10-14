@@ -1,15 +1,15 @@
-# Backend application launcher
+# Backend application
 
-Package scripts launch the root Next.js application through scripts/backend.mjs.
+This Next.js application owns merchant admin, authentication, APIs, database access, storage and the outbox worker. Its implementation lives in `src`, with its own Next.js and TypeScript configuration.
 
 ## When working here
 
-Source remains under src, not duplicated here. Backend owns admin, auth, APIs, database, storage and worker.
+Run `pnpm dev:backend` from the workspace root. The launcher reads the existing root `.env` for this service without modifying it. Shared UI, language helpers, shipping helpers and public HTTP contracts live under `packages`.
 
 ## Where to start
 
-- [Backend launcher](../../scripts/backend.mjs): Sets the backend service role and starts root Next.js.
-- [Source overview](../../src/README.md): The implementation launched by this package.
+- [Backend launcher](../../scripts/backend.mjs): Sets the backend service role and starts this application.
+- [Source overview](src/README.md): Backend implementation.
 
 ## More context
 

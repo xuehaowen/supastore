@@ -17,7 +17,7 @@ const client = postgres(migrationUrl, {
 });
 try {
   await migrate(drizzle(client), {
-    migrationsFolder: "src/infrastructure/db/migrations",
+    migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
   });
   if (process.env.APP_DATABASE_USER || process.env.APP_DATABASE_PASSWORD) {
     await provisionRuntimeRole(client, {

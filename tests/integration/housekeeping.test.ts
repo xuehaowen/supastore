@@ -10,7 +10,7 @@ describe.skipIf(!process.env.DATABASE_URL?.endsWith("/supastore_test"))(
   () => {
     beforeAll(async () => {
       await migrate(db, {
-        migrationsFolder: "src/infrastructure/db/migrations",
+        migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
       });
       await queryClient.unsafe("TRUNCATE carts, orders CASCADE");
     });

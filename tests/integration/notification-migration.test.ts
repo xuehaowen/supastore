@@ -26,7 +26,7 @@ describe.skipIf(!server)(
         const [unknown] =
           await client`insert into event_deliveries(channel,status,lease_token,lease_expires_at) values('email','pending','old-worker',now()-interval '1 minute') returning id`;
         const migration = readFileSync(
-          "src/infrastructure/db/migrations/0033_notification_delivery.sql",
+          "apps/backend/src/infrastructure/db/migrations/0033_notification_delivery.sql",
           "utf8",
         );
         for (const statement of migration.split("--> statement-breakpoint"))

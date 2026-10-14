@@ -13,11 +13,14 @@ it("serializes the configured parsers for Next.js lint caching", async () => {
     });
     const results = await lint.lintFiles([
       "eslint.config.mjs",
-      "src/domain/checkout.ts",
+      "apps/backend/src/domain/checkout.ts",
     ]);
     expect(results.every((result) => result.errorCount === 0)).toBe(true);
     await expect(
-      lint.lintFiles(["eslint.config.mjs", "src/domain/checkout.ts"]),
+      lint.lintFiles([
+        "eslint.config.mjs",
+        "apps/backend/src/domain/checkout.ts",
+      ]),
     ).resolves.toHaveLength(2);
   } finally {
     await rm(cacheLocation, { force: true });

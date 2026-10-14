@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { generateOrderReferenceCode } from "../../src/domain/money/reference-code";
+import { generateOrderReferenceCode } from "../../apps/backend/src/domain/money/reference-code";
 import { checkout, test, expect } from "./fixtures";
 
 test("fulfillment pages retain older work and direct order links", async ({

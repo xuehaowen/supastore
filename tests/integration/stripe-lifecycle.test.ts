@@ -45,7 +45,7 @@ describe.skipIf(!server)("Stripe durable payment lifecycle", () => {
     client = postgres(url.toString(), { max: 10, onnotice: () => {} });
     active.db = drizzle(client, { schema });
     await migrate(active.db as ReturnType<typeof drizzle>, {
-      migrationsFolder: "src/infrastructure/db/migrations",
+      migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
     });
     await client`insert into staff_memberships(user_id,email,role) values(${owner},${owner + "@example.test"},'owner')`;
     await client`insert into store_settings(store_name,support_email,setup_completed,email_verified_at) values('Stripe tests','support@example.test',true,now())`;

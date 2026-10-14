@@ -1,5 +1,5 @@
 import { performance } from "node:perf_hooks";
-import { db, queryClient } from "../src/infrastructure/db";
+import { db, queryClient } from "../apps/backend/src/infrastructure/db/index";
 import { sql } from "drizzle-orm";
 if (!process.env.DATABASE_URL?.endsWith("/supastore_test"))
   throw new Error("Benchmark requires isolated supastore_test.");

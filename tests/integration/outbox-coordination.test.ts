@@ -48,7 +48,9 @@ async function clear() {
 }
 describe.skipIf(!enabled)("durable notification leases and callbacks", () => {
   beforeAll(async () => {
-    await migrate(db, { migrationsFolder: "src/infrastructure/db/migrations" });
+    await migrate(db, {
+      migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
+    });
     await clear();
   });
   it("coordinates concurrent replicas without duplicate submissions and retains acceptance separately", async () => {

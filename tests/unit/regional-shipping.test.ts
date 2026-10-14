@@ -4,7 +4,7 @@ import {
   countryOptions,
   shippingRequiredFields,
   validShippingRegion,
-} from "@/domain/shipping-destination";
+} from "@supastore/shipping/destination";
 
 const fallback = {
   countryCodes: ["US"],

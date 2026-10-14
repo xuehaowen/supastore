@@ -33,7 +33,9 @@ const key = {
 } as const;
 describe.skipIf(!enabled)("published notification templates", () => {
   beforeAll(async () => {
-    await migrate(db, { migrationsFolder: "src/infrastructure/db/migrations" });
+    await migrate(db, {
+      migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
+    });
     await db.insert(staffMemberships).values({
       userId: ownerId,
       email: `${ownerId}@example.test`,

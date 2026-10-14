@@ -18,7 +18,7 @@ describe.skipIf(!process.env.DATABASE_URL?.endsWith("/supastore_test"))(
     const userId = randomUUID();
     beforeAll(async () => {
       await migrate(db, {
-        migrationsFolder: "src/infrastructure/db/migrations",
+        migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
       });
       await db.insert(user).values({
         id: userId,
