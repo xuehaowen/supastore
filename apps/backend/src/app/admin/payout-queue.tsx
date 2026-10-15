@@ -1,3 +1,5 @@
+import { money } from "@/infrastructure/web";
+import { CurrencyField } from "@/app/admin/currency-field";
 import {
   claimOrderPayout,
   closeOrderPayoutAttempt,
@@ -60,17 +62,17 @@ export function PayoutQueue({
                 <details className="panel" key={allocation.id}>
                   <summary>
                     Payout allocation {allocation.id} ·{" "}
-                    {allocation.authorizedAmountCents} minor units
+                    {money(
+                      allocation.authorizedAmountCents,
+                      data.store?.currency,
+                      data.store?.precision,
+                    )}
                   </summary>
                   {!attempt ? (
                     <form action={claimOrderPayout} className="mt-2">
                       <Hidden name="returnTo" value={returnTo} />
                       <Hidden name="allocationId" value={allocation.id} />
-                      <Field
-                        label="Claim amount (minor units)"
-                        name="amount"
-                        type="number"
-                      />
+                      <CurrencyField label="Claim amount" name="amount" />
                       <NativeSelect
                         name="destinationType"
                         defaultValue="bank_account"
@@ -96,10 +98,9 @@ export function PayoutQueue({
                         <form action={reconcileOrderPayout} className="mt-2">
                           <Hidden name="returnTo" value={returnTo} />
                           <Hidden name="attemptId" value={attempt.id} />
-                          <Field
-                            label="Actual payout amount (minor units)"
+                          <CurrencyField
+                            label="Actual payout amount"
                             name="actualAmount"
-                            type="number"
                           />
                           <Field
                             label="Transfer reference"
@@ -129,10 +130,9 @@ export function PayoutQueue({
                         >
                           <Hidden name="returnTo" value={returnTo} />
                           <Hidden name="discrepancyId" value={discrepancy.id} />
-                          <Field
-                            label="Write-off amount (minor units)"
+                          <CurrencyField
+                            label="Write-off amount"
                             name="writeOff"
-                            type="number"
                           />
                           <Field label="Resolution reason" name="reason" />
                           <Button type="submit" variant="outline">

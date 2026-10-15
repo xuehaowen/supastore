@@ -13,7 +13,7 @@ export async function countStockAction(form: FormData) {
       staffUserId: await staffIdentity(),
       variantId: text("variantId"),
       onHand: parseActionInteger(text("onHand"), "Counted stock", 0, 1000000),
-      tracking: form.has("tracking"),
+      tracking: form.has("tracking") && text("tracking") !== "",
       revision: parseActionInteger(text("revision"), "Revision", 1, 2147483647),
       reason: text("reason"),
       requestKey: text("requestKey"),

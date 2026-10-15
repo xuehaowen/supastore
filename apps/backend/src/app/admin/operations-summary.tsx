@@ -26,7 +26,7 @@ export function OperationsSummary({
         <strong>{readyForFulfillment}</strong>
         Ready for fulfillment
       </Link>
-      <Link href="/admin/activity">
+      <Link href="/admin#emails">
         <strong>{failedEmails}</strong>Failed emails
       </Link>
     </div>

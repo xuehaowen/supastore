@@ -183,7 +183,7 @@ test("C8-C10 recovery, proposal acceptance and failed email visibility", async (
     .click();
   await expect(admin).toHaveURL(/admin(?:\/setup)?$/);
   const row = await openOrder(admin, reference);
-  await row.getByLabel("Proposed total (minor units)").fill("2500");
+  await row.getByLabel("Proposed total (USD)").fill("25.00");
   await row
     .getByLabel("Reason", { exact: true })
     .fill("Synthetic price adjustment");
@@ -245,7 +245,7 @@ test("C8-C10 recovery, proposal acceptance and failed email visibility", async (
       const replay = await replayContext.newPage();
       await replay.goto(event!.payload.recoveryUrl);
       await replay.getByRole("button", { name: "Continue to order" }).click();
-      await expect(replay).toHaveURL(/recover\?error=/);
+      await expect(replay).toHaveURL(/recover\?.*error=/);
       await replay.goto(url);
       await expect(replay).toHaveURL(/recover/);
     } finally {

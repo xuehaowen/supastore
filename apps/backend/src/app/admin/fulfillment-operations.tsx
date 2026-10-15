@@ -1,17 +1,15 @@
+import { money } from "@/infrastructure/web";
+import { CurrencyField } from "@/app/admin/currency-field";
 import {
   authorizeOrderRefund,
   authorizeOrderSurplusReturn,
   cancelAdminOrder,
-  completeOrderPickup,
   correctOrderFulfillment,
   correctRecordedReceipt,
-  fulfillConfirmedOrder,
-  markOrderReady,
 } from "@/app/actions";
 import { AdminDialog } from "@/app/admin/admin-dialog";
 import { Field, Hidden } from "@/app/components";
 import { Button } from "@supastore/ui/button";
-import { NativeSelect } from "@supastore/ui/native-select";
 import type { OperationsScreenProps } from "./operations-types";
 import { QueuePagination } from "./queue-pagination";
 export function FulfillmentOperations(props: OperationsScreenProps) {
@@ -80,51 +78,16 @@ export function FulfillmentOperations(props: OperationsScreenProps) {
                     {o.referenceCode} · {o.guestName} · {o.fulfillmentType}
                   </summary>
                   <p>{o.guestEmail}</p>
-                  {view === "fulfillment" &&
-                    o.lifecycleStatus === "confirmed" &&
-                    (o.fulfillmentType === "pickup" ? (
-                      <>
-                        <form action={markOrderReady} className="mt-2">
-                          <Hidden name="returnTo" value={returnTo} />
-                          <Hidden name="orderId" value={o.id} />
-                          <Button type="submit" variant="outline">
-                            Mark ready for pickup
-                          </Button>
-                        </form>
-                        <form action={completeOrderPickup} className="mt-2">
-                          <Hidden name="returnTo" value={returnTo} />
-                          <Hidden name="orderId" value={o.id} />
-                          <Field
-                            label="Recipient / authorized recipient"
-                            name="handoffActor"
-                          />
-                          <NativeSelect
-                            name="verificationMethod"
-                            defaultValue="scoped_order_page"
-                          >
-                            <option value="scoped_order_page">
-                              Scoped order page
-                            </option>
-                            <option value="owner_assisted">
-                              Owner-assisted verification
-                            </option>
-                          </NativeSelect>
-                          <Button type="submit" variant="outline">
-                            Complete pickup handoff
-                          </Button>
-                        </form>
-                      </>
-                    ) : (
-                      <form action={fulfillConfirmedOrder} className="mt-2">
-                        <Hidden name="returnTo" value={returnTo} />
-                        <Hidden name="orderId" value={o.id} />
-                        <Field label="Carrier" name="carrier" />
-                        <Field label="Tracking number" name="trackingNumber" />
-                        <Button type="submit" variant="outline">
-                          Mark shipped / delivered
-                        </Button>
-                      </form>
-                    ))}
+                  {view === "fulfillment" && (
+                    <p>
+                      <a
+                        className="admin-edit-link"
+                        href={`/admin/orders/${o.id}`}
+                      >
+                        View order & fulfillment
+                      </a>
+                    </p>
+                  )}
                   {view === "fulfillment" &&
                     member.role === "owner" &&
                     o.lifecycleStatus === "confirmed" && (
@@ -144,7 +107,11 @@ export function FulfillmentOperations(props: OperationsScreenProps) {
                         <div className="mt-4 border-t pt-4" key={receipt.id}>
                           <p>
                             Receipt: {receipt.normalizedReference} ·{" "}
-                            {receipt.amountCents} minor units
+                            {money(
+                              receipt.amountCents,
+                              data.store?.currency,
+                              data.store?.precision,
+                            )}
                           </p>
                           {(o.lifecycleStatus === "confirmed" ||
                             o.lifecycleStatus === "completed") && (
@@ -155,10 +122,9 @@ export function FulfillmentOperations(props: OperationsScreenProps) {
                               <Hidden name="returnTo" value={returnTo} />
                               <Hidden name="orderId" value={o.id} />
                               <Hidden name="receiptId" value={receipt.id} />
-                              <Field
-                                label="Refund amount (minor units)"
+                              <CurrencyField
+                                label="Refund amount"
                                 name="amount"
-                                type="number"
                               />
                               <Field label="Refund reason" name="reason" />
                               <Button type="submit" variant="outline">
@@ -173,10 +139,9 @@ export function FulfillmentOperations(props: OperationsScreenProps) {
                             <Hidden name="returnTo" value={returnTo} />
                             <Hidden name="orderId" value={o.id} />
                             <Hidden name="receiptId" value={receipt.id} />
-                            <Field
-                              label="Surplus return amount (minor units)"
+                            <CurrencyField
+                              label="Surplus return amount"
                               name="amount"
-                              type="number"
                             />
                             <Field label="Return reason" name="reason" />
                             <Button type="submit" variant="outline">
@@ -189,10 +154,10 @@ export function FulfillmentOperations(props: OperationsScreenProps) {
                           >
                             <Hidden name="returnTo" value={returnTo} />
                             <Hidden name="receiptId" value={receipt.id} />
-                            <Field
-                              label="Correction delta (minor units)"
+                            <CurrencyField
+                              signed
+                              label="Correction delta"
                               name="delta"
-                              type="number"
                             />
                             <Field label="Correction reason" name="reason" />
                             <Field label="Investigation notes" name="notes" />

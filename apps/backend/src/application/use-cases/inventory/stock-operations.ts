@@ -56,8 +56,12 @@ export async function adjustStock(input: {
   const reason = parseActionRequiredText(input.reason, "Count reason", 500);
   const requestKey = parseActionUuid(input.requestKey, "Request key");
   return db.transaction(async (tx) => {
-    await verifyStaffInTransaction(tx, input.staffUserId, "owner");
+    const member = await verifyStaffInTransaction(tx, input.staffUserId);
     const { stock } = await lockStock(tx, variantId);
+    if (member.role !== "owner" && input.tracking !== stock.trackingEnabled)
+      throw new InvariantViolationError(
+        "Only owners can change stock tracking. Reload and record the count again.",
+      );
     const [retry] = await tx
       .select()
       .from(stockMovements)

@@ -125,9 +125,7 @@ test("A7 late receipt on a cancelled order creates return work without reopening
     has: admin.locator("summary", { hasText: order.reference_code }),
   });
   await operations.locator("summary").click();
-  await operations
-    .getByLabel("Surplus return amount (minor units)")
-    .fill("100");
+  await operations.getByLabel("Surplus return amount (USD)").fill("1.00");
   await operations.getByLabel("Return reason").fill("Late payment return");
   await clickAction(
     admin,

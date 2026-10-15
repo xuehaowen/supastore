@@ -145,6 +145,8 @@
     "generic": "Unable to save. Check your entries and try again.",
     "quantityMinimumZero": "Quantity must be at least 0.",
     "quantityMinimumOne": "Quantity must be at least 1.",
+    "quantityInteger": "Quantity must be an integer.",
+    "quantityMaximum": "Quantity must be at most 999.",
     "fulfillmentInvalid": "Fulfillment is invalid.",
     "acceptTotal": "Accept the final total before placing an order.",
     "rateLimit": "Please wait a minute before retrying.",

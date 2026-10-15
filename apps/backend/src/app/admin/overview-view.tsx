@@ -32,6 +32,10 @@ export function OverviewView(props: OperationsScreenProps) {
     <>
       {view === "overview" && (
         <>
+          <section aria-label="Needs attention" className="panel">
+            <h2>Needs attention</h2>
+            <OperationsSummary {...queueCounts} />
+          </section>
           <section className="commerce-kpis" aria-label="Commerce performance">
             <article>
               <span>Net sales · 30 days</span>
@@ -106,7 +110,6 @@ export function OverviewView(props: OperationsScreenProps) {
               })}
             </div>
           </section>
-          <OperationsSummary {...queueCounts} />
         </>
       )}
       {view === "overview" && member.role === "owner" && (
@@ -119,10 +122,6 @@ export function OverviewView(props: OperationsScreenProps) {
               </li>
             ))}
           </ul>
-          <p>
-            Synthetic demonstration only. Live use requires M2 and M3
-            verification.
-          </p>
           <form action={togglePause}>
             <Hidden name="returnTo" value={returnTo} />
             <Hidden name="paused" value={String(!store?.isPaused)} />

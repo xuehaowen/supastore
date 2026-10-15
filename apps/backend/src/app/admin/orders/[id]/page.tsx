@@ -1,3 +1,4 @@
+import { CurrencyField } from "@/app/admin/currency-field";
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
@@ -45,6 +46,10 @@ import {
   cancelAdminOrder,
   fulfillConfirmedOrder,
   dispatchConfirmedOrder,
+  markOrderReady,
+  completeOrderPickup,
+  receiveCashPayment,
+  proposeChange,
 } from "@/app/actions";
 import { refundPurchaseAction } from "@/app/admin/credit-actions";
 import type { QuoteTerms } from "@/application/use-cases/get-quote";
@@ -182,6 +187,7 @@ export default async function OrderDetail({
       <AdminNav />
       <Link href="/admin/orders">← All orders</Link>
       <h1>{o.referenceCode}</h1>
+      <Link href={`/admin/orders/${id}/packing-slip`}>Print packing slip</Link>
       <div className="flex items-center gap-2 mb-2">
         <span>
           {o.guestName} · {o.guestEmail}
@@ -247,7 +253,7 @@ export default async function OrderDetail({
             ))}
           </TableBody>
         </Table>
-        <h3>Frozen sources</h3>
+        <h3>Payment sources at confirmation</h3>
         {data.funding.map((f) => (
           <p key={f.id}>
             {f.creditEntryId ? "Store credit debit" : "External receipt"} ·{" "}
@@ -255,9 +261,15 @@ export default async function OrderDetail({
           </p>
         ))}
       </section>
-      {o.lifecycleStatus === "unpaid" && (
+      {["unpaid", "cancelled"].includes(o.lifecycleStatus) && (
         <section className="panel">
           <h2>Payment</h2>
+          {o.lifecycleStatus === "cancelled" && (
+            <p>
+              This order is cancelled. Record late payments for return;
+              recording a receipt does not reopen the order.
+            </p>
+          )}
           <AdminDialog trigger="Record payment" title="Record actual payment">
             <form action={receivePayment}>
               {identity}
@@ -271,10 +283,11 @@ export default async function OrderDetail({
                   ))}
                 </NativeSelect>
               </label>
-              <Field
+              <CurrencyField
+                currency={terms.currency}
+                precision={terms.precision}
                 name="amount"
-                label="Actual received amount in minor units"
-                type="number"
+                label="Actual received amount"
               />
               <Field name="reference" label="Actual payment reference" />
               <label className="flex items-center gap-2">
@@ -284,10 +297,63 @@ export default async function OrderDetail({
               <Button type="submit">Record receipt</Button>
             </form>
           </AdminDialog>
-          <form action={confirmPayment}>
-            {identity}
-            <Button type="submit">Confirm exact payment</Button>
-          </form>
+          <AdminDialog
+            trigger="Record cash payment"
+            title="Record cash payment"
+          >
+            <form action={receiveCashPayment}>
+              {identity}
+              <label>
+                Cash account
+                <NativeSelect name="accountId">
+                  {data.accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.accountName}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </label>
+              <CurrencyField
+                name="amount"
+                label="Cash amount"
+                currency={terms.currency}
+                precision={terms.precision}
+              />
+              <CurrencyField
+                name="tenderedAmount"
+                label="Tendered amount"
+                currency={terms.currency}
+                precision={terms.precision}
+              />
+              <Field name="payerName" label="Payer name" />
+              <Button type="submit">Record cash receipt</Button>
+            </form>
+          </AdminDialog>
+          {o.lifecycleStatus === "unpaid" && (
+            <form action={confirmPayment}>
+              {identity}
+              <Button type="submit">Confirm exact payment</Button>
+            </form>
+          )}
+          {o.lifecycleStatus === "unpaid" && data.identity.role === "owner" && (
+            <AdminDialog
+              trigger="Propose new terms"
+              title="Propose new order total"
+              description="The customer must accept the proposed total before payment confirmation."
+            >
+              <form action={proposeChange}>
+                {identity}
+                <CurrencyField
+                  name="total"
+                  label="Proposed total"
+                  currency={terms.currency}
+                  precision={terms.precision}
+                />
+                <Field name="reason" label="Reason" />
+                <Button type="submit">Propose new terms</Button>
+              </form>
+            </AdminDialog>
+          )}
         </section>
       )}
       <section className="panel">
@@ -337,7 +403,45 @@ export default async function OrderDetail({
               </form>
             </AdminDialog>
           )}
-        <Link href="/admin/fulfillment">Pickup & fulfillment operations</Link>
+        {o.lifecycleStatus === "confirmed" &&
+          o.fulfillmentType === "pickup" && (
+            <div className="grid gap-4">
+              {data.fulfillment?.status !== "ready_for_pickup" && (
+                <form action={markOrderReady}>
+                  {identity}
+                  <Button type="submit">Mark ready for pickup</Button>
+                </form>
+              )}
+              <AdminDialog
+                trigger="Complete pickup handoff"
+                title="Verify pickup recipient"
+              >
+                <form action={completeOrderPickup}>
+                  {identity}
+                  <Field
+                    label="Recipient / authorized recipient"
+                    name="handoffActor"
+                  />
+                  <label>
+                    Verification method
+                    <NativeSelect
+                      name="verificationMethod"
+                      defaultValue="scoped_order_page"
+                    >
+                      <option value="scoped_order_page">
+                        Customer order page checked
+                      </option>
+                      <option value="owner_assisted">
+                        Owner-assisted verification
+                      </option>
+                    </NativeSelect>
+                  </label>
+                  <Button type="submit">Complete pickup handoff</Button>
+                </form>
+              </AdminDialog>
+            </div>
+          )}
+        <Link href="/admin/fulfillment">All fulfillment work</Link>
       </section>
       <section className="panel">
         <h2>Returns & refunds</h2>
@@ -365,10 +469,11 @@ export default async function OrderDetail({
                 {identity}
                 <Hidden name="requestKey" value={randomUUID()} />
                 <p>Remaining purchase entitlement: {format(remainingRefund)}</p>
-                <Field
+                <CurrencyField
+                  currency={terms.currency}
+                  precision={terms.precision}
                   name="amountCents"
-                  label="Refund amount in minor units"
-                  type="number"
+                  label="Refund amount"
                 />
                 <Field name="reason" label="Refund reason" />
                 {o.rewardSnapshot && (
@@ -396,17 +501,19 @@ export default async function OrderDetail({
                                 ? "Tax"
                                 : "Fulfillment fee"}
                           </p>
-                          <Field
+                          <CurrencyField
+                            currency={terms.currency}
+                            precision={terms.precision}
                             name={`external:${item.id}`}
                             label={`External payment refund (up to ${format(item.externalAmount)})`}
-                            type="number"
                             value="0"
                             required={false}
                           />
-                          <Field
+                          <CurrencyField
+                            currency={terms.currency}
+                            precision={terms.precision}
                             name={`credit:${item.id}`}
                             label={`Credit refund (up to ${format(item.creditAmount)})`}
-                            type="number"
                             value="0"
                             required={false}
                           />

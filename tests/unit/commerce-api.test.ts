@@ -51,6 +51,28 @@ describe("commerce API boundary", () => {
     for (const quantity of ["1", 1.2, -1, Infinity, 1000])
       expect(() => apiInteger({ quantity }, "quantity", 0, 999)).toThrow();
   });
+  it("provides translatable quantity errors while preserving strict JSON number validation", async () => {
+    for (const [quantity, min, message] of [
+      [-1, 0, "Quantity must be at least 0."],
+      [0, 1, "Quantity must be at least 1."],
+      [1000, 1, "Quantity must be at most 999."],
+      [1.5, 1, "Quantity must be an integer."],
+      ["1", 1, "Quantity must be an integer."],
+      [null, 1, "Quantity must be an integer."],
+    ] as const) {
+      const response = await apiResponse(async () =>
+        apiInteger({ quantity }, "quantity", min, 999, undefined, "Quantity"),
+      );
+      expect(response.status).toBe(400);
+      expect((await response.json()).error.message).toBe(message);
+    }
+    expect(
+      apiInteger({ quantity: 0 }, "quantity", 0, 999, undefined, "Quantity"),
+    ).toBe(0);
+    expect(
+      apiInteger({ quantity: 999 }, "quantity", 1, 999, undefined, "Quantity"),
+    ).toBe(999);
+  });
   it("maps authorization and conflicts and never caches private responses", async () => {
     const unauthorized = await apiResponse(async () => {
       throw new UnauthorizedError();

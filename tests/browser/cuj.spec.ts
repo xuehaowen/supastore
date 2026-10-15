@@ -109,32 +109,43 @@ test("C7/A3 free pickup confirms, rejects premature handoff, then completes", as
   await expect(
     page.getByRole("button", { name: "Upload evidence", exact: true }),
   ).toHaveCount(0);
-  let row = await openOrder(admin, order.reference_code);
-  await row.getByLabel("Recipient / authorized recipient").fill("CUJ Customer");
+  await admin.goto(`/admin/orders/${order.id}`);
+  await admin
+    .getByRole("button", { name: "Complete pickup handoff", exact: true })
+    .click();
+  let handoff = admin.getByRole("dialog", { name: "Verify pickup recipient" });
+  await handoff
+    .getByLabel("Recipient / authorized recipient")
+    .fill("CUJ Customer");
   await clickAction(
     admin,
-    row.getByRole("button", { name: "Complete pickup handoff", exact: true }),
+    handoff.getByRole("button", {
+      name: "Complete pickup handoff",
+      exact: true,
+    }),
   );
   await expect(admin.locator('[data-slot="alert"]')).toContainText(
     "Pickup must be marked ready before handoff.",
   );
-  row = await openOrder(admin, order.reference_code);
   await clickAction(
     admin,
-    row.getByRole("button", { name: "Mark ready for pickup", exact: true }),
+    admin.getByRole("button", { name: "Mark ready for pickup", exact: true }),
   );
-  await expect(admin).toHaveURL(
-    /\/admin(?:\/orders|\/fulfillment|\/payments)?(?:\?[^#]*)?$/,
-  );
-  row = await openOrder(admin, order.reference_code);
-  await row.getByLabel("Recipient / authorized recipient").fill("CUJ Customer");
+  await admin
+    .getByRole("button", { name: "Complete pickup handoff", exact: true })
+    .click();
+  handoff = admin.getByRole("dialog", { name: "Verify pickup recipient" });
+  await handoff
+    .getByLabel("Recipient / authorized recipient")
+    .fill("CUJ Customer");
   await clickAction(
     admin,
-    row.getByRole("button", { name: "Complete pickup handoff", exact: true }),
+    handoff.getByRole("button", {
+      name: "Complete pickup handoff",
+      exact: true,
+    }),
   );
-  await expect(admin).toHaveURL(
-    /\/admin(?:\/orders|\/fulfillment|\/payments)?(?:\?[^#]*)?$/,
-  );
+  await expect(admin).toHaveURL(new RegExp(`/admin/orders/${order.id}$`));
   await page.reload();
   await expect(page.getByText(/Completed · Fulfilled/)).toBeVisible();
   expect(
@@ -209,19 +220,33 @@ test("A1/A2/A3/A4 receipts, underpayment rejection, confirmation, packing slip a
     )[0]!.tracking_number,
   ).toBe("CORRECTED");
   row = await openOrder(admin, order.reference_code);
-  const shipment = row.locator("form").filter({
-    has: admin.getByRole("button", {
-      name: "Mark shipped / delivered",
-      exact: true,
-    }),
+  await row.getByRole("link", { name: "View order & fulfillment" }).click();
+  await admin
+    .getByRole("button", { name: "Dispatch shipment", exact: true })
+    .click();
+  let shipment = admin.getByRole("dialog", {
+    name: "Dispatch shipment",
+    exact: true,
   });
   await shipment
-    .getByLabel("Carrier", { exact: true })
+    .getByLabel("Carrier or delivery method")
     .fill("Synthetic courier");
-  await shipment.getByLabel("Tracking number", { exact: true }).fill("SHIP-1");
-  await clickAction(admin, shipment.getByRole("button"));
-  await expect(admin).toHaveURL(
-    /\/admin(?:\/orders|\/fulfillment|\/payments)?(?:\?[^#]*)?$/,
+  await shipment.getByLabel("Tracking number").fill("SHIP-1");
+  await clickAction(
+    admin,
+    shipment.getByRole("button", { name: "Dispatch shipment", exact: true }),
+  );
+  await admin
+    .getByRole("button", { name: "Record delivery", exact: true })
+    .click();
+  shipment = admin.getByRole("dialog", { name: "Record completed delivery" });
+  await shipment
+    .getByLabel("Carrier or delivery method")
+    .fill("Synthetic courier");
+  await shipment.getByLabel("Tracking number").fill("SHIP-1");
+  await clickAction(
+    admin,
+    shipment.getByRole("button", { name: "Record delivery", exact: true }),
   );
   await page.reload();
   await expect(page.getByText(/Completed · Fulfilled/)).toBeVisible();
@@ -281,9 +306,7 @@ test("A5/A6 owner authorizes, claims and reconciles a partial refund", async ({
   await record(admin, order.reference_code, order.purchase_total_cents);
   await confirm(admin, order.reference_code);
   const row = await openOrder(admin, order.reference_code);
-  await row
-    .getByLabel("Refund amount (minor units)", { exact: true })
-    .fill("100");
+  await row.getByLabel("Refund amount (USD)", { exact: true }).fill("1.00");
   await row
     .getByLabel("Refund reason", { exact: true })
     .fill("Agreed partial refund");
@@ -301,7 +324,7 @@ test("A5/A6 owner authorizes, claims and reconciles a partial refund", async ({
     .locator("#payouts details")
     .filter({ hasText: allocation!.id });
   await payout.locator("summary").click();
-  await payout.getByLabel("Claim amount (minor units)").fill("100");
+  await payout.getByLabel("Claim amount (USD)").fill("1.00");
   await payout
     .getByLabel("Verified return destination")
     .fill("SYNTHETIC-ACCOUNT");
@@ -315,7 +338,7 @@ test("A5/A6 owner authorizes, claims and reconciles a partial refund", async ({
   await admin.reload();
   await payout.locator("summary").click();
   await expect(payout).toContainText("sending");
-  await payout.getByLabel("Actual payout amount (minor units)").fill("100");
+  await payout.getByLabel("Actual payout amount (USD)").fill("1.00");
   await payout.getByLabel("Transfer reference").fill(randomUUID());
   await payout.getByLabel("Actual destination").fill("SYNTHETIC-ACCOUNT");
   await clickAction(
@@ -356,11 +379,11 @@ test("A9 cash receipt records change and receipt correction is audited", async (
   });
   await cash.getByLabel("Cash account").selectOption(account!.id);
   await cash
-    .getByLabel("Cash amount (minor units)")
-    .fill(String(order.purchase_total_cents));
+    .getByLabel("Cash amount (USD)")
+    .fill((order.purchase_total_cents / 100).toFixed(2));
   await cash
-    .getByLabel("Tendered amount (minor units)")
-    .fill(String(order.purchase_total_cents + 100));
+    .getByLabel("Tendered amount (USD)")
+    .fill(((order.purchase_total_cents + 100) / 100).toFixed(2));
   await cash.getByLabel("Payer name").fill("CUJ Customer");
   await clickAction(admin, cash.getByRole("button"));
   await expect(admin).toHaveURL(
@@ -374,7 +397,7 @@ test("A9 cash receipt records change and receipt correction is audited", async (
       exact: true,
     }),
   });
-  await correction.getByLabel("Correction delta (minor units)").fill("-1");
+  await correction.getByLabel("Correction delta (USD)").fill("-0.01");
   await correction.getByLabel("Correction reason").fill("Reviewed amount typo");
   await correction
     .getByLabel("Investigation notes")
@@ -669,9 +692,7 @@ test("A8 wrong-destination payout requires discrepancy resolution; unused claim 
   await confirm(admin, order.reference_code);
   for (const reason of ["Wrong destination review", "Unused claim"]) {
     const row = await openOrder(admin, order.reference_code);
-    await row
-      .getByLabel("Refund amount (minor units)", { exact: true })
-      .fill("100");
+    await row.getByLabel("Refund amount (USD)", { exact: true }).fill("1.00");
     await row.getByLabel("Refund reason", { exact: true }).fill(reason);
     await clickAction(
       admin,
@@ -684,7 +705,7 @@ test("A8 wrong-destination payout requires discrepancy resolution; unused claim 
       .locator("#payouts details")
       .filter({ hasText: allocation!.id });
     await payout.locator("summary").click();
-    await payout.getByLabel("Claim amount (minor units)").fill("100");
+    await payout.getByLabel("Claim amount (USD)").fill("1.00");
     await payout.getByLabel("Verified return destination").fill("EXPECTED");
     await clickAction(
       admin,
@@ -704,7 +725,7 @@ test("A8 wrong-destination payout requires discrepancy resolution; unused claim 
         }),
       );
     } else {
-      await payout.getByLabel("Actual payout amount (minor units)").fill("100");
+      await payout.getByLabel("Actual payout amount (USD)").fill("1.00");
       await payout.getByLabel("Transfer reference").fill(randomUUID());
       await payout.getByLabel("Actual destination").fill("WRONG");
       await clickAction(
@@ -714,7 +735,7 @@ test("A8 wrong-destination payout requires discrepancy resolution; unused claim 
       await admin.reload();
       await payout.locator("summary").click();
       await expect(payout).toContainText("reconciliation_required");
-      await payout.getByLabel("Write-off amount (minor units)").fill("100");
+      await payout.getByLabel("Write-off amount (USD)").fill("1.00");
       await payout
         .getByLabel("Resolution reason")
         .fill("Reviewed synthetic loss");
@@ -891,7 +912,7 @@ test("A5 paid cancellation stops fulfillment and creates return work", async ({
   ).toBe(order.purchase_total_cents);
   await admin.goto("/admin/payments");
   await expect(admin.locator("#payouts")).toContainText(
-    String(order.purchase_total_cents),
+    `$${(order.purchase_total_cents / 100).toFixed(2)}`,
   );
 });
 
@@ -916,7 +937,7 @@ test("A7 overpayment can be returned before confirmation", async ({
   });
   await expect(row).toHaveCount(1);
   await row.locator("summary").click();
-  await row.getByLabel("Surplus return amount (minor units)").fill("100");
+  await row.getByLabel("Surplus return amount (USD)").fill("1.00");
   await row.getByLabel("Return reason").fill("Return excess payment");
   await clickAction(
     admin,
@@ -929,7 +950,7 @@ test("A7 overpayment can be returned before confirmation", async ({
     .locator("#payouts details")
     .filter({ hasText: allocation!.id });
   await payout.locator("summary").click();
-  await payout.getByLabel("Claim amount (minor units)").fill("50");
+  await payout.getByLabel("Claim amount (USD)").fill("0.50");
   await payout.getByLabel("Verified return destination").fill("RETURN");
   await clickAction(
     admin,
@@ -937,7 +958,7 @@ test("A7 overpayment can be returned before confirmation", async ({
   );
   await admin.reload();
   await payout.locator("summary").click();
-  await payout.getByLabel("Actual payout amount (minor units)").fill("100");
+  await payout.getByLabel("Actual payout amount (USD)").fill("1.00");
   await payout.getByLabel("Transfer reference").fill(randomUUID());
   await payout.getByLabel("Actual destination").fill("RETURN");
   await clickAction(
@@ -954,7 +975,7 @@ test("A7 overpayment can be returned before confirmation", async ({
   );
   await admin.goto("/admin");
   await payout.locator("summary").click();
-  await payout.getByLabel("Write-off amount (minor units)").fill("0");
+  await payout.getByLabel("Write-off amount (USD)").fill("0.00");
   await payout
     .getByLabel("Resolution reason")
     .fill(

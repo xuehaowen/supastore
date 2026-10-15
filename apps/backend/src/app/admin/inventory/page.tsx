@@ -144,7 +144,7 @@ export default async function InventoryPage({
                   </TableCell>
                   <TableCell>
                     <Link href={`/admin/inventory/${v.id}`}>Stock history</Link>
-                    {result.owner && (
+                    {
                       <AdminDialog
                         trigger="Record count"
                         title={`Stock count · ${v.sku}`}
@@ -157,13 +157,27 @@ export default async function InventoryPage({
                             value={String(s?.revision || 1)}
                           />
                           <Hidden name="requestKey" value={randomUUID()} />
-                          <label className="check">
-                            <Checkbox
-                              name="tracking"
-                              defaultChecked={s?.trackingEnabled || false}
-                            />
-                            Track stock
-                          </label>
+                          {result.owner ? (
+                            <label className="check">
+                              <Checkbox
+                                name="tracking"
+                                defaultChecked={s?.trackingEnabled || false}
+                              />
+                              Track stock
+                            </label>
+                          ) : (
+                            <>
+                              <Hidden
+                                name="tracking"
+                                value={s?.trackingEnabled ? "on" : ""}
+                              />
+                              <p>
+                                Stock tracking:{" "}
+                                {s?.trackingEnabled ? "On" : "Off"}. An owner
+                                can change tracking settings.
+                              </p>
+                            </>
+                          )}
                           <Field
                             name="onHand"
                             label="Physical quantity"
@@ -174,7 +188,7 @@ export default async function InventoryPage({
                           <Button type="submit">Save stock count</Button>
                         </form>
                       </AdminDialog>
-                    )}
+                    }
                   </TableCell>
                 </TableRow>
               ))}

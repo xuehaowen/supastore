@@ -1,6 +1,7 @@
 import { DomainError, ForbiddenError } from "@/application/common/errors";
 import { ValiError } from "valibot";
 import { logger } from "@/infrastructure/security/logger";
+import { parseActionInteger } from "@/application/common/request-validation";
 
 export function assertMutationOrigin(request: Request) {
   const origin = request.headers.get("origin");
@@ -77,8 +78,14 @@ export function apiInteger(
   min: number,
   max: number,
   fallback?: number,
+  label?: string,
 ) {
   const value = body[key] === undefined ? fallback : body[key];
+  if (label) {
+    if (typeof value !== "number" || !Number.isSafeInteger(value))
+      throw new DomainError(`${label} must be an integer.`);
+    return parseActionInteger(value, label, min, max);
+  }
   if (
     typeof value !== "number" ||
     !Number.isSafeInteger(value) ||

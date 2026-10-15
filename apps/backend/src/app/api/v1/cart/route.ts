@@ -37,7 +37,7 @@ export async function POST(request: Request) {
       guestSessionId: await guestIdentity(true),
       locale,
       variantId: parseActionUuid(apiText(body, "variantId"), "Variant"),
-      quantity: apiInteger(body, "quantity", 1, 999),
+      quantity: apiInteger(body, "quantity", 1, 999, undefined, "Quantity"),
     });
     return cart(locale);
   });
@@ -50,7 +50,7 @@ export async function PATCH(request: Request) {
       guestSessionId: await guestIdentity(),
       locale,
       itemId: parseActionUuid(apiText(body, "itemId"), "Item"),
-      quantity: apiInteger(body, "quantity", 0, 999),
+      quantity: apiInteger(body, "quantity", 0, 999, undefined, "Quantity"),
     });
     return cart(locale);
   });

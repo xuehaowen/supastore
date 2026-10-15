@@ -12,6 +12,19 @@ integrated sans-serif interface. Do not use storefront serif headings here.
 Navigation is fixed on desktop and becomes a two-column link grid on mobile.
 Use icons with visible labels and aria-current for the active page. Keep real
 operational counts; do not invent revenue, trends, or status indicators.
+Group navigation into Daily work and Manage store, and hide owner-only
+destinations from staff. Backend authorization remains required for every action.
+Place Needs attention queues before sales metrics on the overview.
+
+Order references and View order actions open the same order workspace for every
+status. Dispatch and delivery are separate actions; pickup readiness and verified
+handoff are available from that workspace. Fulfillment queues link to it.
+
+Operational payment, refund, payout, and credit forms use CurrencyField to accept
+decimal amounts with visible currency codes. It submits canonical integer minor
+units without floating-point conversion. Detailed refund fields must submit only
+their canonical names. Staff can record physical inventory counts, while only
+owners can change stock tracking; enforce this distinction inside the transaction.
 
 Panels use 12px corners and 16–24px padding. Forms retain their existing labels,
 validation, permissions, and server actions. Focus rings remain visible and

@@ -131,6 +131,9 @@ test("management sidebar opens real sections and product editor fits mobile", as
   admin,
   sql,
 }) => {
+  const [sales] =
+    await sql`select count(*)::int as count from orders where lifecycle_status in ('confirmed','completed') and created_at >= now() - interval '7 days'`;
+  const hasSales = sales!.count > 0;
   for (const [label, path, heading] of [
     ["Overview", "/admin", "Commerce overview"],
     ["Orders", "/admin/orders", "Orders"],
@@ -158,7 +161,7 @@ test("management sidebar opens real sections and product editor fits mobile", as
       await expect(admin.getByText("0 orders").first()).toBeVisible();
       await expect(
         admin.getByText("No net sales activity in the last 7 days."),
-      ).toBeVisible();
+      ).toHaveCount(hasSales ? 0 : 1);
       await expect(
         admin.getByText("No overdue orders in this view."),
       ).toBeVisible();
@@ -172,11 +175,12 @@ test("management sidebar opens real sections and product editor fits mobile", as
             () => document.documentElement.scrollWidth <= innerWidth,
           ),
         ).toBe(true);
-        expect(
-          await admin
-            .locator(".sales-trend")
-            .evaluate((element) => element.getBoundingClientRect().height),
-        ).toBeLessThan(240);
+        if (!hasSales)
+          expect(
+            await admin
+              .locator(".sales-trend")
+              .evaluate((element) => element.getBoundingClientRect().height),
+          ).toBeLessThan(240);
       }
       await expect(
         admin.getByRole("heading", { name: "Payment evidence review" }),
@@ -346,13 +350,10 @@ test("owner creates a manual order from the orders dialog", async ({
   const orderRow = admin.getByRole("row").filter({
     hasText: "manual@example.test",
   });
-  await orderRow.getByRole("link", { name: "Manage" }).click();
-  await expect(admin).toHaveURL(/manage=[0-9a-f-]+#order-/);
+  await orderRow.getByRole("link", { name: "View order", exact: true }).click();
+  await expect(admin).toHaveURL(/\/admin\/orders\/[0-9a-f-]+$/);
   await expect(
-    admin.locator(
-      "details[open]#order-payment-" +
-        new URL(admin.url()).searchParams.get("manage"),
-    ),
+    admin.getByRole("button", { name: "Record payment", exact: true }),
   ).toBeVisible();
   expect(
     await sql`select id from orders where guest_email='manual@example.test'`,

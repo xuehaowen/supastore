@@ -1,3 +1,4 @@
+import { CurrencyField } from "@/app/admin/currency-field";
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
@@ -105,11 +106,7 @@ export default async function CreditPage({
                 an existing customer.
               </p>
             )}
-            <Field
-              name="amountCents"
-              label="Credit amount in minor units"
-              type="number"
-            />
+            <CurrencyField name="amountCents" label="Credit amount" />
             <Field name="reason" label="Credit reason" />
             <Button type="submit">Issue store credit</Button>
           </form>

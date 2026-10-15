@@ -49,7 +49,7 @@ export function AdminDialog({
           )}
         />
       )}
-      <DialogPopup className="flex max-h-[90vh] flex-col overflow-y-auto sm:max-w-2xl">
+      <DialogPopup className="admin-workspace admin-dialog-theme flex max-h-[90vh] flex-col overflow-y-auto sm:max-w-2xl">
         <DialogHeader className="shrink-0">
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}

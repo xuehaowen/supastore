@@ -83,7 +83,7 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
   await issue
     .getByRole("combobox", { name: "Customer", exact: true })
     .selectOption({ index: 1 });
-  await issue.getByLabel("Credit amount in minor units").fill("1000");
+  await issue.getByLabel("Credit amount (USD)").fill("10.00");
   await issue.getByLabel("Credit reason").fill("Journey credit");
   await clickAction(
     admin,
@@ -124,9 +124,7 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
     .getByRole("button", { name: "Record payment", exact: true })
     .click();
   const payment = admin.getByRole("dialog", { name: "Record actual payment" });
-  await payment
-    .getByLabel("Actual received amount in minor units")
-    .fill("1500");
+  await payment.getByLabel("Actual received amount (USD)").fill("15.00");
   await payment.getByLabel("Actual payment reference").fill(randomUUID());
   await payment.getByRole("checkbox").check();
   await clickAction(
@@ -196,7 +194,7 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
   const refund = admin.getByRole("dialog", {
     name: "Authorize purchase refund",
   });
-  await refund.getByLabel("Refund amount in minor units").fill("1000");
+  await refund.getByLabel("Refund amount (USD)").fill("10.00");
   await refund.getByLabel("Refund reason").fill("One unit refunded");
   await clickAction(
     admin,
@@ -209,7 +207,7 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
     .locator("#payouts details")
     .filter({ hasText: allocation!.id });
   await payout.locator("summary").click();
-  await payout.getByLabel("Claim amount (minor units)").fill("600");
+  await payout.getByLabel("Claim amount (USD)").fill("6.00");
   await payout
     .getByLabel("Verified return destination")
     .fill("SYNTHETIC-RETURN");
@@ -218,7 +216,7 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
     payout.getByRole("button", { name: "Claim payout", exact: true }),
   );
   await payout.locator("summary").click();
-  await payout.getByLabel("Actual payout amount (minor units)").fill("600");
+  await payout.getByLabel("Actual payout amount (USD)").fill("6.00");
   await payout.getByLabel("Transfer reference").fill(randomUUID());
   await payout.getByLabel("Actual destination").fill("SYNTHETIC-RETURN");
   await clickAction(

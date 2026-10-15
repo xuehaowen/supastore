@@ -137,11 +137,17 @@ export async function openOrder(admin: Page, reference: string) {
   await admin.goto(`/admin/orders?q=${encodeURIComponent(reference)}`);
   const row = admin.getByRole("row").filter({ hasText: reference });
   await expect(row).toHaveCount(1);
-  const link = row.getByRole("link", { name: "Manage" });
+  const unpaid = /unpaid|cancelled/.test(await row.innerText());
+  const link = row.getByRole("link", { name: "View order", exact: true });
   const target = new URL((await link.getAttribute("href"))!, admin.url());
   await link.click();
   await admin.waitForURL(target.href);
   await admin.waitForLoadState("load");
+  // Legacy queue dialogs remain covered alongside the primary order workspace.
+  const orderId = target.pathname.split("/").pop()!;
+  await admin.goto(
+    `/admin/${unpaid ? "orders" : "fulfillment"}?manage=${orderId}`,
+  );
   const dialog = admin.getByRole("dialog", { name: "Manage order payment" });
   if (await dialog.count()) return dialog;
   const details = admin.locator("#ready details[open]").filter({
@@ -166,7 +172,9 @@ export async function record(
   const form = row.locator("form").filter({
     has: admin.getByRole("button", { name: "Record receipt", exact: true }),
   });
-  await form.getByLabel("Received amount (minor units)").fill(String(amount));
+  await form
+    .getByLabel("Received amount (USD)")
+    .fill((amount / 100).toFixed(2));
   await form.getByLabel("Actual bank / cash reference").fill(bankReference);
   await form.getByRole("checkbox").check();
   await submit(form, "Record receipt");

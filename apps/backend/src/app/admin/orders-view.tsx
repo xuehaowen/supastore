@@ -1,3 +1,4 @@
+import { CurrencyField } from "@/app/admin/currency-field";
 import {
   cancelAdminOrder,
   confirmPayment,
@@ -6,7 +7,6 @@ import {
   receivePayment,
 } from "@/app/actions";
 import { AdminDialog } from "@/app/admin/admin-dialog";
-import { adminQueueReturnContext } from "@/application/common/admin-return-context";
 import { ManualOrderDialog } from "@/app/admin/manual-order-dialog";
 import { Field, Hidden } from "@/app/components";
 import { Alert, AlertDescription } from "@supastore/ui/alert";
@@ -118,7 +118,9 @@ export function OrdersView(props: OperationsScreenProps) {
               {rows.slice(0, 50).map((order) => (
                 <TableRow key={order.id}>
                   <TableCell>
-                    <strong>{order.referenceCode}</strong>
+                    <a href={`/admin/orders/${order.id}`}>
+                      <strong>{order.referenceCode}</strong>
+                    </a>
                   </TableCell>
                   <TableCell>{order.guestName}</TableCell>
                   <TableCell>{order.guestEmail}</TableCell>
@@ -154,14 +156,9 @@ export function OrdersView(props: OperationsScreenProps) {
                   <TableCell className="text-right">
                     <a
                       className="admin-edit-link"
-                      href={
-                        order.lifecycleStatus === "unpaid" ||
-                        order.lifecycleStatus === "cancelled"
-                          ? `${adminQueueReturnContext("/admin/orders", { ...query, manage: order.id })}#order-payment-${order.id}`
-                          : `${adminQueueReturnContext("/admin/fulfillment", { ...query, manage: order.id })}#order-fulfillment-${order.id}`
-                      }
+                      href={`/admin/orders/${order.id}`}
                     >
-                      Manage
+                      View order
                     </a>
                   </TableCell>
                 </TableRow>
@@ -257,11 +254,7 @@ export function OrdersView(props: OperationsScreenProps) {
                         ))}
                       </NativeSelect>
                     </label>
-                    <Field
-                      name="amount"
-                      label="Received amount (minor units)"
-                      type="number"
-                    />
+                    <CurrencyField name="amount" label="Received amount" />
                     <Field
                       name="reference"
                       label="Actual bank / cash reference"
@@ -287,11 +280,7 @@ export function OrdersView(props: OperationsScreenProps) {
                       <form action={proposeChange}>
                         <Hidden name="returnTo" value={returnTo} />
                         <Hidden name="orderId" value={order.id} />
-                        <Field
-                          label="Proposed total (minor units)"
-                          name="total"
-                          type="number"
-                        />
+                        <CurrencyField label="Proposed total" name="total" />
                         <Field label="Reason" name="reason" />
                         <Button type="submit" variant="outline">
                           Propose new terms
@@ -322,15 +311,10 @@ export function OrdersView(props: OperationsScreenProps) {
                         ))}
                       </NativeSelect>
                     </label>
-                    <Field
-                      name="amount"
-                      label="Cash amount (minor units)"
-                      type="number"
-                    />
-                    <Field
+                    <CurrencyField name="amount" label="Cash amount" />
+                    <CurrencyField
                       name="tenderedAmount"
-                      label="Tendered amount (minor units)"
-                      type="number"
+                      label="Tendered amount"
                     />
                     <Field name="payerName" label="Payer name" />
                     <Button type="submit" variant="outline">

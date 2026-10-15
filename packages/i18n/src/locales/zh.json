@@ -145,6 +145,8 @@
     "generic": "无法完成操作，请检查填写的信息后重试，或联系商店。",
     "quantityMinimumZero": "数量不得小于 0。",
     "quantityMinimumOne": "数量不得小于 1。",
+    "quantityInteger": "数量必须为整数。",
+    "quantityMaximum": "数量不得超过 999。",
     "fulfillmentInvalid": "配送或自提方式无效。",
     "acceptTotal": "请接受最终总价后再下单。",
     "rateLimit": "请稍等一分钟后再试。",
