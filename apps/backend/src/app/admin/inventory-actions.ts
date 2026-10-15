@@ -1,4 +1,5 @@
 "use server";
+import { adminReturnContext } from "@/application/common/admin-return-context";
 import { redirect } from "next/navigation";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { staffIdentity } from "@/infrastructure/web";
@@ -6,7 +7,14 @@ import { adjustStock } from "@/application/use-cases/inventory/stock-operations"
 import { parseActionInteger } from "@/application/common/request-validation";
 import { DomainError } from "@/application/common/errors";
 export async function countStockAction(form: FormData) {
-  let destination = "/admin/inventory?saved=1";
+  const requested = adminReturnContext(String(form.get("returnTo") ?? ""));
+  const destination = new URL(
+    requested.split("?")[0] === "/admin/inventory"
+      ? requested
+      : "/admin/inventory",
+    "https://admin.invalid",
+  );
+  destination.searchParams.set("saved", "1");
   const text = (key: string) => String(form.get(key) ?? "").trim();
   try {
     await adjustStock({
@@ -21,7 +29,13 @@ export async function countStockAction(form: FormData) {
     revalidatePath("/admin", "layout");
     revalidateTag("catalog");
   } catch (e) {
-    destination = `/admin/inventory?error=${encodeURIComponent(e instanceof DomainError ? e.message : "Unable to record count. Please retry.")}`;
+    destination.searchParams.delete("saved");
+    destination.searchParams.set(
+      "error",
+      e instanceof DomainError
+        ? e.message
+        : "Unable to record count. Please retry.",
+    );
   }
-  redirect(destination);
+  redirect(destination.pathname + destination.search);
 }

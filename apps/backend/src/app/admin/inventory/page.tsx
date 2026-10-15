@@ -1,3 +1,4 @@
+import { adminQueueReturnContext } from "@/application/common/admin-return-context";
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
@@ -82,8 +83,14 @@ export default async function InventoryPage({
         Untracked variants have no quantity limit. Pending manual payments keep
         their reservations until explicit cancellation.
       </p>
-      <Link href="/admin/inventory/pending">Review overdue payment holds</Link>
-      <Link href="/admin/inventory/slots">Manage fulfillment slot quotas</Link>
+      <div className="admin-inventory-shortcuts">
+        <Link href="/admin/inventory/pending">
+          Review overdue payment holds
+        </Link>
+        <Link href="/admin/inventory/slots">
+          Manage fulfillment slot quotas
+        </Link>
+      </div>
       <Notice error={query.error} />
       {query.saved && (
         <Alert>
@@ -143,52 +150,69 @@ export default async function InventoryPage({
                       : "Unlimited"}
                   </TableCell>
                   <TableCell>
-                    <Link href={`/admin/inventory/${v.id}`}>Stock history</Link>
-                    {
-                      <AdminDialog
-                        trigger="Record count"
-                        title={`Stock count · ${v.sku}`}
-                        description="Record the physical quantity and a reason. A count below reservations creates a shortage; it does not release orders."
+                    <div className="admin-inventory-actions">
+                      <Link
+                        href={`/admin/inventory/${v.id}?back=${encodeURIComponent(adminQueueReturnContext("/admin/inventory", { q: query.q, status: query.status, page: query.page }))}`}
                       >
-                        <form action={countStockAction}>
-                          <Hidden name="variantId" value={v.id} />
-                          <Hidden
-                            name="revision"
-                            value={String(s?.revision || 1)}
-                          />
-                          <Hidden name="requestKey" value={randomUUID()} />
-                          {result.owner ? (
-                            <label className="check">
-                              <Checkbox
-                                name="tracking"
-                                defaultChecked={s?.trackingEnabled || false}
-                              />
-                              Track stock
-                            </label>
-                          ) : (
-                            <>
-                              <Hidden
-                                name="tracking"
-                                value={s?.trackingEnabled ? "on" : ""}
-                              />
-                              <p>
-                                Stock tracking:{" "}
-                                {s?.trackingEnabled ? "On" : "Off"}. An owner
-                                can change tracking settings.
-                              </p>
-                            </>
-                          )}
-                          <Field
-                            name="onHand"
-                            label="Physical quantity"
-                            type="number"
-                            value={s?.onHand || 0}
-                          />
-                          <Field name="reason" label="Count reason" />
-                          <Button type="submit">Save stock count</Button>
-                        </form>
-                      </AdminDialog>
-                    }
+                        Stock history
+                      </Link>
+                      {
+                        <AdminDialog
+                          trigger="Record count"
+                          title={`Stock count · ${v.sku}`}
+                          description="Record the physical quantity and a reason. A count below reservations creates a shortage; it does not release orders."
+                        >
+                          <form action={countStockAction}>
+                            <Hidden
+                              name="returnTo"
+                              value={adminQueueReturnContext(
+                                "/admin/inventory",
+                                {
+                                  q: query.q,
+                                  status: query.status,
+                                  page: query.page,
+                                },
+                              )}
+                            />
+                            <Hidden name="variantId" value={v.id} />
+                            <Hidden
+                              name="revision"
+                              value={String(s?.revision || 1)}
+                            />
+                            <Hidden name="requestKey" value={randomUUID()} />
+                            {result.owner ? (
+                              <label className="check">
+                                <Checkbox
+                                  name="tracking"
+                                  defaultChecked={s?.trackingEnabled || false}
+                                />
+                                Track stock
+                              </label>
+                            ) : (
+                              <>
+                                <Hidden
+                                  name="tracking"
+                                  value={s?.trackingEnabled ? "on" : ""}
+                                />
+                                <p>
+                                  Stock tracking:{" "}
+                                  {s?.trackingEnabled ? "On" : "Off"}. An owner
+                                  can change tracking settings.
+                                </p>
+                              </>
+                            )}
+                            <Field
+                              name="onHand"
+                              label="Physical quantity"
+                              type="number"
+                              value={s?.onHand || 0}
+                            />
+                            <Field name="reason" label="Count reason" />
+                            <Button type="submit">Save stock count</Button>
+                          </form>
+                        </AdminDialog>
+                      }
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

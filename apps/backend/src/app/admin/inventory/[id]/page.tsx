@@ -5,6 +5,7 @@ import {
   ledgerBoundary,
 } from "@/infrastructure/db/ledger-cursor";
 import Link from "next/link";
+import { adminListReturnContext } from "@/application/common/admin-return-context";
 import { notFound, redirect } from "next/navigation";
 import { and, desc, eq, getTableColumns } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
@@ -32,13 +33,23 @@ export default async function StockHistory({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ after?: string }>;
+  searchParams: Promise<{ after?: string; back?: string }>;
 }) {
   const staff = await staffIdentity().catch(() => redirect("/admin/login")),
     { id } = await params,
     query = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const cursor = parseLedgerCursor(query.after);
+  const requestedBack = adminListReturnContext(
+    query.back ?? "",
+    "/admin/inventory",
+  );
+  const back =
+    requestedBack.split("?")[0] === "/admin/inventory"
+      ? requestedBack
+      : "/admin/inventory";
+  const historyHref = (after?: string) =>
+    `?${new URLSearchParams({ back, ...(after ? { after } : {}) })}`;
   const data = await db.transaction(async (tx) => {
     await verifyStaffInTransaction(tx, staff);
     const [row] = await tx
@@ -82,7 +93,7 @@ export default async function StockHistory({
   return (
     <main className="admin">
       <AdminNav />
-      <Link href="/admin/inventory">← Inventory</Link>
+      <Link href={back}>← Inventory</Link>
       <h1>
         {data.product.title} · {data.variant.title}
       </h1>
@@ -142,10 +153,15 @@ export default async function StockHistory({
           </TableBody>
         </Table>
         <nav className="pager" aria-label="Stock movement pages">
-          {cursor && <Link href="?">Latest movements</Link>}
+          {cursor && <Link href={historyHref()}>Latest movements</Link>}
           {data.movements.length > 25 && (
             <Link
-              href={`?after=${encodeLedgerCursor(data.movements[24]!.cursorTimestamp, data.movements[24]!.id)}`}
+              href={historyHref(
+                encodeLedgerCursor(
+                  data.movements[24]!.cursorTimestamp,
+                  data.movements[24]!.id,
+                ),
+              )}
             >
               Older movements
             </Link>
