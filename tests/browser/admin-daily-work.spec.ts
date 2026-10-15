@@ -7,17 +7,23 @@ test("daily work opens a consistent order workspace and separates dispatch from 
   sql,
 }) => {
   const order = await checkout(page, sql);
+  const expectedBack = `/admin/orders?${new URLSearchParams({ q: order.reference_code })}`;
   await admin.goto("/admin");
   const sections = admin.locator("main.admin > section");
   await expect(sections.first()).toHaveAccessibleName("Needs attention");
   await expect(admin.getByText("Daily work", { exact: true })).toBeVisible();
-  await admin.goto(`/admin/orders?q=${order.reference_code}`);
+  await admin.goto(expectedBack);
   const row = admin.getByRole("row").filter({ hasText: order.reference_code });
   await expect(
     row.getByRole("link", { name: order.reference_code, exact: true }),
-  ).toHaveAttribute("href", `/admin/orders/${order.id}`);
+  ).toHaveAttribute(
+    "href",
+    `/admin/orders/${order.id}?back=${encodeURIComponent(expectedBack)}`,
+  );
   await row.getByRole("link", { name: "View order", exact: true }).click();
-  await expect(admin).toHaveURL(new RegExp(`/admin/orders/${order.id}$`));
+  await expect(admin).toHaveURL(
+    new RegExp(`/admin/orders/${order.id}\\?back=`),
+  );
   await admin
     .getByRole("button", { name: "Record payment", exact: true })
     .click();
@@ -72,15 +78,51 @@ test("daily work opens a consistent order workspace and separates dispatch from 
   const delivery = admin.getByRole("dialog", {
     name: "Record completed delivery",
   });
+  await expect(delivery.getByLabel("Carrier or delivery method")).toHaveValue(
+    "Daily work courier",
+  );
+  await expect(delivery.getByLabel("Tracking number")).toHaveValue("DAILY-1");
+  // Omitted values from stale clients must preserve the dispatched details too.
   await delivery
     .getByLabel("Carrier or delivery method")
-    .fill("Daily work courier");
-  await delivery.getByLabel("Tracking number").fill("DAILY-1");
+    .evaluate((input) => input.removeAttribute("required"));
+  await delivery.getByLabel("Carrier or delivery method").fill("");
+  await delivery.getByLabel("Tracking number").fill("");
   await clickAction(
     admin,
     delivery.getByRole("button", { name: "Record delivery", exact: true }),
   );
   await expect(admin.getByText("completed", { exact: true })).toBeVisible();
+  expect(
+    (
+      await sql`select carrier,tracking_number from order_fulfillments where order_id=${order.id}`
+    )[0],
+  ).toMatchObject({
+    carrier: "Daily work courier",
+    tracking_number: "DAILY-1",
+  });
+  await admin
+    .getByRole("button", { name: "Refund purchase", exact: true })
+    .click();
+  const refund = admin.getByRole("dialog", {
+    name: "Authorize purchase refund",
+    exact: true,
+  });
+  await refund.getByLabel("Refund amount (USD)").fill("0");
+  await refund.getByLabel("Refund reason").fill("Context validation check");
+  await clickAction(
+    admin,
+    refund.getByRole("button", {
+      name: "Authorize source-aware refund",
+      exact: true,
+    }),
+  );
+  await expect(admin.locator('[data-slot="alert"]')).toContainText(
+    "Refund amount must be at least 1.",
+  );
+  expect(new URL(admin.url()).searchParams.get("back")).toBe(expectedBack);
+  await admin.getByRole("link", { name: "← All orders", exact: true }).click();
+  await expect(admin).toHaveURL(new URL(expectedBack, admin.url()).href);
   expect(
     (await sql`select lifecycle_status from orders where id=${order.id}`)[0]!
       .lifecycle_status,
@@ -110,6 +152,12 @@ test("staff navigation, stock counts and mobile menu support daily work without 
   await nav.getByRole("link", { name: "Inventory", exact: true }).click();
   await page.getByLabel("Search inventory").fill(`daily-${id}`);
   await page.getByRole("button", { name: "Filter", exact: true }).click();
+  const inventoryUrl = new URL(`/admin/inventory?q=daily-${id}`, page.url())
+    .href;
+  await page.getByRole("link", { name: "Stock history", exact: true }).click();
+  await page.getByRole("link", { name: "← Inventory", exact: true }).click();
+  await expect(page).toHaveURL(inventoryUrl);
+  await page.screenshot({ path: "test-results/admin-inventory-spacing.png" });
   await page.getByRole("button", { name: "Record count", exact: true }).click();
   let dialog = page.getByRole("dialog", { name: `Stock count · daily-${id}` });
   await expect(
@@ -122,6 +170,7 @@ test("staff navigation, stock counts and mobile menu support daily work without 
     dialog.getByRole("button", { name: "Save stock count" }),
   );
   await expect(page.getByText("Stock count recorded.")).toBeVisible();
+  expect(new URL(page.url()).searchParams.get("q")).toBe(`daily-${id}`);
   expect(
     (
       await sql`select on_hand,tracking_enabled from variant_stock where variant_id=${variant!.id}`
@@ -146,6 +195,7 @@ test("staff navigation, stock counts and mobile menu support daily work without 
   await expect(page.locator('[data-slot="alert"]')).toContainText(
     "Only owners can change stock tracking",
   );
+  expect(new URL(page.url()).searchParams.get("q")).toBe(`daily-${id}`);
   expect(
     (
       await sql`select on_hand,tracking_enabled from variant_stock where variant_id=${variant!.id}`

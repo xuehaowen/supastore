@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { adminOrderReturnContext } from "@/application/common/admin-return-context";
 import { eq, asc, inArray } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
@@ -29,6 +30,7 @@ export default async function Shipments({
     error?: string;
     saved?: string;
     page?: string;
+    back?: string;
   }>;
 }) {
   const query = await searchParams;
@@ -68,6 +70,7 @@ export default async function Shipments({
     );
   }
   const id = parseActionUuid(query.orderId, "Order");
+  const back = adminOrderReturnContext(id, query.back ?? "");
   const data = await db.transaction(async (tx) => {
     await verifyStaffInTransaction(tx, staff);
     const [order] = await tx.select().from(orders).where(eq(orders.id, id));
@@ -131,11 +134,21 @@ export default async function Shipments({
   });
   if (!data.order) return <main>Order not found.</main>;
   const order = data.order;
+  const remainingItems = data.items
+    .map((item) => ({
+      ...item,
+      remaining:
+        item.quantity -
+        data.lines
+          .filter((line) => line.orderItemId === item.id)
+          .reduce((sum, line) => sum + line.quantity, 0),
+    }))
+    .filter((item) => item.remaining > 0);
   return (
     <main className="admin">
       <AdminNav />
       <h1>Shipments & booking</h1>
-      <Link href={`/admin/orders/${id}`}>Order {order.referenceCode}</Link>
+      <Link href={back}>Order {order.referenceCode}</Link>
       <Notice error={query.error} />
       {query.saved && (
         <Alert>
@@ -156,6 +169,7 @@ export default async function Shipments({
               <form action={shipmentAction}>
                 <Hidden name="operation" value="delivered" />
                 <Hidden name="orderId" value={id} />
+                <Hidden name="back" value={back} />
                 <Hidden name="shipmentId" value={shipment.id} />
                 <p>
                   Record receipt only after verifying this shipment reached the
@@ -167,11 +181,13 @@ export default async function Shipments({
         </section>
       ))}
       {order.fulfillmentType !== "pickup" &&
-        order.lifecycleStatus === "confirmed" && (
+        order.lifecycleStatus === "confirmed" &&
+        remainingItems.length > 0 && (
           <form action={shipmentAction} className="panel">
             <h2>Dispatch selected units</h2>
             <Hidden name="operation" value="dispatch" />
             <Hidden name="orderId" value={id} />
+            <Hidden name="back" value={back} />
             <Hidden name="requestKey" value={crypto.randomUUID()} />
             <Field name="carrier" label="Carrier / delivery method" />
             <Field
@@ -190,12 +206,8 @@ export default async function Shipments({
                 )}
               </NativeSelect>
             </label>
-            {data.items.map((item) => {
-              const remaining =
-                item.quantity -
-                data.lines
-                  .filter((line) => line.orderItemId === item.id)
-                  .reduce((sum, line) => sum + line.quantity, 0);
+            {remainingItems.map((item) => {
+              const remaining = item.remaining;
               return (
                 <Field
                   key={item.id}
@@ -209,6 +221,9 @@ export default async function Shipments({
             <Button type="submit">Dispatch shipment</Button>
           </form>
         )}
+      {order.fulfillmentType !== "pickup" && remainingItems.length === 0 && (
+        <p>All units dispatched.</p>
+      )}
       {data.hold?.status === "active" &&
         ["unpaid", "confirmed"].includes(order.lifecycleStatus) &&
         !data.shipments.length && (
@@ -216,6 +231,7 @@ export default async function Shipments({
             <h2>Reschedule booking</h2>
             <Hidden name="operation" value="reschedule" />
             <Hidden name="orderId" value={id} />
+            <Hidden name="back" value={back} />
             <label>
               Destination slot
               <NativeSelect name="slotId">

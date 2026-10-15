@@ -351,7 +351,7 @@ test("owner creates a manual order from the orders dialog", async ({
     hasText: "manual@example.test",
   });
   await orderRow.getByRole("link", { name: "View order", exact: true }).click();
-  await expect(admin).toHaveURL(/\/admin\/orders\/[0-9a-f-]+$/);
+  await expect(admin).toHaveURL(/\/admin\/orders\/[0-9a-f-]+\?back=/);
   await expect(
     admin.getByRole("button", { name: "Record payment", exact: true }),
   ).toBeVisible();

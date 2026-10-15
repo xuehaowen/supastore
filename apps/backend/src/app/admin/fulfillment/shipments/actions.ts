@@ -11,9 +11,11 @@ import {
   rescheduleOrderWindow,
 } from "@/application/use-cases/fulfillment/reschedule-order";
 import { DomainError } from "@/application/common/errors";
+import { adminOrderReturnContext } from "@/application/common/admin-return-context";
 const text = (form: FormData, key: string) => String(form.get(key) || "");
 export async function shipmentAction(form: FormData) {
   let target = `/admin/fulfillment/shipments?orderId=${encodeURIComponent(text(form, "orderId"))}`;
+  target += `&back=${encodeURIComponent(adminOrderReturnContext(text(form, "orderId"), text(form, "back")))}`;
   try {
     const staffUserId = await staffIdentity();
     switch (text(form, "operation")) {

@@ -1,3 +1,6 @@
+import { adminListReturnContext } from "@/application/common/admin-return-context";
+import { shipmentLines } from "@/application/use-cases/fulfillment/shipments";
+import { shipmentCoverageComplete } from "@/domain/shipment";
 import { CurrencyField } from "@/app/admin/currency-field";
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
@@ -58,12 +61,16 @@ export default async function OrderDetail({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; saved?: string }>;
+  searchParams: Promise<{ error?: string; saved?: string; back?: string }>;
 }) {
   const staff = await staffIdentity().catch(() => redirect("/admin/login"));
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const query = await searchParams;
+  const back = adminListReturnContext(query.back ?? "/admin/orders");
+  const detailReturnTo =
+    `/admin/orders/${id}` +
+    (query.back ? `?back=${encodeURIComponent(back)}` : "");
   const data = await db.transaction(async (tx) => {
     const identity = await verifyStaffInTransaction(tx, staff);
     const [order] = await tx.select().from(orders).where(eq(orders.id, id));
@@ -144,6 +151,7 @@ export default async function OrderDetail({
       quote,
       items,
       fulfillment,
+      shipmentLines: await shipmentLines(tx, id),
       receipts,
       corrections,
       allocations,
@@ -179,13 +187,17 @@ export default async function OrderDetail({
   const identity = (
     <>
       <Hidden name="orderId" value={id} />
-      <Hidden name="returnTo" value={`/admin/orders/${id}`} />
+      <Hidden name="returnTo" value={detailReturnTo} />
     </>
   );
   return (
     <main className="admin">
       <AdminNav />
-      <Link href="/admin/orders">← All orders</Link>
+      <Link href={back}>
+        {back.startsWith("/admin/fulfillment")
+          ? "← Back to fulfillment"
+          : "← All orders"}
+      </Link>
       <h1>{o.referenceCode}</h1>
       <Link href={`/admin/orders/${id}/packing-slip`}>Print packing slip</Link>
       <div className="flex items-center gap-2 mb-2">
@@ -305,14 +317,26 @@ export default async function OrderDetail({
               {identity}
               <label>
                 Cash account
-                <NativeSelect name="accountId">
-                  {data.accounts.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.accountName}
-                    </option>
-                  ))}
+                <NativeSelect name="accountId" required defaultValue="">
+                  <option value="" disabled>
+                    Choose a cash account
+                  </option>
+                  {data.accounts
+                    .filter((a) => a.isActive && a.accountType === "cash")
+                    .map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.accountName}
+                      </option>
+                    ))}
                 </NativeSelect>
               </label>
+              {!data.accounts.some(
+                (a) => a.isActive && a.accountType === "cash",
+              ) && (
+                <p>
+                  No active cash account. Ask an owner to add one in Settings.
+                </p>
+              )}
               <CurrencyField
                 name="amount"
                 label="Cash amount"
@@ -326,7 +350,16 @@ export default async function OrderDetail({
                 precision={terms.precision}
               />
               <Field name="payerName" label="Payer name" />
-              <Button type="submit">Record cash receipt</Button>
+              <Button
+                type="submit"
+                disabled={
+                  !data.accounts.some(
+                    (a) => a.isActive && a.accountType === "cash",
+                  )
+                }
+              >
+                Record cash receipt
+              </Button>
             </form>
           </AdminDialog>
           {o.lifecycleStatus === "unpaid" && (
@@ -358,7 +391,9 @@ export default async function OrderDetail({
       )}
       <section className="panel">
         <h2>Fulfillment</h2>
-        <Link href={`/admin/fulfillment/shipments?orderId=${id}`}>
+        <Link
+          href={`/admin/fulfillment/shipments?orderId=${id}&back=${encodeURIComponent(detailReturnTo)}`}
+        >
           Manage partial shipments & reschedule booking
         </Link>
         <p>
@@ -366,8 +401,23 @@ export default async function OrderDetail({
           {data.fulfillment?.carrier || ""} ·{" "}
           {data.fulfillment?.trackingNumber || ""}
         </p>
+        {data.fulfillment?.status === "shipped" &&
+          !shipmentCoverageComplete(data.items, data.shipmentLines) && (
+            <p>
+              Partially dispatched.{" "}
+              <Link
+                href={`/admin/fulfillment/shipments?orderId=${id}&back=${encodeURIComponent(detailReturnTo)}`}
+              >
+                Dispatch remaining units
+              </Link>
+            </p>
+          )}
         {o.lifecycleStatus === "confirmed" &&
-          o.fulfillmentType === "shipping" && (
+          o.fulfillmentType === "shipping" &&
+          !(
+            data.fulfillment?.status === "shipped" &&
+            !shipmentCoverageComplete(data.items, data.shipmentLines)
+          ) && (
             <AdminDialog
               trigger={
                 data.fulfillment?.status === "shipped"
@@ -389,10 +439,15 @@ export default async function OrderDetail({
                 }
               >
                 {identity}
-                <Field name="carrier" label="Carrier or delivery method" />
+                <Field
+                  name="carrier"
+                  label="Carrier or delivery method"
+                  value={data.fulfillment?.carrier ?? undefined}
+                />
                 <Field
                   name="trackingNumber"
                   label="Tracking number"
+                  value={data.fulfillment?.trackingNumber ?? undefined}
                   required={false}
                 />
                 <Button type="submit">
@@ -412,33 +467,40 @@ export default async function OrderDetail({
                   <Button type="submit">Mark ready for pickup</Button>
                 </form>
               )}
-              <AdminDialog
-                trigger="Complete pickup handoff"
-                title="Verify pickup recipient"
-              >
-                <form action={completeOrderPickup}>
-                  {identity}
-                  <Field
-                    label="Recipient / authorized recipient"
-                    name="handoffActor"
-                  />
-                  <label>
-                    Verification method
-                    <NativeSelect
-                      name="verificationMethod"
-                      defaultValue="scoped_order_page"
-                    >
-                      <option value="scoped_order_page">
-                        Customer order page checked
-                      </option>
-                      <option value="owner_assisted">
-                        Owner-assisted verification
-                      </option>
-                    </NativeSelect>
-                  </label>
-                  <Button type="submit">Complete pickup handoff</Button>
-                </form>
-              </AdminDialog>
+              {data.fulfillment?.status === "ready_for_pickup" ? (
+                <AdminDialog
+                  trigger="Complete pickup handoff"
+                  title="Verify pickup recipient"
+                >
+                  <form action={completeOrderPickup}>
+                    {identity}
+                    <Field
+                      label="Recipient / authorized recipient"
+                      name="handoffActor"
+                    />
+                    <label>
+                      Verification method
+                      <NativeSelect
+                        name="verificationMethod"
+                        defaultValue="scoped_order_page"
+                      >
+                        <option value="scoped_order_page">
+                          Customer order page checked
+                        </option>
+                        <option value="owner_assisted">
+                          Owner-assisted verification
+                        </option>
+                      </NativeSelect>
+                    </label>
+                    <Button type="submit">Complete pickup handoff</Button>
+                  </form>
+                </AdminDialog>
+              ) : (
+                <p>
+                  Mark this order ready for pickup before completing the
+                  handoff.
+                </p>
+              )}
             </div>
           )}
         <Link href="/admin/fulfillment">All fulfillment work</Link>
@@ -540,6 +602,7 @@ export default async function OrderDetail({
             </Alert>
             {data.identity.role === "owner" && (
               <form action={resolveRewardReviewAction}>
+                <Hidden name="returnTo" value={detailReturnTo} />
                 <Hidden name="orderId" value={o.id} />
                 <Hidden name="requestKey" value={randomUUID()} />
                 <p>

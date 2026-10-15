@@ -152,7 +152,10 @@ test.describe("request rejection flows", () => {
     sql,
   }) => {
     const order = await checkout(page, sql, { free: true, pickup: true });
+    await sql`update order_fulfillments set status='ready_for_pickup' where order_id=${order.id}`;
     await admin.goto(`/admin/orders/${order.id}`);
+    // Simulate readiness being revoked after this page was loaded.
+    await sql`update order_fulfillments set status='unfulfilled' where order_id=${order.id}`;
     await admin
       .getByRole("button", { name: "Complete pickup handoff", exact: true })
       .click();

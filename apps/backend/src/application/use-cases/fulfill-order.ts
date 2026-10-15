@@ -30,12 +30,6 @@ export interface FulfillOrderInput {
 }
 
 export async function fulfillOrder(input: FulfillOrderInput) {
-  if (!input.carrier?.trim()) {
-    throw new InvariantViolationError(
-      "Carrier or manual delivery method is required.",
-    );
-  }
-  const carrier = input.carrier.trim();
   return await db.transaction(async (tx) => {
     // 1. Staff verification
     const staff = await verifyStaffInTransaction(tx, input.staffUserId);
@@ -62,6 +56,20 @@ export async function fulfillOrder(input: FulfillOrderInput) {
       );
     }
 
+    const [existingFulfillment] = await tx
+      .select()
+      .from(orderFulfillments)
+      .where(eq(orderFulfillments.orderId, order.id));
+    const carrier = input.carrier?.trim() || existingFulfillment?.carrier;
+    const trackingNumber =
+      input.trackingNumber?.trim() ||
+      existingFulfillment?.trackingNumber ||
+      null;
+    if (!carrier)
+      throw new InvariantViolationError(
+        "Carrier or manual delivery method is required.",
+      );
+
     // Update fulfillment record
     const shipments = await tx
       .select()
@@ -78,7 +86,7 @@ export async function fulfillOrder(input: FulfillOrderInput) {
           orderId: order.id,
           requestKey: "manual-completed-delivery",
           carrier,
-          trackingNumber: input.trackingNumber?.trim() || null,
+          trackingNumber,
           status: "delivered",
           deliveredAt: new Date(),
         })
@@ -107,7 +115,7 @@ export async function fulfillOrder(input: FulfillOrderInput) {
       .set({
         status: "fulfilled",
         carrier,
-        trackingNumber: input.trackingNumber?.trim() || null,
+        trackingNumber,
         fulfilledAt: new Date(),
         updatedAt: new Date(),
       })
@@ -145,7 +153,7 @@ export async function fulfillOrder(input: FulfillOrderInput) {
           orderId: order.id,
           referenceCode: order.referenceCode,
           carrier,
-          trackingNumber: input.trackingNumber?.trim() || null,
+          trackingNumber,
           completedAt: new Date().toISOString(),
         },
       })

@@ -5,9 +5,13 @@ import { staffIdentity } from "@/infrastructure/web";
 import { DomainError } from "@/application/common/errors";
 import { parseActionUuid } from "@/application/common/request-validation";
 import { resolveRewardFundingReview } from "@/application/use-cases/store-credit/resolve-reward-review";
+import { adminOrderReturnContext } from "@/application/common/admin-return-context";
 export async function resolveRewardReviewAction(form: FormData) {
   const orderId = parseActionUuid(String(form.get("orderId")), "Order");
-  let destination = `/admin/orders/${orderId}`;
+  const destination = new URL(
+    adminOrderReturnContext(orderId, String(form.get("returnTo") ?? "")),
+    "https://admin.invalid",
+  );
   try {
     await resolveRewardFundingReview({
       orderId,
@@ -15,10 +19,15 @@ export async function resolveRewardReviewAction(form: FormData) {
       requestKey: String(form.get("requestKey")),
       reason: String(form.get("reason") ?? ""),
     });
-    revalidatePath(destination);
+    revalidatePath(destination.pathname);
     revalidatePath("/admin/store-credit");
   } catch (error) {
-    destination += `?error=${encodeURIComponent(error instanceof DomainError ? error.message : "Reward review could not be resolved. Verify the original receipt history.")}`;
+    destination.searchParams.set(
+      "error",
+      error instanceof DomainError
+        ? error.message
+        : "Reward review could not be resolved. Verify the original receipt history.",
+    );
   }
-  redirect(destination);
+  redirect(destination.pathname + destination.search);
 }

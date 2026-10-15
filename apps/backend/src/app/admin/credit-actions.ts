@@ -6,6 +6,7 @@ import { issueStoreCredit } from "@/application/use-cases/store-credit/credit-op
 import { refundPurchase } from "@/application/use-cases/store-credit/purchase-refund";
 import { DomainError } from "@/application/common/errors";
 import { parseActionInteger } from "@/application/common/request-validation";
+import { adminOrderReturnContext } from "@/application/common/admin-return-context";
 const text = (form: FormData, key: string) =>
   String(form.get(key) ?? "").trim();
 export async function issueCreditAction(form: FormData) {
@@ -36,9 +37,10 @@ export async function issueCreditAction(form: FormData) {
 }
 export async function refundPurchaseAction(form: FormData) {
   const orderId = text(form, "orderId");
-  let destination = /^[0-9a-f-]{36}$/i.test(orderId)
-    ? `/admin/orders/${orderId}`
-    : "/admin/orders";
+  const destination = new URL(
+    adminOrderReturnContext(orderId, text(form, "returnTo")),
+    "https://admin.invalid",
+  );
   try {
     const components = [
       ...new Set(
@@ -80,9 +82,12 @@ export async function refundPurchaseAction(form: FormData) {
     });
     revalidatePath("/admin", "layout");
     revalidatePath("/[locale]/account", "page");
-    destination += "?saved=1";
+    destination.searchParams.set("saved", "1");
   } catch (e) {
-    destination += `?error=${encodeURIComponent(e instanceof DomainError ? e.message : "Unable to authorize refund.")}`;
+    destination.searchParams.set(
+      "error",
+      e instanceof DomainError ? e.message : "Unable to authorize refund.",
+    );
   }
-  redirect(destination);
+  redirect(destination.pathname + destination.search);
 }

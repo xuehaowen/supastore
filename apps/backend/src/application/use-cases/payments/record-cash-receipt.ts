@@ -83,6 +83,11 @@ export async function recordCashReceipt(input: RecordCashReceiptInput) {
       );
     }
 
+    if (account.accountType !== "cash")
+      throw new InvariantViolationError(
+        "Choose an active cash account to record a cash receipt.",
+      );
+
     // 3. Monotonic sequential cash receipt number generation under row lock
     const [seqRow] = await tx
       .insert(cashReceiptSequences)

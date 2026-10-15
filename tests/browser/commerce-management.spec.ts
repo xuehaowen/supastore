@@ -187,7 +187,10 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
     admin,
     admin.getByRole("button", { name: "Record goods receipt" }),
   );
-  await admin.goto(`/admin/orders/${orderId}`);
+  const refundBack = "/admin/orders?status=completed&page=2";
+  await admin.goto(
+    `/admin/orders/${orderId}?back=${encodeURIComponent(refundBack)}`,
+  );
   await admin
     .getByRole("button", { name: "Refund purchase", exact: true })
     .click();
@@ -200,6 +203,7 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
     admin,
     refund.getByRole("button", { name: "Authorize source-aware refund" }),
   );
+  expect(new URL(admin.url()).searchParams.get("back")).toBe(refundBack);
   const [allocation] =
     await sql`select pa.id from payout_allocations pa join refund_authorizations ra on ra.id=pa.refund_authorization_id where ra.order_id=${orderId} and ra.reason='One unit refunded'`;
   await admin.goto("/admin/payments");

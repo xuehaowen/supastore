@@ -1,3 +1,4 @@
+import { adminQueueReturnContext } from "@/application/common/admin-return-context";
 import { CurrencyField } from "@/app/admin/currency-field";
 import {
   cancelAdminOrder,
@@ -33,6 +34,10 @@ export function OrdersView(props: OperationsScreenProps) {
     ? data.managedOrders
     : data.rows;
   const { search, status, page } = props.filters;
+  const back = adminQueueReturnContext("/admin/orders", {
+    ...query,
+    manage: undefined,
+  });
 
   return (
     <>
@@ -118,7 +123,9 @@ export function OrdersView(props: OperationsScreenProps) {
               {rows.slice(0, 50).map((order) => (
                 <TableRow key={order.id}>
                   <TableCell>
-                    <a href={`/admin/orders/${order.id}`}>
+                    <a
+                      href={`/admin/orders/${order.id}?back=${encodeURIComponent(back)}`}
+                    >
                       <strong>{order.referenceCode}</strong>
                     </a>
                   </TableCell>
@@ -156,7 +163,7 @@ export function OrdersView(props: OperationsScreenProps) {
                   <TableCell className="text-right">
                     <a
                       className="admin-edit-link"
-                      href={`/admin/orders/${order.id}`}
+                      href={`/admin/orders/${order.id}?back=${encodeURIComponent(back)}`}
                     >
                       View order
                     </a>
@@ -217,7 +224,11 @@ export function OrdersView(props: OperationsScreenProps) {
                   </summary>
                   <p>{order.guestEmail}</p>
                   <p>
-                    <a href={`/admin/orders/${order.id}`}>Full order details</a>
+                    <a
+                      href={`/admin/orders/${order.id}?back=${encodeURIComponent(back)}`}
+                    >
+                      Full order details
+                    </a>
                   </p>
                   {order.creditAppliedCents > 0 && (
                     <p>
@@ -303,21 +314,42 @@ export function OrdersView(props: OperationsScreenProps) {
                     <Hidden name="orderId" value={order.id} />
                     <label>
                       Cash account
-                      <NativeSelect name="accountId">
-                        {accounts.map((a) => (
-                          <option key={a.id} value={a.id}>
-                            {a.accountName}
-                          </option>
-                        ))}
+                      <NativeSelect name="accountId" required defaultValue="">
+                        <option value="" disabled>
+                          Choose a cash account
+                        </option>
+                        {accounts
+                          .filter((a) => a.isActive && a.accountType === "cash")
+                          .map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.accountName}
+                            </option>
+                          ))}
                       </NativeSelect>
                     </label>
+                    {!accounts.some(
+                      (a) => a.isActive && a.accountType === "cash",
+                    ) && (
+                      <p>
+                        No active cash account. Ask an owner to add one in
+                        Settings.
+                      </p>
+                    )}
                     <CurrencyField name="amount" label="Cash amount" />
                     <CurrencyField
                       name="tenderedAmount"
                       label="Tendered amount"
                     />
                     <Field name="payerName" label="Payer name" />
-                    <Button type="submit" variant="outline">
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      disabled={
+                        !accounts.some(
+                          (a) => a.isActive && a.accountType === "cash",
+                        )
+                      }
+                    >
                       Record cash receipt
                     </Button>
                   </form>
