@@ -360,6 +360,52 @@ test("owner creates a manual order from the orders dialog", async ({
   ).toHaveLength(1);
 });
 
+for (const scheduled of [false, true]) {
+  test(`owner creates a ${scheduled ? "scheduled" : "unscheduled"} manual pickup without a shipping address`, async ({
+    admin,
+    sql,
+  }) => {
+    const schedule = Object.fromEntries(
+      ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].map((day) => [
+        day,
+        [["12:00", "13:00"]],
+      ]),
+    );
+    const [location] =
+      await sql`insert into pickup_location(name,address,weekly_schedule,prep_minutes,schedule_required) values('Manual pickup test','Pickup counter',${JSON.stringify(schedule)}::jsonb,0,${scheduled}) returning id`;
+    await admin.goto("/admin/orders");
+    await admin.getByRole("button", { name: "Add manual order" }).click();
+    const dialog = admin.getByRole("dialog", { name: "Add manual order" });
+    await dialog.getByLabel("Customer name").fill("Manual pickup customer");
+    const email = `manual-pickup-${scheduled}@example.test`;
+    await dialog.getByLabel("Customer email").fill(email);
+    await dialog
+      .getByLabel("Fulfillment", { exact: true })
+      .selectOption("pickup");
+    await expect(
+      dialog.getByLabel("Shipping address", { exact: true }),
+    ).toHaveCount(0);
+    await dialog.getByLabel("Pickup location").selectOption(location!.id);
+    if (scheduled) {
+      await dialog
+        .getByLabel("Pickup date")
+        .fill(new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10));
+      await dialog.getByLabel("Pickup time").fill("12:00");
+    }
+    await dialog
+      .getByLabel("Payment method")
+      .selectOption({ label: "Demo bank transfer" });
+    await dialog.getByLabel("Product variant").selectOption({ index: 1 });
+    await dialog.getByRole("button", { name: "Create order" }).click();
+    await expect(admin).toHaveURL(/\/admin\/orders\?created=SP-/);
+    const [order] =
+      await sql`select fulfillment_type,terms_snapshot from orders where guest_email=${email}`;
+    expect(order!.fulfillment_type).toBe("pickup");
+    expect(order!.terms_snapshot.pickup.locationId).toBe(location!.id);
+    expect(Boolean(order!.terms_snapshot.pickup.date)).toBe(scheduled);
+  });
+}
+
 test("staff can see submitted payment evidence in the review grid", async ({
   page,
   admin,

@@ -44,6 +44,8 @@ export function OrdersView(props: OperationsScreenProps) {
       {view === "orders" && member.role === "owner" && (
         <div className="admin-page-actions">
           <ManualOrderDialog
+            pickupLocations={data.manualPickupLocations}
+            timezone={store?.timezone ?? "UTC"}
             variants={manualOrderVariants.map((variant) => ({
               id: variant.id,
               label: `${variant.productTitle} · ${variant.variantTitle} · ${variant.sku}`,

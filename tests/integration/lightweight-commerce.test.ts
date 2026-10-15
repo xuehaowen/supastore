@@ -169,27 +169,58 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
     const variant = await product();
     const schedule = Object.fromEntries(
       ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].map((day) => [
-        day, [["12:00", "13:00"]],
+        day,
+        [["12:00", "13:00"]],
       ]),
     );
-    const [location] = await client`insert into pickup_location(name,address,weekly_schedule,prep_minutes,slot_capacity) values('Manual pickup','Pickup counter',${JSON.stringify(schedule)}::jsonb,0,1) returning id`;
+    const [location] =
+      await client`insert into pickup_location(name,address,weekly_schedule,prep_minutes,slot_capacity) values('Manual pickup','Pickup counter',${JSON.stringify(schedule)}::jsonb,0,1) returning id`;
     const input = {
-      requestKey: randomUUID(), staffUserId: owner,
-      customerName: "Pickup customer", customerEmail: "pickup@example.test",
-      fulfillmentType: "pickup" as const, country: "", address: "",
+      requestKey: randomUUID(),
+      staffUserId: owner,
+      customerName: "Pickup customer",
+      customerEmail: "pickup@example.test",
+      fulfillmentType: "pickup" as const,
+      country: "",
+      address: "",
       pickupLocationId: location!.id as string,
-      pickupDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
-      pickupTime: "12:00", paymentAccountId: bank,
+      pickupDate: new Date(Date.now() + 7 * 86400000)
+        .toISOString()
+        .slice(0, 10),
+      pickupTime: "12:00",
+      paymentAccountId: bank,
       items: [{ variantId: variant.id, quantity: 1 }],
     };
     const first = await createManualOrder(input);
     expect(first.fulfillmentType).toBe("pickup");
     expect((await createManualOrder(input)).id).toBe(first.id);
-    await expect(createManualOrder({ ...input, pickupTime: "12:30" })).rejects.toThrow("request");
-    await expect(createManualOrder({ ...input, requestKey: randomUUID() })).rejects.toThrow();
-    await expect(createManualOrder({ ...input, requestKey: randomUUID(), pickupTime: "09:00" })).rejects.toThrow();
-    const [hold] = await client`select count(*)::int as count from slot_reservations where order_id=${first.id}`;
+    await expect(
+      createManualOrder({ ...input, pickupTime: "12:30" }),
+    ).rejects.toThrow("request");
+    await expect(
+      createManualOrder({ ...input, requestKey: randomUUID() }),
+    ).rejects.toThrow();
+    await expect(
+      createManualOrder({
+        ...input,
+        requestKey: randomUUID(),
+        pickupTime: "09:00",
+      }),
+    ).rejects.toThrow();
+    const [hold] =
+      await client`select count(*)::int as count from slot_reservations where order_id=${first.id}`;
     expect(hold!.count).toBe(1);
+    await client`update pickup_location set schedule_required=false where id=${location!.id}`;
+    const unscheduled = await createManualOrder({
+      ...input,
+      requestKey: randomUUID(),
+      pickupDate: "",
+      pickupTime: "",
+    });
+    expect(unscheduled.fulfillmentType).toBe("pickup");
+    const [noHold] =
+      await client`select count(*)::int as count from slot_reservations where order_id=${unscheduled.id}`;
+    expect(noHold!.count).toBe(0);
   });
 
   it("rolls back manual preparation when quoting fails", async () => {

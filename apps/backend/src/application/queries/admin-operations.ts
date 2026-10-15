@@ -10,6 +10,7 @@ import {
   orderShipments,
   shipmentItems,
   paymentAccounts,
+  pickupLocation,
   paymentReceipts,
   paymentUploadIntents,
   payoutAllocations,
@@ -344,6 +345,13 @@ export async function getAdminOperations(input: AdminOperationsInput) {
               units: 0,
               salesTrend: [],
             };
+      const manualPickupLocations =
+        view === "orders" && member.role === "owner"
+          ? await tx
+              .select()
+              .from(pickupLocation)
+              .orderBy(pickupLocation.name, pickupLocation.id)
+          : [];
       return {
         member,
         rows,
@@ -365,6 +373,7 @@ export async function getAdminOperations(input: AdminOperationsInput) {
         queueCounts: queueCounts!,
         store,
         manualOrderVariants,
+        manualPickupLocations,
         ...metrics,
         readiness: await getLaunchReadiness(tx),
       };

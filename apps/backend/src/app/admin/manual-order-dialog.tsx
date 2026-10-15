@@ -14,17 +14,34 @@ type Option = { id: string; label: string };
 export function ManualOrderDialog({
   variants,
   paymentAccounts,
+  pickupLocations,
+  timezone,
 }: {
   variants: Option[];
   paymentAccounts: Option[];
+  pickupLocations: {
+    id: string;
+    name: string;
+    address: string;
+    scheduleRequired: boolean;
+    weeklySchedule: Record<string, [string, string][]>;
+    blackoutDates: string[];
+    prepMinutes: number;
+  }[];
+  timezone: string;
 }) {
   const [lines, setLines] = useState([0]);
   const [requestKey, setRequestKey] = useState("");
+  const [fulfillmentType, setFulfillmentType] = useState("shipping");
+  const [pickupLocationId, setPickupLocationId] = useState("");
+  const location = pickupLocations.find(
+    (entry) => entry.id === pickupLocationId,
+  );
   return (
     <AdminDialog
       trigger="Add manual order"
       title="Add manual order"
-      description="Create an order using current catalog prices, tax, and shipping rules."
+      description="Create a shipping or local pickup order using current catalog prices, tax, and fulfillment rules."
       onOpenChange={(open) => {
         if (open) setRequestKey(crypto.randomUUID());
       }}
@@ -36,20 +53,97 @@ export function ManualOrderDialog({
           <Field name="customerName" label="Customer name" />
           <Field name="customerEmail" label="Customer email" type="email" />
         </div>
-        <div className="two-col">
-          <Field name="country" label="Shipping country code" value="US" />
-          <Field name="address" label="Shipping address" />
-          <Field
-            name="region"
-            label="Shipping state/region code (e.g. CA)"
-            required={false}
-          />
-          <Field
-            name="postalCode"
-            label="Shipping ZIP/postal code"
-            required={false}
-          />
-        </div>
+        <label>
+          Fulfillment
+          <NativeSelect
+            name="fulfillmentType"
+            value={fulfillmentType}
+            onChange={(event) => setFulfillmentType(event.target.value)}
+          >
+            <option value="shipping">Shipping</option>
+            <option value="pickup">Local pickup</option>
+          </NativeSelect>
+        </label>
+        {fulfillmentType === "pickup" ? (
+          <fieldset className="grid gap-3">
+            <legend>Local pickup</legend>
+            <label>
+              Pickup location
+              <NativeSelect
+                name="pickupLocationId"
+                required
+                value={pickupLocationId}
+                onChange={(event) => setPickupLocationId(event.target.value)}
+              >
+                <option value="">Choose pickup location</option>
+                {pickupLocations.map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {entry.name} · {entry.address}
+                  </option>
+                ))}
+              </NativeSelect>
+            </label>
+            {!pickupLocations.length && (
+              <p>
+                Configure a pickup location in Settings before creating a pickup
+                order.
+              </p>
+            )}
+            {location && (
+              <>
+                <p>
+                  Times are in {timezone}. Allow at least {location.prepMinutes}{" "}
+                  minutes for preparation.
+                </p>
+                <p>
+                  {Object.entries(location.weeklySchedule)
+                    .map(
+                      ([day, windows]) =>
+                        `${day}: ${windows.map(([start, end]) => `${start}–${end}`).join(", ") || "closed"}`,
+                    )
+                    .join("; ")}
+                </p>
+                {location.blackoutDates.length > 0 && (
+                  <p>Unavailable dates: {location.blackoutDates.join(", ")}</p>
+                )}
+                <Field
+                  name="pickupDate"
+                  label="Pickup date"
+                  type="date"
+                  required={location.scheduleRequired}
+                />
+                <Field
+                  name="pickupTime"
+                  label="Pickup time"
+                  type="time"
+                  required={location.scheduleRequired}
+                />
+                <p>
+                  Enter the exact start time of an opening window listed for the
+                  selected day.
+                </p>
+                {!location.scheduleRequired && (
+                  <p>Leave both date and time empty for unscheduled pickup.</p>
+                )}
+              </>
+            )}
+          </fieldset>
+        ) : (
+          <div className="two-col">
+            <Field name="country" label="Shipping country code" value="US" />
+            <Field name="address" label="Shipping address" />
+            <Field
+              name="region"
+              label="Shipping state/region code (e.g. CA)"
+              required={false}
+            />
+            <Field
+              name="postalCode"
+              label="Shipping ZIP/postal code"
+              required={false}
+            />
+          </div>
+        )}
         <label>
           Payment method
           <NativeSelect name="paymentAccountId" required>

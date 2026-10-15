@@ -13,6 +13,7 @@ import { getQuoteInTransaction } from "@/application/use-cases/get-quote";
 import { createOrderInTransaction } from "@/application/use-cases/create-order";
 import {
   parseActionInteger,
+  parseActionEnum,
   parseActionRequiredText,
   parseActionUuid,
 } from "@/application/common/request-validation";
@@ -22,8 +23,12 @@ export async function createManualOrder(input: {
   staffUserId: string;
   customerName: string;
   customerEmail: string;
-  country: string;
-  address: string;
+  fulfillmentType?: string;
+  country?: string;
+  address?: string;
+  pickupLocationId?: string;
+  pickupDate?: string;
+  pickupTime?: string;
   region?: string;
   postalCode?: string;
   paymentAccountId: string;
@@ -41,16 +46,31 @@ export async function createManualOrder(input: {
   );
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail))
     throw new DomainError("Enter a valid customer email address.");
-  const country = parseActionRequiredText(
-    input.country,
-    "Shipping country",
-    2,
-  ).toUpperCase();
-  const address = parseActionRequiredText(
-    input.address,
-    "Shipping address",
-    500,
+  const fulfillmentType = parseActionEnum(
+    input.fulfillmentType ?? "shipping",
+    "Fulfillment",
+    ["shipping", "pickup"],
   );
+  const pickupLocationId =
+    fulfillmentType === "pickup"
+      ? parseActionUuid(input.pickupLocationId, "Pickup location")
+      : undefined;
+  const pickupDate =
+    fulfillmentType === "pickup" ? (input.pickupDate?.trim() ?? "") : "";
+  const pickupTime =
+    fulfillmentType === "pickup" ? (input.pickupTime?.trim() ?? "") : "";
+  const country =
+    fulfillmentType === "shipping"
+      ? parseActionRequiredText(
+          input.country,
+          "Shipping country",
+          2,
+        ).toUpperCase()
+      : "";
+  const address =
+    fulfillmentType === "shipping"
+      ? parseActionRequiredText(input.address, "Shipping address", 500)
+      : "";
   const paymentAccountId = parseActionUuid(
     input.paymentAccountId,
     "Payment method",
@@ -68,8 +88,12 @@ export async function createManualOrder(input: {
   const shippingAddress = {
     country,
     address,
-    region: input.region?.trim().toUpperCase() ?? "",
-    postalCode: input.postalCode?.trim() ?? "",
+    region:
+      fulfillmentType === "shipping"
+        ? (input.region?.trim().toUpperCase() ?? "")
+        : "",
+    postalCode:
+      fulfillmentType === "shipping" ? (input.postalCode?.trim() ?? "") : "",
   };
   const fingerprint = createHash("sha256")
     .update(
@@ -78,6 +102,9 @@ export async function createManualOrder(input: {
         customerName,
         customerEmail,
         shippingAddress,
+        ...(fulfillmentType === "pickup"
+          ? { fulfillmentType, pickupLocationId, pickupDate, pickupTime }
+          : {}),
         paymentAccountId,
         items: [...items].sort((a, b) =>
           a.variantId.localeCompare(b.variantId),
@@ -120,7 +147,10 @@ export async function createManualOrder(input: {
     const quote = await getQuoteInTransaction(tx, {
       cartId: cart.id,
       guestSessionId,
-      fulfillmentType: "shipping",
+      fulfillmentType,
+      ...(pickupLocationId ? { pickupLocationId } : {}),
+      pickupDate,
+      pickupTime,
       shippingAddress,
       paymentAccountId,
     });

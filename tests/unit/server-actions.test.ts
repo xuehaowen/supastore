@@ -659,6 +659,29 @@ beforeEach(() => {
   mocks.transaction.mockImplementation(async (work) => work(tx));
 });
 describe("every server action request boundary", () => {
+  it("forwards manual pickup location and schedule without a shipping address", async () => {
+    const request = form();
+    request.set("fulfillmentType", "pickup");
+    request.set("pickupLocationId", id);
+    request.set("pickupDate", "2026-11-01");
+    request.set("pickupTime", "12:00");
+    request.delete("country");
+    request.delete("address");
+    await expect(actions.createManualOrderAction(request)).rejects.toThrow(
+      "REDIRECT:/admin/orders?created=SP-MANUAL",
+    );
+    expect(mocks.commands.createManualOrder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fulfillmentType: "pickup",
+        pickupLocationId: id,
+        pickupDate: "2026-11-01",
+        pickupTime: "12:00",
+        country: "",
+        address: "",
+      }),
+    );
+  });
+
   it("requires a contract case for every exported action", () => {
     expect(Object.keys(actions).sort()).toEqual(
       [
