@@ -19,6 +19,7 @@ export type OperationsQuery = {
   evidencePage?: string;
   failurePage?: string;
   fulfillmentPage?: string;
+  work?: string;
 };
 
 export interface OperationsScreenProps {

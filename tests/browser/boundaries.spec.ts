@@ -93,7 +93,7 @@ test("C3/C4 keyboard checkout and expanded admin forms are accessible on mobile"
   await openOrder(admin, reference);
   await accessible(admin);
   await record(admin, reference, 2900);
-  await admin.goto("/admin/fulfillment");
+  await admin.goto("/admin/fulfillment?work=all");
   const row = admin
     .locator("#ready details")
     .filter({ has: admin.locator("summary", { hasText: reference }) });
@@ -120,7 +120,7 @@ test("A7 late receipt on a cancelled order creates return work without reopening
     (await sql`select lifecycle_status from orders where id=${order.id}`)[0]!
       .lifecycle_status,
   ).toBe("cancelled");
-  await admin.goto("/admin/fulfillment");
+  await admin.goto("/admin/fulfillment?work=all");
   const operations = admin.locator("#ready details").filter({
     has: admin.locator("summary", { hasText: order.reference_code }),
   });

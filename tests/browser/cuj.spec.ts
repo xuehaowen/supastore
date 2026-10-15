@@ -95,7 +95,7 @@ test("C3/C4 checkout validates shipping and consent without losing the cart", as
   await expect(page.getByText("Studio cup", { exact: true })).toBeVisible();
 });
 
-test("C7/A3 free pickup confirms, rejects premature handoff, then completes", async ({
+test("C7/A3 free pickup confirms, guides readiness, then completes", async ({
   page,
   admin,
   sql,
@@ -110,23 +110,14 @@ test("C7/A3 free pickup confirms, rejects premature handoff, then completes", as
     page.getByRole("button", { name: "Upload evidence", exact: true }),
   ).toHaveCount(0);
   await admin.goto(`/admin/orders/${order.id}`);
-  await admin
-    .getByRole("button", { name: "Complete pickup handoff", exact: true })
-    .click();
-  let handoff = admin.getByRole("dialog", { name: "Verify pickup recipient" });
-  await handoff
-    .getByLabel("Recipient / authorized recipient")
-    .fill("CUJ Customer");
-  await clickAction(
-    admin,
-    handoff.getByRole("button", {
-      name: "Complete pickup handoff",
-      exact: true,
-    }),
-  );
-  await expect(admin.locator('[data-slot="alert"]')).toContainText(
-    "Pickup must be marked ready before handoff.",
-  );
+  await expect(
+    admin.getByRole("button", { name: "Complete pickup handoff", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    admin.getByText(
+      "Mark this order ready for pickup before completing the handoff.",
+    ),
+  ).toBeVisible();
   await clickAction(
     admin,
     admin.getByRole("button", { name: "Mark ready for pickup", exact: true }),
@@ -134,7 +125,9 @@ test("C7/A3 free pickup confirms, rejects premature handoff, then completes", as
   await admin
     .getByRole("button", { name: "Complete pickup handoff", exact: true })
     .click();
-  handoff = admin.getByRole("dialog", { name: "Verify pickup recipient" });
+  const handoff = admin.getByRole("dialog", {
+    name: "Verify pickup recipient",
+  });
   await handoff
     .getByLabel("Recipient / authorized recipient")
     .fill("CUJ Customer");
@@ -220,7 +213,9 @@ test("A1/A2/A3/A4 receipts, underpayment rejection, confirmation, packing slip a
     )[0]!.tracking_number,
   ).toBe("CORRECTED");
   row = await openOrder(admin, order.reference_code);
-  await row.getByRole("link", { name: "View order & fulfillment" }).click();
+  await row
+    .getByRole("link", { name: "Prepare shipment", exact: true })
+    .click();
   await admin
     .getByRole("button", { name: "Dispatch shipment", exact: true })
     .click();
@@ -931,7 +926,7 @@ test("A7 overpayment can be returned before confirmation", async ({
   await expect(admin.locator('[data-slot="alert"]')).toContainText(
     /surplus|overfunded|excess/i,
   );
-  await admin.goto("/admin/fulfillment");
+  await admin.goto("/admin/fulfillment?work=all");
   row = admin.locator("#ready details").filter({
     has: admin.locator("summary", { hasText: order.reference_code }),
   });

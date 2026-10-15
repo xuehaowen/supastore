@@ -5,6 +5,10 @@ import { db } from "@/infrastructure/db";
 import {
   eventDeliveries,
   orders,
+  orderFulfillments,
+  orderItems,
+  orderShipments,
+  shipmentItems,
   paymentAccounts,
   paymentReceipts,
   paymentUploadIntents,
@@ -30,6 +34,7 @@ export interface AdminOperationsInput {
   evidencePage: number;
   failurePage: number;
   fulfillmentPage?: number;
+  fulfillmentWork?: string;
   managedOrderId?: string;
 }
 export async function getAdminOperations(input: AdminOperationsInput) {
@@ -49,10 +54,11 @@ export async function getAdminOperations(input: AdminOperationsInput) {
   return db.transaction(
     async (tx) => {
       const member = await verifyStaffInTransaction(tx, input.staffUserId);
+      const remainingShipmentUnits = sql`exists (select 1 from ${orderItems} where ${orderItems.orderId} = ${orders.id} and ${orderItems.quantity} > coalesce((select sum(${shipmentItems.quantity}) from ${shipmentItems} inner join ${orderShipments} on ${orderShipments.id} = ${shipmentItems.shipmentId} where ${shipmentItems.orderItemId} = ${orderItems.id} and ${orderShipments.orderId} = ${orders.id}), 0))`;
       const orderFilters =
-        view === "orders"
+        view === "orders" || view === "fulfillment"
           ? [
-              ...(status
+              ...(status && view === "orders"
                 ? [
                     eq(
                       orders.lifecycleStatus,
@@ -72,15 +78,47 @@ export async function getAdminOperations(input: AdminOperationsInput) {
                 : []),
             ]
           : [];
-      if (view === "fulfillment")
-        orderFilters.push(
-          or(
-            inArray(orders.lifecycleStatus, ["confirmed", "completed"]),
-            member.role === "owner"
-              ? sql`exists (select 1 from ${paymentReceipts} where ${paymentReceipts.orderId} = ${orders.id})`
-              : undefined,
-          )!,
-        );
+      if (view === "fulfillment") {
+        const work = [
+          "prepare",
+          "ready",
+          "transit",
+          "completed",
+          "all",
+        ].includes(input.fulfillmentWork ?? "")
+          ? input.fulfillmentWork
+          : "active";
+        if (work !== "all") {
+          orderFilters.push(
+            eq(
+              orders.lifecycleStatus,
+              work === "completed" ? "completed" : "confirmed",
+            ),
+          );
+          if (work === "prepare")
+            orderFilters.push(
+              sql`not exists (select 1 from ${orderFulfillments} where ${orderFulfillments.orderId} = ${orders.id} and (${orderFulfillments.status} in ('ready_for_pickup','fulfilled') or (${orderFulfillments.status} = 'shipped' and not ${remainingShipmentUnits})))`,
+            );
+          if (work === "ready")
+            orderFilters.push(
+              eq(orders.fulfillmentType, "pickup"),
+              sql`exists (select 1 from ${orderFulfillments} where ${orderFulfillments.orderId} = ${orders.id} and ${orderFulfillments.status} = 'ready_for_pickup')`,
+            );
+          if (work === "transit")
+            orderFilters.push(
+              sql`exists (select 1 from ${orderFulfillments} where ${orderFulfillments.orderId} = ${orders.id} and ${orderFulfillments.status} = 'shipped')`,
+            );
+        } else {
+          orderFilters.push(
+            or(
+              inArray(orders.lifecycleStatus, ["confirmed", "completed"]),
+              member.role === "owner"
+                ? sql`exists (select 1 from ${paymentReceipts} where ${paymentReceipts.orderId} = ${orders.id})`
+                : undefined,
+            )!,
+          );
+        }
+      }
       const paginated = view === "orders" || view === "fulfillment";
       const resultRows = await tx
         .select()
@@ -105,6 +143,36 @@ export async function getAdminOperations(input: AdminOperationsInput) {
             .limit(1)
         : [];
       const accounts = await tx.select().from(paymentAccounts);
+      const displayedOrderIds = (
+        managedOrders.length ? managedOrders : rows
+      ).map((order) => order.id);
+      const partialShipmentOrders =
+        view === "fulfillment" && displayedOrderIds.length
+          ? await tx
+              .select({ id: orders.id })
+              .from(orders)
+              .where(
+                and(
+                  inArray(orders.id, displayedOrderIds),
+                  remainingShipmentUnits,
+                  sql`exists (select 1 from ${orderShipments} where ${orderShipments.orderId} = ${orders.id})`,
+                ),
+              )
+          : [];
+      const fulfillmentRows =
+        view === "fulfillment" && (managedOrders.length || rows.length)
+          ? await tx
+              .select()
+              .from(orderFulfillments)
+              .where(
+                inArray(
+                  orderFulfillments.orderId,
+                  (managedOrders.length ? managedOrders : rows).map(
+                    (order) => order.id,
+                  ),
+                ),
+              )
+          : [];
       const paymentFilters = [
         ...(paymentStatus
           ? [
@@ -280,6 +348,8 @@ export async function getAdminOperations(input: AdminOperationsInput) {
         member,
         rows,
         managedOrders,
+        fulfillmentRows,
+        partialShipmentOrderIds: partialShipmentOrders.map((order) => order.id),
         fulfillmentHasNext: view === "fulfillment" && resultRows.length > 50,
         accounts,
         receipts,

@@ -19,6 +19,18 @@ Place Needs attention queues before sales metrics on the overview.
 Order references and View order actions open the same order workspace for every
 status. Dispatch and delivery are separate actions; pickup readiness and verified
 handoff are available from that workspace. Fulfillment queues link to it.
+Order back links and stock-count results preserve the originating search,
+filters, and pagination through validated admin return paths. Fulfillment defaults
+to outstanding work; preparation, pickup readiness, transit, completed history,
+and all operations are selectable before pagination. Delivery forms prefill
+dispatch details, and omitted values preserve the stored carrier and tracking.
+Cash receipt forms list active cash accounts only, enforced again in the backend.
+Stock history retains the inventory return filter through movement pagination.
+Collapsed fulfillment rows show the current stage and next action. Pickup handoff
+is available after readiness; the server also validates readiness on submission.
+Partial dispatch remains visible in preparation work and directs staff to the
+remaining units. Shipment management retains the order's return context through
+saves and errors, and hides dispatch when every unit has shipped.
 
 Operational payment, refund, payout, and credit forms use CurrencyField to accept
 decimal amounts with visible currency codes. It submits canonical integer minor

@@ -80,6 +80,7 @@ export default async function Admin({
     evidencePage,
     failurePage,
     fulfillmentPage,
+    fulfillmentWork: query.work ?? "active",
     ...(managedOrderId ? { managedOrderId } : {}),
   }).catch((error: unknown) => {
     if (error instanceof ForbiddenError || error instanceof UnauthorizedError)

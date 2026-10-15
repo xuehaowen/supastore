@@ -95,10 +95,14 @@ export async function freeProduct(sql: ReturnType<typeof postgres>) {
 export async function checkout(
   page: Page,
   sql: ReturnType<typeof postgres>,
-  options: { pickup?: boolean; free?: boolean } = {},
+  options: { pickup?: boolean; free?: boolean; quantity?: number } = {},
 ) {
   const handle = options.free ? await freeProduct(sql) : "studio-cup";
   await page.goto("/en/products/" + handle);
+  for (let quantity = 1; quantity < (options.quantity ?? 1); quantity++)
+    await page
+      .getByRole("button", { name: "Increase quantity", exact: true })
+      .click();
   await page.getByRole("button", { name: "Add to bag" }).click();
   await page.getByRole("link", { name: "Continue to checkout" }).click();
   if (options.pickup) {
