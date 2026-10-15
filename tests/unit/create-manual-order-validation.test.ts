@@ -18,6 +18,22 @@ const input = {
 };
 
 describe("manual order validation", () => {
+  it("requires a pickup location without requiring a shipping address", async () => {
+    await expect(
+      createManualOrder({
+        ...input,
+        fulfillmentType: "pickup",
+        country: "",
+        address: "",
+      }),
+    ).rejects.toThrow("Pickup location");
+  });
+
+  it("rejects unsupported manual fulfillment before writing", async () => {
+    const unsupported = { ...input, fulfillmentType: "local_delivery" };
+    await expect(createManualOrder(unsupported)).rejects.toThrow("Fulfillment");
+  });
+
   it("requires a valid retry identity before writing", async () => {
     await expect(
       createManualOrder({ ...input, requestKey: "" }),
