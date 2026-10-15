@@ -17,6 +17,7 @@ export function adminReturnContext(requested: string) {
         "/admin/orders",
         "/admin/payments",
         "/admin/fulfillment",
+        "/admin/inventory",
       ].includes(url.pathname) ||
       (/^\/admin\/orders\/[0-9a-f-]{36}$/i.test(url.pathname) &&
         uuid.test(url.pathname.split("/").at(-1)!))
@@ -27,7 +28,14 @@ export function adminReturnContext(requested: string) {
   for (const [key, value] of url.searchParams) {
     const valid =
       (["q", "paymentQ"].includes(key) && value.length <= 120) ||
-      (["status", "paymentStatus"].includes(key) && statuses.includes(value)) ||
+      (["status", "paymentStatus"].includes(key) &&
+        (statuses.includes(value) ||
+          (url.pathname === "/admin/inventory" &&
+            ["low", "shortage"].includes(value)))) ||
+      (key === "work" &&
+        ["active", "prepare", "ready", "transit", "completed", "all"].includes(
+          value,
+        )) ||
       (key === "paymentType" &&
         ["cash", "zelle", "venmo", "other"].includes(value)) ||
       (["manage", "managePayment"].includes(key) && uuid.test(value)) ||
@@ -44,12 +52,34 @@ export function adminReturnContext(requested: string) {
         Number(value) <= Math.floor(Number.MAX_SAFE_INTEGER / 50));
     if (valid) query.set(key, value);
   }
+  if (
+    /^\/admin\/orders\/[0-9a-f-]{36}$/i.test(url.pathname) &&
+    url.searchParams.has("back")
+  ) {
+    query.set("back", adminListReturnContext(url.searchParams.get("back")!));
+  }
   const hash =
     /^#order-(?:payment-)?[0-9a-f-]{36}$/i.test(url.hash) &&
     uuid.test(url.hash.replace(/^#order-(?:payment-)?/, ""))
       ? url.hash
       : "";
   return url.pathname + (query.size ? `?${query}` : "") + hash;
+}
+export function adminListReturnContext(
+  requested: string,
+  fallback = "/admin/orders",
+) {
+  const path = adminReturnContext(requested);
+  return /^\/admin\/(?:orders|fulfillment|inventory)(?:\?|$)/.test(path)
+    ? path
+    : fallback;
+}
+export function adminOrderReturnContext(orderId: string, requested: string) {
+  const fallback = uuid.test(orderId)
+    ? `/admin/orders/${orderId}`
+    : "/admin/orders";
+  const safe = adminReturnContext(requested);
+  return safe.split(/[?#]/, 1)[0] === fallback ? safe : fallback;
 }
 export function adminQueueReturnContext(
   path: string,
