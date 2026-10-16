@@ -69,75 +69,83 @@ export default async function CustomersPage({
   const href = (p: number) =>
     `?${new URLSearchParams({ q: search, page: String(p), ...(query.guests ? { guests: "1" } : {}) })}`;
   return (
-    <main className="admin">
+    <>
       <AdminNav />
-      <h1>Customers</h1>
-      <p className="admin-description">
-        Verified customer profiles own their orders and store credit. Guest
-        contact summaries do not establish account ownership.
-      </p>
-      <nav className="my-5 flex gap-4">
-        <Link href="/admin/customers">Customer profiles</Link>
-        <Link href="?guests=1">Guest order contacts</Link>
-      </nav>
-      <form method="get" className="filter-bar">
-        {query.guests && <input type="hidden" name="guests" value="1" />}
-        <Field
-          name="q"
-          label="Search customers"
-          value={search}
-          required={false}
-        />
-        <Button type="submit">Search</Button>
-      </form>
-      <section className="panel">
-        <h2>{query.guests ? "Guest order contacts" : "Customer profiles"}</h2>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Customer</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead className="text-right">Orders</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {query.guests
-              ? data.guests.slice(0, 25).map((g) => (
-                  <TableRow key={g.email}>
-                    <TableCell className="font-medium">Guest contact</TableCell>
-                    <TableCell>{g.email}</TableCell>
-                    <TableCell className="text-right">{g.orderCount}</TableCell>
-                  </TableRow>
-                ))
-              : data.profiles.slice(0, 25).map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-medium">
-                      <Link href={`/admin/customers/${c.id}`}>
-                        {c.name || c.email}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{c.email}</TableCell>
-                    <TableCell className="text-right">{c.orderCount}</TableCell>
-                  </TableRow>
-                ))}
-            {!rows.length && (
+      <main tabIndex={-1} id="admin-content" className="admin">
+        <h1>Customers</h1>
+        <p className="admin-description">
+          Verified customer profiles own their orders and store credit. Guest
+          contact summaries do not establish account ownership.
+        </p>
+        <nav className="my-5 flex gap-4">
+          <Link href="/admin/customers">Customer profiles</Link>
+          <Link href="?guests=1">Guest order contacts</Link>
+        </nav>
+        <form method="get" className="filter-bar">
+          {query.guests && <input type="hidden" name="guests" value="1" />}
+          <Field
+            name="q"
+            label="Search customers"
+            value={search}
+            required={false}
+          />
+          <Button type="submit">Search</Button>
+        </form>
+        <section className="panel">
+          <h2>{query.guests ? "Guest order contacts" : "Customer profiles"}</h2>
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell
-                  colSpan={3}
-                  className="text-center text-muted-foreground"
-                >
-                  No customers match this view.
-                </TableCell>
+                <TableHead>Customer</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead className="text-right">Orders</TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </section>
-      <nav className="pager" aria-label="Customer pages">
-        {page > 1 && <Link href={href(page - 1)}>Previous</Link>}
-        <span>Page {page}</span>
-        {rows.length > 25 && <Link href={href(page + 1)}>Next</Link>}
-      </nav>
-    </main>
+            </TableHeader>
+            <TableBody>
+              {query.guests
+                ? data.guests.slice(0, 25).map((g) => (
+                    <TableRow key={g.email}>
+                      <TableCell className="font-medium">
+                        Guest contact
+                      </TableCell>
+                      <TableCell>{g.email}</TableCell>
+                      <TableCell className="text-right">
+                        {g.orderCount}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                : data.profiles.slice(0, 25).map((c) => (
+                    <TableRow key={c.id}>
+                      <TableCell className="font-medium">
+                        <Link href={`/admin/customers/${c.id}`}>
+                          {c.name || c.email}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{c.email}</TableCell>
+                      <TableCell className="text-right">
+                        {c.orderCount}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              {!rows.length && (
+                <TableRow>
+                  <TableCell
+                    colSpan={3}
+                    className="text-center text-muted-foreground"
+                  >
+                    No customers match this view.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </section>
+        <nav className="pager" aria-label="Customer pages">
+          {page > 1 && <Link href={href(page - 1)}>Previous</Link>}
+          <span>Page {page}</span>
+          {rows.length > 25 && <Link href={href(page + 1)}>Next</Link>}
+        </nav>
+      </main>
+    </>
   );
 }

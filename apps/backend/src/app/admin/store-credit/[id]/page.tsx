@@ -100,103 +100,108 @@ export default async function CreditDetail({
   const a = data.account,
     c = data.customer;
   return (
-    <main className="admin">
+    <>
       <AdminNav />
-      <Link href="/admin/store-credit">← Store credit</Link>
-      <h1>{c.name} · Credit ledger</h1>
-      <p>{c.email}</p>
-      <Notice error={query.error} />
-      {query.saved && (
-        <Alert>
-          <AlertDescription>Credit entry posted.</AlertDescription>
-        </Alert>
-      )}
-      <section className="panel">
-        <h2>Balance</h2>
-        <p>
-          Available:{" "}
-          {money(a.balanceCents - a.reservedCents, a.currency, a.precision)} ·
-          Reserved: {money(a.reservedCents, a.currency, a.precision)}
-        </p>
-        <p>
-          {data.reconciled
-            ? "Ledger and reservations reconcile."
-            : "Reconciliation drift · owner investigation required."}
-        </p>
-      </section>
-      <section className="panel">
-        <h2>Entries</h2>
-        <a href={`/api/admin/store-credit/${id}/export`}>
-          Export full ledger (CSV)
-        </a>
-        <Link href="/admin/reconciliation">Review reconciliation</Link>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Reason / reference</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.entries.slice(0, 25).map(({ entry: e, reversed }) => (
-              <TableRow key={e.id}>
-                <TableCell>
-                  {e.createdAt.toLocaleString("en-US", { timeZone: "UTC" })} UTC
-                </TableCell>
-                <TableCell>{e.kind}</TableCell>
-                <TableCell>
-                  {money(e.amountCents, a.currency, a.precision)}
-                </TableCell>
-                <TableCell>
-                  {e.reason}
-                  {e.orderId && (
-                    <p>
-                      <Link href={`/admin/orders/${e.orderId}`}>
-                        Linked order
-                      </Link>
-                    </p>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {data.owner && e.kind === "issue" && !reversed && (
-                    <AdminDialog
-                      trigger="Reverse issuance"
-                      title="Reverse original issuance"
-                      description="Append a compensating entry for the full original amount. Spent or reserved credit cannot be reversed."
-                    >
-                      <form action={issueCreditAction}>
-                        <Hidden name="customerId" value={c.id} />
-                        <Hidden
-                          name="amountCents"
-                          value={String(e.amountCents)}
-                        />
-                        <Hidden name="reversalOfId" value={e.id} />
-                        <Hidden name="requestKey" value={randomUUID()} />
-                        <Field name="reason" label="Reversal reason" />
-                        <Button type="submit">Post reversal</Button>
-                      </form>
-                    </AdminDialog>
-                  )}
-                  {reversed && "Reversed"}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        <nav className="pager" aria-label="Ledger pages">
-          {cursor && <Link href="?">Latest entries</Link>}
-          {data.entries.length > 25 && (
-            <Link
-              href={`?after=${encodeLedgerCursor(data.entries[24]!.cursorTimestamp, data.entries[24]!.entry.id)}`}
-            >
-              Older entries
-            </Link>
+      <main tabIndex={-1} id="admin-content" className="admin">
+        <Link href="/admin/store-credit">← Store credit</Link>
+        <h1>{c.name} · Credit ledger</h1>
+        <p>{c.email}</p>
+        <Notice error={query.error} />
+        {query.saved && (
+          <Alert>
+            <AlertDescription>Credit entry posted.</AlertDescription>
+          </Alert>
+        )}
+        <section className="panel">
+          <h2>Balance</h2>
+          <p>
+            Available:{" "}
+            {money(a.balanceCents - a.reservedCents, a.currency, a.precision)} ·
+            Reserved: {money(a.reservedCents, a.currency, a.precision)}
+          </p>
+          <p>
+            {data.reconciled
+              ? "Ledger and reservations reconcile."
+              : "Reconciliation drift · owner investigation required."}
+          </p>
+        </section>
+        <section className="panel">
+          <h2>Entries</h2>
+          <a href={`/api/admin/store-credit/${id}/export`}>
+            Export full ledger (CSV)
+          </a>
+          {data.owner && (
+            <Link href="/admin/reconciliation">Review reconciliation</Link>
           )}
-        </nav>
-      </section>
-    </main>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Reason / reference</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.entries.slice(0, 25).map(({ entry: e, reversed }) => (
+                <TableRow key={e.id}>
+                  <TableCell>
+                    {e.createdAt.toLocaleString("en-US", { timeZone: "UTC" })}{" "}
+                    UTC
+                  </TableCell>
+                  <TableCell>{e.kind}</TableCell>
+                  <TableCell>
+                    {money(e.amountCents, a.currency, a.precision)}
+                  </TableCell>
+                  <TableCell>
+                    {e.reason}
+                    {e.orderId && (
+                      <p>
+                        <Link href={`/admin/orders/${e.orderId}`}>
+                          Linked order
+                        </Link>
+                      </p>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {data.owner && e.kind === "issue" && !reversed && (
+                      <AdminDialog
+                        trigger="Reverse issuance"
+                        title="Reverse original issuance"
+                        description="Append a compensating entry for the full original amount. Spent or reserved credit cannot be reversed."
+                      >
+                        <form action={issueCreditAction}>
+                          <Hidden name="customerId" value={c.id} />
+                          <Hidden
+                            name="amountCents"
+                            value={String(e.amountCents)}
+                          />
+                          <Hidden name="reversalOfId" value={e.id} />
+                          <Hidden name="requestKey" value={randomUUID()} />
+                          <Field name="reason" label="Reversal reason" />
+                          <Button type="submit">Post reversal</Button>
+                        </form>
+                      </AdminDialog>
+                    )}
+                    {reversed && "Reversed"}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <nav className="pager" aria-label="Ledger pages">
+            {cursor && <Link href="?">Latest entries</Link>}
+            {data.entries.length > 25 && (
+              <Link
+                href={`?after=${encodeLedgerCursor(data.entries[24]!.cursorTimestamp, data.entries[24]!.entry.id)}`}
+              >
+                Older entries
+              </Link>
+            )}
+          </nav>
+        </section>
+      </main>
+    </>
   );
 }

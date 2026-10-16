@@ -12,6 +12,15 @@ import { Button } from "@supastore/ui/button";
 import { Checkbox } from "@supastore/ui/checkbox";
 import { NativeSelect } from "@supastore/ui/native-select";
 import { queuePage, QueuePagination } from "@/app/admin/queue-pagination";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@supastore/ui/table";
+import { Badge } from "@supastore/ui/badge";
 
 export default async function PromotionsPage({
   searchParams,
@@ -40,6 +49,7 @@ export default async function PromotionsPage({
   });
   const form = (promotion?: typeof promotions.$inferSelect) => (
     <form action={upsertPromotion} className="grid gap-4">
+      <Notice error={query.error} />
       {promotion && <Hidden name="id" value={promotion.id} />}
       <div className="two-col">
         <Field name="name" label="Promotion name" value={promotion?.name} />
@@ -102,54 +112,95 @@ export default async function PromotionsPage({
     </form>
   );
   return (
-    <main className="admin">
+    <>
       <AdminNav />
-      <p className="eyebrow">SALES TOOLS</p>
-      <h1>Promotions</h1>
-      <p className="admin-description">
-        Create limited coupon codes. Percentage values use basis points: 1000
-        equals 10%.
-      </p>
-      <div className="admin-page-actions">
-        <AdminDialog
-          trigger="Create promotion"
-          title="Create promotion"
-          description="Configure a coupon code, eligibility window, and usage limit."
-        >
-          {form()}
-        </AdminDialog>
-      </div>
-      <Notice error={query.error} />
-      <div className="admin-grid">
-        <section className="panel">
-          <h2>Promotion codes</h2>
-          {rows.slice(0, 50).map(({ promotion, redemptions }) => (
-            <details className="panel" key={promotion.id}>
-              <summary>
-                {promotion.code} · {promotion.name} ·{" "}
-                {promotion.isActive ? "Active" : "Inactive"} · {redemptions}{" "}
-                uses
-              </summary>
-              {form(promotion)}
-              <form action={togglePromotion}>
-                <Hidden name="promotionId" value={promotion.id} />
-                <Hidden name="active" value={String(!promotion.isActive)} />
-                <Button type="submit" variant="outline">
-                  {promotion.isActive ? "Deactivate" : "Activate"}
-                </Button>
-              </form>
-            </details>
-          ))}
-          {!rows.length && <p className="admin-empty">No promotions yet.</p>}
-          <QueuePagination
-            query={query}
-            path="/admin/promotions"
-            parameter="page"
-            page={page}
-            hasNext={rows.length > 50}
-          />
-        </section>
-      </div>
-    </main>
+      <main tabIndex={-1} id="admin-content" className="admin">
+        <p className="eyebrow">SALES TOOLS</p>
+        <h1>Promotions</h1>
+        <p className="admin-description">
+          Create limited coupon codes. Percentage values use basis points: 1000
+          equals 10%.
+        </p>
+        <div className="admin-page-actions">
+          <AdminDialog
+            key={rows.length}
+            trigger="Create promotion"
+            title="Create promotion"
+            description="Configure a coupon code, eligibility window, and usage limit."
+          >
+            {form()}
+          </AdminDialog>
+        </div>
+        <Notice error={query.error} />
+        <div className="admin-grid">
+          <section className="panel">
+            <h2>Promotion codes</h2>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Code</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Uses</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.slice(0, 50).map(({ promotion, redemptions }) => (
+                  <TableRow key={promotion.id}>
+                    <TableCell>
+                      <strong>{promotion.code}</strong>
+                    </TableCell>
+                    <TableCell>{promotion.name}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {promotion.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {redemptions}
+                      {promotion.usageLimit !== null
+                        ? ` / ${promotion.usageLimit}`
+                        : ""}
+                    </TableCell>
+                    <TableCell>
+                      <AdminDialog
+                        key={promotion.updatedAt.toISOString()}
+                        trigger="Edit promotion"
+                        title={"Edit " + promotion.code}
+                      >
+                        {form(promotion)}
+                      </AdminDialog>
+                      <form action={togglePromotion}>
+                        <Hidden name="promotionId" value={promotion.id} />
+                        <Hidden
+                          name="active"
+                          value={String(!promotion.isActive)}
+                        />
+                        <Button type="submit" variant="outline">
+                          {promotion.isActive ? "Deactivate" : "Activate"}
+                        </Button>
+                      </form>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {!rows.length && (
+                  <TableRow>
+                    <TableCell colSpan={5}>No promotions yet.</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+            <QueuePagination
+              query={query}
+              path="/admin/promotions"
+              parameter="page"
+              page={page}
+              hasNext={rows.length > 50}
+            />
+          </section>
+        </div>
+      </main>
+    </>
   );
 }

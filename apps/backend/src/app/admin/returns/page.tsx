@@ -63,74 +63,84 @@ export default async function ReturnsPage({
   const href = (p: number) =>
     `?${new URLSearchParams({ q: search, status, page: String(p) })}`;
   return (
-    <main className="admin">
+    <>
       <AdminNav />
-      <h1>Product returns</h1>
-      <p className="admin-description">
-        Goods receipt, inventory disposition, and refunds are separate steps.
-        Receiving restockable goods does not authorize a refund.
-      </p>
-      <Notice error={query.error} />
-      <form method="get" className="filter-bar">
-        <Field
-          name="q"
-          label="Order or customer email"
-          value={search}
-          required={false}
-        />
-        <label>
-          Status
-          <NativeSelect name="status" defaultValue={status}>
-            <option value="">All statuses</option>
-            {["requested", "approved", "received", "rejected", "cancelled"].map(
-              (s) => (
+      <main tabIndex={-1} id="admin-content" className="admin">
+        <h1>Product returns</h1>
+        <p className="admin-description">
+          Goods receipt, inventory disposition, and refunds are separate steps.
+          Receiving restockable goods does not authorize a refund.
+        </p>
+        <Notice error={query.error} />
+        <form method="get" className="filter-bar">
+          <Field
+            name="q"
+            label="Order or customer email"
+            value={search}
+            required={false}
+          />
+          <label>
+            Status
+            <NativeSelect name="status" defaultValue={status}>
+              <option value="">All statuses</option>
+              {[
+                "requested",
+                "approved",
+                "received",
+                "rejected",
+                "cancelled",
+              ].map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
-              ),
-            )}
-          </NativeSelect>
-        </label>
-        <Button type="submit">Filter</Button>
-      </form>
-      <section className="panel">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Order</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Requested</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.slice(0, 25).map(({ goodsReturn: r, order: o }) => (
-              <TableRow key={r.id}>
-                <TableCell>{o.referenceCode}</TableCell>
-                <TableCell>{o.guestName}</TableCell>
-                <TableCell>
-                  {r.createdAt.toLocaleDateString("en-US", { timeZone: "UTC" })}
-                </TableCell>
-                <TableCell>{r.status}</TableCell>
-                <TableCell>
-                  <Link href={`/admin/returns/${r.id}`}>Manage return</Link>
-                </TableCell>
-              </TableRow>
-            ))}
-            {!rows.length && (
+              ))}
+            </NativeSelect>
+          </label>
+          <Button type="submit">Filter</Button>
+        </form>
+        <section className="panel">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5}>No returns match this filter.</TableCell>
+                <TableHead>Order</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Requested</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </section>
-      <nav className="pager" aria-label="Return pages">
-        {page > 1 && <Link href={href(page - 1)}>Previous</Link>}
-        <span>Page {page}</span>
-        {rows.length > 25 && <Link href={href(page + 1)}>Next</Link>}
-      </nav>
-    </main>
+            </TableHeader>
+            <TableBody>
+              {rows.slice(0, 25).map(({ goodsReturn: r, order: o }) => (
+                <TableRow key={r.id}>
+                  <TableCell>{o.referenceCode}</TableCell>
+                  <TableCell>{o.guestName}</TableCell>
+                  <TableCell>
+                    {r.createdAt.toLocaleDateString("en-US", {
+                      timeZone: "UTC",
+                    })}
+                  </TableCell>
+                  <TableCell>{r.status}</TableCell>
+                  <TableCell>
+                    <Link href={`/admin/returns/${r.id}`}>Manage return</Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {!rows.length && (
+                <TableRow>
+                  <TableCell colSpan={5}>
+                    No returns match this filter.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </section>
+        <nav className="pager" aria-label="Return pages">
+          {page > 1 && <Link href={href(page - 1)}>Previous</Link>}
+          <span>Page {page}</span>
+          {rows.length > 25 && <Link href={href(page + 1)}>Next</Link>}
+        </nav>
+      </main>
+    </>
   );
 }

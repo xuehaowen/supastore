@@ -11,6 +11,14 @@ import {
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { staffIdentity } from "@/infrastructure/web";
 import { AdminNav } from "@/app/admin/admin-nav";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@supastore/ui/table";
 export default async function Reconciliation({
   searchParams,
 }: {
@@ -64,46 +72,92 @@ export default async function Reconciliation({
     return { credits, stocks };
   });
   return (
-    <main className="admin">
+    <>
       <AdminNav />
-      <h1>Credit & inventory reconciliation</h1>
-      <p>
-        Compare every account and stock count with its immutable entries and
-        active reservations. Differences require owner investigation; this
-        report makes no corrections.
-      </p>
-      <section className="panel">
-        <h2>Credit discrepancies</h2>
-        {data.credits.slice(0, 25).map((c) => (
-          <p key={c.account.id}>
-            <Link href={`/admin/store-credit/${c.account.id}`}>
-              {c.customer}
-            </Link>{" "}
-            · Recorded balance {c.account.balanceCents}; ledger{" "}
-            {Number(c.ledger)} · Reserved {c.account.reservedCents}; holds{" "}
-            {Number(c.holds)}
-          </p>
-        ))}
-        {!data.credits.length && <p>No credit discrepancies.</p>}
-      </section>
-      <section className="panel">
-        <h2>Inventory discrepancies</h2>
-        {data.stocks.slice(0, 25).map((s) => (
-          <p key={s.stock.variantId}>
-            <Link href={`/admin/inventory/${s.stock.variantId}`}>{s.sku}</Link>{" "}
-            · Recorded quantity {s.stock.onHand}; movements {Number(s.ledger)} ·
-            Reserved {s.stock.reserved}; holds {Number(s.holds)}
-          </p>
-        ))}
-        {!data.stocks.length && <p>No inventory discrepancies.</p>}
-      </section>
-      <nav className="pager" aria-label="Reconciliation pages">
-        {page > 1 && <Link href={`?page=${page - 1}`}>Previous</Link>}
-        <span>Page {page}</span>
-        {(data.credits.length > 25 || data.stocks.length > 25) && (
-          <Link href={`?page=${page + 1}`}>Next</Link>
-        )}
-      </nav>
-    </main>
+      <main tabIndex={-1} id="admin-content" className="admin">
+        <h1>Credit & inventory reconciliation</h1>
+        <p>
+          Compare every account and stock count with its immutable entries and
+          active reservations. Differences require owner investigation; this
+          report makes no corrections.
+        </p>
+        <section className="panel">
+          <h2>Credit discrepancies</h2>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Account</TableHead>
+                <TableHead>Recorded balance</TableHead>
+                <TableHead>Ledger balance</TableHead>
+                <TableHead>Reserved</TableHead>
+                <TableHead>Active holds</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.credits.slice(0, 25).map((c) => (
+                <TableRow key={c.account.id}>
+                  <TableCell>
+                    <Link href={`/admin/store-credit/${c.account.id}`}>
+                      {c.customer}
+                    </Link>
+                    <small>Amounts in minor currency units</small>
+                  </TableCell>
+                  <TableCell>{c.account.balanceCents}</TableCell>
+                  <TableCell>{Number(c.ledger)}</TableCell>
+                  <TableCell>{c.account.reservedCents}</TableCell>
+                  <TableCell>{Number(c.holds)}</TableCell>
+                </TableRow>
+              ))}
+              {!data.credits.length && (
+                <TableRow>
+                  <TableCell colSpan={5}>No credit discrepancies.</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </section>
+        <section className="panel">
+          <h2>Inventory discrepancies</h2>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>SKU</TableHead>
+                <TableHead>Recorded quantity</TableHead>
+                <TableHead>Movement balance</TableHead>
+                <TableHead>Reserved</TableHead>
+                <TableHead>Active holds</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.stocks.slice(0, 25).map((s) => (
+                <TableRow key={s.stock.variantId}>
+                  <TableCell>
+                    <Link href={`/admin/inventory/${s.stock.variantId}`}>
+                      {s.sku}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{s.stock.onHand}</TableCell>
+                  <TableCell>{Number(s.ledger)}</TableCell>
+                  <TableCell>{s.stock.reserved}</TableCell>
+                  <TableCell>{Number(s.holds)}</TableCell>
+                </TableRow>
+              ))}
+              {!data.stocks.length && (
+                <TableRow>
+                  <TableCell colSpan={5}>No inventory discrepancies.</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </section>
+        <nav className="pager" aria-label="Reconciliation pages">
+          {page > 1 && <Link href={`?page=${page - 1}`}>Previous</Link>}
+          <span>Page {page}</span>
+          {(data.credits.length > 25 || data.stocks.length > 25) && (
+            <Link href={`?page=${page + 1}`}>Next</Link>
+          )}
+        </nav>
+      </main>
+    </>
   );
 }
