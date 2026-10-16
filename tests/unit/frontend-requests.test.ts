@@ -54,7 +54,7 @@ describe("frontend backend request contracts", () => {
       user: { id: "staff" },
     });
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/auth/sign-in/email",
+      "/api/admin-auth/sign-in/email",
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify(payload),

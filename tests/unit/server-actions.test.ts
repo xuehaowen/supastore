@@ -71,7 +71,7 @@ vi.mock("next/cache", () => ({
 }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 vi.mock("@/infrastructure/auth", () => ({
-  auth: {
+  staffAuth: {
     api: {
       getSession: async () => ({ user: { email: "owner@example.test" } }),
     },

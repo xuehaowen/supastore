@@ -4,6 +4,8 @@ This is a conceptual model, not executable SQL. Add Drizzle schemas and migratio
 
 ## Conventions
 
+Authentication uses shared `user`, `account` and `verification` records, with separate customer `session` and merchant `staff_session` tables. Each session table has independently unique tokens and a cascading user foreign key. Staff sessions have an index on user ID for listing/revocation. Migration 0038 introduces staff sessions without promoting historical customer rows. Password reset revokes both tables; ordinary session operations remain scoped to their realm.
+
 UUID IDs, UTC instants and explicit IANA timezones. Monetary snapshots carry currency and precision. Use restrictive foreign keys for financial history and soft deletion for catalog entities. Administrative changes include actor, reason, revision and request identity. Applied financial history is append-only; projections are derived.
 
 ## Store and catalog

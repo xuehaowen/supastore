@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("next/headers", () => ({ headers: vi.fn(async () => new Headers()) }));
 vi.mock("@/infrastructure/auth", () => ({
-  auth: { api: { getSession: mocks.getSession } },
+  staffAuth: { api: { getSession: mocks.getSession } },
 }));
 vi.mock("@/infrastructure/db", () => ({
   db: { transaction: mocks.transaction },

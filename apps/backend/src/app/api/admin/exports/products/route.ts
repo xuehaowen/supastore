@@ -1,14 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { streamProductsCsv } from "@/application/use-cases/catalog/export-csv";
-import { auth } from "@/infrastructure/auth";
+import { staffAuth } from "@/infrastructure/auth";
 import { db } from "@/infrastructure/db";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { ForbiddenError } from "@/application/common/errors";
 import { textIterableStream } from "@/infrastructure/http/iterable-stream";
 
 export async function GET(_request: NextRequest) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await staffAuth.api.getSession({ headers: await headers() });
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

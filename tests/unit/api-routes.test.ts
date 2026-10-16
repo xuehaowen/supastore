@@ -27,12 +27,12 @@ vi.mock("@/application/use-cases/uploads/finalize-upload", () => ({
 }));
 vi.mock("@/infrastructure/db", () => ({ db: mocks.db }));
 vi.mock("@/infrastructure/auth", () => ({
-  auth: {
+  staffAuth: {
     $context: Promise.resolve({
       secret: "SyntheticRecoveryCookieSecret123456789!",
       authCookies: {
         sessionToken: {
-          name: "__Secure-better-auth.session_token",
+          name: "__Secure-supastore-staff.session_token",
           attributes: {
             httpOnly: true,
             secure: true,
@@ -41,7 +41,7 @@ vi.mock("@/infrastructure/auth", () => ({
           },
         },
         sessionData: {
-          name: "__Secure-better-auth.session_data",
+          name: "__Secure-supastore-staff.session_data",
           attributes: {
             httpOnly: true,
             secure: true,
@@ -133,13 +133,17 @@ describe("API route boundaries", () => {
 
     const response = await redeem(
       request("https://shop.test/api/auth/recover-owner/redeem?token=token", {
-        headers: { cookie: "__Secure-better-auth.session_data.0=stale-cache" },
+        headers: {
+          cookie: "__Secure-supastore-staff.session_data.0=stale-cache",
+        },
       }),
     );
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe("https://shop.test/admin");
-    const signed = response.cookies.get("__Secure-better-auth.session_token")!;
+    const signed = response.cookies.get(
+      "__Secure-supastore-staff.session_token",
+    )!;
     const expectedSignature = createHmac(
       "sha256",
       "SyntheticRecoveryCookieSecret123456789!",
@@ -153,9 +157,11 @@ describe("API route boundaries", () => {
       sameSite: "lax",
       expires: expiresAt,
     });
-    expect(response.cookies.get("better-auth.session_token")).toBeUndefined();
     expect(
-      response.cookies.get("__Secure-better-auth.session_data.0")?.maxAge,
+      response.cookies.get("supastore-staff.session_token"),
+    ).toBeUndefined();
+    expect(
+      response.cookies.get("__Secure-supastore-staff.session_data.0")?.maxAge,
     ).toBe(0);
     expect(response.headers.get("cache-control")).toBe("no-store");
   });
@@ -186,7 +192,7 @@ describe("API route boundaries", () => {
       "https://shop.test/admin/login?error=Failed+to+redeem+recovery+link.",
     );
     expect(
-      response.cookies.get("__Secure-better-auth.session_token"),
+      response.cookies.get("__Secure-supastore-staff.session_token"),
     ).toBeUndefined();
   });
 

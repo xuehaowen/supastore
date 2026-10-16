@@ -3,7 +3,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { db } from "@/infrastructure/db";
 import {
   user,
-  session,
+  staffSession,
   staffMemberships,
   verification,
   auditRecords,
@@ -77,7 +77,7 @@ export async function redeemOwnerRecovery(
     const sessionToken = randomBytes(32).toString("hex");
     const sessionExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    await tx.insert(session).values({
+    await tx.insert(staffSession).values({
       id: randomUUID(),
       token: sessionToken,
       userId,

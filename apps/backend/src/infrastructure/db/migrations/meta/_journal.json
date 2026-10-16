@@ -267,6 +267,13 @@
       "when": 1791167400015,
       "tag": "0037_order_queue_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1791167400016,
+      "tag": "0038_staff_sessions",
+      "breakpoints": true
     }
   ]
 }

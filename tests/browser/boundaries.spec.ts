@@ -210,7 +210,7 @@ test("Account registration requires verification, retries sign-in, denies admin 
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/admin\/login/);
   await expect(page.locator('[data-slot="alert"]')).toContainText(
-    "does not have staff access",
+    "Sign in with your staff account",
   );
   await page.goto("/en/account");
   await page.route(

@@ -63,6 +63,8 @@ A command such as `createOrder`, `recordReceipt`, `confirmOrder`, `cancelOrder`,
 
 ## Authorization boundary
 
+Staff and customer sessions are independent realms of Better Auth. Customers use `/api/auth`, `supastore-customer` cookies and the `session` table; merchants use `/api/admin-auth`, `supastore-staff` cookies and `staff_session`. Signing secrets are derived separately from the configured authentication secret, and cookie session caching is disabled. Sharing a user identity or browser does not share login state, token lookup, session listing or ordinary logout. Staff session creation checks active membership; merchant use cases also retain transactional role checks. Password reset is a credential-security exception: shared user/password records require revocation in both realms. Owner recovery establishes a staff session only. Migration 0038 creates the new table; existing cookies require fresh sign-in.
+
 All business mutations and private reads go through trusted server use cases. Use a dedicated least-privilege database role for application access; reserve elevated credentials for migrations and narrowly scoped platform administration. Enable RLS on exposed application tables and deny direct browser financial access. RLS is defense in depth and does not replace use-case authorization. Document and test the actual privileges of the chosen runtime role.
 
 | Actor        | Allowed actions                                                                                                                         |

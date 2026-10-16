@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { redeemOwnerRecovery } from "@/application/use-cases/staff/redeem-owner-recovery";
-import { auth } from "@/infrastructure/auth";
+import { staffAuth } from "@/infrastructure/auth";
 import { makeSignature } from "better-auth/crypto";
 import { UnauthorizedError } from "@/application/common/errors";
 
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("token") || "";
 
   try {
-    const context = await auth.$context;
+    const context = await staffAuth.$context;
     const { sessionToken, expiresAt } = await redeemOwnerRecovery(token);
     const signedToken = `${sessionToken}.${await makeSignature(sessionToken, context.secret)}`;
 

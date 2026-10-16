@@ -4,7 +4,7 @@ import {
   importProductsCsv,
   parseProductCsv,
 } from "@/application/use-cases/catalog/import-products-csv";
-import { auth } from "@/infrastructure/auth";
+import { staffAuth } from "@/infrastructure/auth";
 import { db } from "@/infrastructure/db";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { ForbiddenError, DomainError } from "@/application/common/errors";
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   if (request.headers.get("origin") !== expectedOrigin) {
     return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
   }
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await staffAuth.api.getSession({ headers: await headers() });
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

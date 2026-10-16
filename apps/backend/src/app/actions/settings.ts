@@ -15,9 +15,11 @@ import { adminReturnPath, field, perform } from "./common";
 export async function setupOwner(form: FormData) {
   return perform("/admin/setup", async () => {
     const userId = await staffIdentity();
-    const { auth } = await import("@/infrastructure/auth");
+    const { staffAuth } = await import("@/infrastructure/auth");
     const { headers } = await import("next/headers");
-    const session = await auth.api.getSession({ headers: await headers() });
+    const session = await staffAuth.api.getSession({
+      headers: await headers(),
+    });
     await bootstrapOwner({
       adminSetupSecret: field(form, "secret"),
       storeName: field(form, "storeName"),

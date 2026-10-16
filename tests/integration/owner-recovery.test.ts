@@ -6,7 +6,7 @@ import { NextRequest } from "next/server";
 import { db, queryClient } from "@/infrastructure/db";
 import {
   user,
-  session,
+  staffSession,
   verification,
   staffMemberships,
 } from "@/infrastructure/db/schema";
@@ -63,7 +63,10 @@ describe.skipIf(!process.env.DATABASE_URL?.endsWith("/supastore_test"))(
         results.filter((result) => result.status === "rejected"),
       ).toHaveLength(7);
       expect(
-        await db.select().from(session).where(eq(session.userId, userId)),
+        await db
+          .select()
+          .from(staffSession)
+          .where(eq(staffSession.userId, userId)),
       ).toHaveLength(1);
       await expect(redeemOwnerRecovery(value)).rejects.toThrow(
         "invalid or has expired",
@@ -81,7 +84,7 @@ describe.skipIf(!process.env.DATABASE_URL?.endsWith("/supastore_test"))(
       );
       vi.stubEnv("BETTER_AUTH_URL", "https://recovery.example.test");
       const { GET } = await import("@/app/api/auth/recover-owner/redeem/route");
-      const { auth } = await import("@/infrastructure/auth");
+      const { staffAuth, auth } = await import("@/infrastructure/auth");
       const response = await GET(
         new NextRequest(
           `https://recovery.example.test/api/auth/recover-owner/redeem?token=${await token()}`,
@@ -90,20 +93,27 @@ describe.skipIf(!process.env.DATABASE_URL?.endsWith("/supastore_test"))(
       expect(new URL(response.headers.get("location")!).pathname).toBe(
         "/admin",
       );
-      const context = await auth.$context;
+      const context = await staffAuth.$context;
       const cookie = response.cookies.get(
         context.authCookies.sessionToken.name,
       )!;
       expect(cookie).toBeDefined();
-      const authenticated = await auth.api.getSession({
+      const authenticated = await staffAuth.api.getSession({
         headers: new Headers({
           cookie: `${cookie.name}=${encodeURIComponent(cookie.value)}`,
         }),
       });
       expect(authenticated?.user.id).toBe(userId);
-      const rawToken = cookie.value.slice(0, cookie.value.lastIndexOf("."));
       expect(
         await auth.api.getSession({
+          headers: new Headers({
+            cookie: `${cookie.name}=${encodeURIComponent(cookie.value)}`,
+          }),
+        }),
+      ).toBeNull();
+      const rawToken = cookie.value.slice(0, cookie.value.lastIndexOf("."));
+      expect(
+        await staffAuth.api.getSession({
           headers: new Headers({ cookie: `${cookie.name}=${rawToken}` }),
         }),
       ).toBeNull();

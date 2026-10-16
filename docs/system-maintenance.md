@@ -106,6 +106,12 @@ instead of silently truncating discovery. Responses allow 30 seconds of public
 caching. Publication changes can shift pages between requests; these are live
 discovery documents, not a historical snapshot.
 
+## Staff/customer session isolation
+
+Apply migration `0038_staff_sessions` before deploying the separated authentication instances, using the configured migration credentials and normal runtime-role grant refresh. Staff login now uses `/api/admin-auth` and `staff_session`; customer login retains `/api/auth` and `session`. Both use new cookie namespaces and separately derived signing secrets, so existing browser sessions require sign-in again. Do not copy old sessions into the staff table or rename legacy cookies. Owner-recovery redemption creates a staff session only. No new environment variable is needed; retain the configured `BETTER_AUTH_SECRET`.
+
+Validate both logins in the same browser and independent logout, plus rejection of copied cookies and inactive membership. Password reset must revoke both realms because credentials remain shared. Evidence: [integration isolation/reset](../tests/integration/auth-session-isolation.test.ts), [staff HTTP allowlist](../tests/unit/admin-auth-route.test.ts), [owner recovery](../tests/integration/owner-recovery.test.ts) and [same-browser journey](../tests/browser/session-isolation.spec.ts).
+
 ## Manual order retries
 
 Manual-order forms generate a request UUID when the dialog opens. Retries of the

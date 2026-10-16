@@ -1,6 +1,6 @@
 import { cookies, headers } from "next/headers";
 import { randomBytes } from "node:crypto";
-import { auth } from "@/infrastructure/auth";
+import { auth, staffAuth } from "@/infrastructure/auth";
 import { UnauthorizedError } from "@/application/common/errors";
 import { hashToken } from "@/application/common/guest-access";
 export async function guestIdentity(create = false) {
@@ -25,7 +25,7 @@ export async function guestIdentity(create = false) {
   return raw ? hashToken(raw) : "";
 }
 export async function staffIdentity() {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await staffAuth.api.getSession({ headers: await headers() });
   if (!session) throw new UnauthorizedError("Sign in to continue.");
   return session.user.id;
 }

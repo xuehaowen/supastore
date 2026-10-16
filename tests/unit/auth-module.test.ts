@@ -35,7 +35,7 @@ describe("Auth Module Configuration and Callbacks", () => {
       label: "unverified active staff",
       verified: false,
       staff: true,
-      allowed: true,
+      allowed: false,
     },
     {
       label: "unverified customer",
@@ -54,10 +54,6 @@ describe("Auth Module Configuration and Callbacks", () => {
     async ({ verified, staff, allowed }) => {
       queries.limit.mockReset();
       queries.limit.mockResolvedValueOnce([{ emailVerified: verified }]);
-      if (!verified)
-        queries.limit.mockResolvedValueOnce(
-          staff ? [{ id: "membership" }] : [],
-        );
       const before = auth.options.databaseHooks!.session!.create!.before!;
       const result = before({
         id: "session",
@@ -73,7 +69,30 @@ describe("Auth Module Configuration and Callbacks", () => {
           status: "FORBIDDEN",
           body: { code: "EMAIL_NOT_VERIFIED" },
         });
-      expect(queries.limit).toHaveBeenCalledTimes(verified ? 1 : 2);
+      expect(queries.limit).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each([true, false])(
+    "checks active staff membership independently: %s",
+    async (active) => {
+      queries.limit.mockReset();
+      queries.limit.mockResolvedValue(active ? [{ id: "member" }] : []);
+      const result = staffAuth.options.databaseHooks!.session!.create!.before!({
+        id: "staff-session",
+        userId: "staff-user",
+        token: "staff-token",
+        expiresAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      if (active) await expect(result).resolves.toBeUndefined();
+      else
+        await expect(result).rejects.toMatchObject({
+          status: "FORBIDDEN",
+          body: { code: "STAFF_ACCESS_REQUIRED" },
+        });
+      expect(queries.limit).toHaveBeenCalledTimes(1);
     },
   );
 
