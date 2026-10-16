@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { auth } from "@/infrastructure/auth";
+import { auth, staffAuth } from "@/infrastructure/auth";
 import { smtpAdapter } from "@/infrastructure/notifications/smtp";
 
 const queries = vi.hoisted(() => ({ limit: vi.fn() }));
@@ -12,6 +12,13 @@ vi.mock("@/infrastructure/db", () => ({
 }));
 
 describe("Auth Module Configuration and Callbacks", () => {
+  it("uses separate staff and customer cookie namespaces and disables staff registration", () => {
+    expect(auth.options.advanced?.cookiePrefix).toBe("supastore-customer");
+    expect(staffAuth.options.advanced?.cookiePrefix).toBe("supastore-staff");
+    expect(staffAuth.options.basePath).toBe("/api/admin-auth");
+    expect(staffAuth.options.emailAndPassword?.disableSignUp).toBe(true);
+    expect(staffAuth.options.secret).not.toBe(auth.options.secret);
+  });
   it("keeps customer signup verification without globally blocking staff login", () => {
     expect(auth.options.emailAndPassword?.enabled).toBe(true);
     expect(auth.options.emailAndPassword?.requireEmailVerification).toBe(false);
