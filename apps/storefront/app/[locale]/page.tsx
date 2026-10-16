@@ -5,5 +5,5 @@ export default async function Page({
 }: {
   params: Promise<{ locale: string }>;
 }) {
-  return <Catalog locale={(await params).locale} />;
+  return <Catalog showHero locale={(await params).locale} />;
 }

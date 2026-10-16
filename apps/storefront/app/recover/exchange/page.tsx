@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { textFor } from "@supastore/i18n/messages";
 import { DocumentLanguage } from "../../../../../packages/i18n/src/document-language";
 import { exchangeLink } from "../../actions";
@@ -14,8 +15,9 @@ export default async function Exchange({
   const { token, locale: requestedLocale } = await searchParams;
   const locale = localeOf(requestedLocale);
   return (
-    <main className="mx-auto my-12 min-h-[50vh] max-w-xl">
+    <main className="storefront-state storefront-shell">
       <DocumentLanguage locale={locale} />
+      <Link href={"/" + locale}>← {textFor(locale).shop}</Link>
       <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">
         {textFor(locale).common.openOrder}
       </h1>

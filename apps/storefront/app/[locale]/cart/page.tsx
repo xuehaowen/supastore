@@ -11,6 +11,7 @@ import { cn } from "../../../../../packages/ui/src/utils";
 import { Card, CardContent } from "@supastore/ui/card";
 import { Input } from "@supastore/ui/input";
 import { Label } from "@supastore/ui/label";
+import { ShoppingBag } from "lucide-react";
 export const metadata = { robots: { index: false, follow: false } };
 export default async function Cart({
   params,
@@ -168,7 +169,7 @@ export default async function Cart({
             className="mb-4 flex size-20 items-center justify-center rounded-full bg-muted text-3xl"
             aria-hidden="true"
           >
-            🛍️
+            <ShoppingBag size={32} />
           </div>
           <h2 className="mb-2 font-serif text-2xl font-medium">{t("empty")}</h2>
           <p className="mb-6 max-w-sm text-sm text-muted-foreground">

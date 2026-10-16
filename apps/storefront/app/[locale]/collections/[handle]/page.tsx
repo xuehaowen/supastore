@@ -2,8 +2,7 @@ import { readPage } from "../../../../lib/page-data";
 import { textFor } from "@supastore/i18n/messages";
 import Link from "next/link";
 import Image from "next/image";
-import { notFound } from "next/navigation";
-import { money } from "../../../../lib/web";
+import { ProductCard } from "../../../product-card";
 export default async function Collection({
   params,
   searchParams,
@@ -18,7 +17,7 @@ export default async function Collection({
     { ...(await searchParams), handle },
   );
   return (
-    <>
+    <section className="storefront-collection">
       <Link href={`/${locale}`}>← {textFor(locale).all}</Link>
       <h1>{translated?.title ?? collection.title}</h1>
       <p>{translated?.description ?? collection.description}</p>
@@ -33,54 +32,42 @@ export default async function Collection({
         />
       )}
       <section
-        className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+        className="storefront-product-grid"
         aria-label={textFor(locale).ui.products}
       >
         {result.items.map((product) => (
-          <article key={product.id}>
-            <Link href={`/${locale}/products/${product.handle}`}>
-              {product.coverImageKey && (
-                <Image
-                  src={`/api/assets?key=${encodeURIComponent(product.coverImageKey)}&inline=1`}
-                  alt={product.title}
-                  width={400}
-                  height={400}
-                  sizes="(max-width: 639px) 88vw, (max-width: 1023px) 44vw, 30vw"
-                  loading="lazy"
-                  className="aspect-square w-full object-cover"
-                />
-              )}
-              <h2>{product.title}</h2>
-            </Link>
-            <p>
-              {product.lowestPriceCents === null
-                ? "—"
-                : money(
-                    product.lowestPriceCents,
-                    store?.currency,
-                    store?.precision,
-                    locale,
-                  )}
-            </p>
-          </article>
+          <ProductCard
+            key={product.id}
+            product={product}
+            locale={locale}
+            currency={store?.currency}
+            precision={store?.precision}
+          />
         ))}
         {!result.items.length && (
-          <p>{textFor(locale).ui.noProductsInThisCollectionYet}</p>
+          <div className="storefront-empty">
+            <p>{textFor(locale).ui.noProductsInThisCollectionYet}</p>
+            <Link href={"/" + locale}>{textFor(locale).all}</Link>
+          </div>
         )}
       </section>
       <nav
-        className="my-6 flex justify-between"
+        className="storefront-pagination"
         aria-label={textFor(locale).common.collectionPages}
       >
         {result.page > 1 ? (
-          <Link href={`?page=${result.page - 1}`}>←</Link>
+          <Link href={`?page=${result.page - 1}`}>
+            ← {textFor(locale).common.previous}
+          </Link>
         ) : (
           <span />
         )}
         {result.page * result.pageSize < result.total && (
-          <Link href={`?page=${result.page + 1}`}>→</Link>
+          <Link href={`?page=${result.page + 1}`}>
+            {textFor(locale).common.next} →
+          </Link>
         )}
       </nav>
-    </>
+    </section>
   );
 }

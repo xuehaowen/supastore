@@ -140,6 +140,13 @@ export default async function Account({
                     </p>
                   )}
                   <h3>{textFor(locale).ui.recentActivity}</h3>
+                  {!account.credit.entries.length && (
+                    <p className="text-sm text-muted-foreground">
+                      {locale === "zh"
+                        ? "暂无余额变动记录。"
+                        : "No credit activity yet."}
+                    </p>
+                  )}
                   {account.credit.entries.map((entry) => (
                     <p key={entry.id}>
                       {new Date(entry.createdAt).toLocaleDateString(locale)} ·{" "}

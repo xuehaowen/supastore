@@ -20,7 +20,7 @@ export default async function Recover({
   const q = await searchParams;
   const locale = localeOf(q.locale);
   return (
-    <main className="mx-auto my-12 min-h-[50vh] max-w-xl">
+    <main className="storefront-state storefront-shell">
       <DocumentLanguage locale={locale} />
       <Link href={`/${locale}`}>← {textFor(locale).shop}</Link>
       <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">

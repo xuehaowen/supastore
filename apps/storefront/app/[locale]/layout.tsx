@@ -1,6 +1,7 @@
 import { readPage } from "../../lib/page-data";
 import { textFor } from "@supastore/i18n/messages";
 import { LanguageLink } from "../interactive";
+import { StorefrontNavLink } from "../storefront-nav-link";
 import { DocumentLanguage } from "../../../../packages/i18n/src/document-language";
 import Link from "next/link";
 import Image from "next/image";
@@ -21,7 +22,7 @@ export default async function ShopLayout({
   const { store, session } = await readPage("layout", locale);
   return (
     <div
-      className="mx-auto flex min-h-screen max-w-375 flex-col px-[6%]"
+      className="storefront-shell mx-auto flex min-h-screen max-w-375 flex-col px-[6%]"
       lang={locale}
     >
       <DocumentLanguage locale={locale} />
@@ -55,30 +56,31 @@ export default async function ShopLayout({
           className="flex flex-wrap items-center justify-end gap-x-5 gap-y-3 text-sm max-sm:max-w-52 max-sm:gap-x-3"
           aria-label={textFor(locale).shop}
         >
-          <Link
+          <StorefrontNavLink
+            shop
             className="transition-colors hover:text-muted-foreground"
             href={"/" + locale}
           >
             {t("shop")}
-          </Link>
-          <Link
+          </StorefrontNavLink>
+          <StorefrontNavLink
             className="transition-colors hover:text-muted-foreground"
             href={`/recover?locale=${locale}`}
           >
             {t("recover")}
-          </Link>
-          <Link
+          </StorefrontNavLink>
+          <StorefrontNavLink
             className="transition-colors hover:text-muted-foreground"
             href={"/" + locale + "/account"}
           >
             {session ? textFor(locale).ui.account : textFor(locale).auth.signIn}
-          </Link>
-          <Link
+          </StorefrontNavLink>
+          <StorefrontNavLink
             className="rounded-md border px-3 py-1.5 font-medium no-underline transition-colors hover:bg-muted"
             href={"/" + locale + "/cart"}
           >
             {t("cart")} <span aria-hidden="true">↗</span>
-          </Link>
+          </StorefrontNavLink>
           <LanguageLink locale={locale} />
         </nav>
       </header>
@@ -87,7 +89,7 @@ export default async function ShopLayout({
           <AlertDescription>{store.pauseMessage}</AlertDescription>
         </Alert>
       )}
-      <main id="main" className="flex-1">
+      <main id="main" tabIndex={-1} className="flex-1">
         {children}
       </main>
       <footer

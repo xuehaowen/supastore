@@ -1,0 +1,285 @@
+:root {
+  --font-geist:
+    "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+}
+.storefront-shell {
+  width: 100%;
+  min-width: 0;
+}
+.storefront-shell #main {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.storefront-shell > header > a {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.storefront-shell > header nav {
+  min-width: 0;
+}
+.storefront-shell footer {
+  overflow-wrap: anywhere;
+}
+.storefront-shell :is(h1, h2, h3) {
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.storefront-shell h1 {
+  line-height: 1.08;
+}
+.storefront-shell h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.storefront-shell
+  :is(form, fieldset, label, [data-slot="card"], [data-slot="card-content"]) {
+  min-width: 0;
+}
+.storefront-shell [data-slot="card"] {
+  background: #fffdf8;
+  box-shadow: 0 1px 3px #263b2f06;
+}
+.storefront-shell [data-slot="card-content"] > h2 {
+  margin-bottom: 1rem;
+}
+.storefront-shell [data-slot="card-content"] > p + :is(p, h3, nav, form) {
+  margin-top: 1rem;
+}
+.storefront-shell [data-slot="card-content"] > form:not(.flex) {
+  display: grid;
+  gap: 1rem;
+}
+.storefront-shell form > label:not(.check) {
+  min-width: 0;
+}
+.storefront-shell a[aria-current="page"] {
+  text-decoration: underline;
+  text-underline-offset: 0.4rem;
+  text-decoration-thickness: 2px;
+}
+.storefront-shell :is(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 4px;
+}
+.storefront-shell
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not(
+    [data-slot]
+  ),
+.storefront-shell select:not([data-slot]),
+.storefront-shell textarea:not([data-slot]) {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid var(--input);
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--background);
+}
+.storefront-shell input[type="checkbox"],
+.storefront-shell input[type="radio"] {
+  accent-color: var(--primary);
+}
+.storefront-shell dd {
+  font-variant-numeric: tabular-nums;
+}
+.storefront-shell footer {
+  line-height: 1.7;
+}
+.storefront-shell footer nav a {
+  padding-block: 0.35rem;
+}
+.storefront-page {
+  width: 100%;
+  min-width: 0;
+}
+.storefront-collection {
+  padding-block: clamp(2rem, 5vw, 4rem);
+}
+.storefront-collection > h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(2.25rem, 5vw, 4rem);
+  letter-spacing: -0.045em;
+  margin: 1.5rem 0 1rem;
+}
+.storefront-collection > p {
+  max-width: 65ch;
+  color: var(--muted-foreground);
+  line-height: 1.8;
+  margin-bottom: 2rem;
+}
+.storefront-product-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2.25rem 1.5rem;
+}
+.storefront-product-card {
+  min-width: 0;
+}
+.storefront-product-card a:hover {
+  text-decoration: none;
+}
+.storefront-product-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: #e8e9df;
+  border-radius: 0.5rem;
+}
+.storefront-product-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.storefront-product-meta h3 {
+  font-size: 1rem;
+  font-weight: 500;
+}
+.storefront-product-meta > span {
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+.storefront-catalog-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-block: 1.5rem;
+}
+.storefront-catalog-tools form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+  max-width: 100%;
+}
+.storefront-catalog-tools form > input {
+  flex: 1 1 12rem;
+  width: auto;
+  min-width: 8rem;
+}
+.storefront-catalog-tools form label {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+.storefront-catalog-heading {
+  padding-block: 2.5rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.storefront-catalog-heading h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  letter-spacing: -0.04em;
+}
+.storefront-catalog-heading p {
+  margin-top: 0.75rem;
+  color: var(--muted-foreground);
+}
+.storefront-empty {
+  padding: 2.5rem;
+  margin-block: 1.5rem;
+  border: 1px dashed var(--border);
+  border-radius: 0.75rem;
+  text-align: center;
+}
+.storefront-empty a {
+  display: inline-block;
+  margin-top: 1rem;
+}
+.storefront-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 1.5rem;
+}
+.storefront-pagination a {
+  padding: 0.75rem 0;
+  min-height: 2.75rem;
+}
+.storefront-state {
+  width: min(100% - 2rem, 38rem);
+  margin: clamp(3rem, 10vh, 8rem) auto;
+  padding: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--card);
+}
+.storefront-state h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.1;
+  margin-bottom: 1rem;
+}
+.storefront-state p {
+  color: var(--muted-foreground);
+  line-height: 1.8;
+  margin-bottom: 1.5rem;
+}
+.storefront-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+@media (max-width: 767px) {
+  .storefront-shell > header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+  .storefront-shell > header > a {
+    width: 100%;
+  }
+  .storefront-shell > header nav {
+    width: 100%;
+    max-width: none;
+    justify-content: flex-start;
+    gap: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+  .storefront-product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.75rem 1rem;
+  }
+  .storefront-product-meta {
+    display: block;
+  }
+  .storefront-product-meta > span {
+    display: block;
+    margin-top: 0.4rem;
+  }
+  .storefront-catalog-tools {
+    display: block;
+  }
+  .storefront-catalog-tools form {
+    margin-top: 1rem;
+  }
+  .storefront-shell
+    :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select) {
+    font-size: 1rem;
+  }
+  .storefront-shell :is(button, header nav a) {
+    min-height: 2.75rem;
+  }
+  .storefront-shell header nav a {
+    display: inline-flex;
+    align-items: center;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .storefront-shell *,
+  .storefront-shell *::before,
+  .storefront-shell *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}

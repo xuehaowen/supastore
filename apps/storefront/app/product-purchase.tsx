@@ -111,6 +111,7 @@ export function ProductPurchase({
                       ? "border-primary ring-2 ring-primary/20"
                       : "border-transparent opacity-70 hover:opacity-100"
                   }`}
+                  aria-pressed={isSelected}
                   aria-label={img.altText || product.title}
                 >
                   <Image

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./storefront-polish.css";
 import { Toaster } from "@supastore/ui/sonner";
 import { headers } from "next/headers";
 import { textFor } from "@supastore/i18n/messages";

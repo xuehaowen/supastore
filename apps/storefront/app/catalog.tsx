@@ -1,19 +1,20 @@
 import { readPage } from "../lib/page-data";
 import { textFor } from "@supastore/i18n/messages";
 import Link from "next/link";
-import Image from "next/image";
+import { ProductCard } from "./product-card";
 import { NativeSelect } from "@supastore/ui/native-select";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
-import { money } from "../lib/web";
 import { Alert, AlertDescription } from "@supastore/ui/alert";
 import { Button } from "@supastore/ui/button";
 import { Input } from "@supastore/ui/input";
 export default async function Catalog({
   locale,
   query = {},
+  showHero = false,
 }: {
   locale: string;
+  showHero?: boolean;
   query?: {
     q?: string;
     category?: string;
@@ -44,33 +45,49 @@ export default async function Catalog({
   };
   return (
     <>
-      <section className="relative min-h-[480px] border-b py-18 pr-[48%] max-sm:min-h-[580px] max-sm:py-10 max-sm:pr-0">
-        <p className="mb-7 text-[10px] font-bold tracking-[0.2em]">
-          {textFor(locale).common.collectionEyebrow}
-        </p>
-        <h1 className="mb-7 font-serif text-5xl leading-none tracking-[-0.045em] md:text-7xl">
-          {t("intro")}
-        </h1>
-        <p className="max-w-sm leading-7 text-muted-foreground">
-          {t("subtitle")}
-        </p>
-        <a
-          className="mt-6 inline-block border-b pb-1.5 text-sm no-underline"
-          href="#collection"
-        >
-          {t("collection")} ↓
-        </a>
-        <div
-          className="absolute top-0 right-0 -z-10 h-[90%] w-[43%] overflow-hidden rounded-t-full bg-[#e6e7d5] max-sm:top-auto max-sm:bottom-5 max-sm:h-60 max-sm:w-[65%]"
-          aria-hidden="true"
-        >
-          <div className="absolute bottom-[15%] left-[20%] h-[50%] w-[37%] rounded-[30%_30%_42%_42%] bg-[#bc8962] shadow-xl" />
-          <div className="absolute right-[7%] bottom-[22%] aspect-square w-[34%] rounded-full bg-[radial-gradient(circle_at_35%_30%,#f3eed2,#b3b89b)] shadow-xl" />
-          <span className="absolute right-6 bottom-5 text-[9px] tracking-[0.22em]">
-            {textFor(locale).common.lessButBetter}
-          </span>
-        </div>
-      </section>
+      {showHero ? (
+        <section className="catalog-hero relative min-h-[480px] border-b py-18 pr-[48%] max-sm:min-h-[580px] max-sm:py-10 max-sm:pr-0">
+          <p className="mb-7 text-[10px] font-bold tracking-[0.2em]">
+            {textFor(locale).common.collectionEyebrow}
+          </p>
+          <h1 className="mb-7 font-serif text-5xl leading-none tracking-[-0.045em] md:text-7xl">
+            {t("intro")}
+          </h1>
+          <p className="max-w-sm leading-7 text-muted-foreground">
+            {t("subtitle")}
+          </p>
+          <a
+            className="mt-6 inline-block border-b pb-1.5 text-sm no-underline"
+            href="#collection"
+          >
+            {t("collection")} ↓
+          </a>
+          <div
+            className="absolute top-0 right-0 -z-10 h-[90%] w-[43%] overflow-hidden rounded-t-full bg-[#e6e7d5] max-sm:top-auto max-sm:bottom-5 max-sm:h-60 max-sm:w-[65%]"
+            aria-hidden="true"
+          >
+            <div className="absolute bottom-[15%] left-[20%] h-[50%] w-[37%] rounded-[30%_30%_42%_42%] bg-[#bc8962] shadow-xl" />
+            <div className="absolute right-[7%] bottom-[22%] aspect-square w-[34%] rounded-full bg-[radial-gradient(circle_at_35%_30%,#f3eed2,#b3b89b)] shadow-xl" />
+            <span className="absolute right-6 bottom-5 text-[9px] tracking-[0.22em]">
+              {textFor(locale).common.lessButBetter}
+            </span>
+          </div>
+        </section>
+      ) : (
+        <header className="storefront-catalog-heading">
+          <h1>
+            {query.category
+              ? (groups.find((group) => group.slug === query.category)?.name ??
+                t("all"))
+              : query.q
+                ? t("search") + " · " + query.q
+                : t("all")}
+          </h1>
+          <p>
+            {result.total} {textFor(locale).ui.products.toLowerCase()}
+          </p>
+        </header>
+      )}
       <section id="collection">
         {collections.length > 0 && (
           <nav
@@ -89,7 +106,7 @@ export default async function Catalog({
             ))}
           </nav>
         )}
-        <div className="flex items-center justify-between gap-6 max-sm:flex-col max-sm:items-start">
+        <div className="storefront-catalog-tools">
           <h2>{t("collection")}</h2>
           <form
             className="flex gap-2 max-sm:w-full"
@@ -175,60 +192,22 @@ export default async function Catalog({
             </Link>
           ))}
         </nav>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-9 md:grid-cols-3">
-          {result.items.map((p, i) => (
-            <article className="group" key={p.id}>
-              <Link
-                className="block no-underline"
-                href={"/" + locale + "/products/" + p.handle}
-              >
-                <div
-                  className={
-                    "flex aspect-square items-center justify-center overflow-hidden " +
-                    (i % 3 === 1 ? "bg-[#eee2d6]" : "bg-[#e5e8df]")
-                  }
-                >
-                  {p.coverImageKey ? (
-                    <Image
-                      className="size-full object-cover transition-transform duration-300 motion-reduce:transition-none group-hover:scale-[1.02]"
-                      src={
-                        "/api/assets?key=" +
-                        encodeURIComponent(p.coverImageKey) +
-                        "&inline=1"
-                      }
-                      alt={p.title}
-                      width={600}
-                      height={600}
-                      sizes="(max-width: 767px) 44vw, (max-width: 1024px) 30vw, 27vw"
-                    />
-                  ) : (
-                    <span
-                      className="font-serif text-8xl text-[#889475]"
-                      aria-hidden="true"
-                    >
-                      {p.title.slice(0, 1)}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-4 flex justify-between gap-3 text-sm max-sm:block">
-                  <h3 className="text-base font-medium">{p.title}</h3>
-                  <span className="shrink-0 text-muted-foreground group-hover:text-foreground">
-                    {money(
-                      p.lowestPriceCents ?? 0,
-                      store?.currency,
-                      store?.precision,
-                      locale,
-                    )}
-                  </span>
-                </div>
-              </Link>
-            </article>
+        <div className="storefront-product-grid">
+          {result.items.map((product) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              locale={locale}
+              currency={store?.currency}
+              precision={store?.precision}
+            />
           ))}
         </div>
         {!result.items.length && (
-          <Alert>
+          <Alert className="storefront-empty">
             <AlertDescription>
               {textFor(locale).common.noProducts}
+              <Link href={"/" + locale}>{t("all")}</Link>
             </AlertDescription>
           </Alert>
         )}
