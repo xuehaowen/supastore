@@ -670,11 +670,15 @@ describe("every server action request boundary", () => {
   });
 
   it("returns the created manual-order reference after inline success", async () => {
-    await expect(submitManualOrder(form())).resolves.toEqual({ referenceCode: "SP-MANUAL" });
+    await expect(submitManualOrder(form())).resolves.toEqual({
+      referenceCode: "SP-MANUAL",
+    });
   });
 
   it("hides unexpected inline manual-order failures", async () => {
-    mocks.commands.createManualOrder.mockRejectedValueOnce(new Error("private detail"));
+    mocks.commands.createManualOrder.mockRejectedValueOnce(
+      new Error("private detail"),
+    );
     await expect(submitManualOrder(form())).resolves.toEqual({
       error: "Unable to save. Check your entries and try again.",
     });

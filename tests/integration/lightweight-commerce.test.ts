@@ -203,17 +203,27 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
       (select count(*)::int from quotes) as quotes,
       (select count(*)::int from slot_reservations) as reservations`;
     for (const [rejectedInput, expectedError] of [
-      [{ ...input, requestKey: randomUUID() }, "This fulfillment slot is full. Choose another time."],
-      [{ ...input, requestKey: randomUUID(), pickupTime: "09:00" }, "This pickup slot is closed, past, or does not allow enough preparation time."],
+      [
+        { ...input, requestKey: randomUUID() },
+        "This fulfillment slot is full. Choose another time.",
+      ],
+      [
+        { ...input, requestKey: randomUUID(), pickupTime: "09:00" },
+        "This pickup slot is closed, past, or does not allow enough preparation time.",
+      ],
     ] as const) {
-      await expect(createManualOrder(rejectedInput)).rejects.toThrow(expectedError);
+      await expect(createManualOrder(rejectedInput)).rejects.toThrow(
+        expectedError,
+      );
       const [afterRejection] = await client`select
         (select count(*)::int from orders) as orders,
         (select count(*)::int from carts) as carts,
         (select count(*)::int from quotes) as quotes,
         (select count(*)::int from slot_reservations) as reservations`;
       expect(afterRejection).toEqual(beforeRejection);
-      expect(await client`select id from carts where id=${rejectedInput.requestKey}`).toHaveLength(0);
+      expect(
+        await client`select id from carts where id=${rejectedInput.requestKey}`,
+      ).toHaveLength(0);
     }
     const [hold] =
       await client`select count(*)::int as count from slot_reservations where order_id=${first.id}`;

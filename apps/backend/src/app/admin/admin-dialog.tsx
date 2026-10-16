@@ -19,6 +19,7 @@ export function AdminDialog({
   description,
   children,
   onOpenChange,
+  open: controlledOpen,
 }: {
   trigger?: string;
   defaultOpen?: boolean;
@@ -27,8 +28,10 @@ export function AdminDialog({
   description?: string;
   children: ReactNode;
   onOpenChange?: (open: boolean) => void;
+  open?: boolean;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [internalOpen, setOpen] = useState(defaultOpen);
+  const open = controlledOpen ?? internalOpen;
 
   if (inline) return children;
 

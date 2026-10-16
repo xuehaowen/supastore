@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
 import { AdminDialog } from "@/app/admin/admin-dialog";
 import { Field, Hidden } from "@/app/components";
-import { createManualOrderAction } from "@/app/actions";
+import { submitManualOrder } from "./manual-order-actions";
 import { Button } from "@supastore/ui/button";
 import { NativeSelect } from "@supastore/ui/native-select";
 import { VariantPicker } from "./variant-picker";
@@ -31,6 +32,10 @@ export function ManualOrderDialog({
   timezone: string;
 }) {
   const [lines, setLines] = useState([0]);
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
   const [requestKey, setRequestKey] = useState("");
   const [fulfillmentType, setFulfillmentType] = useState("shipping");
   const [pickupLocationId, setPickupLocationId] = useState("");
@@ -39,14 +44,46 @@ export function ManualOrderDialog({
   );
   return (
     <AdminDialog
+      open={open}
       trigger="Add manual order"
       title="Add manual order"
       description="Create a shipping or local pickup order using current catalog prices, tax, and fulfillment rules."
       onOpenChange={(open) => {
-        if (open) setRequestKey(crypto.randomUUID());
+        setOpen(open);
+        if (open) {
+          setRequestKey((current) => current || crypto.randomUUID());
+        }
       }}
     >
-      <form action={createManualOrderAction} className="grid gap-4">
+      <form
+        className="grid gap-4"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          if (pending) return;
+          const request = new FormData(event.currentTarget);
+          setPending(true);
+          setError("");
+          try {
+            const result = await submitManualOrder(request);
+            if ("error" in result) {
+              setError(result.error);
+            } else {
+              setOpen(false);
+              setRequestKey("");
+              router.push(
+                `/admin/orders?created=${encodeURIComponent(result.referenceCode)}`,
+              );
+              router.refresh();
+            }
+          } catch {
+            setError(
+              "Unable to save. Retry this order to recover any completed submission.",
+            );
+          } finally {
+            setPending(false);
+          }
+        }}
+      >
         <Hidden name="requestKey" value={requestKey} />
         <Hidden name="itemCount" value={String(lines.length)} />
         <div className="two-col">
@@ -197,7 +234,10 @@ export function ManualOrderDialog({
             <Plus aria-hidden="true" /> Add item
           </Button>
         </fieldset>
-        <Button type="submit">Create order</Button>
+        {error && <p role="alert">{error}</p>}
+        <Button type="submit" disabled={pending}>
+          {pending ? "Creating order…" : "Create order"}
+        </Button>
       </form>
     </AdminDialog>
   );

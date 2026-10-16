@@ -9,6 +9,7 @@ import {
 import { addToCart } from "@/application/use-cases/cart/add-to-cart";
 import { updateCartItem } from "@/application/use-cases/cart/update-cart-item";
 import { createManualOrder } from "@/application/use-cases/create-manual-order";
+import { parseManualOrderForm } from "@/app/admin/manual-order-request";
 import { createOrder } from "@/application/use-cases/create-order";
 import { customerAccount } from "@/application/use-cases/customers/customer-ownership";
 import type { QuoteTerms } from "@/application/use-cases/get-quote";
@@ -153,35 +154,9 @@ export async function placeCheckout(
 
 export async function createManualOrderAction(form: FormData) {
   return perform("/admin/orders", async () => {
-    const itemCount = parseActionInteger(
-      field(form, "itemCount"),
-      "Item count",
-      1,
-      25,
-    );
     const order = await createManualOrder({
-      requestKey: field(form, "requestKey"),
+      ...parseManualOrderForm(form),
       staffUserId: await staffIdentity(),
-      customerName: field(form, "customerName"),
-      customerEmail: field(form, "customerEmail"),
-      fulfillmentType: field(form, "fulfillmentType") || "shipping",
-      pickupLocationId: field(form, "pickupLocationId"),
-      pickupDate: field(form, "pickupDate"),
-      pickupTime: field(form, "pickupTime"),
-      country: field(form, "country"),
-      address: field(form, "address"),
-      region: field(form, "region"),
-      postalCode: field(form, "postalCode"),
-      paymentAccountId: field(form, "paymentAccountId"),
-      items: Array.from({ length: itemCount }, (_, index) => ({
-        variantId: field(form, `variantId-${index}`),
-        quantity: parseActionInteger(
-          field(form, `quantity-${index}`),
-          "Quantity",
-          1,
-          999,
-        ),
-      })),
     });
     revalidatePath("/admin", "layout");
     return `/admin/orders?created=${order.referenceCode}`;
