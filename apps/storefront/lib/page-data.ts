@@ -27,6 +27,7 @@ export async function readPage<K extends keyof PageModels>(
   locale: string,
   query: Record<string, string | string[] | undefined> = {},
 ): Promise<PageModels[K]> {
+  if (locale !== "en" && locale !== "zh") notFound();
   const search = new URLSearchParams({ locale });
   for (const [key, value] of Object.entries(query)) {
     for (const item of Array.isArray(value) ? value : [value]) {

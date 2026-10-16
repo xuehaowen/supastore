@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { NativeSelect } from "@supastore/ui/native-select";
 import { getTranslations } from "next-intl/server";
+import { notFound } from "next/navigation";
 import { money } from "../lib/web";
 import { Alert, AlertDescription } from "@supastore/ui/alert";
 import { Button } from "@supastore/ui/button";
@@ -21,6 +22,7 @@ export default async function Catalog({
     options?: string | string[];
   };
 }) {
+  if (locale !== "en" && locale !== "zh") notFound();
   const t = await getTranslations({ locale });
   const selectedOptions = (
     Array.isArray(query.options) ? query.options : [query.options || ""]

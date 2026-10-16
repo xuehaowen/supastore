@@ -6,7 +6,9 @@ const { readApi, missingPage } = vi.hoisted(() => ({
   missingPage: new Error("NEXT_NOT_FOUND"),
 }));
 vi.mock("next/navigation", () => ({
-  notFound: () => { throw missingPage; },
+  notFound: () => {
+    throw missingPage;
+  },
 }));
 vi.mock("./api", () => ({
   readApi,
@@ -19,7 +21,12 @@ describe("storefront page locale boundary", () => {
   it.each(["favicon.ico", "robots.txt", "en_US", "fr", ""])(
     "rejects unsupported route locale %s before backend reads or formatting",
     async (locale) => {
-      readApi.mockResolvedValue({ result: {}, facets: [], collections: [], groups: [] });
+      readApi.mockResolvedValue({
+        result: {},
+        facets: [],
+        collections: [],
+        groups: [],
+      });
       await expect(readPage("catalog", locale)).rejects.toBe(missingPage);
       expect(readApi).not.toHaveBeenCalled();
     },
@@ -29,6 +36,8 @@ describe("storefront page locale boundary", () => {
     const data = { result: {}, facets: [], collections: [], groups: [] };
     readApi.mockResolvedValue(data);
     await expect(readPage("catalog", locale)).resolves.toEqual(data);
-    expect(readApi.mock.calls[0]?.[0]).toBe(`customer-pages/catalog?locale=${locale}`);
+    expect(readApi.mock.calls[0]?.[0]).toBe(
+      `customer-pages/catalog?locale=${locale}`,
+    );
   });
 });
