@@ -195,7 +195,7 @@ export async function configureShipping(input: ConfigureShippingInput) {
             name: pickup.name,
             address: pickup.address,
             weeklySchedule: pickup.weeklySchedule,
-            blackoutDates: pickup.blackoutDates ?? [],
+            blackoutDates: pickup.blackoutDates ?? existingPickup.blackoutDates,
             prepMinutes: pickup.prepMinutes ?? 60,
             slotCapacity:
               pickup.slotCapacity === undefined

@@ -1,3 +1,12 @@
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@supastore/ui/table";
+import { NativeSelect } from "@supastore/ui/native-select";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { db } from "@/infrastructure/db";
@@ -30,6 +39,9 @@ export default async function NotificationSettings({
       throw error;
     });
   const query = await searchParams;
+  const visibleTemplates = requiredTemplates().filter(
+    (key) => !query.event || key.event === query.event,
+  );
   const missing = templateCoverage(
     rows.filter((row) => row.publishedVersion !== null),
   );
@@ -43,106 +55,108 @@ export default async function NotificationSettings({
       ),
     );
   return (
-    <main className="admin">
+    <>
       <AdminNav />
-      <h1>Notification templates</h1>
-      <p>
-        Edit email and SMS copy by event, audience, and language. Published
-        versions are immutable; saved drafts do not affect sending.
-      </p>
-      <Notice error={query.error} />
-      {query.saved && (
-        <p role="status">
-          {query.saved === "requeued"
-            ? "Unsent template reviews requeued."
-            : "Template draft created."}
+      <main tabIndex={-1} id="admin-content" className="admin">
+        <h1>Notification templates</h1>
+        <p>
+          Edit email and SMS copy by event, audience, and language. Published
+          versions are immutable; saved drafts do not affect sending.
         </p>
-      )}
-      {missing.length ? (
-        <section role="alert" className="panel">
-          <h2>Missing published templates</h2>
-          <p>
-            {missing.filter((key) => key.channel === "email").length} email
-            combinations and{" "}
-            {missing.filter((key) => key.channel === "sms").length} SMS
-            combinations need attention. Email gaps block launch readiness; SMS
-            templates are required for their supported events when SMS is used.
+        <Notice error={query.error} />
+        {query.saved && (
+          <p role="status">
+            {query.saved === "requeued"
+              ? "Unsent template reviews requeued."
+              : "Template draft created."}
           </p>
-          <ul>
-            {missing.map((key) => (
-              <li key={templateKey(key)}>
-                {notificationEvents[key.event]!.label} · {key.channel} ·{" "}
-                {key.audience} · {key.locale}
-              </li>
+        )}
+        {missing.length ? (
+          <section role="alert" className="panel">
+            <h2>Missing published templates</h2>
+            <p>
+              {missing.filter((key) => key.channel === "email").length} email
+              combinations and{" "}
+              {missing.filter((key) => key.channel === "sms").length} SMS
+              combinations need attention. Email gaps block launch readiness;
+              SMS templates are required for their supported events when SMS is
+              used.
+            </p>
+            <ul>
+              {missing.map((key) => (
+                <li key={templateKey(key)}>
+                  {notificationEvents[key.event]!.label} · {key.channel} ·{" "}
+                  {key.audience} · {key.locale}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : (
+          <p role="status">All required templates are published.</p>
+        )}
+        {!!review?.count && (
+          <section role="alert" className="panel">
+            <h2>Notifications held for template review</h2>
+            <p>
+              {review.count} notifications could not be prepared. Repair the
+              missing or invalid templates, then retry only notifications that
+              have never been sent.
+            </p>
+            <form action={retryReviewsAction}>
+              <Button type="submit">Retry unsent template reviews</Button>
+            </form>
+          </section>
+        )}
+        <form method="get" className="panel">
+          <label htmlFor="template-event">Filter by event</label>
+          <NativeSelect
+            id="template-event"
+            name="event"
+            defaultValue={query.event || ""}
+          >
+            <option value="">All events</option>
+            {Object.entries(notificationEvents).map(([event, definition]) => (
+              <option key={event} value={event}>
+                {definition.label}
+              </option>
             ))}
-          </ul>
-        </section>
-      ) : (
-        <p role="status">All required templates are published.</p>
-      )}
-      {!!review?.count && (
-        <section role="alert" className="panel">
-          <h2>Notifications held for template review</h2>
-          <p>
-            {review.count} notifications could not be prepared. Repair the
-            missing or invalid templates, then retry only notifications that
-            have never been sent.
-          </p>
-          <form action={retryReviewsAction}>
-            <Button type="submit">Retry unsent template reviews</Button>
-          </form>
-        </section>
-      )}
-      <form method="get" className="panel">
-        <label htmlFor="template-event">Filter by event</label>
-        <select
-          id="template-event"
-          name="event"
-          defaultValue={query.event || ""}
-        >
-          <option value="">All events</option>
-          {Object.entries(notificationEvents).map(([event, definition]) => (
-            <option key={event} value={event}>
-              {definition.label}
-            </option>
-          ))}
-        </select>
-        <Button type="submit">Filter templates</Button>
-      </form>
-      <section className="panel">
-        <table>
-          <thead>
-            <tr>
-              <th>Event</th>
-              <th>Channel</th>
-              <th>Audience</th>
-              <th>Language</th>
-              <th>Published</th>
-              <th>Manage</th>
-            </tr>
-          </thead>
-          <tbody>
-            {requiredTemplates()
-              .filter((key) => !query.event || key.event === query.event)
-              .map((key) => {
+          </NativeSelect>
+          <Button type="submit">Filter templates</Button>
+        </form>
+        <section className="panel">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Event</TableHead>
+                <TableHead>Channel</TableHead>
+                <TableHead>Audience</TableHead>
+                <TableHead>Language</TableHead>
+                <TableHead>Published</TableHead>
+                <TableHead>Manage</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {visibleTemplates.map((key) => {
                 const row = rows.find(
                   (row) => templateKey(row) === templateKey(key),
                 );
                 return (
-                  <tr key={templateKey(key)}>
-                    <td>
+                  <TableRow key={templateKey(key)}>
+                    <TableCell>
                       {notificationEvents[key.event]!.label}
                       <small className="block">{key.event}</small>
-                    </td>
-                    <td>{key.channel}</td>
-                    <td>{key.audience}</td>
-                    <td>{key.locale === "zh" ? "中文" : "English"}</td>
-                    <td>
+                    </TableCell>
+                    <TableCell>{key.channel}</TableCell>
+                    <TableCell>{key.audience}</TableCell>
+                    <TableCell>
+                      {key.locale === "zh" ? "中文" : "English"}
+                    </TableCell>
+                    <TableCell>
                       {row?.publishedVersion
                         ? `Version ${row.publishedVersion}`
                         : "Missing"}
-                    </td>
-                    <td>
+                    </TableCell>
+                    <TableCell>
                       {row ? (
                         <Link href={`/admin/settings/notifications/${row.id}`}>
                           Edit template
@@ -155,17 +169,32 @@ export default async function NotificationSettings({
                           <Button type="submit">Create draft</Button>
                         </form>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-          </tbody>
-        </table>
-      </section>
-      <p>
-        Phone verification codes use the verification provider&apos;s profiles.
-        This manager does not enable live SMS or change customer consent.
-      </p>
-    </main>
+              {!visibleTemplates.length && (
+                <TableRow>
+                  <TableCell
+                    colSpan={6}
+                    className="text-center text-muted-foreground"
+                  >
+                    No templates match this event.{" "}
+                    <Link href="/admin/settings/notifications">
+                      Clear the event filter
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </section>
+        <p>
+          Phone verification codes use the verification provider&apos;s
+          profiles. This manager does not enable live SMS or change customer
+          consent.
+        </p>
+      </main>
+    </>
   );
 }

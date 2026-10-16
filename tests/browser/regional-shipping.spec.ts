@@ -13,15 +13,12 @@ test("admin regional rates reach checkout and survive validation and editing", a
     rate: string,
   ) {
     await admin.goto("/admin/setup");
+    await admin
+      .getByRole("button", { name: "Add shipping zone", exact: true })
+      .click();
     const form = admin
-      .locator("form")
-      .filter({
-        has: admin.getByRole("button", {
-          name: "Save shipping zone",
-          exact: true,
-        }),
-      })
-      .last();
+      .getByRole("dialog", { name: "Add shipping zone", exact: true })
+      .locator("form");
     await form.getByLabel("Zone name", { exact: true }).fill(name);
     await form
       .getByLabel("Country codes, comma separated; blank for all")

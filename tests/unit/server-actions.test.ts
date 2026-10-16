@@ -660,6 +660,20 @@ beforeEach(() => {
   mocks.transaction.mockImplementation(async (work) => work(tx));
 });
 describe("every server action request boundary", () => {
+  it.each([
+    ["updateStaffMember", "updateStaffMembership"],
+    ["removeStaffMember", "removeStaffMembership"],
+  ] as const)(
+    "%s keeps the rejected staff editor in context",
+    async (action, command) => {
+      mocks.commands[command].mockRejectedValueOnce(
+        new DomainError("The last active owner cannot be removed"),
+      );
+      await expect(actions[action](form())).rejects.toThrow(
+        "REDIRECT:/admin/setup?staff=staff-target&error=The%20last%20active%20owner",
+      );
+    },
+  );
   it("returns inline manual-order errors for correction without a redirect", async () => {
     mocks.commands.createManualOrder.mockRejectedValueOnce(
       new DomainError("This fulfillment slot is full. Choose another time."),
@@ -982,6 +996,43 @@ describe("optional and alternate action forms", () => {
         pickup: expect.objectContaining({ id }),
       }),
     );
+  });
+  it("preserves multiple pickup windows submitted by the schedule editor", async () => {
+    const weeklySchedule = {
+      mon: [
+        ["09:00", "12:00"],
+        ["13:00", "17:00"],
+      ],
+      tue: [],
+    };
+    await expect(
+      actions.savePickup(
+        form({
+          pickupLocationId: id,
+          weeklySchedule: JSON.stringify(weeklySchedule),
+        }),
+      ),
+    ).rejects.toThrow("REDIRECT:/admin/setup");
+    expect(mocks.commands.configureShipping).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pickup: expect.objectContaining({ id, weeklySchedule }),
+      }),
+    );
+  });
+  it("rejects overlapping pickup windows before saving", async () => {
+    await expect(
+      actions.savePickup(
+        form({
+          weeklySchedule: JSON.stringify({
+            mon: [
+              ["09:00", "14:00"],
+              ["12:00", "17:00"],
+            ],
+          }),
+        }),
+      ),
+    ).rejects.toThrow("REDIRECT:/admin/setup?error=");
+    expect(mocks.commands.configureShipping).not.toHaveBeenCalled();
   });
   it("quotes pickup with explicit location and no payment method", async () => {
     await expect(

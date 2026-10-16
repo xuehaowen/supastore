@@ -10,8 +10,14 @@ import {
 } from "@/application/use-cases/staff/manage-staff";
 import { staffIdentity } from "@/infrastructure/web";
 import { field, perform } from "./common";
+function staffReviewPath(form: FormData) {
+  const user = field(form, "targetUserId").slice(0, 200);
+  return user
+    ? `/admin/setup?staff=${encodeURIComponent(user)}`
+    : "/admin/setup";
+}
 export async function updateStaffMember(form: FormData) {
-  return perform("/admin/setup", async () => {
+  return perform(staffReviewPath(form), async () => {
     await updateStaffMembership({
       actorUserId: await staffIdentity(),
       targetUserId: parseActionRequiredText(
@@ -25,11 +31,12 @@ export async function updateStaffMember(form: FormData) {
       ] as const),
       isActive: parseActionBoolean(field(form, "active"), "Active"),
     });
+    return "/admin/setup";
   });
 }
 
 export async function removeStaffMember(form: FormData) {
-  return perform("/admin/setup", async () => {
+  return perform(staffReviewPath(form), async () => {
     await removeStaffMembership({
       actorUserId: await staffIdentity(),
       targetUserId: parseActionRequiredText(
@@ -38,6 +45,7 @@ export async function removeStaffMember(form: FormData) {
         200,
       ),
     });
+    return "/admin/setup";
   });
 }
 

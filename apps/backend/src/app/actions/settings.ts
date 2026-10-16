@@ -12,6 +12,8 @@ import { updateStoreSettings } from "@/application/use-cases/store/update-store-
 import { staffIdentity } from "@/infrastructure/web";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { adminReturnPath, field, perform } from "./common";
+import { validateDeliverySchedule } from "@/domain/delivery";
+import { DomainError } from "@/application/common/errors";
 export async function setupOwner(form: FormData) {
   return perform("/admin/setup", async () => {
     const userId = await staffIdentity();
@@ -113,14 +115,20 @@ export async function saveShipping(form: FormData) {
 }
 export async function savePickup(form: FormData) {
   return perform("/admin/setup", async () => {
-    const schedule = Object.fromEntries(
-      form
-        .getAll("days")
-        .map((day) => [
-          String(day),
-          [[field(form, "startTime"), field(form, "endTime")]],
-        ]),
-    ) as Record<string, [string, string][]>;
+    if (field(form, "weeklySchedule").length > 12000)
+      throw new DomainError("Weekly schedule is too large.");
+    const schedule = form.has("weeklySchedule")
+      ? validateDeliverySchedule(
+          JSON.parse(field(form, "weeklySchedule") || "{}"),
+        )
+      : (Object.fromEntries(
+          form
+            .getAll("days")
+            .map((day) => [
+              String(day),
+              [[field(form, "startTime"), field(form, "endTime")]],
+            ]),
+        ) as Record<string, [string, string][]>);
     await configureShipping({
       staffUserId: await staffIdentity(),
       pickup: {

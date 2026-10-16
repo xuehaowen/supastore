@@ -30,39 +30,41 @@ export default async function NotificationTemplateEditor({
       throw error;
     });
   return (
-    <main className="admin">
+    <>
       <AdminNav />
-      <Link href="/admin/settings/notifications">
-        All notification templates
-      </Link>
-      <h1>
-        {notificationEvents[model.template.event]?.label ||
-          model.template.event}
-      </h1>
-      <p>
-        {model.template.channel} · {model.template.audience} ·{" "}
-        {model.template.locale === "zh" ? "中文" : "English"}
-      </p>
-      <Notice error={query.error} />
-      {query.saved && (
-        <p role="status">
-          {query.saved === "draft"
-            ? "Draft saved."
-            : query.saved === "published"
-              ? "Template published."
-              : "Published version restored."}
+      <main tabIndex={-1} id="admin-content" className="admin">
+        <Link href="/admin/settings/notifications">
+          All notification templates
+        </Link>
+        <h1>
+          {notificationEvents[model.template.event]?.label ||
+            model.template.event}
+        </h1>
+        <p>
+          {model.template.channel} · {model.template.audience} ·{" "}
+          {model.template.locale === "zh" ? "中文" : "English"}
         </p>
-      )}
-      <TemplateEditor
-        key={`${id}:${model.template.draftRevision}`}
-        template={model.template}
-        versions={model.versions.map((version) => ({
-          version: version.version,
-          createdAt: version.createdAt.toISOString(),
-          subject: version.subject,
-          body: version.body,
-        }))}
-      />
-    </main>
+        <Notice error={query.error} />
+        {query.saved && (
+          <p role="status">
+            {query.saved === "draft"
+              ? "Draft saved."
+              : query.saved === "published"
+                ? "Template published."
+                : "Published version restored."}
+          </p>
+        )}
+        <TemplateEditor
+          key={`${id}:${model.template.draftRevision}`}
+          template={model.template}
+          versions={model.versions.map((version) => ({
+            version: version.version,
+            createdAt: version.createdAt.toISOString(),
+            subject: version.subject,
+            body: version.body,
+          }))}
+        />
+      </main>
+    </>
   );
 }
