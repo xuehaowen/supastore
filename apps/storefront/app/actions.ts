@@ -26,7 +26,7 @@ async function perform(
   let next = destination;
   try {
     next = (await work()) || destination;
-    revalidatePath("/", "layout");
+    revalidatePath(next.split("?", 1)[0]!);
   } catch (error) {
     const failure = actionFailure(error, "storefront.action");
     next = `${destination}${destination.includes("?") ? "&" : "?"}error=${encodeURIComponent(failure.message)}${failure.requestId ? `&requestId=${failure.requestId}` : ""}`;

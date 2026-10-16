@@ -107,72 +107,72 @@ export async function catalogPage(locale: string, query: PageQuery = {}) {
   )
     .filter(Boolean)
     .slice(0, 4);
-  const result = await listProducts({
-    locale,
-    search: query.q ?? "",
-    categorySlug: query.category ?? "",
-    page: Number(query.page) || 1,
-    sort: ["newest", "price-low", "price-high"].includes(query.sort || "")
-      ? (query.sort as "newest" | "price-low" | "price-high")
-      : "newest",
-    optionValues: selectedOptions.map((value) => {
-      const [attribute, code] = value.split(":");
-      return { attribute: attribute || "", value: code || "" };
+  const [result, store, facets, collections, categoryRows] = await Promise.all([
+    listProducts({
+      locale,
+      search: query.q ?? "",
+      categorySlug: query.category ?? "",
+      page: Number(query.page) || 1,
+      sort: ["newest", "price-low", "price-high"].includes(query.sort || "")
+        ? (query.sort as "newest" | "price-low" | "price-high")
+        : "newest",
+      optionValues: selectedOptions.map((value) => {
+        const [attribute, code] = value.split(":");
+        return { attribute: attribute || "", value: code || "" };
+      }),
     }),
-  });
-  const store = await publicStore();
-  const facets = await db
-    .select({
-      attribute: attributes.code,
-      name: sql<string>`coalesce((select name from attribute_translations where attribute_id=${attributes.id} and locale=${locale}), ${attributes.name})`,
-      value: attributeValues.code,
-      label: sql<string>`coalesce((select label from attribute_value_translations where attribute_value_id=${attributeValues.id} and locale=${locale}), ${attributeValues.label})`,
-    })
-    .from(attributes)
-    .innerJoin(attributeValues, eq(attributeValues.attributeId, attributes.id))
-    .where(
-      and(
-        eq(attributes.isArchived, false),
-        eq(attributeValues.isArchived, false),
-        sql`exists (select 1 from product_options o join products p on p.id=o.product_id where o.attribute_id=${attributes.id} and p.is_published)`,
-      ),
-    )
-    .orderBy(
-      attributes.sortOrder,
-      attributes.code,
-      attributeValues.sortOrder,
-      attributeValues.code,
-    )
-    .limit(200);
-
-  const collections = await db
-    .select()
-    .from(productCollections)
-    .where(eq(productCollections.isPublished, true))
-    .orderBy(productCollections.title)
-    .limit(25);
-  const collectionTitles = collections.length
-    ? await db
-        .select()
-        .from(collectionTranslations)
-        .where(
-          and(
-            eq(collectionTranslations.locale, locale),
-            inArray(
-              collectionTranslations.collectionId,
-              collections.map((c) => c.id),
-            ),
-          ),
-        )
-    : [];
-  const groups = await localizeCategories(
-    await db
+    publicStore(),
+    db
+      .select({
+        attribute: attributes.code,
+        name: sql<string>`coalesce((select name from attribute_translations where attribute_id=${attributes.id} and locale=${locale}), ${attributes.name})`,
+        value: attributeValues.code,
+        label: sql<string>`coalesce((select label from attribute_value_translations where attribute_value_id=${attributeValues.id} and locale=${locale}), ${attributeValues.label})`,
+      })
+      .from(attributes)
+      .innerJoin(
+        attributeValues,
+        eq(attributeValues.attributeId, attributes.id),
+      )
+      .where(
+        and(
+          eq(attributes.isArchived, false),
+          eq(attributeValues.isArchived, false),
+          sql`exists (select 1 from product_options o join products p on p.id=o.product_id where o.attribute_id=${attributes.id} and p.is_published)`,
+        ),
+      )
+      .orderBy(
+        attributes.sortOrder,
+        attributes.code,
+        attributeValues.sortOrder,
+        attributeValues.code,
+      )
+      .limit(200),
+    db
       .select()
-      .from(categories)
-      .orderBy(categories.sortOrder, categories.slug),
-    locale,
-    store?.defaultLocale ?? "en",
-  );
+      .from(productCollections)
+      .where(eq(productCollections.isPublished, true))
+      .orderBy(productCollections.title)
+      .limit(25),
+    db.select().from(categories).orderBy(categories.sortOrder, categories.slug),
+  ]);
+  const [collectionTitles, groups] = await Promise.all([
+    collections.length
+      ? db
+          .select()
+          .from(collectionTranslations)
+          .where(
+            and(
+              eq(collectionTranslations.locale, locale),
+              inArray(
+                collectionTranslations.collectionId,
+                collections.map((c) => c.id),
+              ),
+            ),
+          )
+      : [],
+    localizeCategories(categoryRows, locale, store?.defaultLocale ?? "en"),
+  ]);
 
   return { result, store, facets, collections, collectionTitles, groups };
 }
@@ -185,19 +185,24 @@ export async function cartPage(locale: string) {
   return { cart: cartView(cart), store };
 }
 export async function productPage(locale: string, handle: string) {
-  const p = await getProduct({ handle, locale });
-  const store = await publicStore();
-  const stock = p.variants.length
-    ? await db
-        .select()
-        .from(variantStock)
-        .where(
-          inArray(
-            variantStock.variantId,
-            p.variants.map((v) => v.id),
-          ),
-        )
-    : [];
+  const [p, store] = await Promise.all([
+    getProduct({ handle, locale }),
+    publicStore(),
+  ]);
+  const [stock, specs] = await Promise.all([
+    p.variants.length
+      ? db
+          .select()
+          .from(variantStock)
+          .where(
+            inArray(
+              variantStock.variantId,
+              p.variants.map((v) => v.id),
+            ),
+          )
+      : [],
+    listSpecifications(p.id, locale, store?.defaultLocale || "en"),
+  ]);
   const availableQuantities = Object.fromEntries(
     stock
       .filter((s) => s.trackingEnabled)
@@ -213,15 +218,14 @@ export async function productPage(locale: string, handle: string) {
           availableQuantities[v.id]! > 0),
     })),
   };
-  const specs = await listSpecifications(
-    p.id,
-    locale,
-    store?.defaultLocale || "en",
-  );
   return { purchasable, store, availableQuantities, specs };
 }
 export async function layoutPage() {
-  return { store: await publicStore(), session: await verifiedSession() };
+  const [store, session] = await Promise.all([
+    publicStore(),
+    verifiedSession(),
+  ]);
+  return { store, session };
 }
 export async function checkoutPage(locale: string, query: PageQuery = {}) {
   const identity = await guestIdentity();

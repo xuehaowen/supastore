@@ -1,6 +1,6 @@
 import { publicOrigin } from "../../../../lib/seo";
 import { BackendApiError } from "../../../../lib/api";
-import { readPage } from "../../../../lib/page-data";
+import { readProductPage } from "../../../../lib/page-data";
 import { textFor } from "@supastore/i18n/messages";
 import { notFound } from "next/navigation";
 import { ProductPurchase } from "../../../product-purchase";
@@ -17,7 +17,7 @@ export default async function Product({
     store,
     availableQuantities,
     specs,
-  } = await readPage("product", locale, { handle });
+  } = await readProductPage(locale, handle);
   const purchasable = p;
   const base = publicOrigin().replace(/\/$/, "");
   const structured = {
@@ -85,7 +85,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string; handle: string }>;
 }) {
   const { locale, handle } = await params;
-  const data = await readPage("product", locale, { handle }).catch((error) => {
+  const data = await readProductPage(locale, handle).catch((error) => {
     if (error instanceof BackendApiError && error.status === 404) return null;
     throw error;
   });

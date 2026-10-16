@@ -28,7 +28,10 @@ export function readPublicApi<T>(
 ): Promise<T> {
   const route = path.split("?")[0]!;
   let permitted =
-    route === "store" || route === "catalog" || route === "sitemap";
+    route === "store" ||
+    route === "catalog" ||
+    route === "sitemap" ||
+    route === "customer-pages/catalog";
   if (route.startsWith("products/")) {
     try {
       const handle = decodeURIComponent(route.slice("products/".length));
@@ -57,6 +60,19 @@ export function readPublicApi<T>(
     !query.get("category") &&
     (!query.has("page") || query.get("page") === "1") &&
     (!query.has("pageSize") || query.get("pageSize") === "24");
+  // Cache only the bounded, common public listing. Searches and filtered
+  // combinations stay uncached so customer input cannot grow the shared cache.
+  const commonCatalogPage =
+    route === "customer-pages/catalog" &&
+    knownLocale &&
+    keys.every((key) =>
+      ["locale", "page", "q", "category", "sort", "options"].includes(key),
+    ) &&
+    !query.get("q") &&
+    !query.get("category") &&
+    !query.get("options") &&
+    (!query.get("page") || query.get("page") === "1") &&
+    (!query.get("sort") || query.get("sort") === "newest");
   const product =
     route.startsWith("products/") &&
     knownLocale &&
@@ -72,6 +88,7 @@ export function readPublicApi<T>(
     !keys.some((key) => query.getAll(key).length > 1) &&
     ((route === "store" && !keys.length) ||
       commonCatalog ||
+      commonCatalogPage ||
       product ||
       sitemap);
   return readDecoded(

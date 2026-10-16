@@ -1,6 +1,7 @@
 import type { CustomerPageModels as PageModels } from "@supastore/contracts";
 import { notFound } from "next/navigation";
-import { BackendApiError, readApi } from "./api";
+import { cache } from "react";
+import { BackendApiError, readApi, readPublicApi } from "./api";
 
 const requiredFields: Record<keyof PageModels, string[]> = {
   layout: ["session"],
@@ -34,7 +35,8 @@ export async function readPage<K extends keyof PageModels>(
       if (item !== undefined) search.append(key, item);
     }
   }
-  return readApi(`customer-pages/${page}?${search}`, (data) => {
+  const read = page === "catalog" ? readPublicApi : readApi;
+  return read(`customer-pages/${page}?${search}`, (data) => {
     if (
       !data ||
       typeof data !== "object" ||
@@ -48,3 +50,9 @@ export async function readPage<K extends keyof PageModels>(
     throw error;
   });
 }
+
+// Metadata and page rendering share one live stock read within an RSC request.
+// React's request cache does not persist customer or inventory data across requests.
+export const readProductPage = cache((locale: string, handle: string) =>
+  readPage("product", locale, { handle }),
+);
