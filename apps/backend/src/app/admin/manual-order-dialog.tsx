@@ -66,7 +66,11 @@ export function ManualOrderDialog({
           try {
             const result = await submitManualOrder(request);
             if ("error" in result) {
-              setError(result.error);
+              setError(
+                result.requestId
+                  ? `${result.error} Reference: ${result.requestId}`
+                  : result.error,
+              );
             } else {
               setOpen(false);
               setRequestKey("");

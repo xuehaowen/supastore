@@ -1,4 +1,5 @@
 "use server";
+import { actionError } from "@/infrastructure/http/failure";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { staffIdentity } from "@/infrastructure/web";
@@ -67,7 +68,7 @@ export async function shipmentAction(form: FormData) {
     revalidatePath(`/admin/orders/${text(form, "orderId")}`);
     target += "&saved=1";
   } catch (error) {
-    target += `&error=${encodeURIComponent(error instanceof DomainError ? error.message : "Unable to save fulfillment. Retry or ask the owner to review.")}`;
+    target += `&error=${encodeURIComponent(actionError(error, "admin.admin.fulfillment.shipments.actions", "Unable to save fulfillment. Retry or ask the owner to review."))}`;
   }
   redirect(target);
 }

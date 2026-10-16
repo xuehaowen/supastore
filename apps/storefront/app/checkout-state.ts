@@ -1,5 +1,6 @@
 export interface CheckoutActionState {
   error?: string;
+  requestId?: string;
 }
 
 export interface CheckoutDefaults {

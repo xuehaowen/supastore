@@ -28,10 +28,11 @@ import {
 } from "@/infrastructure/web";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { ValiError } from "valibot";
+import { describeFailure } from "@/infrastructure/http/failure";
 import { field, perform } from "./common";
 interface CheckoutActionState {
   error?: string;
+  requestId?: string;
 }
 export async function addItem(form: FormData) {
   const locale = localeOf(field(form, "locale"));
@@ -105,11 +106,15 @@ async function orderFromForm(form: FormData) {
 }
 
 function checkoutError(error: unknown, locale: string): CheckoutActionState {
-  const message =
-    error instanceof DomainError || error instanceof ValiError
-      ? error.message
-      : "Unable to save. Check your entries and try again.";
-  return { error: customerError(message, locale) };
+  const failure = describeFailure(
+    error,
+    "checkout.action",
+    "Unable to save. Please retry.",
+  );
+  return {
+    error: customerError(failure.message, locale),
+    ...(failure.status >= 500 ? { requestId: failure.requestId } : {}),
+  };
 }
 
 export async function quoteCheckout(

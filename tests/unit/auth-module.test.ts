@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { auth, staffAuth } from "@/infrastructure/auth";
-import { smtpAdapter } from "@/infrastructure/notifications/smtp";
+import * as smtpAdapter from "@/infrastructure/notifications/smtp";
 
 const queries = vi.hoisted(() => ({ limit: vi.fn() }));
 vi.mock("@/infrastructure/db", () => ({
@@ -97,10 +97,12 @@ describe("Auth Module Configuration and Callbacks", () => {
   );
 
   it("dispatches verification email with correct link and payload", async () => {
-    const sendEmailSpy = vi.spyOn(smtpAdapter, "sendEmail").mockResolvedValue({
-      success: true,
-      messageId: "mock-verify-msg-id",
-    });
+    const sendEmailSpy = vi
+      .spyOn(smtpAdapter, "queueAuthEmail")
+      .mockResolvedValue({
+        success: true,
+        messageId: "mock-verify-msg-id",
+      });
 
     const sendVerificationEmail =
       auth.options.emailVerification?.sendVerificationEmail;
@@ -135,10 +137,12 @@ describe("Auth Module Configuration and Callbacks", () => {
   });
 
   it("dispatches password reset email with correct reset URL", async () => {
-    const sendEmailSpy = vi.spyOn(smtpAdapter, "sendEmail").mockResolvedValue({
-      success: true,
-      messageId: "mock-reset-msg-id",
-    });
+    const sendEmailSpy = vi
+      .spyOn(smtpAdapter, "queueAuthEmail")
+      .mockResolvedValue({
+        success: true,
+        messageId: "mock-reset-msg-id",
+      });
 
     const sendResetPassword = auth.options.emailAndPassword?.sendResetPassword;
     expect(sendResetPassword).toBeDefined();
@@ -174,7 +178,7 @@ describe("Auth Module Configuration and Callbacks", () => {
   });
 
   it("suppresses verification delivery when outbound delivery is disabled", async () => {
-    const sendEmailSpy = vi.spyOn(smtpAdapter, "sendEmail");
+    const sendEmailSpy = vi.spyOn(smtpAdapter, "queueAuthEmail");
     const previous = process.env.DISABLE_OUTBOUND_DELIVERY;
     process.env.DISABLE_OUTBOUND_DELIVERY = "true";
     try {

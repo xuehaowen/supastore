@@ -55,6 +55,8 @@ export const eventDeliveries = pgTable(
     leaseToken: text("lease_token"),
     providerMessageId: text("provider_message_id"),
     providerStatus: text("provider_status"),
+    failureCode: text("failure_code"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
     providerName: text("provider_name"),
     providerProfile: text("provider_profile"),
     deliveryTracking: boolean("delivery_tracking").notNull().default(false),

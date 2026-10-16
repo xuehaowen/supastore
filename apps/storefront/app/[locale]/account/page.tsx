@@ -27,6 +27,7 @@ export default async function Account({
 }: {
   params: Promise<{ locale: string }>;
   searchParams: Promise<{
+    requestId?: string;
     error?: string;
     page?: string;
     reference?: string;
@@ -49,7 +50,7 @@ export default async function Account({
 
   return (
     <section className="account-shell">
-      <Notice error={query.error} locale={locale} />
+      <Notice error={query.error} locale={locale} requestId={query.requestId} />
       <div className="account-heading">
         <p className="eyebrow">{t("account.eyebrow")}</p>
         <h1>{session ? t("account.welcome") : t("account.guestIntro")}</h1>

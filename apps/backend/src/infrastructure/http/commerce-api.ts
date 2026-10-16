@@ -1,6 +1,6 @@
 import { DomainError, ForbiddenError } from "@/application/common/errors";
-import { ValiError } from "valibot";
-import { logger } from "@/infrastructure/security/logger";
+import { describeFailure } from "./failure";
+export { describeFailure } from "./failure";
 import { parseActionInteger } from "@/application/common/request-validation";
 
 export function assertMutationOrigin(request: Request) {
@@ -107,36 +107,29 @@ export async function apiResponse<T>(
   try {
     return Response.json({ data: await work(), requestId }, { headers });
   } catch (error) {
-    const known = error instanceof DomainError || error instanceof ValiError;
-    const code =
-      error instanceof DomainError
-        ? error.code
-        : known
-          ? "INVALID_INPUT"
-          : "INTERNAL_ERROR";
-    const status =
-      code === "UNAUTHORIZED"
-        ? 401
-        : code === "FORBIDDEN"
-          ? 403
-          : code === "NOT_FOUND"
-            ? 404
-            : code === "CONFLICT"
-              ? 409
-              : known
-                ? 400
-                : 500;
-    if (!known)
-      logger.child({ requestId }).error("Commerce API failure", error);
+    const failure = describeFailure(
+      error,
+      "commerce.api",
+      undefined,
+      requestId,
+    );
     return Response.json(
       {
         error: {
-          code,
-          message: known ? error.message : "Unable to complete request.",
+          code: failure.code,
+          message: failure.message,
+          retryable: failure.retryable,
         },
         requestId,
       },
-      { status, headers },
+      {
+        status: failure.status,
+        headers: {
+          ...headers,
+          "Cache-Control": "private, no-store",
+          ...(failure.retryable ? { "Retry-After": "60" } : {}),
+        },
+      },
     );
   }
 }

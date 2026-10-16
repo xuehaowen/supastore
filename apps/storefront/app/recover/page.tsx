@@ -10,7 +10,12 @@ export const metadata = { robots: { index: false, follow: false } };
 export default async function Recover({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; sent?: string; locale?: string }>;
+  searchParams: Promise<{
+    requestId?: string;
+    error?: string;
+    sent?: string;
+    locale?: string;
+  }>;
 }) {
   const q = await searchParams;
   const locale = localeOf(q.locale);
@@ -21,7 +26,7 @@ export default async function Recover({
       <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">
         {textFor(locale).common.recoveryTitle}
       </h1>
-      <Notice error={q.error} locale={locale} />
+      <Notice error={q.error} locale={locale} requestId={q.requestId} />
       {q.sent ? (
         <p role="status">{textFor(locale).common.recoverySent}</p>
       ) : (

@@ -1,8 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { serverRequest } from "../lib/server-request";
-import { BackendApiError } from "../lib/api";
+import { serverRequest, actionFailure } from "../lib/server-request";
 import { localeOf } from "../lib/web";
 import { customerError } from "@supastore/i18n/customer";
 import type { CheckoutActionState } from "./checkout-state";
@@ -10,11 +9,6 @@ import type { CheckoutActionState } from "./checkout-state";
 const text = (form: FormData, key: string) =>
   String(form.get(key) ?? "").trim();
 const locale = (form: FormData) => localeOf(form.get("locale"));
-function errorMessage(error: unknown) {
-  return error instanceof BackendApiError
-    ? error.message
-    : "Unable to save. Please retry.";
-}
 function resultId(result: unknown, key = "id") {
   if (
     !result ||
@@ -34,7 +28,8 @@ async function perform(
     next = (await work()) || destination;
     revalidatePath("/", "layout");
   } catch (error) {
-    next = `${destination}${destination.includes("?") ? "&" : "?"}error=${encodeURIComponent(errorMessage(error))}`;
+    const failure = actionFailure(error, "storefront.action");
+    next = `${destination}${destination.includes("?") ? "&" : "?"}error=${encodeURIComponent(failure.message)}${failure.requestId ? `&requestId=${failure.requestId}` : ""}`;
   }
   redirect(next);
 }
@@ -68,7 +63,11 @@ export async function quoteCheckout(
   try {
     id = resultId(await serverRequest("quotes", Object.fromEntries(form)));
   } catch (error) {
-    return { error: customerError(errorMessage(error), locale(form)) };
+    const failure = actionFailure(error, "checkout.quote");
+    return {
+      error: customerError(failure.message, locale(form)),
+      ...(failure.requestId ? { requestId: failure.requestId } : {}),
+    };
   }
   redirect(`/${locale(form)}/checkout?quote=${encodeURIComponent(id)}`);
 }
@@ -86,7 +85,11 @@ export async function placeCheckout(
       }),
     );
   } catch (error) {
-    return { error: customerError(errorMessage(error), locale(form)) };
+    const failure = actionFailure(error, "checkout.place");
+    return {
+      error: customerError(failure.message, locale(form)),
+      ...(failure.requestId ? { requestId: failure.requestId } : {}),
+    };
   }
   redirect(`/${locale(form)}/orders/${encodeURIComponent(id)}`);
 }

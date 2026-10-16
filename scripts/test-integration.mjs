@@ -112,7 +112,9 @@ try {
     [
       "node_modules/vitest/vitest.mjs",
       "run",
-      "tests/integration",
+      ...(process.argv.length > 2
+        ? process.argv.slice(2)
+        : ["tests/integration"]),
       "--no-file-parallelism",
     ],
     {

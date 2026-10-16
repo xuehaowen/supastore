@@ -22,7 +22,12 @@ export default async function Checkout({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ quote?: string; edit?: string; error?: string }>;
+  searchParams: Promise<{
+    quote?: string;
+    edit?: string;
+    requestId?: string;
+    error?: string;
+  }>;
 }) {
   const { locale } = await params;
   const query = await searchParams;
@@ -76,7 +81,7 @@ export default async function Checkout({
           <span>{textFor(locale).ui.reviewPlaceOrder}</span>
         </div>
       </div>
-      <Notice error={query.error} locale={locale} />
+      <Notice error={query.error} locale={locale} requestId={query.requestId} />
       {quote ? (
         <div className="grid gap-8 md:grid-cols-2">
           <Card>

@@ -5,7 +5,33 @@ export interface WorkerJob {
   runImmediately?: boolean;
   run: () => Promise<unknown>;
 }
+export interface BatchResult {
+  succeeded: number;
+  failed: number;
+  deferred: number;
+  reviewRequired: number;
+}
+function batchResult(value: unknown): BatchResult | null {
+  if (!value || typeof value !== "object") return null;
+  const result = value as Record<string, unknown>;
+  if (
+    !["succeeded", "failed", "deferred", "reviewRequired"].every(
+      (key) =>
+        typeof result[key] === "number" &&
+        Number.isSafeInteger(result[key]) &&
+        Number(result[key]) >= 0,
+    )
+  )
+    return null;
+  return {
+    succeeded: Number(result.succeeded),
+    failed: Number(result.failed),
+    deferred: Number(result.deferred),
+    reviewRequired: Number(result.reviewRequired),
+  };
+}
 interface JobProgress {
+  lastResult: BatchResult | null;
   running: boolean;
   nextDueAt: number;
   lastStartedAt: number | null;
@@ -84,6 +110,7 @@ export function createWorkerRunner(
     )
       throw new Error("Invalid or duplicate worker schedule.");
     current.jobs[job.name] = {
+      lastResult: null,
       running: false,
       nextDueAt: clock() + (job.runImmediately === false ? job.intervalMs : 0),
       lastStartedAt: null,
@@ -106,9 +133,18 @@ export function createWorkerRunner(
           progress.lastStartedAt = started;
           progress.nextDueAt = started + job.intervalMs;
           try {
-            await job.run();
-            progress.lastSuccessAt = clock();
-            progress.consecutiveFailures = 0;
+            progress.lastResult = batchResult(await job.run());
+            if (
+              progress.lastResult &&
+              (progress.lastResult.failed ||
+                progress.lastResult.deferred ||
+                progress.lastResult.reviewRequired)
+            ) {
+              progress.consecutiveFailures++;
+            } else {
+              progress.lastSuccessAt = clock();
+              progress.consecutiveFailures = 0;
+            }
           } catch (error) {
             progress.consecutiveFailures++;
             progress.nextDueAt = clock() + Math.min(job.intervalMs, 60000);

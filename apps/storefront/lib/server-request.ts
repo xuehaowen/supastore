@@ -4,6 +4,30 @@ import { proxyBackendApi } from "./backend-proxy";
 import { boundedJson } from "./bounded-json";
 import { BackendApiError } from "./api";
 
+export function actionFailure(error: unknown, operation: string) {
+  const serverFailure =
+    !(error instanceof BackendApiError) || error.status >= 500;
+  const requestId = serverFailure
+    ? (error instanceof BackendApiError ? error.requestId : undefined) ||
+      crypto.randomUUID()
+    : undefined;
+  if (serverFailure)
+    console.error(
+      JSON.stringify({
+        operation,
+        requestId,
+        code: "STOREFRONT_ACTION_FAILED",
+      }),
+    );
+  return {
+    message:
+      error instanceof BackendApiError
+        ? error.message
+        : "Unable to save. Please retry.",
+    ...(requestId ? { requestId } : {}),
+  };
+}
+
 /** Mutations use the existing proxy and relay every HttpOnly cookie to the browser. */
 export async function serverRequest(
   path: string,
@@ -42,6 +66,9 @@ export async function serverRequest(
     throw new BackendApiError(
       result.error?.message || "Unable to save. Please retry.",
       response.status,
+      /^[0-9a-f-]{36}$/i.test(response.headers.get("x-request-id") || "")
+        ? response.headers.get("x-request-id")!
+        : undefined,
     );
   return result.data;
 }

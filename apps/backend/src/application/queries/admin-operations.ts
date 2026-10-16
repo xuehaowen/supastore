@@ -286,7 +286,14 @@ export async function getAdminOperations(input: AdminOperationsInput) {
           ? await tx
               .select()
               .from(eventDeliveries)
-              .where(inArray(eventDeliveries.status, ["retrying", "exhausted"]))
+              .where(
+                inArray(eventDeliveries.status, [
+                  "retrying",
+                  "exhausted",
+                  "failed",
+                  "review",
+                ]),
+              )
               .orderBy(
                 desc(eventDeliveries.createdAt),
                 desc(eventDeliveries.id),
@@ -301,7 +308,7 @@ export async function getAdminOperations(input: AdminOperationsInput) {
                 unpaidOrders: sql<number>`(select count(*)::int from ${orders} where ${orders.lifecycleStatus} = 'unpaid')`,
                 readyForFulfillment: sql<number>`(select count(*)::int from ${orders} where ${orders.lifecycleStatus} = 'confirmed')`,
                 evidenceReviews: sql<number>`(select count(*)::int from ${paymentUploadIntents} where ${paymentUploadIntents.status} = 'finalized')`,
-                failedEmails: sql<number>`(select count(*)::int from ${eventDeliveries} where ${eventDeliveries.status} in ('retrying', 'exhausted'))`,
+                failedEmails: sql<number>`(select count(*)::int from ${eventDeliveries} where ${eventDeliveries.status} in ('retrying', 'exhausted', 'failed', 'review'))`,
               })
               .from(sql`(select 1) as summary`)
           : [

@@ -1,4 +1,5 @@
 "use server";
+import { actionError } from "@/infrastructure/http/failure";
 import { redirect } from "next/navigation";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { eq } from "drizzle-orm";
@@ -56,7 +57,7 @@ export async function saveStoreContentAction(form: FormData) {
     revalidateTag("catalog");
     revalidatePath("/[locale]", "layout");
   } catch (error) {
-    destination = `/admin/settings/content?error=${encodeURIComponent(error instanceof DomainError ? error.message : "Unable to save store content.")}`;
+    destination = `/admin/settings/content?error=${encodeURIComponent(actionError(error, "admin.admin.settings.content.actions", "Unable to save store content."))}`;
   }
   redirect(destination);
 }

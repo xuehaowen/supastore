@@ -237,7 +237,7 @@ export async function retryTemplateReviews(staffUserId: string) {
   return db.transaction(async (tx) => {
     await verifyStaffInTransaction(tx, staffUserId, "owner");
     const result = await tx.execute(
-      sql`UPDATE event_deliveries SET status='pending', provider_status=NULL, retry_after=now(), updated_at=now() WHERE status='review' AND provider_status='template_preparation_failed' AND attempts=0 AND prepared_message IS NULL RETURNING id`,
+      sql`UPDATE event_deliveries SET status='pending', provider_status=NULL, failure_code=NULL, retry_after=now(), updated_at=now() WHERE status='review' AND provider_status='template_preparation_failed' AND attempts=0 AND prepared_message IS NULL AND (expires_at IS NULL OR expires_at > now()) RETURNING id`,
     );
     await tx.insert(auditRecords).values({
       entityType: "notification_template_reviews",
@@ -276,6 +276,7 @@ export async function prepareNotification(
   if (!template?.publishedVersion)
     throw new DomainError(
       "A required published notification template is missing.",
+      "TEMPLATE_NOT_PUBLISHED",
     );
   const [version] = await tx
     .select()
@@ -290,6 +291,7 @@ export async function prepareNotification(
   if (!version)
     throw new DomainError(
       "Published notification template version is missing.",
+      "TEMPLATE_VERSION_MISSING",
     );
   const values = await notificationValues(tx, input);
   return {

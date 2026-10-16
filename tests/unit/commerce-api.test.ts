@@ -22,8 +22,14 @@ describe("commerce API boundary", () => {
     expect(response.status).toBe(500);
     expect(payload.error.message).toBe("Unable to complete request.");
     expect(payload.requestId).toBe(response.headers.get("x-request-id"));
-    expect(child).toHaveBeenCalledWith({ requestId: payload.requestId });
-    expect(logError).toHaveBeenCalledWith("Commerce API failure", failure);
+    expect(child).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: payload.requestId,
+        operation: "commerce.api",
+      }),
+    );
+    expect(logError).toHaveBeenCalledWith("Operation failed.");
+    expect(JSON.stringify(logError.mock.calls)).not.toContain(failure.message);
   });
   const request = (body: string, origin = "https://shop.example") =>
     new Request("https://shop.example/api/v1/cart", {

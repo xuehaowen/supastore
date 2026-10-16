@@ -1,10 +1,10 @@
 "use server";
+import { actionError } from "@/infrastructure/http/failure";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { staffIdentity } from "@/infrastructure/web";
 import { configureDelivery } from "@/application/use-cases/store/configure-delivery";
 import { parseActionInteger } from "@/application/common/request-validation";
-import { DomainError } from "@/application/common/errors";
 import { validateDeliverySchedule } from "@/domain/delivery";
 export async function saveDeliveryArea(form: FormData) {
   let target = "/admin/settings/delivery?saved=1";
@@ -61,7 +61,7 @@ export async function saveDeliveryArea(form: FormData) {
     });
     revalidatePath("/admin/settings/delivery");
   } catch (error) {
-    target = `/admin/settings/delivery?error=${encodeURIComponent(error instanceof DomainError ? error.message : "Unable to save delivery area. Check the values and retry.")}`;
+    target = `/admin/settings/delivery?error=${encodeURIComponent(actionError(error, "admin.admin.settings.delivery.actions", "Unable to save delivery area. Check the values and retry."))}`;
   }
   redirect(target);
 }

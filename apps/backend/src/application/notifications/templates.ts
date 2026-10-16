@@ -131,7 +131,10 @@ export function definitionFor(key: TemplateKey) {
     !["email", "sms"].includes(key.channel) ||
     (key.channel === "sms" && (!definition.sms || key.audience !== "customer"))
   )
-    throw new DomainError("Unsupported notification template combination.");
+    throw new DomainError(
+      "Unsupported notification template combination.",
+      "TEMPLATE_UNKNOWN_EVENT",
+    );
   return definition;
 }
 export function templateCoverage(published: TemplateKey[]) {

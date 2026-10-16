@@ -133,6 +133,7 @@ export default async function ActivityPage({
                 {item.providerStatus === "legacy_success_unverified"
                   ? "Legacy send acknowledged · delivery unconfirmed"
                   : (deliveryLabels[item.status] ?? item.status)}
+                {item.failureCode && <small> · {item.failureCode}</small>}
               </span>
             </article>
           ))}

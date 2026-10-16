@@ -80,7 +80,7 @@ export function CheckoutDetailsForm({
       action={action}
       onSubmit={(event) => submitCheckout(event, action)}
     >
-      <Notice error={state.error} locale={locale} />
+      <Notice error={state.error} locale={locale} requestId={state.requestId} />
       <Hidden name="locale" value={locale} />
       <Hidden name="cartId" value={cartId} />
       <CheckoutFields
@@ -163,7 +163,7 @@ export function CheckoutOrderForm({
       action={action}
       onSubmit={(event) => submitCheckout(event, action)}
     >
-      <Notice error={state.error} locale={locale} />
+      <Notice error={state.error} locale={locale} requestId={state.requestId} />
       <Hidden name="locale" value={locale} />
       <Hidden name="quoteId" value={quoteId} />
       <Label className="grid gap-2">

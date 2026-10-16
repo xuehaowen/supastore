@@ -1,4 +1,5 @@
 "use server";
+import { actionError } from "@/infrastructure/http/failure";
 import { redirect } from "next/navigation";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { staffIdentity } from "@/infrastructure/web";
@@ -124,7 +125,7 @@ async function execute(path: string, work: () => Promise<string | void>) {
     revalidatePath("/admin", "layout");
     revalidatePath("/[locale]", "layout");
   } catch (error) {
-    destination = `${path}?error=${encodeURIComponent(error instanceof DomainError ? error.message : "Unable to save. Please retry.")}`;
+    destination = `${path}?error=${encodeURIComponent(actionError(error, "admin.admin.catalog-actions", "Unable to save. Please retry."))}`;
   }
   redirect(destination);
 }

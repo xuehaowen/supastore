@@ -1,10 +1,12 @@
+import { logFailure, safeFailureCode } from "@/infrastructure/http/failure";
+import type { BatchResult } from "@/infrastructure/runtime/worker";
 import { logger } from "@/infrastructure/security/logger";
 import type {
   PaymentProvider,
   PaymentCheckoutSession,
 } from "@/application/ports/payments";
 import { paymentProviderFromEnvironment } from "@/infrastructure/payments/payment-adapters";
-import { and, eq, asc } from "drizzle-orm";
+import { and, eq, asc, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
   orders,
@@ -453,38 +455,110 @@ export async function applyStripeEvent(
 }
 
 /** Backend worker recovery: inbox survives provider retries and process crashes. */
-export async function reconcileStripeInbox(limit = 25) {
+export async function reconcileStripeInbox(limit = 25): Promise<BatchResult> {
+  const result: BatchResult = {
+    succeeded: 0,
+    failed: 0,
+    deferred: 0,
+    reviewRequired: 0,
+  };
   if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET)
-    return;
-  const pending = await db
-    .select()
-    .from(stripeWebhookInbox)
-    .where(eq(stripeWebhookInbox.status, "pending"))
-    .orderBy(asc(stripeWebhookInbox.createdAt))
-    .limit(Math.max(1, Math.min(100, limit)));
-  for (const row of pending) {
+    return result;
+  const size = Math.max(1, Math.min(100, limit));
+  // Reserve immediately before each bounded provider call so no lease ages behind other work.
+  for (let index = 0; index < size; index++) {
+    const leaseUntil = new Date(Date.now() + 5 * 60000);
+    const [row] = await db.transaction(async (tx) => {
+      const rows = await tx
+        .select()
+        .from(stripeWebhookInbox)
+        .where(
+          and(
+            eq(stripeWebhookInbox.status, "pending"),
+            sql`${stripeWebhookInbox.retryAfter} <= now()`,
+          ),
+        )
+        .orderBy(
+          asc(stripeWebhookInbox.retryAfter),
+          asc(stripeWebhookInbox.createdAt),
+          asc(stripeWebhookInbox.eventId),
+        )
+        .limit(1)
+        .for("update", { skipLocked: true });
+      for (const row of rows)
+        await tx
+          .update(stripeWebhookInbox)
+          .set({ retryAfter: leaseUntil })
+          .where(eq(stripeWebhookInbox.eventId, row.eventId));
+      return rows;
+    });
+    if (!row) break;
     try {
-      await acceptStripeEvent(row.payload as unknown as StripeEvent);
+      const outcome = await acceptStripeEvent(
+        row.payload as unknown as StripeEvent,
+      );
+      if (outcome.status === "review") result.reviewRequired++;
+      else result.succeeded++;
+      await db
+        .update(stripeWebhookInbox)
+        .set({ reconciliationAttempts: 0, failureCode: null })
+        .where(eq(stripeWebhookInbox.eventId, row.eventId));
     } catch (error) {
-      logger
-        .child({ eventId: row.eventId })
-        .error("Stripe inbox reconciliation pending", error);
+      result.failed++;
+      logFailure(error, "stripe.inbox_reconcile", { eventId: row.eventId });
+      await db
+        .update(stripeWebhookInbox)
+        .set({
+          reconciliationAttempts: row.reconciliationAttempts + 1,
+          failureCode: safeFailureCode(error),
+          retryAfter: reconciliationRetry(row.reconciliationAttempts),
+        })
+        .where(
+          and(
+            eq(stripeWebhookInbox.eventId, row.eventId),
+            eq(stripeWebhookInbox.status, "pending"),
+            eq(stripeWebhookInbox.retryAfter, leaseUntil),
+          ),
+        );
     }
   }
-  // Recover lost completion/expiration webhooks from authoritative session data.
-  const open = await db
-    .select()
-    .from(stripeCheckoutAttempts)
-    .where(eq(stripeCheckoutAttempts.status, "open"))
-    .orderBy(asc(stripeCheckoutAttempts.updatedAt))
-    .limit(Math.max(1, Math.min(100, limit)));
   const adapter = paymentProviderFromEnvironment("stripe");
-  for (const attempt of open) {
-    if (!attempt.sessionId) continue;
+  for (let index = 0; index < size; index++) {
+    const leaseUntil = new Date(Date.now() + 5 * 60000);
+    const [attempt] = await db.transaction(async (tx) => {
+      const rows = await tx
+        .select()
+        .from(stripeCheckoutAttempts)
+        .where(
+          and(
+            eq(stripeCheckoutAttempts.status, "open"),
+            sql`${stripeCheckoutAttempts.retryAfter} <= now()`,
+          ),
+        )
+        .orderBy(
+          asc(stripeCheckoutAttempts.retryAfter),
+          asc(stripeCheckoutAttempts.updatedAt),
+          asc(stripeCheckoutAttempts.id),
+        )
+        .limit(1)
+        .for("update", { skipLocked: true });
+      for (const row of rows)
+        await tx
+          .update(stripeCheckoutAttempts)
+          .set({ retryAfter: leaseUntil })
+          .where(eq(stripeCheckoutAttempts.id, row.id));
+      return rows;
+    });
+    if (!attempt) break;
     try {
+      if (!attempt.sessionId)
+        throw new DomainError(
+          "Checkout session identity is missing.",
+          "OUTCOME_UNCERTAIN",
+        );
       const session = await adapter.retrieveCheckoutSession(attempt.sessionId);
-      if (session.status === "complete" || session.status === "expired")
-        await acceptStripeEvent(
+      if (session.status === "complete" || session.status === "expired") {
+        const outcome = await acceptStripeEvent(
           {
             id: `poll:${session.id}:${session.status}`,
             type:
@@ -496,15 +570,56 @@ export async function reconcileStripeInbox(limit = 25) {
           },
           adapter,
         );
-      else
-        await db
-          .update(stripeCheckoutAttempts)
-          .set({ updatedAt: new Date() })
-          .where(eq(stripeCheckoutAttempts.id, attempt.id));
+        if (outcome.status === "review") result.reviewRequired++;
+        else result.succeeded++;
+      } else result.succeeded++;
+      await db
+        .update(stripeCheckoutAttempts)
+        .set({
+          reconciliationAttempts: 0,
+          failureCode: null,
+          retryAfter: new Date(Date.now() + 60000),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(stripeCheckoutAttempts.id, attempt.id),
+            eq(stripeCheckoutAttempts.retryAfter, leaseUntil),
+          ),
+        );
     } catch (error) {
-      logger
-        .child({ attemptId: attempt.id })
-        .error("Stripe session reconciliation pending", error);
+      result.failed++;
+      logFailure(error, "stripe.session_reconcile", { attemptId: attempt.id });
+      await db
+        .update(stripeCheckoutAttempts)
+        .set({
+          reconciliationAttempts: attempt.reconciliationAttempts + 1,
+          failureCode: safeFailureCode(error),
+          retryAfter: reconciliationRetry(attempt.reconciliationAttempts),
+        })
+        .where(
+          and(
+            eq(stripeCheckoutAttempts.id, attempt.id),
+            eq(stripeCheckoutAttempts.status, "open"),
+            eq(stripeCheckoutAttempts.retryAfter, leaseUntil),
+          ),
+        );
     }
   }
+  const [backlog] = await db.execute(sql`SELECT
+    (SELECT count(*) FROM stripe_webhook_inbox WHERE status='pending' AND reconciliation_attempts > 0 AND retry_after > now()) +
+    (SELECT count(*) FROM stripe_checkout_attempts WHERE status='open' AND reconciliation_attempts > 0 AND retry_after > now()) AS deferred,
+    (SELECT count(*) FROM stripe_webhook_inbox WHERE status='review') +
+    (SELECT count(*) FROM stripe_checkout_attempts WHERE status='review') AS review_required`);
+  result.deferred = Number(backlog?.deferred || 0);
+  result.reviewRequired = Math.max(
+    result.reviewRequired,
+    Number(backlog?.review_required || 0),
+  );
+  return result;
+}
+function reconciliationRetry(priorAttempts: number) {
+  return new Date(
+    Date.now() + Math.min(3600000, 60000 * 2 ** Math.min(priorAttempts, 6)),
+  );
 }

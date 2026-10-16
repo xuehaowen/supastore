@@ -9,6 +9,20 @@ import {
 } from "@/infrastructure/runtime/worker";
 
 describe("Health Endpoints", () => {
+  it("reports notifications requiring review as degraded even when the scheduler runs", async () => {
+    const runner = createWorkerRunner(
+      [{ name: "fixture", intervalMs: 5000, run: async () => 0 }],
+      { onError: vi.fn() },
+    );
+    await runner.tick();
+    vi.spyOn(db, "execute")
+      .mockResolvedValueOnce([{ status: "review", count: 1 }] as any)
+      .mockResolvedValueOnce([] as any);
+    const response = await getWorker();
+    expect(response.status).toBe(503);
+    expect((await response.json()).status).toBe("degraded");
+    runner.stop();
+  });
   it("/api/health/live returns 200 with status ok and uptime", async () => {
     const response = await getLive();
     expect(response.status).toBe(200);

@@ -12,8 +12,8 @@ import {
   session,
   staffSession,
 } from "@/infrastructure/db/schema";
-import { smtpAdapter } from "@/infrastructure/notifications/smtp";
-import { logger } from "@/infrastructure/security/logger";
+import { queueAuthEmail } from "@/infrastructure/notifications/smtp";
+import { logFailure } from "@/infrastructure/http/failure";
 import { authSecretFromEnvironment } from "./secret";
 
 function createAuth(audience: "customer" | "staff") {
@@ -49,6 +49,7 @@ function createAuth(audience: "customer" | "staff") {
       revokeSessionsOnPasswordReset: true,
       requireEmailVerification: false,
       autoSignIn: false,
+      resetPasswordTokenExpiresIn: 3600,
       disableSignUp: staff,
       onPasswordReset: async ({ user: identity }) => {
         // Credentials are shared even though ordinary session management is not.
@@ -62,7 +63,7 @@ function createAuth(audience: "customer" | "staff") {
       sendResetPassword: async ({ user, url, token }) => {
         if (process.env.DISABLE_OUTBOUND_DELIVERY === "true") return;
         try {
-          const result = await smtpAdapter.sendEmail({
+          const result = await queueAuthEmail({
             recipient: user.email,
             template: "auth.reset_password",
             data: {
@@ -72,20 +73,20 @@ function createAuth(audience: "customer" | "staff") {
             },
           });
           if (!result.success) throw new Error("Email was not accepted.");
-        } catch {
-          logger.error(
-            "Password reset email was not accepted; inspect provider configuration and delivery status.",
-          );
+        } catch (error) {
+          // Preserve the reset endpoint's account-enumeration protection.
+          logFailure(error, "auth.reset_email_enqueue");
         }
       },
     },
     emailVerification: {
+      expiresIn: 3600,
       sendOnSignUp: !staff,
       autoSignInAfterVerification: !staff,
       sendVerificationEmail: async ({ user, url, token }) => {
         if (process.env.DISABLE_OUTBOUND_DELIVERY === "true") return;
         try {
-          const result = await smtpAdapter.sendEmail({
+          const result = await queueAuthEmail({
             recipient: user.email,
             template: "auth.email_verification",
             data: {
@@ -94,10 +95,12 @@ function createAuth(audience: "customer" | "staff") {
             },
           });
           if (!result.success) throw new Error("Email was not accepted.");
-        } catch {
-          logger.error(
-            "Verification email was not accepted; inspect provider configuration and delivery status.",
-          );
+        } catch (error) {
+          logFailure(error, "auth.verification_email_enqueue");
+          throw new APIError("SERVICE_UNAVAILABLE", {
+            message:
+              "Unable to queue verification email. Please request a new link shortly.",
+          });
         }
       },
     },

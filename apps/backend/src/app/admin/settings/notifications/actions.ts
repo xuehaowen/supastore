@@ -1,4 +1,5 @@
 "use server";
+import { actionError } from "@/infrastructure/http/failure";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { staffIdentity } from "@/infrastructure/web";
@@ -10,7 +11,6 @@ import {
   retryTemplateReviews,
 } from "@/application/notifications/template-manager";
 import { parseActionInteger } from "@/application/common/request-validation";
-import { DomainError } from "@/application/common/errors";
 import type { TemplateKey } from "@/application/notifications/templates";
 
 const base = "/admin/settings/notifications";
@@ -29,7 +29,7 @@ async function perform(
     await operation();
     revalidatePath(base, "layout");
   } catch (error) {
-    target = `${path}?error=${encodeURIComponent(error instanceof DomainError ? error.message : "Unable to update the template. Please retry.")}`;
+    target = `${path}?error=${encodeURIComponent(actionError(error, "admin.admin.settings.notifications.actions", "Unable to update the template. Please retry."))}`;
   }
   redirect(target);
 }

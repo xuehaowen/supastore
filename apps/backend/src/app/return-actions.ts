@@ -1,4 +1,5 @@
 "use server";
+import { actionError } from "@/infrastructure/http/failure";
 import { redirect } from "next/navigation";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { staffIdentity } from "@/infrastructure/web";
@@ -18,7 +19,7 @@ async function perform(path: string, work: () => Promise<void>) {
     revalidatePath("/admin", "layout");
     revalidateTag("catalog");
   } catch (e) {
-    destination += `${destination.includes("?") ? "&" : "?"}error=${encodeURIComponent(e instanceof DomainError ? e.message : "Unable to save return.")}`;
+    destination += `${destination.includes("?") ? "&" : "?"}error=${encodeURIComponent(actionError(e, "admin.return-actions", "Unable to save return."))}`;
   }
   redirect(destination);
 }

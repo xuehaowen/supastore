@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { serverRequest } from "./server-request";
+import * as requests from "./server-request";
 const { proxy, setCookie } = vi.hoisted(() => ({
   proxy: vi.fn(),
   setCookie: vi.fn(),
@@ -18,6 +19,36 @@ beforeEach(() => {
   setCookie.mockReset();
 });
 describe("original customer server actions across services", () => {
+  it("preserves backend failure references across the storefront boundary", async () => {
+    const requestId = "11111111-1111-4111-8111-111111111111";
+    proxy.mockResolvedValue(
+      Response.json(
+        { error: { message: "Unable to complete request." } },
+        { status: 500, headers: { "x-request-id": requestId } },
+      ),
+    );
+    await expect(serverRequest("orders", {})).rejects.toMatchObject({
+      status: 500,
+      requestId,
+    });
+  });
+  it("logs local action failures without exposing input or raw messages", () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(
+        requests.actionFailure(
+          new Error("private database token"),
+          "checkout.create",
+        ),
+      ).toMatchObject({
+        message: "Unable to save. Please retry.",
+        requestId: expect.any(String),
+      });
+      expect(JSON.stringify(log.mock.calls)).not.toContain("private");
+    } finally {
+      log.mockRestore();
+    }
+  });
   it("forwards session cookies and relays all private response cookies with their options", async () => {
     const response = Response.json({ data: { id: "new-order" } });
     response.headers.append(

@@ -8,9 +8,11 @@ import { customerError } from "@supastore/i18n/customer";
 export function Notice({
   error,
   locale,
+  requestId,
 }: {
   error?: string | undefined;
   locale?: string;
+  requestId?: string | undefined;
 }) {
   const m = textFor(locale ?? "en").checkoutDetails;
   return error ? (
@@ -18,6 +20,14 @@ export function Notice({
       <AlertDescription>
         <strong className="font-medium">{m.errorHeading}</strong>{" "}
         {locale ? customerError(error, locale) : error} {m.errorRetry}
+        {requestId &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            requestId,
+          ) && (
+            <span className="block">
+              {locale === "zh" ? "参考编号" : "Reference"}: {requestId}
+            </span>
+          )}
       </AlertDescription>
     </Alert>
   ) : null;

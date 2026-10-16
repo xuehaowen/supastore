@@ -138,7 +138,7 @@ export function OverviewView(props: OperationsScreenProps) {
       )}
       {view === "overview" && (
         <section id="emails">
-          <h2>Failed emails</h2>
+          <h2>Notification failures</h2>
           <QueuePagination
             query={query}
             path={returnTo}
@@ -148,14 +148,20 @@ export function OverviewView(props: OperationsScreenProps) {
           />
           {failures.length === 0 && (
             <p className="admin-empty">
-              No failed email deliveries. You&apos;re all caught up.
+              No notification failures. You&apos;re all caught up.
             </p>
           )}
           {failures.map((f) => (
             <p key={f.id}>
-              {f.recipient} · {f.status} · {f.attempts} attempts
+              {f.recipient} · {f.channel} · {f.status} · {f.attempts} attempts ·{" "}
+              {f.failureCode || f.providerStatus || "No failure code"}
             </p>
           ))}
+          <p>
+            Repair templates in notification settings before retrying unsent
+            template failures. Reconcile uncertain submissions with provider
+            evidence before any resend.
+          </p>
         </section>
       )}
     </>

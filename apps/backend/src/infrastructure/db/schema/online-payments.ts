@@ -36,6 +36,13 @@ export const stripeCheckoutAttempts = pgTable(
       .notNull()
       .default("creating"),
     reviewReason: text("review_reason"),
+    reconciliationAttempts: integer("reconciliation_attempts")
+      .notNull()
+      .default(0),
+    retryAfter: timestamp("retry_after", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    failureCode: text("failure_code"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -43,7 +50,10 @@ export const stripeCheckoutAttempts = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [check("stripe_attempt_amount_positive", sql`${t.amountCents} > 0`)],
+  (t) => [
+    check("stripe_attempt_amount_positive", sql`${t.amountCents} > 0`),
+    index("stripe_attempt_reconciliation").on(t.status, t.retryAfter),
+  ],
 );
 export const stripeWebhookInbox = pgTable(
   "stripe_webhook_inbox",
@@ -55,12 +65,22 @@ export const stripeWebhookInbox = pgTable(
       .notNull()
       .default("pending"),
     reviewReason: text("review_reason"),
+    reconciliationAttempts: integer("reconciliation_attempts")
+      .notNull()
+      .default(0),
+    retryAfter: timestamp("retry_after", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    failureCode: text("failure_code"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
     processedAt: timestamp("processed_at", { withTimezone: true }),
   },
-  (t) => [index("stripe_inbox_pending").on(t.status, t.createdAt)],
+  (t) => [
+    index("stripe_inbox_pending").on(t.status, t.createdAt),
+    index("stripe_inbox_reconciliation").on(t.status, t.retryAfter),
+  ],
 );
 export const stripeRefundIntents = pgTable(
   "stripe_refund_intents",

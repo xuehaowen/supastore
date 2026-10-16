@@ -13,7 +13,7 @@ const fixture = fixtureDirectory("storefront");
 const databaseDir = fixture.path;
 const pg = new EmbeddedPostgres({
   databaseDir,
-  port: 55449,
+  port: 25449,
   user: "postgres",
   password: "postgres",
   persistent: true,
@@ -42,7 +42,7 @@ const env = {
   STOREFRONT_ORIGIN: "http://localhost:3103",
   NEXT_TSCONFIG: ".tsconfig-cuj.json",
   STOREFRONT_TSCONFIG: ".tsconfig-cuj.json",
-  DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:55449/" + database,
+  DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:25449/" + database,
   APP_URL: "http://localhost:3103",
   BETTER_AUTH_URL: "http://localhost:3103",
   ADMIN_BASE_URL: "http://localhost:3103",
@@ -52,7 +52,8 @@ const env = {
   M1_DEMO: "true",
   DEMO_OWNER_PASSWORD: "SyntheticOwnerPassword123!",
   DISABLE_OUTBOUND_DELIVERY: "false",
-  ENABLE_OUTBOX_WORKER: "false",
+  // Authentication links now use the durable outbox.
+  ENABLE_OUTBOX_WORKER: "true",
   EMAIL_PROVIDER: "nodemailer",
   SMS_PROVIDER: "disabled",
   PHONE_VERIFICATION_PROVIDER: "disabled",
@@ -198,12 +199,18 @@ try {
   if (postgresBinary) {
     const child = (databaseProcess = spawn(
       postgresBinary,
-      ["-D", databaseDir, "-p", "55449"],
+      ["-D", databaseDir, "-p", "25449", "-h", "127.0.0.1"],
       { stdio: ["ignore", "ignore", "pipe"], windowsHide: true },
     ));
     await new Promise((resolve, reject) => {
+      let startupDiagnostics = "";
       const timer = setTimeout(
-        () => reject(new Error("Test PostgreSQL startup timed out")),
+        () =>
+          reject(
+            new Error(
+              "Test PostgreSQL startup timed out: " + startupDiagnostics,
+            ),
+          ),
         30000,
       );
       child.once("error", (error) => {
@@ -214,10 +221,15 @@ try {
         "exit",
         (code) => (
           clearTimeout(timer),
-          reject(new Error("Test PostgreSQL exited: " + code))
+          reject(
+            new Error(
+              "Test PostgreSQL exited: " + code + ": " + startupDiagnostics,
+            ),
+          )
         ),
       );
       child.stderr.on("data", (data) => {
+        startupDiagnostics = (startupDiagnostics + String(data)).slice(-8000);
         if (
           String(data).includes(
             "database system is ready to accept connections",
@@ -231,7 +243,7 @@ try {
   } else await pg.start();
   pgStarted = true;
   const admin = postgres(
-    "postgresql://postgres:postgres@127.0.0.1:55449/postgres",
+    "postgresql://postgres:postgres@127.0.0.1:25449/postgres",
   );
   try {
     await admin.unsafe(
@@ -383,7 +395,7 @@ try {
   }
 } catch (error) {
   console.error(
-    error ?? "Browser infrastructure failed; check ports 55449, 3102 and 3103.",
+    error ?? "Browser infrastructure failed; check ports 25449, 3102 and 3103.",
   );
   exitCode = 1;
 } finally {

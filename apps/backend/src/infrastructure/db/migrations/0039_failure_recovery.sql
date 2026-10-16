@@ -1,0 +1,10 @@
+ALTER TABLE event_deliveries ADD COLUMN failure_code text;
+ALTER TABLE event_deliveries ADD COLUMN expires_at timestamptz;
+ALTER TABLE stripe_checkout_attempts ADD COLUMN reconciliation_attempts integer NOT NULL DEFAULT 0;
+ALTER TABLE stripe_checkout_attempts ADD COLUMN retry_after timestamptz NOT NULL DEFAULT now();
+ALTER TABLE stripe_checkout_attempts ADD COLUMN failure_code text;
+ALTER TABLE stripe_webhook_inbox ADD COLUMN reconciliation_attempts integer NOT NULL DEFAULT 0;
+ALTER TABLE stripe_webhook_inbox ADD COLUMN retry_after timestamptz NOT NULL DEFAULT now();
+ALTER TABLE stripe_webhook_inbox ADD COLUMN failure_code text;
+CREATE INDEX stripe_attempt_reconciliation ON stripe_checkout_attempts(status, retry_after);
+CREATE INDEX stripe_inbox_reconciliation ON stripe_webhook_inbox(status, retry_after);

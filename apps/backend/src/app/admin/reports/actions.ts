@@ -1,10 +1,10 @@
 "use server";
+import { actionError } from "@/infrastructure/http/failure";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { staffIdentity } from "@/infrastructure/web";
 import { recordOutsideSales } from "@/application/use-cases/reports/sales-report";
 import { parseActionInteger } from "@/application/common/request-validation";
-import { DomainError } from "@/application/common/errors";
 export async function adjustOutsideSales(form: FormData) {
   let target = "/admin/reports?saved=1";
   try {
@@ -28,7 +28,7 @@ export async function adjustOutsideSales(form: FormData) {
     });
     revalidatePath("/admin/reports");
   } catch (error) {
-    target = `/admin/reports?error=${encodeURIComponent(error instanceof DomainError ? error.message : "Check the adjustment values and retry.")}`;
+    target = `/admin/reports?error=${encodeURIComponent(actionError(error, "admin.admin.reports.actions", "Check the adjustment values and retry."))}`;
   }
   redirect(target);
 }

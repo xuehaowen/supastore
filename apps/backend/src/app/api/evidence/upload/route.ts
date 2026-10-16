@@ -1,12 +1,10 @@
+import { failureResponse } from "@/infrastructure/http/failure";
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/infrastructure/db";
 import { paymentUploadIntents } from "@/infrastructure/db/schema";
 import { verifyOrderAccess } from "@/application/common/guest-access";
-import {
-  DomainError,
-  InvariantViolationError,
-} from "@/application/common/errors";
+import { InvariantViolationError } from "@/application/common/errors";
 import { orderToken } from "@/infrastructure/web";
 import { parseActionUuid } from "@/application/common/request-validation";
 import { putUpload } from "@/infrastructure/storage";
@@ -79,24 +77,10 @@ export async function PUT(request: NextRequest) {
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
-    const storageCode = (error as { name?: string }).name;
-    return NextResponse.json(
-      {
-        error:
-          storageCode === "NoSuchBucket"
-            ? "File storage is not ready yet. Please ask the store administrator to finish storage setup."
-            : error instanceof DomainError
-              ? error.message
-              : "Upload failed. Please try again.",
-      },
-      {
-        status:
-          error instanceof DomainError && error.code === "UNAUTHORIZED"
-            ? 401
-            : error instanceof DomainError && error.code === "FORBIDDEN"
-              ? 403
-              : 400,
-      },
+    return failureResponse(
+      error,
+      "evidence.upload",
+      "Upload failed. Please try again.",
     );
   }
 }

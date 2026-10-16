@@ -680,7 +680,8 @@ describe("every server action request boundary", () => {
       new Error("private detail"),
     );
     await expect(submitManualOrder(form())).resolves.toEqual({
-      error: "Unable to save. Check your entries and try again.",
+      error: "Unable to save. Please retry.",
+      requestId: expect.any(String),
     });
   });
   it("forwards manual pickup location and schedule without a shipping address", async () => {

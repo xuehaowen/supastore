@@ -12,6 +12,12 @@ User/password records remain shared. Password reset revokes both session tables 
 
 ## Where to start
 
+Verification and reset emails are queued durably and require the backend outbox
+worker. Tokens expire after one hour; dispatch stops after 15 minutes of queue
+delay. Request a new link after expiry. Queue errors preserve reset enumeration
+protection and are logged without links or credentials. See
+[error handling](../../../../../docs/error-handling.md).
+
 - [index.ts](index.ts): Server authentication configuration and hooks.
 - [client.ts](client.ts): Browser authentication client using the current public origin.
 - [session.ts](session.ts): In-transaction active staff and owner checks.

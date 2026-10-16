@@ -99,6 +99,14 @@ No customer accounts, wallets, credit ledgers, pre-order receipts, recovery case
 
 ## Retention and automated housekeeping
 
+Migration 0039 adds nullable `failure_code` and `expires_at` to deliveries.
+Authentication events use an independent `auth` aggregate and a 15-minute
+dispatch deadline. Never-submitted expired review records can be suppressed
+without provider reconciliation. Stripe inbox and checkout attempts add
+`reconciliation_attempts`, `retry_after` and `failure_code`, with indexes on
+status/retry time. Pollers reserve one record immediately before provider I/O;
+failed records back off independently. See [error handling](error-handling.md).
+
 To prevent PostgreSQL table and index bloat over long-running operations without external services, the background worker executes lightweight periodic housekeeping:
 
 - **Abandoned Carts and Guest Credentials:** Purge unconverted carts after 30 days. At 30 days expire guest credentials and clear their secret hashes. Delete a guest-session row only when no retained cart, request identity or other history references it; otherwise retain an inert ownership row. Converted carts and their source-order references remain intact. Credential expiry does not delete independently scoped order sessions or financial history. Test cleanup with both abandoned carts and converted carts referenced by old orders.

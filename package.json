@@ -13,6 +13,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run tests/unit",
     "test:unit": "vitest run tests/unit",
+    "test:errors": "vitest run --config vitest.errors.config.ts --coverage",
     "test:integration": "node scripts/test-integration.mjs",
     "test:browser": "node scripts/test-browser.mjs",
     "test:storefront": "node scripts/test-storefront.mjs",

@@ -25,6 +25,8 @@ jobs:
       - run: pnpm run format:check
       - run: pnpm --filter @supastore/storefront run typecheck
       - run: pnpm test
+      - name: Verify failure contracts and recovery diagnostics
+        run: pnpm run test:errors
       - run: pnpm run test:storefront:unit
       - run: pnpm run test:coverage
       - run: pnpm run test:frontend:coverage

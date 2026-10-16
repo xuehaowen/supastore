@@ -19,8 +19,11 @@ retry decisions, durable delivery processing and callback reconciliation.
 `apps/backend/src/infrastructure/notifications` implements Nodemailer, Telnyx and explicit test
 fakes. The bootstrap validates configuration and constructs a process-wide
 registry shared across Next.js entrypoint bundles. There is no implicit fake
-success when a channel is unconfigured. The old SMTP interface is a small
-compatibility shim for existing authentication hooks, backed by the same registry.
+success when a channel is unconfigured. Authentication hooks enqueue expiring
+emails through the durable outbox; `ENABLE_OUTBOX_WORKER=true` is required.
+The older synchronous SMTP shim remains for setup delivery checks. See the
+[failure and recovery contract](error-handling.md) for diagnostics, expiry,
+retry rules and coverage.
 
 ## Delivery facts and retries
 

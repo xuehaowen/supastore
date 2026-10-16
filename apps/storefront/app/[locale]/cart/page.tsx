@@ -17,10 +17,10 @@ export default async function Cart({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ requestId?: string; error?: string }>;
 }) {
   const { locale } = await params;
-  const { error } = await searchParams;
+  const { error, requestId } = await searchParams;
   const t = await getTranslations({ locale });
   const { cart, store } = await readPage("cart", locale);
   return (
@@ -31,7 +31,7 @@ export default async function Cart({
       <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">
         {t("cart")}
       </h1>
-      <Notice error={error} locale={locale} />
+      <Notice error={error} locale={locale} requestId={requestId} />
       {cart?.items.length ? (
         <>
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">

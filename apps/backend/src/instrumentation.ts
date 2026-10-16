@@ -18,7 +18,7 @@ export async function register() {
       const { createWorkerRunner, workerHealth } =
         await import("./infrastructure/runtime/worker");
       if (workerHealth().enabled) return;
-      const { logger } = await import("./infrastructure/security/logger");
+      const { logFailure } = await import("./infrastructure/http/failure");
       const { processOutboxBatch } =
         await import("./infrastructure/worker/outbox");
       const { getNotificationProviders } =
@@ -82,9 +82,7 @@ export async function register() {
         ],
         {
           onError: (name, error) =>
-            logger
-              .child({ job: name })
-              .error("Background job failed; scheduled for retry.", error),
+            logFailure(error, "worker.job", { job: name }),
         },
       );
       const timer = setInterval(async () => {
@@ -92,7 +90,7 @@ export async function register() {
         try {
           await trackInFlight(() => runner.tick());
         } catch (error) {
-          logger.error("Background scheduler failed.", error);
+          logFailure(error, "worker.scheduler");
         }
       }, 5000);
       timer.unref();

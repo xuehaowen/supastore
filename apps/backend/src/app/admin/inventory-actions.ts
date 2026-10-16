@@ -1,11 +1,11 @@
 "use server";
+import { actionError } from "@/infrastructure/http/failure";
 import { adminReturnContext } from "@/application/common/admin-return-context";
 import { redirect } from "next/navigation";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { staffIdentity } from "@/infrastructure/web";
 import { adjustStock } from "@/application/use-cases/inventory/stock-operations";
 import { parseActionInteger } from "@/application/common/request-validation";
-import { DomainError } from "@/application/common/errors";
 export async function countStockAction(form: FormData) {
   const requested = adminReturnContext(String(form.get("returnTo") ?? ""));
   const destination = new URL(
@@ -32,9 +32,11 @@ export async function countStockAction(form: FormData) {
     destination.searchParams.delete("saved");
     destination.searchParams.set(
       "error",
-      e instanceof DomainError
-        ? e.message
-        : "Unable to record count. Please retry.",
+      actionError(
+        e,
+        "admin.admin.inventory-actions",
+        "Unable to record count. Please retry.",
+      ),
     );
   }
   redirect(destination.pathname + destination.search);

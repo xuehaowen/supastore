@@ -244,6 +244,9 @@ describe("API route boundaries", () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({
       error: "Untrusted request origin.",
+      code: "FORBIDDEN",
+      requestId: expect.any(String),
+      retryable: false,
     });
     expect(mocks.createUploadIntent).not.toHaveBeenCalled();
   });

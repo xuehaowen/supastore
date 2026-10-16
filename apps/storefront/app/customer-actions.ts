@@ -1,8 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { serverRequest } from "../lib/server-request";
-import { BackendApiError } from "../lib/api";
+import { serverRequest, actionFailure } from "../lib/server-request";
 import { localeOf } from "../lib/web";
 const text = (form: FormData, key: string) =>
   String(form.get(key) || "").trim();
@@ -21,7 +20,8 @@ async function perform(
     if (open)
       destination = `/${locale}/orders/${encodeURIComponent(text(form, "orderId"))}`;
   } catch (error) {
-    destination += `?error=${encodeURIComponent(error instanceof BackendApiError ? error.message : "Unable to save. Please retry.")}`;
+    const failure = actionFailure(error, "customer.action");
+    destination += `?error=${encodeURIComponent(failure.message)}${failure.requestId ? `&requestId=${failure.requestId}` : ""}`;
   }
   redirect(destination);
 }

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import { smsPreferences, storeSettings } from "@/infrastructure/db/schema";
 import { verifiedCustomer } from "./customer-ownership";
@@ -7,6 +7,7 @@ import { DomainError } from "@/application/common/errors";
 import { validSmsPhone } from "@/application/notifications/sms-policy";
 import type { PhoneVerifier } from "@/application/ports/notifications";
 import type { Transaction } from "@/application/common/transaction";
+import { logFailure } from "@/infrastructure/http/failure";
 export const cancelPhoneVerification = {
   optedIn: false,
   verifiedAt: null,
@@ -165,7 +166,17 @@ export async function updateCustomerSms(
     };
   });
   if ("error" in claim) throw new DomainError(claim.error);
+  const claimMatches = and(
+    eq(smsPreferences.customerId, claim.customerId),
+    eq(smsPreferences.phone, claim.phone),
+    eq(smsPreferences.requestNonce, claim.nonce),
+    eq(smsPreferences.verificationProvider, claim.provider),
+    eq(smsPreferences.verificationProfile, claim.profile),
+  );
   let verificationId = "";
+  let unavailable = false;
+  let expired = false;
+  let invalid = false;
   try {
     if (input.operation === "start") {
       const result = await verifier.start({
@@ -177,21 +188,44 @@ export async function updateCustomerSms(
         !result.verificationId ||
         result.verificationId.length > 200
       )
-        throw new Error("Verification unavailable.");
-      verificationId = result.verificationId;
+        unavailable = true;
+      else verificationId = result.verificationId;
     } else {
       const result = await verifier.check({
         verificationId: claim.sid,
         code: input.code!,
       });
-      if (result !== "approved")
-        throw new Error("Invalid verification result.");
+      unavailable = !["approved", "invalid", "expired"].includes(result);
+      expired = result === "expired";
+      invalid = result === "invalid";
     }
-  } catch {
+  } catch (error) {
+    logFailure(error, "sms.verification", { customerId: claim.customerId });
+    unavailable = true;
+  }
+  if (unavailable) {
+    // Reserve attempts before I/O to bound parallel guesses, refund only provider outages.
+    if (input.operation === "confirm")
+      await db
+        .update(smsPreferences)
+        .set({ attempts: sql`greatest(0, ${smsPreferences.attempts} - 1)` })
+        .where(claimMatches);
     throw new DomainError(
-      "Phone verification is unavailable or the code is invalid. Please retry.",
+      "Phone verification is temporarily unavailable. Please retry shortly.",
+      "DEPENDENCY_UNAVAILABLE",
     );
   }
+  if (expired) {
+    await db
+      .update(smsPreferences)
+      .set({ verificationSid: null, requestNonce: null })
+      .where(claimMatches);
+    throw new DomainError(
+      "Verification code expired. Request a new verification code.",
+    );
+  }
+  if (invalid)
+    throw new DomainError("Verification code is invalid. Please try again.");
   const saved = await db
     .update(smsPreferences)
     .set(

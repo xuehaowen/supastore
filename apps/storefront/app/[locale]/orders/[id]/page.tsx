@@ -26,7 +26,7 @@ export default async function OrderPage({
   searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ requestId?: string; error?: string }>;
 }) {
   const { locale, id } = await params;
   const query = await searchParams;
@@ -77,7 +77,7 @@ export default async function OrderPage({
       <h1 className="mb-7 font-serif text-5xl tracking-[-0.045em]">
         {order.referenceCode}
       </h1>
-      <Notice error={query.error} locale={locale} />
+      <Notice error={query.error} locale={locale} requestId={query.requestId} />
       {store?.supportEmail && (
         <section className="mb-6">
           <a

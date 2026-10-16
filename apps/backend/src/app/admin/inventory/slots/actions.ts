@@ -1,4 +1,5 @@
 "use server";
+import { actionError } from "@/infrastructure/http/failure";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { staffIdentity } from "@/infrastructure/web";
@@ -24,7 +25,7 @@ export async function saveSlotQuota(form: FormData) {
     });
     revalidatePath("/admin/inventory/slots");
   } catch (error) {
-    destination = `/admin/inventory/slots?error=${encodeURIComponent(error instanceof DomainError ? error.message : "Unable to save quota.")}`;
+    destination = `/admin/inventory/slots?error=${encodeURIComponent(actionError(error, "admin.admin.inventory.slots.actions", "Unable to save quota."))}`;
   }
   redirect(destination);
 }
@@ -44,7 +45,7 @@ export async function createSlot(form: FormData) {
     });
     revalidatePath("/admin/inventory/slots");
   } catch (error) {
-    destination = `/admin/inventory/slots?error=${encodeURIComponent(error instanceof DomainError ? error.message : "Choose a valid scheduled window.")}`;
+    destination = `/admin/inventory/slots?error=${encodeURIComponent(actionError(error, "admin.admin.inventory.slots.actions", "Choose a valid scheduled window."))}`;
   }
   redirect(destination);
 }

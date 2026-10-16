@@ -1,16 +1,19 @@
+import { failureResponse } from "@/infrastructure/http/failure";
 import { allowRequest } from "@/application/common/rate-limit";
 import { NextRequest, NextResponse } from "next/server";
 import * as v from "valibot";
 import { createUploadIntent } from "@/application/use-cases/uploads/create-upload-intent";
 import { finalizeUpload } from "@/application/use-cases/uploads/finalize-upload";
 import { orderToken } from "@/infrastructure/web";
-import { DomainError } from "@/application/common/errors";
-import { assertMutationOrigin } from "@/infrastructure/http/commerce-api";
+import {
+  assertMutationOrigin,
+  readApiBody,
+} from "@/infrastructure/http/commerce-api";
 const uuid = v.pipe(v.string(), v.uuid());
 async function handle(request: NextRequest, finalize: boolean) {
   try {
     assertMutationOrigin(request);
-    const body = await request.json();
+    const body = await readApiBody(request);
     const orderId = v.parse(uuid, body.orderId);
     const sessionToken = await orderToken(orderId);
     if (!allowRequest("evidence:" + sessionToken, 20))
@@ -34,21 +37,10 @@ async function handle(request: NextRequest, finalize: boolean) {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof DomainError || error instanceof v.ValiError
-            ? error.message
-            : "Upload failed. Please try again.",
-      },
-      {
-        status:
-          error instanceof DomainError && error.code === "UNAUTHORIZED"
-            ? 401
-            : error instanceof DomainError && error.code === "FORBIDDEN"
-              ? 403
-              : 400,
-      },
+    return failureResponse(
+      error,
+      "evidence.intent",
+      "Upload failed. Please try again.",
     );
   }
 }

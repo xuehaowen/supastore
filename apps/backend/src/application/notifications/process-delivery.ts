@@ -18,6 +18,7 @@ import type {
 import { prepareNotification } from "./template-manager";
 import { SMS_EVENTS, smsDeliveryAllowed, smsQuietUntil } from "./sms-policy";
 import { deliveryOutcome } from "./delivery-policy";
+import { logFailure, safeFailureCode } from "@/infrastructure/http/failure";
 import {
   processNotificationInboxBatch,
   wakeNotificationInbox,
@@ -161,6 +162,18 @@ async function processSingleNotification(
       const id = String(row.id),
         recipient = String(row.recipient),
         eventCreatedAt = new Date(String(row.event_created_at));
+      if (row.expires_at && new Date(String(row.expires_at)) <= new Date()) {
+        await tx
+          .update(eventDeliveries)
+          .set({
+            status: "suppressed",
+            providerStatus: "notification_expired",
+            preparedMessage: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(eventDeliveries.id, id));
+        continue;
+      }
       if (
         row.provider_name &&
         (row.provider_name !== sender.identity.provider ||
@@ -244,12 +257,15 @@ async function processSingleNotification(
           });
           prepared = output.message;
           templateVersionId = output.versionId;
-        } catch {
+        } catch (error) {
+          logFailure(error, "notification.prepare", { deliveryId: id });
           await tx
             .update(eventDeliveries)
             .set({
               status: "review",
               providerStatus: "template_preparation_failed",
+              failureCode: safeFailureCode(error),
+              updatedAt: new Date(),
             })
             .where(eq(eventDeliveries.id, id));
           continue;
@@ -337,6 +353,20 @@ async function processSingleNotification(
         delivery.leaseExpiresAt <= new Date()
       )
         return false;
+      if (delivery.expiresAt && delivery.expiresAt <= new Date()) {
+        await tx
+          .update(eventDeliveries)
+          .set({
+            status: "suppressed",
+            providerStatus: "notification_expired",
+            preparedMessage: null,
+            leaseToken: null,
+            leaseExpiresAt: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(eventDeliveries.id, claim.id));
+        return false;
+      }
       if (channel === "sms") {
         const [preference] = claim.customerId
           ? await tx
@@ -410,7 +440,8 @@ async function processSingleNotification(
           : await (claim.sender as SmsSender).send(
               claim.prepared as SmsMessage,
             );
-    } catch {
+    } catch (error) {
+      logFailure(error, "notification.transport", { deliveryId: claim.id });
       result = { status: "unknown", code: "transport_exception" };
     }
     await db.transaction(async (tx) => {
@@ -463,6 +494,7 @@ async function processSingleNotification(
             (hadUncertainty && result.status === "rejected")
               ? `unknown:${result.code}`
               : outcome.providerStatus,
+          failureCode: result.status === "accepted" ? null : result.code,
           providerMessageId:
             result.status === "accepted"
               ? result.providerMessageId
@@ -497,6 +529,13 @@ export async function processNotificationBatch(
 ) {
   // Recovery describes prior submissions and does not require a currently enabled sender.
   await recoverExpiredDispatches(channel);
+  // Expired, never-submitted links need no provider reconciliation, including
+  // template reviews and queues whose provider is currently disabled.
+  await db.execute(sql`UPDATE event_deliveries SET status='suppressed', provider_status='notification_expired',
+    prepared_message=NULL, lease_token=NULL, lease_expires_at=NULL, updated_at=now()
+    WHERE id IN (SELECT id FROM event_deliveries WHERE channel=${channel}
+      AND expires_at <= now() AND attempts=0 AND status IN ('pending','retrying','review')
+      ORDER BY expires_at,id LIMIT 100 FOR UPDATE SKIP LOCKED)`);
   const batchSize = Math.max(1, Math.min(100, options.batchSize ?? 10));
   let processed = 0;
   for (let index = 0; index < batchSize; index++) {

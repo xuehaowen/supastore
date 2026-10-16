@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import { workerHealth } from "@/infrastructure/runtime/worker";
-import { logger } from "@/infrastructure/security/logger";
+import { logFailure } from "@/infrastructure/http/failure";
 
 export const dynamic = "force-dynamic";
 
@@ -62,9 +62,14 @@ export async function GET() {
       : 0;
 
     const worker = workerHealth();
+    const status =
+      worker.status === "ok" &&
+      (counts.review > 0 || counts.exhausted > 0 || counts.failed > 0)
+        ? "degraded"
+        : worker.status;
     return NextResponse.json(
       {
-        status: worker.status,
+        status,
         worker,
         outbox: {
           pending: counts.pending,
@@ -85,12 +90,12 @@ export async function GET() {
         timestamp: new Date().toISOString(),
       },
       {
-        status: worker.status === "ok" ? 200 : 503,
+        status: status === "ok" ? 200 : 503,
         headers: { "Cache-Control": "no-store" },
       },
     );
   } catch (error) {
-    logger.error("Worker health query failed.", error);
+    logFailure(error, "health.worker");
     return NextResponse.json(
       {
         status: "unhealthy",

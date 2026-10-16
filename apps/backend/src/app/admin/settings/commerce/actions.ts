@@ -1,10 +1,10 @@
 "use server";
+import { actionError } from "@/infrastructure/http/failure";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { staffIdentity } from "@/infrastructure/web";
 import { updateStoreSettings } from "@/application/use-cases/store/update-store-settings";
 import { parseActionInteger } from "@/application/common/request-validation";
-import { DomainError } from "@/application/common/errors";
 export async function saveCommercePolicy(form: FormData) {
   let target = "/admin/settings/commerce?saved=1";
   try {
@@ -47,7 +47,7 @@ export async function saveCommercePolicy(form: FormData) {
     });
     revalidatePath("/admin", "layout");
   } catch (error) {
-    target = `/admin/settings/commerce?error=${encodeURIComponent(error instanceof DomainError ? error.message : "Invalid settings. Check the values and retry.")}`;
+    target = `/admin/settings/commerce?error=${encodeURIComponent(actionError(error, "admin.admin.settings.commerce.actions", "Invalid settings. Check the values and retry."))}`;
   }
   redirect(target);
 }

@@ -1,10 +1,10 @@
 "use server";
+import { actionError } from "@/infrastructure/http/failure";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { staffIdentity } from "@/infrastructure/web";
 import { issueStoreCredit } from "@/application/use-cases/store-credit/credit-operations";
 import { refundPurchase } from "@/application/use-cases/store-credit/purchase-refund";
-import { DomainError } from "@/application/common/errors";
 import { parseActionInteger } from "@/application/common/request-validation";
 import { adminOrderReturnContext } from "@/application/common/admin-return-context";
 const text = (form: FormData, key: string) =>
@@ -31,7 +31,7 @@ export async function issueCreditAction(form: FormData) {
     revalidatePath("/admin", "layout");
     revalidatePath("/[locale]/account", "page");
   } catch (e) {
-    destination += `?error=${encodeURIComponent(e instanceof DomainError ? e.message : "Unable to save credit. Please retry.")}`;
+    destination += `?error=${encodeURIComponent(actionError(e, "admin.admin.credit-actions", "Unable to save credit. Please retry."))}`;
   }
   redirect(destination);
 }
@@ -86,7 +86,11 @@ export async function refundPurchaseAction(form: FormData) {
   } catch (e) {
     destination.searchParams.set(
       "error",
-      e instanceof DomainError ? e.message : "Unable to authorize refund.",
+      actionError(
+        e,
+        "admin.admin.credit-actions",
+        "Unable to authorize refund.",
+      ),
     );
   }
   redirect(destination.pathname + destination.search);

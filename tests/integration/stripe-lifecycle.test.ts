@@ -113,23 +113,106 @@ describe.skipIf(!server)("Stripe durable payment lifecycle", () => {
     return { id: order!.id as string, token, session, adapter, network };
   }
   it("defers failing reconciliation records and progresses newer sessions", async () => {
-    const first = await fixture(), second = await fixture();
-    await startStripeCheckout({ orderId: first.id, sessionToken: first.token }, first.adapter);
-    await startStripeCheckout({ orderId: second.id, sessionToken: second.token }, second.adapter);
+    const first = await fixture(),
+      second = await fixture();
+    await startStripeCheckout(
+      { orderId: first.id, sessionToken: first.token },
+      first.adapter,
+    );
+    await startStripeCheckout(
+      { orderId: second.id, sessionToken: second.token },
+      second.adapter,
+    );
     const retrieve = vi.fn().mockImplementation(async (id: string) => {
-      if (id === first.session.id) throw Object.assign(new Error("private provider details"), { code: "ETIMEDOUT" });
+      if (id === first.session.id)
+        throw Object.assign(new Error("private provider details"), {
+          code: "ETIMEDOUT",
+        });
       return second.adapter.retrieveCheckoutSession(id);
     });
-    const adapter = Object.assign(Object.create(first.adapter), { retrieveCheckoutSession: retrieve });
-    const spy = vi.spyOn(paymentAdapters, "paymentProviderFromEnvironment").mockReturnValue(adapter);
+    const adapter = Object.assign(Object.create(first.adapter), {
+      retrieveCheckoutSession: retrieve,
+    });
+    const spy = vi
+      .spyOn(paymentAdapters, "paymentProviderFromEnvironment")
+      .mockReturnValue(adapter);
     try {
       expect(await reconcileStripeInbox(1)).toMatchObject({ failed: 1 });
-      expect(await reconcileStripeInbox(1)).toMatchObject({ succeeded: 1, deferred: 1 });
-      expect(retrieve.mock.calls.map(call => call[0])).toEqual([first.session.id, second.session.id]);
+      expect(await reconcileStripeInbox(1)).toMatchObject({
+        succeeded: 1,
+        deferred: 1,
+      });
+      expect(retrieve.mock.calls.map((call) => call[0])).toEqual([
+        first.session.id,
+        second.session.id,
+      ]);
     } finally {
       spy.mockRestore();
       await client`update stripe_checkout_attempts set status='review' where order_id in (${first.id},${second.id})`;
     }
+  });
+  it("reserves polling work immediately before each provider request", async () => {
+    const first = await fixture(),
+      second = await fixture();
+    await startStripeCheckout(
+      { orderId: first.id, sessionToken: first.token },
+      first.adapter,
+    );
+    await startStripeCheckout(
+      { orderId: second.id, sessionToken: second.token },
+      second.adapter,
+    );
+    const retrieve = vi.fn().mockImplementation(async (id: string) => {
+      if (id === first.session.id) {
+        const [waiting] =
+          await client`select retry_after <= now() as due from stripe_checkout_attempts where order_id=${second.id}`;
+        expect(waiting!.due).toBe(true);
+        return first.adapter.retrieveCheckoutSession(id);
+      }
+      return second.adapter.retrieveCheckoutSession(id);
+    });
+    const adapter = Object.assign(Object.create(first.adapter), {
+      retrieveCheckoutSession: retrieve,
+    });
+    const spy = vi
+      .spyOn(paymentAdapters, "paymentProviderFromEnvironment")
+      .mockReturnValue(adapter);
+    try {
+      expect(await reconcileStripeInbox(2)).toMatchObject({
+        succeeded: 2,
+        failed: 0,
+      });
+    } finally {
+      spy.mockRestore();
+      await client`update stripe_checkout_attempts set status='review' where order_id in (${first.id},${second.id})`;
+    }
+  });
+  it("defers a malformed inbox record without starving newer events", async () => {
+    const bad = {
+      id: `evt_${randomUUID()}`,
+      type: "checkout.session.completed",
+      livemode: false,
+      data: { object: {} },
+    };
+    const good = {
+      id: `evt_${randomUUID()}`,
+      type: "ignored.fixture",
+      livemode: false,
+      data: { object: {} },
+    };
+    await client`insert into stripe_webhook_inbox(event_id,event_type,payload) values(${bad.id},${bad.type},${JSON.stringify(bad)}::jsonb),(${good.id},${good.type},${JSON.stringify(good)}::jsonb)`;
+    await client`update stripe_webhook_inbox set retry_after=now()-interval '1 minute' where event_id=${bad.id}`;
+    expect(await reconcileStripeInbox(1)).toMatchObject({ failed: 1 });
+    expect(await reconcileStripeInbox(1)).toMatchObject({
+      succeeded: 1,
+      deferred: 1,
+    });
+    expect(
+      (
+        await client`select status from stripe_webhook_inbox where event_id=${good.id}`
+      )[0]!.status,
+    ).toBe("processed");
+    await client`update stripe_webhook_inbox set status='review' where event_id=${bad.id}`;
   });
   it("rejects another order's proof before creating a payment intent", async () => {
     const f = await fixture();

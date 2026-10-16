@@ -18,6 +18,19 @@ export function smtpFailure(error: unknown): SendResult {
     return { status: "rejected", code: "SMTP_AUTH", retryable: false };
   if (e.code === "EDNS" || e.code === "ECONNREFUSED")
     return { status: "rejected", code: "SMTP_CONNECT", retryable: true };
+  if (
+    ["ECONNECTION", "ETIMEDOUT", "ESOCKET"].includes(String(e.code)) &&
+    [
+      "CONN",
+      "EHLO",
+      "HELO",
+      "STARTTLS",
+      "AUTH",
+      "MAIL FROM",
+      "RCPT TO",
+    ].includes(String(e.command))
+  )
+    return { status: "rejected", code: "SMTP_CONNECT", retryable: true };
   // Socket loss/timeout after DATA may hide a successful submission.
   return { status: "unknown", code: "SMTP_SUBMISSION_UNKNOWN" };
 }

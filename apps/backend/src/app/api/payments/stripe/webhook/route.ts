@@ -1,4 +1,4 @@
-import { logger } from "@/infrastructure/security/logger";
+import { logFailure } from "@/infrastructure/http/failure";
 import { acceptStripeEvent } from "@/application/use-cases/payments/stripe-checkout";
 import {
   verifyStripeWebhook,
@@ -42,9 +42,7 @@ export async function POST(request: Request) {
   try {
     return Response.json(await acceptStripeEvent(event));
   } catch (error) {
-    logger
-      .child({ eventId: event.id })
-      .error("Stripe webhook remains pending", error);
+    logFailure(error, "stripe.webhook", { eventId: event.id });
     return Response.json(
       { error: "Payment event requires retry." },
       { status: 503 },
