@@ -1,16 +1,16 @@
 # Merchant setup and operations
 
-This is an intended task guide. No screens or working commands exist yet. [Business workflows](business-workflows.md) define the complete rules; [scope](product-scope.md) lists supported shops and limitations.
+This is the merchant task guide. The [journey index](critical-user-journeys.md) tracks acceptance outcomes and coverage; [business workflows](business-workflows.md) define the complete rules; [current capabilities](system-capabilities.md) records implemented features and limitations.
 
 ## Setup
 
-1. Create the owner through protected setup and add staff with operational access.
+1. Create admin users through trusted commands in a terminal, establishing their authentication identity and active owner/staff membership. Then sign in and complete protected store setup. The admin UI has no user creation/invitation flow; Settings manages only existing memberships. Customer registration does not grant admin access. Demo seeding is not a general production staff-provisioning procedure.
 2. Set branding, support/policy pages, locale, timezone and currency.
 3. Configure shipping, optional pickup, tax, a manual payment account or cash drawer, and email. Send a test message.
 4. Add products, variants, images and translations, or preview a product CSV import.
 5. Complete a synthetic purchase, payment, fulfillment and refund before launch.
 
-Currency locks after the first order. Availability is manual; the store does not reserve stock or pickup capacity. Cash must be collected before preparation. Installation requires an application host, database, object storage and email provider; see the [deployment guide](development-deployment.md).
+Currency locks after the first order. Placement reserves tracked stock and configured slot capacity; untracked variants require an explicit count to enable stock tracking. Cash must be collected before preparation. Installation requires an application host, database, object storage and email provider; see the [deployment guide](two-service-deployment.md).
 
 ## Find and process an order
 
