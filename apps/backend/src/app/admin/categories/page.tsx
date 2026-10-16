@@ -108,173 +108,175 @@ export default async function CategoriesPage({
     "";
   const visible = rows;
   return (
-    <main className="admin">
+    <>
       <AdminNav />
-      <p className="eyebrow">CATALOG STRUCTURE</p>
-      <h1>Categories</h1>
-      <p className="admin-description">
-        Organize products and maintain category handles and hierarchy.
-      </p>
-      <div className="admin-page-actions">
-        <AdminDialog
-          trigger="Add category"
-          title="Add category"
-          description="Create a catalog category and optionally place it under a parent."
-        >
-          <form action={saveCategory} className="grid gap-4">
-            <Field name="name" label="Category name" />
-            <Field name="slug" label="Category handle" />
-            <label>
-              Parent category
-              <NativeSelect name="parentId">
-                <option value="">None</option>
-                {groups.map((item) => (
-                  <option value={item.id} key={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            </label>
-            <Button type="submit">Add category</Button>
-          </form>
-        </AdminDialog>
-      </div>
-      <CatalogTabs />
-      <Notice error={query.error} />
-      <form method="get" className="admin-filter-bar">
-        <Hidden name="parentQ" value={parentSearch} />
-        <Field
-          label="Search categories"
-          name="q"
-          value={search}
-          required={false}
-        />
-        <Button type="submit">Search</Button>
-      </form>
-      <form method="get" className="admin-filter-bar">
-        <Hidden name="q" value={search} />
-        <Hidden name="page" value={String(page)} />
-        <Field
-          label="Find parent categories"
-          name="parentQ"
-          value={parentSearch}
-          required={false}
-        />
-        <Button type="submit">Search parent choices</Button>
-        <p className="text-sm text-muted-foreground">
-          Parent menus show up to 200 matches plus the current selections.
+      <main tabIndex={-1} id="admin-content" className="admin">
+        <p className="eyebrow">CATALOG STRUCTURE</p>
+        <h1>Categories</h1>
+        <p className="admin-description">
+          Organize products and maintain category handles and hierarchy.
         </p>
-      </form>
-      <div className="admin-grid">
-        <section className="panel">
-          <h2>Existing categories</h2>
-          <p className="admin-description">
-            {total
-              ? `${(page - 1) * 25 + (rows.length ? 1 : 0)}–${(page - 1) * 25 + rows.length} of ${total}`
-              : "0 categories"}
+        <div className="admin-page-actions">
+          <AdminDialog
+            trigger="Add category"
+            title="Add category"
+            description="Create a catalog category and optionally place it under a parent."
+          >
+            <form action={saveCategory} className="grid gap-4">
+              <Field name="name" label="Category name" />
+              <Field name="slug" label="Category handle" />
+              <label>
+                Parent category
+                <NativeSelect name="parentId">
+                  <option value="">None</option>
+                  {groups.map((item) => (
+                    <option value={item.id} key={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </label>
+              <Button type="submit">Add category</Button>
+            </form>
+          </AdminDialog>
+        </div>
+        <CatalogTabs />
+        <Notice error={query.error} />
+        <form method="get" className="admin-filter-bar">
+          <Hidden name="parentQ" value={parentSearch} />
+          <Field
+            label="Search categories"
+            name="q"
+            value={search}
+            required={false}
+          />
+          <Button type="submit">Search</Button>
+        </form>
+        <form method="get" className="admin-filter-bar">
+          <Hidden name="q" value={search} />
+          <Hidden name="page" value={String(page)} />
+          <Field
+            label="Find parent categories"
+            name="parentQ"
+            value={parentSearch}
+            required={false}
+          />
+          <Button type="submit">Search parent choices</Button>
+          <p className="text-sm text-muted-foreground">
+            Parent menus show up to 200 matches plus the current selections.
           </p>
-          {visible.length === 0 && (
-            <p className="admin-empty">No categories yet.</p>
-          )}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Category</TableHead>
-                <TableHead>Handle</TableHead>
-                <TableHead>Products</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {visible.map(({ category, productCount }) => (
-                <TableRow key={category.id}>
-                  <TableCell>
-                    <strong>{category.name}</strong>
-                    <small className="block text-muted-foreground">
-                      {path(category.id)}
-                    </small>
-                  </TableCell>
-                  <TableCell>/{category.slug}</TableCell>
-                  <TableCell>{productCount}</TableCell>
-                  <TableCell>
-                    <div className="table-actions">
-                      <AdminDialog
-                        trigger="Edit category"
-                        title={`Edit category · ${category.name}`}
-                      >
-                        <form action={editCategory} className="grid gap-4">
-                          <Hidden name="categoryId" value={category.id} />
-                          <Field
-                            name="name"
-                            label="Category name"
-                            value={category.name}
-                          />
-                          <Field
-                            name="slug"
-                            label="Category handle"
-                            value={category.slug}
-                          />
-                          <label>
-                            Parent category
-                            <NativeSelect
-                              name="parentId"
-                              defaultValue={category.parentId ?? ""}
-                            >
-                              <option value="">None</option>
-                              {groups
-                                .filter((item) => item.id !== category.id)
-                                .map((item) => (
-                                  <option value={item.id} key={item.id}>
-                                    {item.name}
-                                  </option>
-                                ))}
-                            </NativeSelect>
-                          </label>
-                          <Button type="submit" variant="outline">
-                            Save category
-                          </Button>
-                        </form>
-                      </AdminDialog>
-                      <AdminDialog
-                        trigger="Remove"
-                        title={`Remove category · ${category.name}`}
-                        description={`This removes the category and its ${productCount} product associations. Products are retained. Move child categories before removing their parent.`}
-                      >
-                        <form action={deleteCategory} className="grid gap-4">
-                          <Hidden name="categoryId" value={category.id} />
-                          <Field
-                            name="reason"
-                            label={`Reason to remove ${category.name}`}
-                          />
-                          <Button type="submit" variant="outline">
-                            Remove category
-                          </Button>
-                        </form>
-                      </AdminDialog>
-                    </div>
-                  </TableCell>
+        </form>
+        <div className="admin-grid">
+          <section className="panel">
+            <h2>Existing categories</h2>
+            <p className="admin-description">
+              {total
+                ? `${(page - 1) * 25 + (rows.length ? 1 : 0)}–${(page - 1) * 25 + rows.length} of ${total}`
+                : "0 categories"}
+            </p>
+            {visible.length === 0 && (
+              <p className="admin-empty">No categories yet.</p>
+            )}
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Handle</TableHead>
+                  <TableHead>Products</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <nav className="admin-pagination" aria-label="Category pages">
-            {page > 1 && (
-              <Link
-                href={`/admin/categories?q=${encodeURIComponent(search)}&parentQ=${encodeURIComponent(parentSearch)}&page=${page - 1}`}
-              >
-                ← Previous
-              </Link>
-            )}
-            {page * 25 < total && (
-              <Link
-                href={`/admin/categories?q=${encodeURIComponent(search)}&parentQ=${encodeURIComponent(parentSearch)}&page=${page + 1}`}
-              >
-                Next →
-              </Link>
-            )}
-          </nav>
-        </section>
-      </div>
-    </main>
+              </TableHeader>
+              <TableBody>
+                {visible.map(({ category, productCount }) => (
+                  <TableRow key={category.id}>
+                    <TableCell>
+                      <strong>{category.name}</strong>
+                      <small className="block text-muted-foreground">
+                        {path(category.id)}
+                      </small>
+                    </TableCell>
+                    <TableCell>/{category.slug}</TableCell>
+                    <TableCell>{productCount}</TableCell>
+                    <TableCell>
+                      <div className="table-actions">
+                        <AdminDialog
+                          trigger="Edit category"
+                          title={`Edit category · ${category.name}`}
+                        >
+                          <form action={editCategory} className="grid gap-4">
+                            <Hidden name="categoryId" value={category.id} />
+                            <Field
+                              name="name"
+                              label="Category name"
+                              value={category.name}
+                            />
+                            <Field
+                              name="slug"
+                              label="Category handle"
+                              value={category.slug}
+                            />
+                            <label>
+                              Parent category
+                              <NativeSelect
+                                name="parentId"
+                                defaultValue={category.parentId ?? ""}
+                              >
+                                <option value="">None</option>
+                                {groups
+                                  .filter((item) => item.id !== category.id)
+                                  .map((item) => (
+                                    <option value={item.id} key={item.id}>
+                                      {item.name}
+                                    </option>
+                                  ))}
+                              </NativeSelect>
+                            </label>
+                            <Button type="submit" variant="outline">
+                              Save category
+                            </Button>
+                          </form>
+                        </AdminDialog>
+                        <AdminDialog
+                          trigger="Remove"
+                          title={`Remove category · ${category.name}`}
+                          description={`This removes the category and its ${productCount} product associations. Products are retained. Move child categories before removing their parent.`}
+                        >
+                          <form action={deleteCategory} className="grid gap-4">
+                            <Hidden name="categoryId" value={category.id} />
+                            <Field
+                              name="reason"
+                              label={`Reason to remove ${category.name}`}
+                            />
+                            <Button type="submit" variant="outline">
+                              Remove category
+                            </Button>
+                          </form>
+                        </AdminDialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <nav className="admin-pagination" aria-label="Category pages">
+              {page > 1 && (
+                <Link
+                  href={`/admin/categories?q=${encodeURIComponent(search)}&parentQ=${encodeURIComponent(parentSearch)}&page=${page - 1}`}
+                >
+                  ← Previous
+                </Link>
+              )}
+              {page * 25 < total && (
+                <Link
+                  href={`/admin/categories?q=${encodeURIComponent(search)}&parentQ=${encodeURIComponent(parentSearch)}&page=${page + 1}`}
+                >
+                  Next →
+                </Link>
+              )}
+            </nav>
+          </section>
+        </div>
+      </main>
+    </>
   );
 }

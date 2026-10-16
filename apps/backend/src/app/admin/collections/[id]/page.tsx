@@ -61,210 +61,214 @@ export default async function CollectionDetail({
     </>
   );
   return (
-    <main className="admin">
+    <>
       <AdminNav />
-      <Link className="admin-back-link" href="/admin/collections">
-        ← Collections
-      </Link>
-      <h1>{collection.title}</h1>
-      <p className="admin-description">
-        Manage collection details, products, order, and translations.
-      </p>
-      <Notice error={query.error} />
-      <section className="panel">
-        <h2>Collection image</h2>
-        {collection.imageKey && (
-          <Image
-            src={`/api/admin/catalog-image?collectionId=${id}`}
-            alt={collection.imageAlt || collection.title}
-            width={240}
-            height={160}
-            unoptimized
-            className="rounded-lg object-cover"
-          />
-        )}
-        <CatalogImageUpload entityId={id} entityType="collection" />
-      </section>
-      <form method="get" className="filter-bar">
-        <Field
-          name="memberQ"
-          label="Search collection members"
-          value={query.memberQ || ""}
-          required={false}
-        />
-        <Button type="submit">Find members</Button>
-      </form>
-      <nav className="pager" aria-label="Collection member pages">
-        {page > 1 && (
-          <Link
-            href={`?${new URLSearchParams({ page: String(page - 1), memberQ: query.memberQ || "" })}`}
-          >
-            Previous
-          </Link>
-        )}
-        <span>Page {page}</span>
-        {data.hasNext && (
-          <Link
-            href={`?${new URLSearchParams({ page: String(page + 1), memberQ: query.memberQ || "" })}`}
-          >
-            Next
-          </Link>
-        )}
-      </nav>
-      {query.saved && (
-        <Alert>
-          <AlertDescription>Collection saved.</AlertDescription>
-        </Alert>
-      )}
-      <section className="panel">
-        <form action={saveCollectionAction} className="grid gap-4">
-          <Hidden name="id" value={id} />
-          <Hidden name="revision" value={String(collection.revision)} />
-          <Field
-            name="title"
-            label="Collection title"
-            value={collection.title}
-          />
-          <Field
-            name="handle"
-            label="Collection handle"
-            value={collection.handle}
-          />
-          <Field
-            name="description"
-            label="Description"
-            value={collection.description}
-            required={false}
-          />
-          <label className="check">
-            <Checkbox
-              name="published"
-              defaultChecked={collection.isPublished}
+      <main tabIndex={-1} id="admin-content" className="admin">
+        <Link className="admin-back-link" href="/admin/collections">
+          ← Collections
+        </Link>
+        <h1>{collection.title}</h1>
+        <p className="admin-description">
+          Manage collection details, products, order, and translations.
+        </p>
+        <Notice error={query.error} />
+        <section className="panel">
+          <h2>Collection image</h2>
+          {collection.imageKey && (
+            <Image
+              src={`/api/admin/catalog-image?collectionId=${id}`}
+              alt={collection.imageAlt || collection.title}
+              width={240}
+              height={160}
+              unoptimized
+              className="rounded-lg object-cover"
             />
-            Published
-          </label>
-          <Button type="submit">Save collection</Button>
-        </form>
-      </section>
-      <section className="panel">
-        <h2>Products</h2>
-        <form method="get" className="admin-filter-bar">
+          )}
+          <CatalogImageUpload entityId={id} entityType="collection" />
+        </section>
+        <form method="get" className="filter-bar">
           <Field
-            name="q"
-            label="Find products to add"
-            value={query.q}
+            name="memberQ"
+            label="Search collection members"
+            value={query.memberQ || ""}
             required={false}
           />
-          <Button type="submit">Search</Button>
+          <Button type="submit">Find members</Button>
         </form>
-        <form action={changeCollectionMemberAction} className="grid gap-4">
-          {identity}
-          <label>
-            Product
-            <NativeSelect name="productId" required>
-              <option value="">Choose product</option>
-              {candidates.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.title}
-                </option>
-              ))}
-            </NativeSelect>
-          </label>
-          <Field
-            name="position"
-            label="Position"
-            type="number"
-            value={members.length}
-          />
-          <Button type="submit">Add product</Button>
-        </form>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Product</TableHead>
-              <TableHead>Position</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {members.map(({ product, position }) => (
-              <TableRow key={product.id}>
-                <TableCell>{product.title}</TableCell>
-                <TableCell>{position}</TableCell>
-                <TableCell>
-                  <AdminDialog
-                    trigger="Edit membership"
-                    title={`Collection membership · ${product.title}`}
-                  >
-                    <form
-                      action={changeCollectionMemberAction}
-                      className="grid gap-4"
-                    >
-                      {identity}
-                      <Hidden name="productId" value={product.id} />
-                      <Field
-                        name="position"
-                        label="Position"
-                        type="number"
-                        value={position}
-                      />
-                      <Button type="submit">Save position</Button>
-                      <Button
-                        type="submit"
-                        name="remove"
-                        value="1"
-                        variant="outline"
-                      >
-                        Remove from collection
-                      </Button>
-                    </form>
-                  </AdminDialog>
-                </TableCell>
-              </TableRow>
-            ))}
-            {!members.length && (
-              <TableRow>
-                <TableCell colSpan={3}>
-                  No products in this collection.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </section>
-      <section className="panel">
-        <h2>Translations</h2>
-        {(["en", "zh"] as const).map((locale) => {
-          const existing = translations.find((item) => item.locale === locale);
-          return (
-            <AdminDialog
-              key={locale}
-              trigger={`Edit ${locale} translation`}
-              title={`Collection translation · ${locale}`}
+        <nav className="pager" aria-label="Collection member pages">
+          {page > 1 && (
+            <Link
+              href={`?${new URLSearchParams({ page: String(page - 1), memberQ: query.memberQ || "" })}`}
             >
-              <form
-                action={saveCollectionTranslationAction}
-                className="grid gap-4"
+              Previous
+            </Link>
+          )}
+          <span>Page {page}</span>
+          {data.hasNext && (
+            <Link
+              href={`?${new URLSearchParams({ page: String(page + 1), memberQ: query.memberQ || "" })}`}
+            >
+              Next
+            </Link>
+          )}
+        </nav>
+        {query.saved && (
+          <Alert>
+            <AlertDescription>Collection saved.</AlertDescription>
+          </Alert>
+        )}
+        <section className="panel">
+          <form action={saveCollectionAction} className="grid gap-4">
+            <Hidden name="id" value={id} />
+            <Hidden name="revision" value={String(collection.revision)} />
+            <Field
+              name="title"
+              label="Collection title"
+              value={collection.title}
+            />
+            <Field
+              name="handle"
+              label="Collection handle"
+              value={collection.handle}
+            />
+            <Field
+              name="description"
+              label="Description"
+              value={collection.description}
+              required={false}
+            />
+            <label className="check">
+              <Checkbox
+                name="published"
+                defaultChecked={collection.isPublished}
+              />
+              Published
+            </label>
+            <Button type="submit">Save collection</Button>
+          </form>
+        </section>
+        <section className="panel">
+          <h2>Products</h2>
+          <form method="get" className="admin-filter-bar">
+            <Field
+              name="q"
+              label="Find products to add"
+              value={query.q}
+              required={false}
+            />
+            <Button type="submit">Search</Button>
+          </form>
+          <form action={changeCollectionMemberAction} className="grid gap-4">
+            {identity}
+            <label>
+              Product
+              <NativeSelect name="productId" required>
+                <option value="">Choose product</option>
+                {candidates.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.title}
+                  </option>
+                ))}
+              </NativeSelect>
+            </label>
+            <Field
+              name="position"
+              label="Position"
+              type="number"
+              value={members.length}
+            />
+            <Button type="submit">Add product</Button>
+          </form>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Product</TableHead>
+                <TableHead>Position</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {members.map(({ product, position }) => (
+                <TableRow key={product.id}>
+                  <TableCell>{product.title}</TableCell>
+                  <TableCell>{position}</TableCell>
+                  <TableCell>
+                    <AdminDialog
+                      trigger="Edit membership"
+                      title={`Collection membership · ${product.title}`}
+                    >
+                      <form
+                        action={changeCollectionMemberAction}
+                        className="grid gap-4"
+                      >
+                        {identity}
+                        <Hidden name="productId" value={product.id} />
+                        <Field
+                          name="position"
+                          label="Position"
+                          type="number"
+                          value={position}
+                        />
+                        <Button type="submit">Save position</Button>
+                        <Button
+                          type="submit"
+                          name="remove"
+                          value="1"
+                          variant="outline"
+                        >
+                          Remove from collection
+                        </Button>
+                      </form>
+                    </AdminDialog>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {!members.length && (
+                <TableRow>
+                  <TableCell colSpan={3}>
+                    No products in this collection.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </section>
+        <section className="panel">
+          <h2>Translations</h2>
+          {(["en", "zh"] as const).map((locale) => {
+            const existing = translations.find(
+              (item) => item.locale === locale,
+            );
+            return (
+              <AdminDialog
+                key={locale}
+                trigger={`Edit ${locale} translation`}
+                title={`Collection translation · ${locale}`}
               >
-                <Hidden name="collectionId" value={id} />
-                <Hidden name="locale" value={locale} />
-                <Field
-                  name="title"
-                  label="Translated title"
-                  value={existing?.title}
-                />
-                <Field
-                  name="description"
-                  label="Translated description"
-                  value={existing?.description}
-                  required={false}
-                />
-                <Button type="submit">Save translation</Button>
-              </form>
-            </AdminDialog>
-          );
-        })}
-      </section>
-    </main>
+                <form
+                  action={saveCollectionTranslationAction}
+                  className="grid gap-4"
+                >
+                  <Hidden name="collectionId" value={id} />
+                  <Hidden name="locale" value={locale} />
+                  <Field
+                    name="title"
+                    label="Translated title"
+                    value={existing?.title}
+                  />
+                  <Field
+                    name="description"
+                    label="Translated description"
+                    value={existing?.description}
+                    required={false}
+                  />
+                  <Button type="submit">Save translation</Button>
+                </form>
+              </AdminDialog>
+            );
+          })}
+        </section>
+      </main>
+    </>
   );
 }

@@ -15,13 +15,16 @@ export function CategoryPicker({
   options,
   selected = emptyOptions,
   multiple = true,
+  compact = false,
 }: {
   name: string;
   label: string;
   options: Option[];
   selected?: Option[];
   multiple?: boolean;
+  compact?: boolean;
 }) {
+  const disclosure = useRef<HTMLDetailsElement>(null);
   const [matches, setMatches] = useState(options),
     [chosen, setChosen] = useState(selected);
   const [query, setQuery] = useState(""),
@@ -71,7 +74,7 @@ export function CategoryPicker({
     ...chosen.filter((item) => !matches.some((match) => match.id === item.id)),
     ...matches,
   ];
-  return (
+  const fields = (
     <fieldset className="grid gap-3">
       <legend>{label}</legend>
       <label>
@@ -99,11 +102,15 @@ export function CategoryPicker({
           <NativeSelect
             name={name}
             value={chosen[0]?.id || ""}
-            onChange={(event) =>
+            onChange={(event) => {
               setChosen(
                 visible.filter((item) => item.id === event.target.value),
-              )
-            }
+              );
+              if (compact && disclosure.current) {
+                disclosure.current.open = false;
+                disclosure.current.querySelector("summary")?.focus();
+              }
+            }}
           >
             <option value="">All categories</option>
             {visible.map((item) => (
@@ -136,5 +143,15 @@ export function CategoryPicker({
         ))
       )}
     </fieldset>
+  );
+  return compact ? (
+    <details ref={disclosure} className="category-filter-picker">
+      <summary>
+        {label}: {chosen[0]?.label ?? "All categories"}
+      </summary>
+      {fields}
+    </details>
+  ) : (
+    fields
   );
 }

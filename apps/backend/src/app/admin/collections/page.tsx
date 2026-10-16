@@ -49,87 +49,93 @@ export default async function Collections({
   const pageUrl = (target: number) =>
     `/admin/collections?${new URLSearchParams({ q: search, page: String(target) })}`;
   return (
-    <main className="admin">
+    <>
       <AdminNav />
-      <h1>Collections</h1>
-      <p className="admin-description">
-        Curate product groups for your storefront. Products can belong to
-        multiple collections.
-      </p>
-      <div className="admin-page-actions">
-        <AdminDialog trigger="Add collection" title="Add collection">
-          <form action={saveCollectionAction} className="grid gap-4">
-            <Field name="title" label="Collection title" />
-            <Field name="handle" label="Collection handle" />
-            <Field name="description" label="Description" required={false} />
-            <label className="flex items-center gap-2">
-              <Checkbox name="published" /> Publish collection
-            </label>
-            <Button type="submit">Create collection</Button>
-          </form>
-        </AdminDialog>
-      </div>
-      <CatalogTabs />
-      <Notice error={query.error} />
-      <form method="get" className="admin-filter-bar">
-        <Field
-          name="q"
-          label="Search collections"
-          value={search}
-          required={false}
-        />
-        <Button type="submit">Search</Button>
-      </form>
-      <section className="panel">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Collection</TableHead>
-              <TableHead>Handle</TableHead>
-              <TableHead>Products</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.slice(0, 25).map(({ collection, count }) => (
-              <TableRow key={collection.id}>
-                <TableCell>{collection.title}</TableCell>
-                <TableCell>/{collection.handle}</TableCell>
-                <TableCell>{count}</TableCell>
-                <TableCell>
-                  <Badge
-                    variant={collection.isPublished ? "default" : "secondary"}
-                  >
-                    {collection.isPublished ? "Published" : "Draft"}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Link href={`/admin/collections/${collection.id}`}>
-                    Manage
-                  </Link>
-                </TableCell>
-              </TableRow>
-            ))}
-            {!rows.length && (
+      <main tabIndex={-1} id="admin-content" className="admin">
+        <h1>Collections</h1>
+        <p className="admin-description">
+          Curate product groups for your storefront. Products can belong to
+          multiple collections.
+        </p>
+        <div className="admin-page-actions">
+          <AdminDialog trigger="Add collection" title="Add collection">
+            <form action={saveCollectionAction} className="grid gap-4">
+              <Field name="title" label="Collection title" />
+              <Field name="handle" label="Collection handle" />
+              <Field name="description" label="Description" required={false} />
+              <label className="flex items-center gap-2">
+                <Checkbox name="published" /> Publish collection
+              </label>
+              <Button type="submit">Create collection</Button>
+            </form>
+          </AdminDialog>
+        </div>
+        <CatalogTabs />
+        <Notice error={query.error} />
+        <form method="get" className="admin-filter-bar">
+          <Field
+            name="q"
+            label="Search collections"
+            value={search}
+            required={false}
+          />
+          <Button type="submit">Search</Button>
+        </form>
+        <section className="panel">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5}>
-                  No collections match this search.
-                </TableCell>
+                <TableHead>Collection</TableHead>
+                <TableHead>Handle</TableHead>
+                <TableHead>Products</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.slice(0, 25).map(({ collection, count }) => (
+                <TableRow key={collection.id}>
+                  <TableCell>{collection.title}</TableCell>
+                  <TableCell>/{collection.handle}</TableCell>
+                  <TableCell>{count}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={collection.isPublished ? "default" : "secondary"}
+                    >
+                      {collection.isPublished ? "Published" : "Draft"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Link href={`/admin/collections/${collection.id}`}>
+                      Manage
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {!rows.length && (
+                <TableRow>
+                  <TableCell colSpan={5}>
+                    No collections match this search.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+          <nav className="admin-pagination" aria-label="Collection pages">
+            {page > 1 ? (
+              <Link href={pageUrl(page - 1)}>Previous</Link>
+            ) : (
+              <span />
             )}
-          </TableBody>
-        </Table>
-        <nav className="admin-pagination" aria-label="Collection pages">
-          {page > 1 ? <Link href={pageUrl(page - 1)}>Previous</Link> : <span />}
-          <span>Page {page}</span>
-          {rows.length > 25 ? (
-            <Link href={pageUrl(page + 1)}>Next</Link>
-          ) : (
-            <span />
-          )}
-        </nav>
-      </section>
-    </main>
+            <span>Page {page}</span>
+            {rows.length > 25 ? (
+              <Link href={pageUrl(page + 1)}>Next</Link>
+            ) : (
+              <span />
+            )}
+          </nav>
+        </section>
+      </main>
+    </>
   );
 }

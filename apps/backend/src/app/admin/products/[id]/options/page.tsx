@@ -1,3 +1,4 @@
+import { ProductEditorNav } from "@/app/admin/product-editor-nav";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { and, asc, eq, sql } from "drizzle-orm";
@@ -131,153 +132,159 @@ export default async function ProductOptionsPage({
   const price = query.priceCents || "0";
   const legacy = variants.filter((v) => !v.combinationKey);
   return (
-    <main className="admin">
+    <>
       <AdminNav />
-      <Link href={`/admin/products/${id}/edit`}>← Edit product</Link>
-      <h1>Options & variants</h1>
-      <p className="admin-description">
-        {product.title} · Choose values, preview combinations, then select the
-        variants to create. Existing variants retain their IDs, titles, SKUs,
-        prices, and availability.
-      </p>
-      <Notice error={query.error || data.error} />
-      {query.generated !== undefined && (
-        <Alert>
-          <AlertDescription>
-            {query.generated} variants created. Existing variants preserved.
-          </AlertDescription>
-        </Alert>
-      )}
-      <section className="panel">
-        <h2>Product options</h2>
-        <Link href="/admin/attributes">
-          Manage reusable attributes & values
-        </Link>
-        <form method="get">
-          <Hidden name="preview" value="1" />
-          <Field
-            name="q"
-            label="Find an attribute"
-            value={search}
-            required={false}
-          />
-          <Field name="prefix" label="SKU prefix" value={prefix} />
-          <Field
-            name="priceCents"
-            label="Default price in minor units"
-            type="number"
-            value={price}
-          />
-          <p>
-            Choose up to four attributes. Generation is limited to 50
-            combinations.
-          </p>
-          {choices.map(({ attribute: a, value: v }) => (
-            <label className="check" key={v.id}>
-              <Checkbox
-                name="values"
-                value={v.id}
-                defaultChecked={valueIds.includes(v.id)}
-              />
-              {a.name}: {v.label} ({a.code} / {v.code})
-            </label>
-          ))}
-          {!choices.length && (
-            <p>No active values match. Add attributes and values first.</p>
-          )}
-          {data.truncated && (
-            <p>Showing 200 values. Refine the attribute search.</p>
-          )}
-          {valueIds
-            .filter((valueId) => !choices.some((c) => c.value.id === valueId))
-            .map((valueId) => (
-              <Hidden key={valueId} name="values" value={valueId} />
-            ))}
-          <Button type="submit">Preview combinations</Button>
-        </form>
-      </section>
-      {combinations.length > 0 && (
+      <main tabIndex={-1} id="admin-content" className="admin">
+        <Link href={`/admin/products/${id}/edit`}>← Edit product</Link>
+        <h1>Options & variants</h1>
+        <ProductEditorNav productId={id} />
+        <p className="admin-description">
+          {product.title} · Choose values, preview combinations, then select the
+          variants to create. Existing variants retain their IDs, titles, SKUs,
+          prices, and availability.
+        </p>
+        <Notice error={query.error || data.error} />
+        {query.generated !== undefined && (
+          <Alert>
+            <AlertDescription>
+              {query.generated} variants created. Existing variants preserved.
+            </AlertDescription>
+          </Alert>
+        )}
         <section className="panel">
-          <h2>Review {combinations.length} combinations</h2>
-          <form action={generateVariantsAction}>
-            <Hidden name="productId" value={id} />
-            <Hidden name="quoteVersion" value={String(product.quoteVersion)} />
-            <Hidden name="prefix" value={prefix} />
-            <Hidden name="priceCents" value={price} />
-            {valueIds.map((valueId) => (
-              <Hidden key={valueId} name="values" value={valueId} />
+          <h2>Product options</h2>
+          <Link href="/admin/attributes">
+            Manage reusable attributes & values
+          </Link>
+          <form method="get">
+            <Hidden name="preview" value="1" />
+            <Field
+              name="q"
+              label="Find an attribute"
+              value={search}
+              required={false}
+            />
+            <Field name="prefix" label="SKU prefix" value={prefix} />
+            <Field
+              name="priceCents"
+              label="Default price in minor units"
+              type="number"
+              value={price}
+            />
+            <p>
+              Choose up to four attributes. Generation is limited to 50
+              combinations.
+            </p>
+            {choices.map(({ attribute: a, value: v }) => (
+              <label className="check" key={v.id}>
+                <Checkbox
+                  name="values"
+                  value={v.id}
+                  defaultChecked={valueIds.includes(v.id)}
+                />
+                {a.name}: {v.label} ({a.code} / {v.code})
+              </label>
             ))}
-            {legacy.length > 0 && (
-              <fieldset>
-                <legend>Map existing variants explicitly</legend>
-                <p>
-                  Match each existing variant to its exact option values. Labels
-                  and translations are never guessed. Each combination can
-                  belong to only one variant.
-                </p>
-                {legacy.map((v) => (
-                  <label key={v.id}>
-                    <Hidden name="legacyIds" value={v.id} />
-                    {v.title} · {v.sku}
-                    <NativeSelect
-                      name={`mapping.${v.id}`}
-                      aria-label={`Map ${v.sku}`}
-                      required
-                      defaultValue=""
-                    >
-                      <option value="">Choose exact combination</option>
-                      {combinations.map((c) => (
-                        <option key={c.key} value={c.key}>
-                          {c.title}
-                        </option>
-                      ))}
-                    </NativeSelect>
-                  </label>
-                ))}
-              </fieldset>
+            {!choices.length && (
+              <p>No active values match. Add attributes and values first.</p>
             )}
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Create</TableHead>
-                  <TableHead>Combination</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {combinations.map((c) => {
-                  const current = variants.find(
-                    (v) => v.combinationKey === c.key,
-                  );
-                  return (
-                    <TableRow key={c.key}>
-                      <TableCell>
-                        {current ? (
-                          "Retained"
-                        ) : (
-                          <Checkbox
-                            name="keys"
-                            value={c.key}
-                            defaultChecked
-                            aria-label={`Create ${c.title}`}
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell>{c.title}</TableCell>
-                      <TableCell>{current?.sku || c.sku}</TableCell>
-                      <TableCell>
-                        {current ? "Existing" : "New (or explicitly mapped)"}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-            <Button type="submit">Save options & generate variants</Button>
+            {data.truncated && (
+              <p>Showing 200 values. Refine the attribute search.</p>
+            )}
+            {valueIds
+              .filter((valueId) => !choices.some((c) => c.value.id === valueId))
+              .map((valueId) => (
+                <Hidden key={valueId} name="values" value={valueId} />
+              ))}
+            <Button type="submit">Preview combinations</Button>
           </form>
         </section>
-      )}
-    </main>
+        {combinations.length > 0 && (
+          <section className="panel">
+            <h2>Review {combinations.length} combinations</h2>
+            <form action={generateVariantsAction}>
+              <Hidden name="productId" value={id} />
+              <Hidden
+                name="quoteVersion"
+                value={String(product.quoteVersion)}
+              />
+              <Hidden name="prefix" value={prefix} />
+              <Hidden name="priceCents" value={price} />
+              {valueIds.map((valueId) => (
+                <Hidden key={valueId} name="values" value={valueId} />
+              ))}
+              {legacy.length > 0 && (
+                <fieldset>
+                  <legend>Map existing variants explicitly</legend>
+                  <p>
+                    Match each existing variant to its exact option values.
+                    Labels and translations are never guessed. Each combination
+                    can belong to only one variant.
+                  </p>
+                  {legacy.map((v) => (
+                    <label key={v.id}>
+                      <Hidden name="legacyIds" value={v.id} />
+                      {v.title} · {v.sku}
+                      <NativeSelect
+                        name={`mapping.${v.id}`}
+                        aria-label={`Map ${v.sku}`}
+                        required
+                        defaultValue=""
+                      >
+                        <option value="">Choose exact combination</option>
+                        {combinations.map((c) => (
+                          <option key={c.key} value={c.key}>
+                            {c.title}
+                          </option>
+                        ))}
+                      </NativeSelect>
+                    </label>
+                  ))}
+                </fieldset>
+              )}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Create</TableHead>
+                    <TableHead>Combination</TableHead>
+                    <TableHead>SKU</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {combinations.map((c) => {
+                    const current = variants.find(
+                      (v) => v.combinationKey === c.key,
+                    );
+                    return (
+                      <TableRow key={c.key}>
+                        <TableCell>
+                          {current ? (
+                            "Retained"
+                          ) : (
+                            <Checkbox
+                              name="keys"
+                              value={c.key}
+                              defaultChecked
+                              aria-label={`Create ${c.title}`}
+                            />
+                          )}
+                        </TableCell>
+                        <TableCell>{c.title}</TableCell>
+                        <TableCell>{current?.sku || c.sku}</TableCell>
+                        <TableCell>
+                          {current ? "Existing" : "New (or explicitly mapped)"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+              <Button type="submit">Save options & generate variants</Button>
+            </form>
+          </section>
+        )}
+      </main>
+    </>
   );
 }

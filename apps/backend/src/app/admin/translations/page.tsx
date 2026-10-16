@@ -155,61 +155,81 @@ export default async function TranslationsPage({
     </div>
   );
   return (
-    <main className="admin">
+    <>
       <AdminNav />
-      <p className="eyebrow">CATALOG LANGUAGES</p>
-      <h1>Translations</h1>
-      <p className="admin-description">
-        Base catalog content is {languageName(data.defaultLocale)}. Add and
-        maintain translations for each other storefront locale.
-      </p>
-      <Notice error={q.error} />
-      <form method="get" className="admin-filter-bar">
-        <label>
-          Translation locale
-          <NativeSelect name="locale" defaultValue={data.targetLocale}>
-            {data.availableLocales.map((locale) => (
-              <option value={locale} key={locale}>
-                {languageName(locale)} ({locale})
-              </option>
-            ))}
-          </NativeSelect>
-        </label>
-        <Button type="submit">Open locale</Button>
-      </form>
-      <section className="panel">
-        <h2>Products</h2>
-        {data.products.slice(0, 50).map((item) => editor("product", item))}
-        <QueuePagination
-          query={{ ...q, locale: data.targetLocale }}
-          path="/admin/translations"
-          parameter="productsPage"
-          page={productsPage}
-          hasNext={data.products.length > 50}
-        />
-      </section>
-      <section className="panel">
-        <h2>Categories</h2>
-        {data.categories.slice(0, 50).map((item) => editor("category", item))}
-        <QueuePagination
-          query={{ ...q, locale: data.targetLocale }}
-          path="/admin/translations"
-          parameter="categoriesPage"
-          page={categoriesPage}
-          hasNext={data.categories.length > 50}
-        />
-      </section>
-      <section className="panel">
-        <h2>Variants</h2>
-        {data.variants.slice(0, 50).map((item) => editor("variant", item))}
-        <QueuePagination
-          query={{ ...q, locale: data.targetLocale }}
-          path="/admin/translations"
-          parameter="variantsPage"
-          page={variantsPage}
-          hasNext={data.variants.length > 50}
-        />
-      </section>
-    </main>
+      <main tabIndex={-1} id="admin-content" className="admin">
+        <p className="eyebrow">CATALOG LANGUAGES</p>
+        <h1>Translations</h1>
+        <p className="admin-description">
+          Base catalog content is {languageName(data.defaultLocale)}. Add and
+          maintain translations for each other storefront locale.
+        </p>
+        <Notice error={q.error} />
+        <form method="get" className="admin-filter-bar">
+          <label>
+            Translation locale
+            <NativeSelect name="locale" defaultValue={data.targetLocale}>
+              {data.availableLocales.map((locale) => (
+                <option value={locale} key={locale}>
+                  {languageName(locale)} ({locale})
+                </option>
+              ))}
+            </NativeSelect>
+          </label>
+          <Button type="submit">Open locale</Button>
+        </form>
+        <section className="panel">
+          <h2>Products</h2>
+          {!data.products.length && (
+            <p className="admin-empty">
+              No products on this page. Add a product to start translating its
+              content.
+            </p>
+          )}
+          {data.products.slice(0, 50).map((item) => editor("product", item))}
+          <QueuePagination
+            query={{ ...q, locale: data.targetLocale }}
+            path="/admin/translations"
+            parameter="productsPage"
+            page={productsPage}
+            hasNext={data.products.length > 50}
+          />
+        </section>
+        <section className="panel">
+          <h2>Categories</h2>
+          {!data.categories.length && (
+            <p className="admin-empty">
+              No categories on this page. Create categories from Products to
+              organize translated content.
+            </p>
+          )}
+          {data.categories.slice(0, 50).map((item) => editor("category", item))}
+          <QueuePagination
+            query={{ ...q, locale: data.targetLocale }}
+            path="/admin/translations"
+            parameter="categoriesPage"
+            page={categoriesPage}
+            hasNext={data.categories.length > 50}
+          />
+        </section>
+        <section className="panel">
+          <h2>Variants</h2>
+          {!data.variants.length && (
+            <p className="admin-empty">
+              No variants on this page. Product variants appear here when they
+              are added to the catalog.
+            </p>
+          )}
+          {data.variants.slice(0, 50).map((item) => editor("variant", item))}
+          <QueuePagination
+            query={{ ...q, locale: data.targetLocale }}
+            path="/admin/translations"
+            parameter="variantsPage"
+            page={variantsPage}
+            hasNext={data.variants.length > 50}
+          />
+        </section>
+      </main>
+    </>
   );
 }

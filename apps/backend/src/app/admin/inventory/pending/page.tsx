@@ -6,6 +6,14 @@ import { orders } from "@/infrastructure/db/schema";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { staffIdentity } from "@/infrastructure/web";
 import { AdminNav } from "@/app/admin/admin-nav";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@supastore/ui/table";
 export default async function PendingHolds({
   searchParams,
 }: {
@@ -34,29 +42,62 @@ export default async function PendingHolds({
       .offset((page - 1) * 25);
   });
   return (
-    <main className="admin">
+    <>
       <AdminNav />
-      <Link href="/admin/inventory">← Inventory</Link>
-      <h1>Pending payment holds</h1>
-      <p>
-        These unpaid orders have held stock or credit for more than 24 hours.
-        Verify late transfers before recording payment or cancelling an order.
-        Holds remain active until explicit resolution.
-      </p>
-      <section className="panel">
-        {rows.slice(0, 25).map((o) => (
-          <p key={o.id}>
-            <Link href={`/admin/orders/${o.id}`}>{o.referenceCode}</Link> ·{" "}
-            {o.guestName} · Pending since {o.createdAt.toISOString()}
-          </p>
-        ))}
-        {!rows.length && <p>No overdue holds.</p>}
-      </section>
-      <nav className="pager" aria-label="Pending hold pages">
-        {page > 1 && <Link href={`?page=${page - 1}`}>Previous</Link>}
-        <span>Page {page}</span>
-        {rows.length > 25 && <Link href={`?page=${page + 1}`}>Next</Link>}
-      </nav>
-    </main>
+      <main tabIndex={-1} id="admin-content" className="admin">
+        <Link href="/admin/inventory">← Inventory</Link>
+        <h1>Pending payment holds</h1>
+        <p>
+          These unpaid orders have held stock or credit for more than 24 hours.
+          Verify late transfers before recording payment or cancelling an order.
+          Holds remain active until explicit resolution.
+        </p>
+        <section className="panel">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Order</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Pending since (UTC)</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.slice(0, 25).map((o) => (
+                <TableRow key={o.id}>
+                  <TableCell>
+                    <Link href={`/admin/orders/${o.id}`}>
+                      {o.referenceCode}
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    {o.guestName}
+                    <small>{o.guestEmail}</small>
+                  </TableCell>
+                  <TableCell>
+                    <time dateTime={o.createdAt.toISOString()}>
+                      {o.createdAt.toLocaleString("en-US", { timeZone: "UTC" })}
+                    </time>
+                  </TableCell>
+                  <TableCell>
+                    <Link href={`/admin/orders/${o.id}`}>Review hold</Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {!rows.length && (
+                <TableRow>
+                  <TableCell colSpan={4}>No overdue holds.</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </section>
+        <nav className="pager" aria-label="Pending hold pages">
+          {page > 1 && <Link href={`?page=${page - 1}`}>Previous</Link>}
+          <span>Page {page}</span>
+          {rows.length > 25 && <Link href={`?page=${page + 1}`}>Next</Link>}
+        </nav>
+      </main>
+    </>
   );
 }

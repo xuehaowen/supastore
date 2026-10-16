@@ -105,141 +105,145 @@ export default async function SlotsPage({
     };
   });
   return (
-    <main className="admin">
+    <>
       <AdminNav />
-      <h1>Fulfillment slot inventory</h1>
-      <QueuePagination
-        query={query}
-        path="/admin/inventory/slots"
-        parameter="page"
-        page={page}
-        hasNext={data.hasNext}
-      />
-      <p>
-        Capacity includes reserved and completed bookings. Variant quotas limit
-        units independently of counted stock. Configure schedules and capacity
-        in fulfillment settings; booked slots appear here.
-      </p>
-      {query.error && (
-        <Alert variant="destructive">
-          <AlertDescription>{query.error}</AlertDescription>
-        </Alert>
-      )}
-      {query.saved && (
-        <Alert>
-          <AlertDescription>Quota saved.</AlertDescription>
-        </Alert>
-      )}
-      {data.owner && (
-        <form action={createSlot} className="panel">
-          <h2>Configure an upcoming window</h2>
-          <p>
-            Choose a window from the configured weekly schedule before customers
-            book it, then set variant quotas below.
-          </p>
-          <label>
-            Location
-            <NativeSelect name="location" required>
-              {data.locations.map((location) => (
-                <option key={location.id} value={`pickup:${location.id}`}>
-                  Pickup: {location.name}
-                </option>
-              ))}
-              {data.areas
-                .filter((area) => area.isActive)
-                .map((area) => (
-                  <option key={area.id} value={`local_delivery:${area.id}`}>
-                    Delivery: {area.name}
+      <main tabIndex={-1} id="admin-content" className="admin">
+        <h1>Fulfillment slot inventory</h1>
+        <QueuePagination
+          query={query}
+          path="/admin/inventory/slots"
+          parameter="page"
+          page={page}
+          hasNext={data.hasNext}
+        />
+        <p>
+          Capacity includes reserved and completed bookings. Variant quotas
+          limit units independently of counted stock. Configure schedules and
+          capacity in fulfillment settings; booked slots appear here.
+        </p>
+        {query.error && (
+          <Alert variant="destructive">
+            <AlertDescription>{query.error}</AlertDescription>
+          </Alert>
+        )}
+        {query.saved && (
+          <Alert>
+            <AlertDescription>Quota saved.</AlertDescription>
+          </Alert>
+        )}
+        {data.owner && (
+          <form action={createSlot} className="panel">
+            <h2>Configure an upcoming window</h2>
+            <p>
+              Choose a window from the configured weekly schedule before
+              customers book it, then set variant quotas below.
+            </p>
+            <label>
+              Location
+              <NativeSelect name="location" required>
+                {data.locations.map((location) => (
+                  <option key={location.id} value={`pickup:${location.id}`}>
+                    Pickup: {location.name}
                   </option>
                 ))}
-            </NativeSelect>
-          </label>
-          <label>
-            Date
-            <Input name="date" type="date" required />
-          </label>
-          <label>
-            Window start
-            <Input name="startTime" type="time" required />
-          </label>
-          <Button type="submit">Create window</Button>
-        </form>
-      )}
-      <section className="panel mt-6">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Method / window</TableHead>
-              <TableHead>Bookings</TableHead>
-              <TableHead>Variant quotas</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.slots.map((slot) => (
-              <TableRow key={slot.id}>
-                <TableCell className="font-medium">
-                  {slot.pickupSlotId ? "Pickup" : "Local delivery"} {slot.date}{" "}
-                  {slot.startTime}–{slot.endTime} ({slot.timezone})
-                </TableCell>
-                <TableCell>
-                  {data.bookings.find((b) => b.slotId === slot.id)?.count ?? 0}{" "}
-                  / {slot.capacity ?? "Unlimited"}
-                </TableCell>
-                <TableCell>
-                  {data.quotas
-                    .filter((q) => q.slotId === slot.id)
-                    .map((q) => (
-                      <p key={q.id} className="text-sm">
-                        {q.sku}: {q.quantity}
-                      </p>
-                    ))}
-                  {data.owner && (
-                    <form
-                      action={saveSlotQuota}
-                      className="mt-2 flex flex-wrap items-center gap-2"
-                    >
-                      <input type="hidden" name="slotId" value={slot.id} />
-                      <VariantPicker
-                        name="variantId"
-                        label="Variant"
-                        scope="quota"
-                        initialOptions={data.variants.map((variant) => ({
-                          id: variant.id,
-                          label: variant.sku,
-                        }))}
-                      />
-                      <label className="text-xs">
-                        Max units
-                        <Input
-                          name="quantity"
-                          type="number"
-                          min="0"
-                          max="2147483647"
-                          required
-                          className="mt-1 w-24"
-                        />
-                      </label>
-                      <Button type="submit" size="sm" className="self-end">
-                        Save quota
-                      </Button>
-                    </form>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-            {!data.slots.length && (
+                {data.areas
+                  .filter((area) => area.isActive)
+                  .map((area) => (
+                    <option key={area.id} value={`local_delivery:${area.id}`}>
+                      Delivery: {area.name}
+                    </option>
+                  ))}
+              </NativeSelect>
+            </label>
+            <label>
+              Date
+              <Input name="date" type="date" required />
+            </label>
+            <label>
+              Window start
+              <Input name="startTime" type="time" required />
+            </label>
+            <Button type="submit">Create window</Button>
+          </form>
+        )}
+        <section className="panel mt-6">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell
-                  colSpan={3}
-                  className="text-center text-muted-foreground"
-                >
-                  No booked windows yet.
-                </TableCell>
+                <TableHead>Method / window</TableHead>
+                <TableHead>Bookings</TableHead>
+                <TableHead>Variant quotas</TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </section>
-    </main>
+            </TableHeader>
+            <TableBody>
+              {data.slots.map((slot) => (
+                <TableRow key={slot.id}>
+                  <TableCell className="font-medium">
+                    {slot.pickupSlotId ? "Pickup" : "Local delivery"}{" "}
+                    {slot.date} {slot.startTime}–{slot.endTime} ({slot.timezone}
+                    )
+                  </TableCell>
+                  <TableCell>
+                    {data.bookings.find((b) => b.slotId === slot.id)?.count ??
+                      0}{" "}
+                    / {slot.capacity ?? "Unlimited"}
+                  </TableCell>
+                  <TableCell>
+                    {data.quotas
+                      .filter((q) => q.slotId === slot.id)
+                      .map((q) => (
+                        <p key={q.id} className="text-sm">
+                          {q.sku}: {q.quantity}
+                        </p>
+                      ))}
+                    {data.owner && (
+                      <form
+                        action={saveSlotQuota}
+                        className="mt-2 flex flex-wrap items-center gap-2"
+                      >
+                        <input type="hidden" name="slotId" value={slot.id} />
+                        <VariantPicker
+                          name="variantId"
+                          label="Variant"
+                          scope="quota"
+                          initialOptions={data.variants.map((variant) => ({
+                            id: variant.id,
+                            label: variant.sku,
+                          }))}
+                        />
+                        <label className="text-xs">
+                          Max units
+                          <Input
+                            name="quantity"
+                            type="number"
+                            min="0"
+                            max="2147483647"
+                            required
+                            className="mt-1 w-24"
+                          />
+                        </label>
+                        <Button type="submit" size="sm" className="self-end">
+                          Save quota
+                        </Button>
+                      </form>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {!data.slots.length && (
+                <TableRow>
+                  <TableCell
+                    colSpan={3}
+                    className="text-center text-muted-foreground"
+                  >
+                    No booked windows yet.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </section>
+      </main>
+    </>
   );
 }

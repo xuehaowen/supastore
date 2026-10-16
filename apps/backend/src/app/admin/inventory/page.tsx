@@ -75,162 +75,166 @@ export default async function InventoryPage({
   const href = (p: number) =>
     `?${new URLSearchParams({ q: search, status: query.status || "", page: String(p) })}`;
   return (
-    <main className="admin">
+    <>
       <AdminNav />
-      <h1>Inventory</h1>
-      <p className="admin-description">
-        Available to sell is counted stock minus active order reservations.
-        Untracked variants have no quantity limit. Pending manual payments keep
-        their reservations until explicit cancellation.
-      </p>
-      <div className="admin-inventory-shortcuts">
-        <Link href="/admin/inventory/pending">
-          Review overdue payment holds
-        </Link>
-        <Link href="/admin/inventory/slots">
-          Manage fulfillment slot quotas
-        </Link>
-      </div>
-      <Notice error={query.error} />
-      {query.saved && (
-        <Alert>
-          <AlertDescription>Stock count recorded.</AlertDescription>
-        </Alert>
-      )}
-      <form method="get" className="filter-bar">
-        <Field
-          name="q"
-          label="Search inventory"
-          value={search}
-          required={false}
-        />
-        <label>
-          Status
-          <NativeSelect name="status" defaultValue={query.status || ""}>
-            <option value="">All variants</option>
-            <option value="low">Low stock (5 or fewer)</option>
-            <option value="shortage">Reservation shortage</option>
-          </NativeSelect>
-        </label>
-        <Button type="submit">Filter</Button>
-      </form>
-      <section className="panel">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Product / variant</TableHead>
-              <TableHead>SKU</TableHead>
-              <TableHead>On hand</TableHead>
-              <TableHead>Reserved</TableHead>
-              <TableHead>Available</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {result.rows
-              .slice(0, 25)
-              .map(({ product, variant: v, stock: s }) => (
-                <TableRow key={v.id}>
-                  <TableCell>
-                    <Link href={`/admin/products/${product.id}/edit`}>
-                      {product.title}
-                    </Link>
-                    <p>{v.title}</p>
-                  </TableCell>
-                  <TableCell>{v.sku}</TableCell>
-                  <TableCell>
-                    {s?.trackingEnabled ? s.onHand : "Untracked"}
-                  </TableCell>
-                  <TableCell>{s?.reserved || 0}</TableCell>
-                  <TableCell>
-                    {s?.trackingEnabled
-                      ? s.onHand < s.reserved
-                        ? "Shortage · handoff blocked"
-                        : s.onHand - s.reserved
-                      : "Unlimited"}
-                  </TableCell>
-                  <TableCell>
-                    <div className="admin-inventory-actions">
+      <main tabIndex={-1} id="admin-content" className="admin">
+        <h1>Inventory</h1>
+        <p className="admin-description">
+          Available to sell is counted stock minus active order reservations.
+          Untracked variants have no quantity limit. Pending manual payments
+          keep their reservations until explicit cancellation.
+        </p>
+        <div className="admin-inventory-shortcuts">
+          <Link href="/admin/inventory/pending">
+            Review overdue payment holds
+          </Link>
+          <Link href="/admin/inventory/slots">
+            Manage fulfillment slot quotas
+          </Link>
+        </div>
+        <Notice error={query.error} />
+        {query.saved && (
+          <Alert>
+            <AlertDescription>Stock count recorded.</AlertDescription>
+          </Alert>
+        )}
+        <form method="get" className="filter-bar">
+          <Field
+            name="q"
+            label="Search inventory"
+            value={search}
+            required={false}
+          />
+          <label>
+            Status
+            <NativeSelect name="status" defaultValue={query.status || ""}>
+              <option value="">All variants</option>
+              <option value="low">Low stock (5 or fewer)</option>
+              <option value="shortage">Reservation shortage</option>
+            </NativeSelect>
+          </label>
+          <Button type="submit">Filter</Button>
+        </form>
+        <section className="panel">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Product / variant</TableHead>
+                <TableHead>SKU</TableHead>
+                <TableHead>On hand</TableHead>
+                <TableHead>Reserved</TableHead>
+                <TableHead>Available</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {result.rows
+                .slice(0, 25)
+                .map(({ product, variant: v, stock: s }) => (
+                  <TableRow key={v.id}>
+                    <TableCell>
                       <Link
-                        href={`/admin/inventory/${v.id}?back=${encodeURIComponent(adminQueueReturnContext("/admin/inventory", { q: query.q, status: query.status, page: query.page }))}`}
+                        href={`/admin/products/${product.id}/${result.owner ? "edit" : "specifications"}`}
                       >
-                        Stock history
+                        {product.title}
                       </Link>
-                      {
-                        <AdminDialog
-                          trigger="Record count"
-                          title={`Stock count · ${v.sku}`}
-                          description="Record the physical quantity and a reason. A count below reservations creates a shortage; it does not release orders."
+                      <p>{v.title}</p>
+                    </TableCell>
+                    <TableCell>{v.sku}</TableCell>
+                    <TableCell>
+                      {s?.trackingEnabled ? s.onHand : "Untracked"}
+                    </TableCell>
+                    <TableCell>{s?.reserved || 0}</TableCell>
+                    <TableCell>
+                      {s?.trackingEnabled
+                        ? s.onHand < s.reserved
+                          ? "Shortage · handoff blocked"
+                          : s.onHand - s.reserved
+                        : "Unlimited"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="admin-inventory-actions">
+                        <Link
+                          href={`/admin/inventory/${v.id}?back=${encodeURIComponent(adminQueueReturnContext("/admin/inventory", { q: query.q, status: query.status, page: query.page }))}`}
                         >
-                          <form action={countStockAction}>
-                            <Hidden
-                              name="returnTo"
-                              value={adminQueueReturnContext(
-                                "/admin/inventory",
-                                {
-                                  q: query.q,
-                                  status: query.status,
-                                  page: query.page,
-                                },
+                          Stock history
+                        </Link>
+                        {
+                          <AdminDialog
+                            trigger="Record count"
+                            title={`Stock count · ${v.sku}`}
+                            description="Record the physical quantity and a reason. A count below reservations creates a shortage; it does not release orders."
+                          >
+                            <form action={countStockAction}>
+                              <Hidden
+                                name="returnTo"
+                                value={adminQueueReturnContext(
+                                  "/admin/inventory",
+                                  {
+                                    q: query.q,
+                                    status: query.status,
+                                    page: query.page,
+                                  },
+                                )}
+                              />
+                              <Hidden name="variantId" value={v.id} />
+                              <Hidden
+                                name="revision"
+                                value={String(s?.revision || 1)}
+                              />
+                              <Hidden name="requestKey" value={randomUUID()} />
+                              {result.owner ? (
+                                <label className="check">
+                                  <Checkbox
+                                    name="tracking"
+                                    defaultChecked={s?.trackingEnabled || false}
+                                  />
+                                  Track stock
+                                </label>
+                              ) : (
+                                <>
+                                  <Hidden
+                                    name="tracking"
+                                    value={s?.trackingEnabled ? "on" : ""}
+                                  />
+                                  <p>
+                                    Stock tracking:{" "}
+                                    {s?.trackingEnabled ? "On" : "Off"}. An
+                                    owner can change tracking settings.
+                                  </p>
+                                </>
                               )}
-                            />
-                            <Hidden name="variantId" value={v.id} />
-                            <Hidden
-                              name="revision"
-                              value={String(s?.revision || 1)}
-                            />
-                            <Hidden name="requestKey" value={randomUUID()} />
-                            {result.owner ? (
-                              <label className="check">
-                                <Checkbox
-                                  name="tracking"
-                                  defaultChecked={s?.trackingEnabled || false}
-                                />
-                                Track stock
-                              </label>
-                            ) : (
-                              <>
-                                <Hidden
-                                  name="tracking"
-                                  value={s?.trackingEnabled ? "on" : ""}
-                                />
-                                <p>
-                                  Stock tracking:{" "}
-                                  {s?.trackingEnabled ? "On" : "Off"}. An owner
-                                  can change tracking settings.
-                                </p>
-                              </>
-                            )}
-                            <Field
-                              name="onHand"
-                              label="Physical quantity"
-                              type="number"
-                              value={s?.onHand || 0}
-                            />
-                            <Field name="reason" label="Count reason" />
-                            <Button type="submit">Save stock count</Button>
-                          </form>
-                        </AdminDialog>
-                      }
-                    </div>
+                              <Field
+                                name="onHand"
+                                label="Physical quantity"
+                                type="number"
+                                value={s?.onHand || 0}
+                              />
+                              <Field name="reason" label="Count reason" />
+                              <Button type="submit">Save stock count</Button>
+                            </form>
+                          </AdminDialog>
+                        }
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              {!result.rows.length && (
+                <TableRow>
+                  <TableCell colSpan={6}>
+                    No variants match this filter.
                   </TableCell>
                 </TableRow>
-              ))}
-            {!result.rows.length && (
-              <TableRow>
-                <TableCell colSpan={6}>
-                  No variants match this filter.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </section>
-      <nav className="pager" aria-label="Inventory pages">
-        {page > 1 && <Link href={href(page - 1)}>Previous</Link>}
-        <span>Page {page}</span>
-        {result.rows.length > 25 && <Link href={href(page + 1)}>Next</Link>}
-      </nav>
-    </main>
+              )}
+            </TableBody>
+          </Table>
+        </section>
+        <nav className="pager" aria-label="Inventory pages">
+          {page > 1 && <Link href={href(page - 1)}>Previous</Link>}
+          <span>Page {page}</span>
+          {result.rows.length > 25 && <Link href={href(page + 1)}>Next</Link>}
+        </nav>
+      </main>
+    </>
   );
 }

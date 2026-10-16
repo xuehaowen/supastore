@@ -34,7 +34,7 @@ export async function listAdminProducts(
       ? Math.min(requestedPage, 100000)
       : 1;
   return db.transaction(async (tx) => {
-    await verifyStaffInTransaction(tx, staffUserId, "owner");
+    const member = await verifyStaffInTransaction(tx, staffUserId);
     const conditions = [];
     if (status)
       conditions.push(eq(products.isPublished, status === "published"));
@@ -95,6 +95,7 @@ export async function listAdminProducts(
     }
     const [store] = await tx.select().from(storeSettings).limit(1);
     return {
+      owner: member.role === "owner",
       rows,
       groups,
       store,

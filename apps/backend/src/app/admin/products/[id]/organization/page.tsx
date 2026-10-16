@@ -1,3 +1,4 @@
+import { ProductEditorNav } from "@/app/admin/product-editor-nav";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { asc, eq, sql } from "drizzle-orm";
@@ -64,67 +65,75 @@ export default async function Organization({
     </>
   );
   return (
-    <main className="admin">
+    <>
       <AdminNav />
-      <Link href={`/admin/products/${id}/edit`}>← Product editor</Link>
-      <h1>Collections · {data.product.title}</h1>
-      <p>A product can appear in up to 20 collections.</p>
-      <Notice error={query.error} />
-      {query.saved && (
-        <Alert>
-          <AlertDescription>Product collections updated.</AlertDescription>
-        </Alert>
-      )}
-      <section className="panel">
-        <h2>Assigned collections</h2>
-        {data.members.map(({ collection: c, membership: m }) => (
-          <form
-            key={c.id}
-            action={changeProductCollectionAction}
-            className="catalog-remove-row"
-          >
-            {identity(c.id, c.revision)}
-            <Link href={`/admin/collections/${c.id}`}>{c.title}</Link>
+      <main tabIndex={-1} id="admin-content" className="admin">
+        <Link href={`/admin/products/${id}/edit`}>← Product editor</Link>
+        <h1>Collections · {data.product.title}</h1>
+        <ProductEditorNav productId={id} />
+        <p>A product can appear in up to 20 collections.</p>
+        <Notice error={query.error} />
+        {query.saved && (
+          <Alert>
+            <AlertDescription>Product collections updated.</AlertDescription>
+          </Alert>
+        )}
+        <section className="panel">
+          <h2>Assigned collections</h2>
+          {data.members.map(({ collection: c, membership: m }) => (
+            <form
+              key={c.id}
+              action={changeProductCollectionAction}
+              className="catalog-remove-row"
+            >
+              {identity(c.id, c.revision)}
+              <Link href={`/admin/collections/${c.id}`}>{c.title}</Link>
+              <Field
+                name="sortOrder"
+                label={`Position in ${c.title}`}
+                type="number"
+                value={m.sortOrder}
+              />
+              <Button type="submit">Save position</Button>
+              <Button
+                name="remove"
+                value="true"
+                type="submit"
+                variant="outline"
+              >
+                Remove membership
+              </Button>
+            </form>
+          ))}
+          {!data.members.length && <p>No collection memberships.</p>}
+        </section>
+        <section className="panel">
+          <h2>Add to collection</h2>
+          <form method="get" className="filter-bar">
             <Field
-              name="sortOrder"
-              label={`Position in ${c.title}`}
-              type="number"
-              value={m.sortOrder}
+              name="q"
+              label="Find collection"
+              value={query.q || ""}
+              required={false}
             />
-            <Button type="submit">Save position</Button>
-            <Button name="remove" value="true" type="submit" variant="outline">
-              Remove membership
-            </Button>
+            <Button type="submit">Search collections</Button>
           </form>
-        ))}
-        {!data.members.length && <p>No collection memberships.</p>}
-      </section>
-      <section className="panel">
-        <h2>Add to collection</h2>
-        <form method="get" className="filter-bar">
-          <Field
-            name="q"
-            label="Find collection"
-            value={query.q || ""}
-            required={false}
-          />
-          <Button type="submit">Search collections</Button>
-        </form>
-        {data.candidates.map((c) => (
-          <form
-            key={c.id}
-            action={changeProductCollectionAction}
-            className="catalog-remove-row"
-          >
-            {identity(c.id, c.revision)}
-            <Hidden name="sortOrder" value="0" />
-            <span>
-              {c.title} · {c.isPublished ? "Published" : "Hidden"}
-            </span>
-            <Button type="submit">Add to collection</Button>
-          </form>
-        ))}
-      </section>
-    </main>
+          {data.candidates.map((c) => (
+            <form
+              key={c.id}
+              action={changeProductCollectionAction}
+              className="catalog-remove-row"
+            >
+              {identity(c.id, c.revision)}
+              <Hidden name="sortOrder" value="0" />
+              <span>
+                {c.title} · {c.isPublished ? "Published" : "Hidden"}
+              </span>
+              <Button type="submit">Add to collection</Button>
+            </form>
+          ))}
+        </section>
+      </main>
+    </>
   );
 }

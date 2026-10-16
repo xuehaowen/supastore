@@ -91,94 +91,122 @@ export default async function StockHistory({
   });
   if (!data) notFound();
   return (
-    <main className="admin">
+    <>
       <AdminNav />
-      <Link href={back}>← Inventory</Link>
-      <h1>
-        {data.product.title} · {data.variant.title}
-      </h1>
-      <p>
-        {data.variant.sku} ·{" "}
-        {data.stock?.trackingEnabled
-          ? `${data.stock.onHand} on hand · ${data.stock.reserved} reserved · ${Math.max(0, data.stock.onHand - data.stock.reserved)} available`
-          : "Stock tracking disabled"}
-      </p>
-      <section className="panel">
-        <h2>Stock movement history</h2>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Quantity change</TableHead>
-              <TableHead>Reason</TableHead>
-              <TableHead className="text-right">Order</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.movements.slice(0, 25).map((m) => (
-              <TableRow key={m.id}>
-                <TableCell>
-                  <time dateTime={m.createdAt.toISOString()}>
-                    {m.createdAt.toLocaleString()}
-                  </time>
-                </TableCell>
-                <TableCell className="font-medium">
-                  {m.delta > 0 ? `+${m.delta}` : m.delta}
-                </TableCell>
-                <TableCell>{m.reason}</TableCell>
-                <TableCell className="text-right">
-                  {m.orderId ? (
-                    <Link
-                      href={`/admin/orders/${m.orderId}`}
-                      className="admin-edit-link"
-                    >
-                      View order
-                    </Link>
-                  ) : (
-                    "—"
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-            {!data.movements.length && (
+      <main tabIndex={-1} id="admin-content" className="admin">
+        <Link href={back}>← Inventory</Link>
+        <h1>
+          {data.product.title} · {data.variant.title}
+        </h1>
+        <p>
+          {data.variant.sku} ·{" "}
+          {data.stock?.trackingEnabled
+            ? `${data.stock.onHand} on hand · ${data.stock.reserved} reserved · ${Math.max(0, data.stock.onHand - data.stock.reserved)} available`
+            : "Stock tracking disabled"}
+        </p>
+        <section className="panel">
+          <h2>Stock movement history</h2>
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell
-                  colSpan={4}
-                  className="text-center text-muted-foreground"
-                >
-                  No stock movements.
-                </TableCell>
+                <TableHead>Date</TableHead>
+                <TableHead>Quantity change</TableHead>
+                <TableHead>Reason</TableHead>
+                <TableHead className="text-right">Order</TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-        <nav className="pager" aria-label="Stock movement pages">
-          {cursor && <Link href={historyHref()}>Latest movements</Link>}
-          {data.movements.length > 25 && (
-            <Link
-              href={historyHref(
-                encodeLedgerCursor(
-                  data.movements[24]!.cursorTimestamp,
-                  data.movements[24]!.id,
-                ),
+            </TableHeader>
+            <TableBody>
+              {data.movements.slice(0, 25).map((m) => (
+                <TableRow key={m.id}>
+                  <TableCell>
+                    <time dateTime={m.createdAt.toISOString()}>
+                      {m.createdAt.toLocaleString()}
+                    </time>
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {m.delta > 0 ? `+${m.delta}` : m.delta}
+                  </TableCell>
+                  <TableCell>{m.reason}</TableCell>
+                  <TableCell className="text-right">
+                    {m.orderId ? (
+                      <Link
+                        href={`/admin/orders/${m.orderId}`}
+                        className="admin-edit-link"
+                      >
+                        View order
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {!data.movements.length && (
+                <TableRow>
+                  <TableCell
+                    colSpan={4}
+                    className="text-center text-muted-foreground"
+                  >
+                    No stock movements.
+                  </TableCell>
+                </TableRow>
               )}
-            >
-              Older movements
-            </Link>
-          )}
-        </nav>
-      </section>
-      <section className="panel">
-        <h2>Recent order reservations</h2>
-        {data.reservations.map((r) => (
-          <p key={r.reservation.id}>
-            <Link href={`/admin/orders/${r.reservation.orderId}`}>
-              {r.reference}
-            </Link>{" "}
-            · {r.reservation.quantity} units · {r.reservation.status}
-          </p>
-        ))}
-      </section>
-    </main>
+            </TableBody>
+          </Table>
+          <nav className="pager" aria-label="Stock movement pages">
+            {cursor && <Link href={historyHref()}>Latest movements</Link>}
+            {data.movements.length > 25 && (
+              <Link
+                href={historyHref(
+                  encodeLedgerCursor(
+                    data.movements[24]!.cursorTimestamp,
+                    data.movements[24]!.id,
+                  ),
+                )}
+              >
+                Older movements
+              </Link>
+            )}
+          </nav>
+        </section>
+        <section className="panel">
+          <h2>Recent order reservations</h2>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Order</TableHead>
+                <TableHead>Reserved units</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.reservations.map((r) => (
+                <TableRow key={r.reservation.id}>
+                  <TableCell>
+                    <Link href={`/admin/orders/${r.reservation.orderId}`}>
+                      {r.reference}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{r.reservation.quantity}</TableCell>
+                  <TableCell>
+                    {r.reservation.status.replaceAll("_", " ")}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {!data.reservations.length && (
+                <TableRow>
+                  <TableCell
+                    colSpan={3}
+                    className="text-center text-muted-foreground"
+                  >
+                    No order reservations for this variant.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </section>
+      </main>
+    </>
   );
 }

@@ -17,26 +17,28 @@ export default async function NewProduct({
   await db.transaction((tx) => verifyStaffInTransaction(tx, staff, "owner"));
   const query = await searchParams;
   return (
-    <main className="admin">
+    <>
       <AdminNav />
-      <Link href="/admin/products">← All products</Link>
-      <h1>Create product</h1>
-      <p className="admin-description">
-        Start with a draft. Add options, variants, images, categories, and
-        collections before publishing.
-      </p>
-      <Notice error={query.error} />
-      <section className="panel">
-        <form action={createDraftProductAction}>
-          <Field name="title" label="Product title" />
-          <Field name="handle" label="URL handle" />
-          <label>
-            Description
-            <Textarea name="description" />
-          </label>
-          <Button type="submit">Create draft</Button>
-        </form>
-      </section>
-    </main>
+      <main tabIndex={-1} id="admin-content" className="admin">
+        <Link href="/admin/products">← All products</Link>
+        <h1>Create product</h1>
+        <p className="admin-description">
+          Start with a draft. Add options, variants, images, categories, and
+          collections before publishing.
+        </p>
+        <Notice error={query.error} />
+        <section className="panel">
+          <form action={createDraftProductAction}>
+            <Field name="title" label="Product title" />
+            <Field name="handle" label="URL handle" />
+            <label>
+              Description
+              <Textarea name="description" />
+            </label>
+            <Button type="submit">Create draft</Button>
+          </form>
+        </section>
+      </main>
+    </>
   );
 }
