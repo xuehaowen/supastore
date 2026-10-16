@@ -28,7 +28,9 @@ export function CurrencyField({
   const code = currency ?? workspace.currency;
   const id = useId();
   const [amount, setAmount] = useState(
-    value === undefined ? "" : minorToDecimal(Number(value), digits),
+    value === undefined || value === ""
+      ? ""
+      : minorToDecimal(Number(value), digits),
   );
   const minor = decimalToMinor(amount, digits, signed);
   return (

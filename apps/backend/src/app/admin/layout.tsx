@@ -1,4 +1,5 @@
 import "./admin.css";
+import "./workspace-polish.css";
 import { db } from "@/infrastructure/db";
 import { storeSettings } from "@/infrastructure/db/schema";
 import { staffIdentity } from "@/infrastructure/web";
@@ -6,7 +7,10 @@ import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { ForbiddenError, UnauthorizedError } from "@/application/common/errors";
 import { WorkspaceProvider } from "./workspace-context";
 export const dynamic = "force-dynamic";
-export const metadata = { robots: { index: false, follow: false } };
+export const metadata = {
+  title: { default: "Store admin", template: "%s · Store admin" },
+  robots: { index: false, follow: false },
+};
 
 export default async function AdminLayout({
   children,
@@ -30,7 +34,14 @@ export default async function AdminLayout({
       currency={store?.currency ?? "USD"}
       precision={store?.precision ?? 2}
     >
-      <div className="admin-workspace">{children}</div>
+      <div className="admin-workspace">
+        {member && (
+          <a className="admin-skip-link" href="#admin-content">
+            Skip to content
+          </a>
+        )}
+        {children}
+      </div>
     </WorkspaceProvider>
   );
 }

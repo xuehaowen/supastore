@@ -6,7 +6,7 @@ export default async function NotFound() {
   const locale = (await headers()).get("x-store-locale") === "zh" ? "zh" : "en",
     m = textFor(locale).common;
   return (
-    <main>
+    <main className="narrow standalone panel">
       <DocumentLanguage locale={locale} />
       <h1>{m.notFoundTitle}</h1>
       <p>{m.notFoundMessage}</p>

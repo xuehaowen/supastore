@@ -1,0 +1,306 @@
+.admin-skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 1rem;
+  z-index: 100;
+  transform: translateY(-200%);
+  padding: 0.75rem 1rem;
+  background: var(--primary);
+  color: white;
+  border-radius: 0.5rem;
+}
+.admin-skip-link:focus {
+  transform: none;
+}
+.admin-workspace .admin {
+  min-width: 0;
+}
+.admin-workspace .panel {
+  min-width: 0;
+}
+.report-period-filter {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  margin-block: 1.5rem;
+}
+.report-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: 1rem;
+  margin-block: 1.5rem;
+}
+.report-summary > div {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--card);
+}
+.report-summary dt {
+  color: var(--muted-foreground);
+}
+.report-summary dd {
+  margin: 0.5rem 0 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.admin-workspace .auth-intro .eyebrow {
+  color: var(--primary-foreground);
+}
+@media (max-width: 640px) {
+  .report-period-filter {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.category-filter-picker {
+  position: relative;
+  min-width: 0;
+}
+.category-filter-picker > summary {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--input);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.category-filter-picker > fieldset {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: min(20rem, 70vw);
+  background: var(--card);
+  box-shadow: 0 4px 16px #252b2914;
+}
+.admin-workspace .setup-sections {
+  grid-template-columns: minmax(0, 1fr);
+}
+.setup-sections > section:first-child form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.setup-sections > section:first-child form > :is(.two-col, .check, button) {
+  grid-column: 1 / -1;
+}
+@media (max-width: 640px) {
+  .setup-sections > section:first-child form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.admin-workspace .admin > h1 {
+  font-size: clamp(1.5rem, 2.4vw, 2rem);
+  line-height: 1.25;
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+}
+.admin-workspace .admin h2 {
+  font-size: 1rem;
+  line-height: 1.5;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.admin-workspace .admin h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.admin-workspace .admin > p:not(.eyebrow) {
+  max-width: 85ch;
+  color: var(--muted-foreground);
+}
+.admin-workspace :is(form, label, fieldset, [data-slot="table-container"]) {
+  min-width: 0;
+}
+.admin-workspace
+  form:not(.filter-bar):not(.admin-filter-bar)
+  > label:not(.check) {
+  display: grid;
+  gap: 0.4rem;
+}
+.admin-workspace label:has(> input[type="checkbox"]),
+.admin-workspace label:has(> input[type="radio"]) {
+  display: flex !important;
+  align-items: center;
+  gap: 0.6rem;
+}
+.admin-workspace :is(.panel, .admin-dialog-body) form {
+  row-gap: 1rem;
+}
+.admin-workspace .admin > form.panel {
+  margin-block: 1.5rem;
+}
+.admin-workspace fieldset {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+.admin-workspace legend {
+  padding-inline: 0.4rem;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+.admin-workspace :is(input, textarea, select) {
+  max-width: 100%;
+}
+.admin-workspace input.sr-only {
+  width: 1px;
+  height: 1px;
+}
+.admin-workspace .sales-trend:has(.trend-bars-empty) {
+  padding-block: 1rem;
+}
+.admin-workspace textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+.admin-workspace [data-slot="table"] {
+  font-size: 0.8125rem;
+}
+.admin-workspace [data-slot="table-head"] {
+  white-space: nowrap;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.admin-workspace [data-slot="table-cell"] {
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+.admin-workspace [data-slot="table-cell"] small {
+  display: block;
+  color: var(--muted-foreground);
+}
+.admin-workspace [data-slot="table-row"]:hover {
+  background: #f6f8f6;
+}
+.admin-workspace [data-slot="table-cell"][colspan] {
+  padding-block: 2rem;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+.admin-workspace .admin-empty {
+  padding: 1.5rem;
+  border: 1px dashed var(--border);
+  border-radius: 0.5rem;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  text-wrap: pretty;
+}
+.admin-workspace :is(.pager, .admin-pagination) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 1rem;
+  font-size: 0.8125rem;
+}
+.admin-workspace .admin-tabs {
+  scrollbar-width: thin;
+}
+.admin-workspace .admin-tabs a {
+  white-space: nowrap;
+}
+.admin-state {
+  max-width: 42rem;
+  margin: 2rem auto;
+}
+.admin-workspace .admin-state h1 {
+  font-size: 1.75rem;
+  letter-spacing: -0.03em;
+}
+.admin-workspace .admin-state p {
+  color: var(--muted-foreground);
+}
+.quick-navigation-results {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 1rem;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+.quick-navigation-results a {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem;
+  border-radius: 0.4rem;
+  text-decoration: none;
+}
+.quick-navigation-results a:hover {
+  background: var(--accent);
+}
+.quick-navigation-results span {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+.workspace-topbar > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.weekly-schedule-editor {
+  display: grid;
+  gap: 0.75rem;
+}
+.schedule-day {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.75rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+}
+.schedule-day strong {
+  padding-top: 0.5rem;
+  font-size: 0.8rem;
+}
+.schedule-window {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.schedule-window input {
+  min-width: 0;
+  width: 7.5rem;
+}
+.admin-dialog-theme [data-slot="dialog-header"] {
+  padding-right: 1.5rem;
+}
+@media (max-width: 640px) {
+  .admin-workspace
+    :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+    font-size: 1rem;
+  }
+  .admin-workspace :is(button, .admin-tabs a, .pager a) {
+    min-height: 2.75rem;
+  }
+  .admin-workspace .admin-tabs {
+    display: flex;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+  .schedule-day {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .schedule-day > div {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .schedule-window {
+    flex-wrap: wrap;
+  }
+  .quick-navigation-results a {
+    align-items: start;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+}
+@media print {
+  .admin-skip-link {
+    display: none;
+  }
+}

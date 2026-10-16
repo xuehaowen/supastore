@@ -15,6 +15,7 @@ export function AdminDialog({
   trigger,
   defaultOpen = false,
   inline = false,
+  wide = false,
   title,
   description,
   children,
@@ -24,6 +25,7 @@ export function AdminDialog({
   trigger?: string;
   defaultOpen?: boolean;
   inline?: boolean;
+  wide?: boolean;
   title: string;
   description?: string;
   children: ReactNode;
@@ -52,7 +54,9 @@ export function AdminDialog({
           )}
         />
       )}
-      <DialogPopup className="admin-workspace admin-dialog-theme flex max-h-[90vh] flex-col overflow-y-auto sm:max-w-2xl">
+      <DialogPopup
+        className={`admin-workspace admin-dialog-theme flex max-h-[90vh] flex-col overflow-y-auto ${wide ? "sm:max-w-6xl" : "sm:max-w-2xl"}`}
+      >
         <DialogHeader className="shrink-0">
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}

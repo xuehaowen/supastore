@@ -116,52 +116,54 @@ export default async function Admin({
     },
   };
   return (
-    <main className="admin">
+    <>
       <AdminNav />
-      <p className="eyebrow">OPERATIONS OVERVIEW</p>
-      <h1>
-        {view === "overview"
-          ? "Commerce overview"
-          : view === "orders"
-            ? "Orders"
-            : view === "payments"
-              ? "Payments"
-              : "Fulfillment"}
-      </h1>
-      <p className="admin-description">
-        {view === "overview"
-          ? "Review confirmed sales from the last 30 days and operational queues from the latest 100 orders."
-          : "Track payments, review orders, and keep fulfillment moving."}
-      </p>
-      <Notice error={query.error} />
-      {view === "orders" && <OrdersView {...screenProps} />}
+      <main tabIndex={-1} id="admin-content" className="admin">
+        <p className="eyebrow">OPERATIONS OVERVIEW</p>
+        <h1>
+          {view === "overview"
+            ? "Commerce overview"
+            : view === "orders"
+              ? "Orders"
+              : view === "payments"
+                ? "Payments"
+                : "Fulfillment"}
+        </h1>
+        <p className="admin-description">
+          {view === "overview"
+            ? "Review confirmed sales from the last 30 days and operational queues from the latest 100 orders."
+            : "Track payments, review orders, and keep fulfillment moving."}
+        </p>
+        <Notice error={query.error} />
+        {view === "orders" && <OrdersView {...screenProps} />}
 
-      {view === "overview" && <OverviewView {...screenProps} />}
+        {view === "overview" && <OverviewView {...screenProps} />}
 
-      {view === "payments" && <PaymentsView {...screenProps} />}
+        {view === "payments" && <PaymentsView {...screenProps} />}
 
-      <FulfillmentOperations {...screenProps} />
-      {(view === "overview" || view === "orders") && (
-        <section>
-          <h2>Overdue / abandoned review</h2>
-          {overdueOrders.length === 0 && (
-            <p className="admin-empty">No overdue orders in this view.</p>
-          )}
-          {overdueOrders.map((o) => (
-            <p key={o.id}>
-              {o.referenceCode} · Contact customer before resolving.
-            </p>
-          ))}
-        </section>
-      )}
+        <FulfillmentOperations {...screenProps} />
+        {(view === "overview" || view === "orders") && (
+          <section>
+            <h2>Overdue / abandoned review</h2>
+            {overdueOrders.length === 0 && (
+              <p className="admin-empty">No overdue orders in this view.</p>
+            )}
+            {overdueOrders.map((o) => (
+              <p key={o.id}>
+                {o.referenceCode} · Contact customer before resolving.
+              </p>
+            ))}
+          </section>
+        )}
 
-      <PayoutQueue
-        data={data}
-        view={view}
-        query={query}
-        returnTo={returnTo}
-        payoutPage={payoutPage}
-      />
-    </main>
+        <PayoutQueue
+          data={data}
+          view={view}
+          query={query}
+          returnTo={returnTo}
+          payoutPage={payoutPage}
+        />
+      </main>
+    </>
   );
 }

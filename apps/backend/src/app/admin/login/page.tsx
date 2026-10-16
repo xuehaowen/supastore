@@ -16,7 +16,7 @@ export default async function Login({
         ? "Sign in with your staff account to open the merchant workspace."
         : null;
   return (
-    <main className="auth-shell">
+    <main id="admin-content" tabIndex={-1} className="auth-shell">
       <section className="auth-intro">
         <Link href="/" className="auth-brand">
           SupaStore

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useWorkspace } from "./workspace-context";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Button } from "@supastore/ui/button";
@@ -13,81 +12,46 @@ import {
   CreditCard,
   Truck,
   Users,
-  Languages,
   Tag,
-  ScrollText,
   Settings2,
   Store,
   Menu,
   X,
 } from "lucide-react";
+import { useWorkspace } from "./workspace-context";
+import { QuickNavigation } from "./quick-navigation";
+import { currentAdminLocation, visibleAdminNavigation } from "./navigation";
 
-const links = [
-  { href: "/admin", label: "Overview", icon: LayoutDashboard },
-  { href: "/admin/orders", label: "Orders", icon: ClipboardList },
-  { href: "/admin/payments", label: "Payments", icon: CreditCard },
-  { href: "/admin/reports", label: "Reports", icon: LayoutDashboard },
-  { href: "/admin/store-credit", label: "Store credit", icon: CreditCard },
-  { href: "/admin/products", label: "Products", icon: Box },
-  { href: "/admin/inventory", label: "Inventory", icon: Box },
-  { href: "/admin/promotions", label: "Promotions", icon: Tag },
-  { href: "/admin/fulfillment", label: "Fulfillment", icon: Truck },
-  {
-    href: "/admin/fulfillment/shipments",
-    label: "Shipments & booking",
-    icon: Truck,
-  },
-  { href: "/admin/returns", label: "Returns", icon: Box },
-  { href: "/admin/customers", label: "Customers", icon: Users },
-  { href: "/admin/translations", label: "Translations", icon: Languages },
-  { href: "/admin/setup", label: "Settings", icon: Settings2 },
-  {
-    href: "/admin/settings/notifications",
-    label: "Notifications",
-    icon: Settings2,
-  },
-  { href: "/admin/activity", label: "Activity", icon: ScrollText },
-];
+const sectionIcons = {
+  overview: LayoutDashboard,
+  orders: ClipboardList,
+  payments: CreditCard,
+  fulfillment: Truck,
+  products: Box,
+  customers: Users,
+  promotions: Tag,
+  reports: LayoutDashboard,
+  settings: Settings2,
+};
 
 export function AdminNav() {
   const { owner } = useWorkspace();
-  const ownerPaths = [
-    "/admin/setup",
-    "/admin/translations",
-    "/admin/settings/notifications",
-    "/admin/activity",
-    "/admin/promotions",
-  ];
-  const visibleLinks = links.filter(
-    (link) => owner || !ownerPaths.includes(link.href),
-  );
-  const dailyPaths = [
-    "/admin",
-    "/admin/orders",
-    "/admin/payments",
-    "/admin/fulfillment",
-    "/admin/fulfillment/shipments",
-    "/admin/returns",
-    "/admin/inventory",
-  ];
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => setMenuOpen(false), [pathname]);
-  const current = visibleLinks.findLast(
-    (link) =>
-      pathname === link.href ||
-      (link.href !== "/admin" && pathname.startsWith(`${link.href}/`)) ||
-      (link.href === "/admin/setup" &&
-        pathname.startsWith("/admin/settings/")) ||
-      (link.href === "/admin/products" &&
-        ["/admin/categories", "/admin/collections", "/admin/attributes"].some(
-          (path) => pathname === path || pathname.startsWith(`${path}/`),
-        )),
-  );
-
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [menuOpen]);
+  const current = currentAdminLocation(pathname, owner);
   return (
     <>
       <nav
+        id="admin-navigation"
         className={`admin-sidebar${menuOpen ? " mobile-open" : ""}`}
         aria-label="Admin"
       >
@@ -107,41 +71,54 @@ export function AdminNav() {
             className="workspace-menu-toggle"
             aria-label={menuOpen ? "Close admin menu" : "Open admin menu"}
             aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((current) => !current)}
+            aria-controls="admin-navigation"
+            onClick={() => setMenuOpen((value) => !value)}
           >
             {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
           </Button>
         </div>
-        {[
-          {
-            label: "Daily work",
-            items: visibleLinks.filter((link) =>
-              dailyPaths.includes(link.href),
-            ),
-          },
-          {
-            label: "Manage store",
-            items: visibleLinks.filter(
-              (link) => !dailyPaths.includes(link.href),
-            ),
-          },
-        ].map((group) => (
-          <div className="workspace-nav-group" key={group.label}>
-            <p className="nav-caption">{group.label}</p>
-            <div className="workspace-links">
-              {group.items.map(({ href, label, icon: Icon }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  aria-current={current?.href === href ? "page" : undefined}
-                >
-                  <Icon size={18} aria-hidden="true" />
-                  <span>{label}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        ))}
+        <div className="workspace-links workspace-main-links">
+          {visibleAdminNavigation(owner)
+            .flatMap((group) => group.sections)
+            .map((section) => {
+              const Icon = sectionIcons[section.icon];
+              const active = current?.section.href === section.href;
+              return (
+                <div className="workspace-nav-section" key={section.href}>
+                  <Link
+                    href={section.href}
+                    data-active={active || undefined}
+                    aria-current={
+                      active && !section.children ? "page" : undefined
+                    }
+                  >
+                    <Icon size={18} aria-hidden="true" />
+                    <span>{section.label}</span>
+                  </Link>
+                  {active && section.children && (
+                    <nav
+                      className="workspace-subnav"
+                      aria-label={section.label + " sections"}
+                    >
+                      {section.children.map((child) => (
+                        <Link
+                          href={child.href}
+                          key={child.href}
+                          aria-current={
+                            current?.page.href === child.href
+                              ? "page"
+                              : undefined
+                          }
+                        >
+                          {child.label}
+                        </Link>
+                      ))}
+                    </nav>
+                  )}
+                </div>
+              );
+            })}
+        </div>
         <div className="workspace-footer">
           <Link href="/">
             <Store size={17} aria-hidden="true" />
@@ -154,9 +131,17 @@ export function AdminNav() {
       <header className="workspace-topbar">
         <span>
           Workspace <span aria-hidden="true">/</span>{" "}
-          <strong>{current?.label ?? "Admin"}</strong>
+          <strong>{current?.section.label ?? "Admin"}</strong>
+          {current && current.page.label !== current.section.label && (
+            <>
+              {" "}
+              <span aria-hidden="true">/</span> {current.page.label}
+            </>
+          )}
         </span>
-        <span className="workspace-context">Store management</span>
+        <div className="workspace-context">
+          <QuickNavigation />
+        </div>
       </header>
     </>
   );

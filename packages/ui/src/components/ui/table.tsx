@@ -4,10 +4,27 @@ import * as React from "react";
 import { cn } from "@supastore/ui/utils";
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
+  const container = React.useRef<HTMLDivElement>(null);
+  const [scrollable, setScrollable] = React.useState(false);
+  React.useEffect(() => {
+    const element = container.current;
+    if (!element) return;
+    const update = () =>
+      setScrollable(element.scrollWidth > element.clientWidth + 1);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    if (element.firstElementChild) observer.observe(element.firstElementChild);
+    return () => observer.disconnect();
+  }, []);
   return (
     <div
+      ref={container}
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      tabIndex={scrollable ? 0 : undefined}
+      role={scrollable ? "region" : undefined}
+      aria-label={scrollable ? "Scrollable table" : undefined}
+      className="relative w-full overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
       <table
         data-slot="table"
