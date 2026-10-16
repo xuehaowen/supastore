@@ -11,7 +11,10 @@ test("daily work opens a consistent order workspace and separates dispatch from 
   await admin.goto("/admin");
   const sections = admin.locator("main.admin > section");
   await expect(sections.first()).toHaveAccessibleName("Needs attention");
-  await expect(admin.getByText("Daily work", { exact: true })).toBeVisible();
+  await expect(
+    admin.getByText("Daily operations", { exact: true }),
+  ).toHaveCount(0);
+  await expect(admin.locator(".nav-caption")).toHaveCount(0);
   await admin.goto(expectedBack);
   const row = admin.getByRole("row").filter({ hasText: order.reference_code });
   await expect(
@@ -147,8 +150,14 @@ test("staff navigation, stock counts and mobile menu support daily work without 
   await sql`insert into variant_stock(variant_id,on_hand,tracking_enabled) values(${variant!.id},0,true)`;
   await login(page, email);
   const nav = page.getByRole("navigation", { name: "Admin", exact: true });
-  for (const name of ["Settings", "Translations", "Activity", "Notifications"])
+  for (const name of [
+    "Settings",
+    "Languages & translations",
+    "Activity history",
+    "Notifications",
+  ])
     await expect(nav.getByRole("link", { name, exact: true })).toHaveCount(0);
+  await nav.getByRole("link", { name: "Products", exact: true }).click();
   await nav.getByRole("link", { name: "Inventory", exact: true }).click();
   await page.getByLabel("Search inventory").fill(`daily-${id}`);
   await page.getByRole("button", { name: "Filter", exact: true }).click();

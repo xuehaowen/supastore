@@ -98,6 +98,18 @@ export async function checkout(
   options: { pickup?: boolean; free?: boolean; quantity?: number } = {},
 ) {
   const handle = options.free ? await freeProduct(sql) : "studio-cup";
+  let pickupId: string | undefined;
+  if (options.pickup) {
+    const schedule = Object.fromEntries(
+      ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].map((day) => [
+        day,
+        [["09:00", "17:00"]],
+      ]),
+    );
+    const [location] =
+      await sql`insert into pickup_location(name,address,weekly_schedule,prep_minutes,schedule_required) values(${"CUJ pickup " + randomUUID()},'Synthetic pickup counter',${JSON.stringify(schedule)}::jsonb,0,true) returning id`;
+    pickupId = location!.id;
+  }
   await page.goto("/en/products/" + handle);
   for (let quantity = 1; quantity < (options.quantity ?? 1); quantity++)
     await page
@@ -107,7 +119,9 @@ export async function checkout(
   await page.getByRole("link", { name: "Continue to checkout" }).click();
   if (options.pickup) {
     await page.getByLabel("Local pickup", { exact: true }).check();
-    await page.locator('input[name="pickupLocationId"]').first().check();
+    await page
+      .locator(`input[name="pickupLocationId"][value="${pickupId}"]`)
+      .check();
     await page
       .locator("button.pickup-calendar-day-btn:not([disabled])")
       .first()
@@ -153,7 +167,10 @@ export async function openOrder(admin: Page, reference: string) {
     `/admin/${unpaid ? "orders" : "fulfillment"}?manage=${orderId}`,
   );
   const dialog = admin.getByRole("dialog", { name: "Manage order payment" });
-  if (await dialog.count()) return dialog;
+  if (unpaid) {
+    await expect(dialog).toBeVisible();
+    return dialog;
+  }
   const details = admin.locator("#ready details[open]").filter({
     has: admin.locator("summary", { hasText: reference }),
   });

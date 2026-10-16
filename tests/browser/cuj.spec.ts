@@ -433,7 +433,12 @@ test("M4/M5 staff role restrictions, revocation and last-owner protection", asyn
     expect((await page.request.get(path)).status()).toBe(403);
   }
   await admin.goto("/admin/setup");
-  const member = admin.locator("div.border-t").filter({ hasText: email });
+  await admin
+    .getByRole("row")
+    .filter({ hasText: email })
+    .getByRole("button", { name: "Manage access" })
+    .click();
+  const member = admin.getByRole("dialog", { name: "Access for " + email });
   await member.locator('select[name="active"]').selectOption("false");
   await clickAction(
     admin,
@@ -443,16 +448,20 @@ test("M4/M5 staff role restrictions, revocation and last-owner protection", asyn
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/admin\/login/);
   await admin.goto("/admin/setup");
-  const owner = admin
-    .locator("div.border-t")
-    .filter({ hasText: "owner@example.test" });
+  await admin
+    .getByRole("row")
+    .filter({ hasText: "owner@example.test" })
+    .getByRole("button", { name: "Manage access" })
+    .click();
+  const owner = admin.getByRole("dialog", {
+    name: "Access for owner@example.test",
+  });
+  await owner.locator("summary").click();
   await clickAction(
     admin,
     owner.getByRole("button", { name: "Remove membership", exact: true }),
   );
-  await expect(admin.locator('[data-slot="alert"]')).toContainText(
-    /last.*owner/i,
-  );
+  await expect(owner.getByRole("alert")).toContainText(/last.*owner/i);
 });
 
 test("M3 CSV preview rejects invalid rows, imports valid data and exports both resources", async ({
@@ -488,7 +497,7 @@ test("M3 CSV preview rejects invalid rows, imports valid data and exports both r
   expect(
     (await sql`select id from products where handle=${handle}`).length,
   ).toBe(1);
-  for (const selector of ["#export-products-btn", "#export-orders-btn"]) {
+  for (const selector of ["#export-products-btn"]) {
     const download = admin.waitForEvent("download");
     await admin.locator(selector).click();
     const file = await download;
@@ -500,6 +509,9 @@ test("M3 CSV preview rejects invalid rows, imports valid data and exports both r
       selector.includes("products") ? handle : "cuj@example.test",
     );
   }
+  await expect(
+    admin.getByRole("link", { name: "Select orders to export" }),
+  ).toHaveAttribute("href", "/admin/orders");
 });
 
 test("C6 failed upload can retry; clipboard copies stable payment reference", async ({
@@ -571,6 +583,10 @@ test("M1/M2 setup profile, shipping, pickup, payment toggles and categories pers
   ).toBe("CUJ Store");
   await admin.reload();
   await admin
+    .getByRole("button", { name: "Edit zone", exact: true })
+    .first()
+    .click();
+  await admin
     .getByLabel("Zone name", { exact: true })
     .first()
     .fill("CUJ Shipping");
@@ -584,6 +600,9 @@ test("M1/M2 setup profile, shipping, pickup, payment toggles and categories pers
     "CUJ Shipping",
   );
   await admin.reload();
+  await admin
+    .getByRole("button", { name: "Add pickup location", exact: true })
+    .click();
   await admin.getByLabel("Location name", { exact: true }).fill("CUJ Pickup");
   await admin
     .getByLabel("Pickup address", { exact: true })
@@ -597,6 +616,9 @@ test("M1/M2 setup profile, shipping, pickup, payment toggles and categories pers
   ).toBe(1);
   await admin.reload();
   await admin
+    .getByRole("button", { name: "Add payment method", exact: true })
+    .click();
+  await admin
     .getByLabel("Method name", { exact: true })
     .last()
     .fill("CUJ Bank");
@@ -606,18 +628,12 @@ test("M1/M2 setup profile, shipping, pickup, payment toggles and categories pers
     .fill("SYNTHETIC-" + randomUUID());
   await clickAction(
     admin,
-    admin.getByRole("button", { name: "Add payment method", exact: true }),
+    admin
+      .getByRole("dialog", { name: "Add payment method", exact: true })
+      .getByRole("button", { name: "Add payment method", exact: true }),
   );
   await admin.reload();
-  const method = admin
-    .locator("div")
-    .filter({
-      has: admin.getByRole("heading", { name: "CUJ Bank", exact: true }),
-    })
-    .filter({
-      has: admin.getByRole("button", { name: "Disable", exact: true }),
-    })
-    .last();
+  const method = admin.getByRole("row").filter({ hasText: "CUJ Bank" });
   await clickAction(
     admin,
     method.getByRole("button", { name: "Disable", exact: true }),

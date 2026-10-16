@@ -127,6 +127,34 @@ test("product editor saves existing variants and translations without replacing 
   ).toBe("Concurrent change");
 });
 
+test("workspace page search and skip navigation reach content directly", async ({
+  admin,
+}) => {
+  await admin.goto("/admin");
+  await admin.getByRole("button", { name: "Go to page", exact: true }).click();
+  await admin
+    .getByRole("dialog", { name: "Go to page", exact: true })
+    .getByRole("button", { name: "Close", exact: true })
+    .click();
+  await admin.keyboard.press("ControlOrMeta+k");
+  const dialog = admin.getByRole("dialog", { name: "Go to page", exact: true });
+  await dialog.getByLabel("Search admin pages").fill("inventory");
+  await dialog.getByRole("link", { name: /^Inventory.*Products$/ }).click();
+  await expect(admin).toHaveURL(/\/admin\/inventory$/);
+  await expect(
+    admin
+      .locator("#admin-content")
+      .getByRole("navigation", { name: "Admin", exact: true }),
+  ).toHaveCount(0);
+  const skip = admin.getByRole("link", {
+    name: "Skip to content",
+    exact: true,
+  });
+  await skip.focus();
+  await skip.press("Enter");
+  await expect(admin.locator("#admin-content")).toBeFocused();
+});
+
 test("management sidebar opens real sections and product editor fits mobile", async ({
   admin,
   sql,
@@ -142,9 +170,9 @@ test("management sidebar opens real sections and product editor fits mobile", as
     ["Fulfillment", "/admin/fulfillment", "Fulfillment"],
     ["Promotions", "/admin/promotions", "Promotions"],
     ["Customers", "/admin/customers", "Customers"],
-    ["Translations", "/admin/translations", "Translations"],
+    ["Languages & translations", "/admin/translations", "Translations"],
     ["Settings", "/admin/setup", "Store setup"],
-    ["Activity", "/admin/activity", "Activity"],
+    ["Activity history", "/admin/activity", "Activity"],
   ]) {
     await admin.goto(path);
     await expect(admin).toHaveURL(new RegExp(`${path}$`));
@@ -155,7 +183,20 @@ test("management sidebar opens real sections and product editor fits mobile", as
       .getByRole("navigation", { name: "Admin" })
       .getByRole("link", { name: label, exact: true });
     await expect(link).toHaveAttribute("href", path);
-    await expect(link).toHaveAttribute("aria-current", "page");
+    if (
+      [
+        "Orders",
+        "Payments",
+        "Products",
+        "Fulfillment",
+        "Customers",
+        "Settings",
+      ].includes(label)
+    ) {
+      await expect(link).toHaveAttribute("data-active", "true");
+    } else {
+      await expect(link).toHaveAttribute("aria-current", "page");
+    }
     if (path === "/admin") {
       await expect(admin.locator(".trend-day")).toHaveCount(7);
       await expect(admin.getByText("0 orders").first()).toBeVisible();
@@ -233,6 +274,16 @@ test("management sidebar opens real sections and product editor fits mobile", as
     path: "test-results/product-editor-mobile.png",
     fullPage: true,
   });
+  await admin.goto("/admin/products");
+  const categoryFilter = admin.locator(".category-filter-picker");
+  await categoryFilter.locator("summary").click();
+  const categorySelect = categoryFilter.locator("select");
+  await categorySelect.selectOption({ index: 1 });
+  const categoryId = await categorySelect.inputValue();
+  await expect(categoryFilter).not.toHaveAttribute("open");
+  await expect(categoryFilter.locator("summary")).toBeFocused();
+  await admin.getByRole("button", { name: "Filter", exact: true }).click();
+  await expect(admin).toHaveURL(new RegExp(`category=${categoryId}`));
 });
 
 test("promotion codes apply to checkout and record one redemption", async ({
@@ -253,7 +304,9 @@ test("promotion codes apply to checkout and record one redemption", async ({
   await create
     .getByRole("button", { name: "Create promotion", exact: true })
     .click();
-  await expect(admin.getByText(new RegExp(`${code}.*Active`))).toBeVisible();
+  await expect(admin.getByRole("row").filter({ hasText: code })).toContainText(
+    "Active",
+  );
 
   await page.goto("/en/products/studio-cup");
   await page.getByRole("button", { name: "Add to bag" }).click();
@@ -297,18 +350,24 @@ test("long manual order dialogs keep the header and submit button reachable", as
     { width: 375, height: 812 },
   ]) {
     await admin.setViewportSize(viewport);
-    await dialog.evaluate((element) => {
-      element.scrollTop = element.scrollHeight;
-    });
-    const bounds = await dialog.boundingBox();
     const submit = dialog.getByRole("button", {
       name: "Create order",
       exact: true,
     });
-    const button = await submit.boundingBox();
-    expect(button!.y + button!.height).toBeLessThanOrEqual(
-      bounds!.y + bounds!.height,
-    );
+    await expect
+      .poll(async () => {
+        await dialog.evaluate((element) => {
+          element.scrollTop = element.scrollHeight;
+        });
+        const bounds = await dialog.boundingBox();
+        const button = await submit.boundingBox();
+        return Boolean(
+          bounds &&
+          button &&
+          button.y + button.height <= bounds.y + bounds.height,
+        );
+      })
+      .toBe(true);
     await submit.click({ trial: true });
     await dialog
       .getByRole("button", { name: "Close", exact: true })
@@ -520,7 +579,10 @@ test("staff can see submitted payment evidence in the review grid", async ({
       image.evaluate((element: HTMLImageElement) => element.naturalWidth),
     )
     .toBeGreaterThan(0);
-  await admin.getByRole("button", { name: "Review evidence" }).click();
+  const evidenceCard = admin
+    .locator(".evidence-card")
+    .filter({ hasText: order.reference_code });
+  await evidenceCard.getByRole("button", { name: "Review evidence" }).click();
   const review = admin.getByRole("dialog", {
     name: `Payment evidence · ${order.reference_code}`,
   });
@@ -532,6 +594,85 @@ test("staff can see submitted payment evidence in the review grid", async ({
   await expect(
     review.getByRole("link", { name: /Open original/ }),
   ).toHaveAttribute("target", "_blank");
+  await review.getByRole("button", { name: "Zoom in evidence" }).click();
+  await expect(review.getByText("150%", { exact: true })).toBeVisible();
+  await review.getByRole("button", { name: "Fit image" }).click();
+  await expect(review.getByText("100%", { exact: true })).toBeVisible();
+  const [account] =
+    await sql`select id from payment_accounts where is_active=true and account_type <> 'cash' limit 1`;
+  await review
+    .getByLabel("Receiving account", { exact: true })
+    .selectOption(account!.id);
+  await review
+    .getByLabel("Actual received amount", { exact: false })
+    .fill((order.purchase_total_cents / 100).toFixed(2));
+  const reference = `EVIDENCE-${randomUUID()}`;
+  await review
+    .getByLabel("Actual payment reference", { exact: true })
+    .fill(reference);
+  await review
+    .getByRole("checkbox", { name: /I verified the actual receiving/ })
+    .check();
+  await review
+    .getByRole("button", { name: "Record receipt", exact: true })
+    .click();
+  await expect(admin).toHaveURL(/\/admin\/payments\?reviewEvidence=/);
+  await expect(review.getByText(reference, { exact: false })).toBeVisible();
+  await review
+    .getByRole("button", { name: "Confirm exact payment", exact: true })
+    .click();
+  await expect
+    .poll(
+      async () =>
+        (
+          await sql`select lifecycle_status from orders where id=${order.id}`
+        )[0]!.lifecycle_status,
+    )
+    .toBe("confirmed");
+  await expect(admin).toHaveURL(/\/admin\/payments/);
+  await admin.goto(`/admin/orders/${order.id}`);
+  await expect(
+    admin.getByRole("heading", { name: "Payment evidence & receipts" }),
+  ).toBeVisible();
+  await expect(
+    admin.getByRole("img", {
+      name: `Payment evidence submitted for order ${order.reference_code}`,
+      exact: true,
+    }),
+  ).toBeVisible();
+});
+
+test("owner selects orders before exporting instead of exporting every order", async ({
+  page,
+  admin,
+  sql,
+}) => {
+  const first = await checkout(page, sql);
+  const second = await checkout(page, sql);
+  await admin.goto("/admin/orders");
+  await expect(admin.getByLabel("Orders to export")).toHaveValue("selected");
+  const exportButton = admin.getByRole("button", {
+    name: "Export orders CSV",
+    exact: true,
+  });
+  await expect(exportButton).toBeDisabled();
+  await admin
+    .getByRole("checkbox", {
+      name: `Select order ${first.reference_code}`,
+      exact: true,
+    })
+    .check();
+  const download = admin.waitForEvent("download");
+  await exportButton.click();
+  const file = await download;
+  const stream = await file.createReadStream();
+  let csv = "";
+  for await (const chunk of stream!) csv += chunk.toString();
+  expect(csv).toContain(first.reference_code);
+  expect(csv).not.toContain(second.reference_code);
+  await admin.getByLabel("Search orders").fill(first.reference_code);
+  await admin.getByRole("button", { name: "Filter", exact: true }).click();
+  await expect(exportButton).toBeDisabled();
 });
 
 test("staff filters the payment ledger and opens payment management", async ({
