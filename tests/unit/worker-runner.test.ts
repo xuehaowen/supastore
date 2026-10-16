@@ -8,14 +8,12 @@ import {
 describe("independent worker jobs", () => {
   it("reports partial record failures and deferred failures until recovery", async () => {
     let now = 0;
-    const run = vi
-      .fn()
-      .mockResolvedValue({
-        succeeded: 2,
-        failed: 1,
-        deferred: 0,
-        reviewRequired: 0,
-      });
+    const run = vi.fn().mockResolvedValue({
+      succeeded: 2,
+      failed: 1,
+      deferred: 0,
+      reviewRequired: 0,
+    });
     const runner = createWorkerRunner(
       [{ name: "payments", intervalMs: 1000, run }],
       { now: () => now, onError: vi.fn() },
