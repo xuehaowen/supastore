@@ -1,4 +1,5 @@
 import * as actions from "@/app/actions";
+import { submitManualOrder } from "@/app/admin/manual-order-actions";
 import { DomainError } from "@/application/common/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
@@ -659,6 +660,25 @@ beforeEach(() => {
   mocks.transaction.mockImplementation(async (work) => work(tx));
 });
 describe("every server action request boundary", () => {
+  it("returns inline manual-order errors for correction without a redirect", async () => {
+    mocks.commands.createManualOrder.mockRejectedValueOnce(
+      new DomainError("This fulfillment slot is full. Choose another time."),
+    );
+    await expect(submitManualOrder(form())).resolves.toEqual({
+      error: "This fulfillment slot is full. Choose another time.",
+    });
+  });
+
+  it("returns the created manual-order reference after inline success", async () => {
+    await expect(submitManualOrder(form())).resolves.toEqual({ referenceCode: "SP-MANUAL" });
+  });
+
+  it("hides unexpected inline manual-order failures", async () => {
+    mocks.commands.createManualOrder.mockRejectedValueOnce(new Error("private detail"));
+    await expect(submitManualOrder(form())).resolves.toEqual({
+      error: "Unable to save. Check your entries and try again.",
+    });
+  });
   it("forwards manual pickup location and schedule without a shipping address", async () => {
     const request = form();
     request.set("fulfillmentType", "pickup");

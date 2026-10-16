@@ -406,6 +406,54 @@ for (const scheduled of [false, true]) {
   });
 }
 
+for (const rejection of ["full", "blackout"] as const) {
+  test(`manual pickup retains entered details after ${rejection} rejection and retries once`, async ({ admin, sql }) => {
+    const date = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+    const schedule = Object.fromEntries(
+      ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].map((day) => [day, [["12:00", "13:00"]]]),
+    );
+    const [location] = await sql`insert into pickup_location(name,address,weekly_schedule,prep_minutes,schedule_required,slot_capacity,blackout_dates) values('Recovery pickup','Pickup counter',${JSON.stringify(schedule)}::jsonb,0,true,${rejection === "full" ? 0 : 1},${JSON.stringify(rejection === "blackout" ? [date] : [])}::jsonb) returning id`;
+    await admin.goto("/admin/orders");
+    await admin.getByRole("button", { name: "Add manual order" }).click();
+    const dialog = admin.getByRole("dialog", { name: "Add manual order" });
+    const email = `manual-recovery-${rejection}@example.test`;
+    await dialog.getByLabel("Customer name").fill("Recovery customer");
+    await dialog.getByLabel("Customer email").fill(email);
+    await dialog.getByLabel("Fulfillment", { exact: true }).selectOption("pickup");
+    await dialog.getByLabel("Pickup location").selectOption(location!.id);
+    await dialog.getByLabel("Pickup date").fill(date);
+    await dialog.getByLabel("Pickup time").fill("12:00");
+    await dialog.getByLabel("Payment method").selectOption({ label: "Demo bank transfer" });
+    await dialog.getByLabel("Product variant").selectOption({ index: 1 });
+    await dialog.getByLabel("Quantity", { exact: true }).fill("2");
+    const requestKey = await dialog.locator('input[name="requestKey"]').inputValue();
+    const variant = await dialog.getByLabel("Product variant").inputValue();
+    const payment = await dialog.getByLabel("Payment method").inputValue();
+    await dialog.getByRole("button", { name: "Create order" }).click();
+    await expect(dialog.getByRole("alert")).toHaveText(rejection === "full"
+      ? "This fulfillment slot is full. Choose another time."
+      : "This pickup slot is closed, past, or does not allow enough preparation time.");
+    await expect(dialog.getByLabel("Customer name")).toHaveValue("Recovery customer");
+    await expect(dialog.getByLabel("Customer email")).toHaveValue(email);
+    await expect(dialog.getByLabel("Fulfillment", { exact: true })).toHaveValue("pickup");
+    await expect(dialog.getByLabel("Pickup location")).toHaveValue(location!.id);
+    await expect(dialog.getByLabel("Pickup date")).toHaveValue(date);
+    await expect(dialog.getByLabel("Pickup time")).toHaveValue("12:00");
+    await expect(dialog.getByLabel("Product variant")).toHaveValue(variant);
+    await expect(dialog.getByLabel("Quantity", { exact: true })).toHaveValue("2");
+    await expect(dialog.getByLabel("Payment method")).toHaveValue(payment);
+    await expect(dialog.locator('input[name="requestKey"]')).toHaveValue(requestKey);
+    expect(await sql`select id from carts where id=${requestKey}`).toHaveLength(0);
+    expect(await sql`select id from orders where source_cart_id=${requestKey}`).toHaveLength(0);
+    await sql`update pickup_location set blackout_dates='[]'::jsonb, slot_capacity=1 where id=${location!.id}`;
+    await dialog.getByRole("button", { name: "Create order" }).click();
+    await expect(admin).toHaveURL(/\/admin\/orders\?created=SP-/);
+    const orders = await sql`select id from orders where source_cart_id=${requestKey}`;
+    expect(orders).toHaveLength(1);
+    expect(await sql`select id from slot_reservations where order_id=${orders[0]!.id}`).toHaveLength(1);
+  });
+}
+
 test("staff can see submitted payment evidence in the review grid", async ({
   page,
   admin,
