@@ -98,6 +98,15 @@ export function TemplateEditor({
           executed. Required links and SMS STOP instructions are checked when
           publishing.
         </p>
+        {template.channel === "email" && (
+          <p>
+            Emails include a shared store header and footer. Separate paragraphs
+            with a blank line. Detail lines such as Order:{" "}
+            {"{{order.reference}}"} can form a summary table. An action button
+            is added from the message link; the full URL remains available as a
+            fallback. The plain-text version preserves your message.
+          </p>
+        )}
         <div
           className="flex flex-wrap gap-2"
           aria-label="Insert template variables"

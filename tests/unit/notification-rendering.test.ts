@@ -5,20 +5,66 @@ import {
   renderTemplate,
 } from "@/application/notifications/templates";
 describe("provider-independent email content", () => {
-  it.each(["en", "zh"] as const)("structures %s email with one action and matching text", (locale) => {
-    const key = { event: "auth.reset_password", channel: "email", audience: "customer", locale } as const;
-    const result = renderTemplate(key, defaultTemplate(key), previewValues(), "id", "buyer@example.test");
-    expect("html" in result).toBe(true);
-    if (!("html" in result)) return;
-    expect(result.html).toContain('role="presentation"');
-    expect(result.html).toContain('name="viewport"');
-    expect(result.html).toContain('data-email-action="primary"');
-    expect(result.html.match(/data-email-action="primary"/g)).toHaveLength(1);
-    expect(result.html).toContain(locale === "en" ? "Reset password" : "重设密码");
-    expect(result.text).toContain(previewValues()["action.url"]);
-    expect(result.html).toContain("support@example.test");
-    expect(result.html).not.toContain("SP-PREVIEW");
+  it("preserves custom instructions, escapes details and retains a usable URL fallback", () => {
+    const key = {
+      event: "order.confirmed",
+      channel: "email",
+      audience: "customer",
+      locale: "en",
+    } as const;
+    const result = renderTemplate(
+      key,
+      {
+        subject: "Your order",
+        body: "Merchant instructions stay here.\n\nOrder: {{order.reference}}\nTotal: {{order.total}}\n\n{{order.url}}\n\nSpecial footer instructions.",
+      },
+      {
+        ...previewValues(),
+        "order.reference": "<script>bad</script>\nNext line",
+      },
+      "id",
+      "buyer@example.test",
+    );
+    if (!("html" in result)) throw new Error("Expected email");
+    expect(result.html).toContain("Merchant instructions stay here.");
+    expect(result.html).toContain("Special footer instructions.");
+    expect(result.html).toContain(
+      "&lt;script&gt;bad&lt;/script&gt;<br>Next line",
+    );
+    expect(result.html).not.toContain("<script>");
+    expect(result.html).toContain(">https://store.example/en/recover</a>");
+    expect(result.text).toContain("Special footer instructions.");
   });
+  it.each(["en", "zh"] as const)(
+    "structures %s email with one action and matching text",
+    (locale) => {
+      const key = {
+        event: "auth.reset_password",
+        channel: "email",
+        audience: "customer",
+        locale,
+      } as const;
+      const result = renderTemplate(
+        key,
+        defaultTemplate(key),
+        previewValues(),
+        "id",
+        "buyer@example.test",
+      );
+      expect("html" in result).toBe(true);
+      if (!("html" in result)) return;
+      expect(result.html).toContain('role="presentation"');
+      expect(result.html).toContain('name="viewport"');
+      expect(result.html).toContain('data-email-action="primary"');
+      expect(result.html.match(/data-email-action="primary"/g)).toHaveLength(1);
+      expect(result.html).toContain(
+        locale === "en" ? "Reset password" : "重设密码",
+      );
+      expect(result.text).toContain(previewValues()["action.url"]);
+      expect(result.html).toContain("support@example.test");
+      expect(result.html).not.toContain("SP-PREVIEW");
+    },
+  );
   it("renders allowed fields without leaking arbitrary event payload data", () => {
     const key = {
       event: "order.confirmed",
