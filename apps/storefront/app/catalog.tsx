@@ -1,6 +1,7 @@
 import { readPage } from "../lib/page-data";
 import { textFor } from "@supastore/i18n/messages";
 import Link from "next/link";
+import Form from "next/form";
 import { ProductCard } from "./product-card";
 import { NativeSelect } from "@supastore/ui/native-select";
 import { getTranslations } from "next-intl/server";
@@ -108,7 +109,7 @@ export default async function Catalog({
         )}
         <div className="storefront-catalog-tools">
           <h2>{t("collection")}</h2>
-          <form
+          <Form
             className="flex gap-2 max-sm:w-full"
             action={"/" + locale + "/search"}
           >
@@ -157,7 +158,7 @@ export default async function Catalog({
               </label>
             ))}
             <Button type="submit">{t("searchButton")}</Button>
-          </form>
+          </Form>
         </div>
         <nav
           className="my-7 flex flex-wrap gap-2"

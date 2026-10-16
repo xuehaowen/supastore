@@ -274,6 +274,23 @@
     align-items: center;
   }
 }
+.storefront-navigation-progress {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 100;
+  height: 3px;
+  background: var(--primary);
+  transform-origin: left;
+  animation: storefront-progress 1.2s ease-in-out infinite alternate;
+}
+@keyframes storefront-progress {
+  from {
+    transform: scaleX(0.15);
+  }
+  to {
+    transform: scaleX(0.9);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .storefront-shell *,
   .storefront-shell *::before,

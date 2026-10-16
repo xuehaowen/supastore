@@ -57,6 +57,7 @@ export default async function ShopLayout({
           aria-label={textFor(locale).shop}
         >
           <StorefrontNavLink
+            locale={locale}
             shop
             className="transition-colors hover:text-muted-foreground"
             href={"/" + locale}
@@ -64,18 +65,21 @@ export default async function ShopLayout({
             {t("shop")}
           </StorefrontNavLink>
           <StorefrontNavLink
+            locale={locale}
             className="transition-colors hover:text-muted-foreground"
             href={`/recover?locale=${locale}`}
           >
             {t("recover")}
           </StorefrontNavLink>
           <StorefrontNavLink
+            locale={locale}
             className="transition-colors hover:text-muted-foreground"
             href={"/" + locale + "/account"}
           >
             {session ? textFor(locale).ui.account : textFor(locale).auth.signIn}
           </StorefrontNavLink>
           <StorefrontNavLink
+            locale={locale}
             className="rounded-md border px-3 py-1.5 font-medium no-underline transition-colors hover:bg-muted"
             href={"/" + locale + "/cart"}
           >

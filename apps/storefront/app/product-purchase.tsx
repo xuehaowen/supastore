@@ -1,6 +1,7 @@
 "use client";
 import { textFor } from "@supastore/i18n/messages";
 import { useState } from "react";
+import { useFormStatus } from "react-dom";
 import Image from "next/image";
 import type { ProductDetail } from "@supastore/contracts";
 import { addItem } from "./actions";
@@ -279,15 +280,11 @@ export function ProductPurchase({
               </Button>
             </div>
           </div>
-          <Button
-            className="w-full sm:w-auto"
-            size="lg"
-            type="submit"
-            disabled={!current?.isAvailable}
-          >
-            {current?.isAvailable ? labels.add : labels.unavailable}{" "}
-            <span aria-hidden="true">↗</span>
-          </Button>
+          <AddToCartButton
+            available={!!current?.isAvailable}
+            labels={labels}
+            wait={textFor(locale).common.wait}
+          />
         </form>
         <aside className="mt-8 border-t pt-5 text-sm leading-6 text-muted-foreground">
           {
@@ -297,5 +294,29 @@ export function ProductPurchase({
         </aside>
       </div>
     </div>
+  );
+}
+
+function AddToCartButton({
+  available,
+  labels,
+  wait,
+}: {
+  available: boolean;
+  labels: { add: string; unavailable: string };
+  wait: string;
+}) {
+  const { pending } = useFormStatus();
+  return (
+    <Button
+      className="w-full sm:w-auto"
+      size="lg"
+      type="submit"
+      disabled={!available || pending}
+      aria-busy={pending}
+    >
+      {pending ? wait : available ? labels.add : labels.unavailable}{" "}
+      <span aria-hidden="true">↗</span>
+    </Button>
   );
 }

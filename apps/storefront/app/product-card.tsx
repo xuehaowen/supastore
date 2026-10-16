@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { money } from "../lib/web";
+import { NavigationPending } from "./navigation-pending";
+import { textFor } from "@supastore/i18n/messages";
 
 export function ProductCard({
   product,
@@ -52,6 +54,7 @@ export function ProductCard({
               : money(product.lowestPriceCents, currency, precision, locale)}
           </span>
         </div>
+        <NavigationPending label={textFor(locale).common.wait} />
       </Link>
     </article>
   );
