@@ -38,7 +38,8 @@ export function adminReturnContext(requested: string) {
         )) ||
       (key === "paymentType" &&
         ["cash", "zelle", "venmo", "other"].includes(value)) ||
-      (["manage", "managePayment"].includes(key) && uuid.test(value)) ||
+      (["manage", "managePayment", "reviewEvidence"].includes(key) &&
+        uuid.test(value)) ||
       ([
         "page",
         "paymentPage",

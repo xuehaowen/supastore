@@ -8,6 +8,7 @@ import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { ForbiddenError } from "@/application/common/errors";
 import { DomainError } from "@/domain/errors";
 import { textIterableStream } from "@/infrastructure/http/iterable-stream";
+import { parseOrderExportSelection } from "@/domain/catalog/order-export-selection";
 
 export async function GET(request: NextRequest) {
   const session = await staffAuth.api.getSession({ headers: await headers() });
@@ -31,12 +32,23 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const format = new URL(request.url).searchParams.get("format");
+  const parameters = new URL(request.url).searchParams;
+  const format = parameters.get("format");
+  let selection;
+  try {
+    selection = parseOrderExportSelection(parameters);
+  } catch (error) {
+    if (!(error instanceof DomainError)) throw error;
+    return NextResponse.json(
+      { error: error.message },
+      { status: 422, headers: { "Cache-Control": "no-store" } },
+    );
+  }
   const date = new Date().toISOString().slice(0, 10);
   if (format === "xlsx") {
     let workbook: ArrayBuffer;
     try {
-      workbook = await exportOrdersXlsx();
+      workbook = await exportOrdersXlsx(selection);
     } catch (error) {
       if (!(error instanceof DomainError)) throw error;
       return NextResponse.json(
@@ -57,7 +69,7 @@ export async function GET(request: NextRequest) {
 
   const filename = `orders-${date}.csv`;
 
-  const stream = textIterableStream(streamOrdersCsv());
+  const stream = textIterableStream(streamOrdersCsv(selection));
 
   return new NextResponse(stream, {
     status: 200,

@@ -2,6 +2,12 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import {
+  OrderSelection,
+  OrderExportToolbar,
+} from "@/app/admin/order-selection";
 
 const workspaceRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -75,17 +81,20 @@ describe("frontend visual foundations", () => {
     expect(cartPage).toContain("aria-label={textFor(locale).common.summary}");
   });
 
-  it("offers the order CSV export from the order management page", async () => {
-    const operations = await readFile(
-      path.join(workspaceRoot, "apps/backend/src/app/admin/orders-view.tsx"),
-      "utf8",
+  it("requires an explicit order selection before CSV or XLSX export", () => {
+    const html = renderToStaticMarkup(
+      createElement(OrderSelection, {
+        pageIds: ["example"],
+        children: createElement(OrderExportToolbar, { search: "", status: "" }),
+      }),
     );
-    expect(operations).toContain('href="/api/admin/exports/orders"');
-    expect(operations).toContain("Export orders CSV");
-    expect(operations).toContain(
-      'href="/api/admin/exports/orders?format=xlsx"',
+    expect(html).toContain("Selected orders (0)");
+    expect(html).toMatch(
+      /<button[^>]*disabled=""[^>]*>Export orders CSV<\/button>/,
     );
-    expect(operations).toContain("Export orders XLSX");
+    expect(html).toMatch(
+      /<button[^>]*disabled=""[^>]*>Export orders XLSX<\/button>/,
+    );
   });
 
   it("does not render raw buttons, selects, or textareas in application pages", async () => {

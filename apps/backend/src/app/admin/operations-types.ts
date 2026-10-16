@@ -17,6 +17,7 @@ export type OperationsQuery = {
   paymentPage?: string;
   payoutPage?: string;
   evidencePage?: string;
+  reviewEvidence?: string;
   failurePage?: string;
   fulfillmentPage?: string;
   work?: string;

@@ -20,7 +20,16 @@ import {
   productVariants,
   storeSettings,
 } from "@/infrastructure/db/schema";
-import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  getTableColumns,
+  ilike,
+  inArray,
+  or,
+  sql,
+} from "drizzle-orm";
 export interface AdminOperationsInput {
   staffUserId: string;
   view: "overview" | "orders" | "payments" | "fulfillment";
@@ -271,8 +280,12 @@ export async function getAdminOperations(input: AdminOperationsInput) {
       const evidence =
         view === "payments"
           ? await tx
-              .select()
+              .select({
+                ...getTableColumns(paymentUploadIntents),
+                order: orders,
+              })
               .from(paymentUploadIntents)
+              .innerJoin(orders, eq(orders.id, paymentUploadIntents.orderId))
               .where(eq(paymentUploadIntents.status, "finalized"))
               .orderBy(
                 desc(paymentUploadIntents.createdAt),
@@ -281,6 +294,15 @@ export async function getAdminOperations(input: AdminOperationsInput) {
               .limit(51)
               .offset((evidencePage - 1) * 50)
           : [];
+      const evidenceOrderIds = [
+        ...new Set(evidence.map((item) => item.orderId)),
+      ];
+      const evidenceReceipts = evidenceOrderIds.length
+        ? await tx
+            .select()
+            .from(paymentReceipts)
+            .where(inArray(paymentReceipts.orderId, evidenceOrderIds))
+        : [];
       const failures =
         view === "overview"
           ? await tx
@@ -374,6 +396,7 @@ export async function getAdminOperations(input: AdminOperationsInput) {
         attempts,
         discrepancies,
         evidence: evidence.slice(0, 50),
+        evidenceReceipts,
         evidenceHasNext: evidence.length > 50,
         failures: failures.slice(0, 50),
         failureHasNext: failures.length > 50,

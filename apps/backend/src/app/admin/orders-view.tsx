@@ -12,7 +12,12 @@ import { ManualOrderDialog } from "@/app/admin/manual-order-dialog";
 import { Field, Hidden } from "@/app/components";
 import { Alert, AlertDescription } from "@supastore/ui/alert";
 import { Badge } from "@supastore/ui/badge";
-import { Button, buttonVariants } from "@supastore/ui/button";
+import {
+  OrderSelection,
+  OrderSelectionCheckbox,
+  OrderExportToolbar,
+} from "./order-selection";
+import { Button } from "@supastore/ui/button";
 import { Checkbox } from "@supastore/ui/checkbox";
 import { Input } from "@supastore/ui/input";
 import { NativeSelect } from "@supastore/ui/native-select";
@@ -25,7 +30,6 @@ import {
   TableRow,
 } from "@supastore/ui/table";
 import { money } from "@/infrastructure/web";
-import { Download } from "lucide-react";
 import type { OperationsScreenProps } from "./operations-types";
 export function OrdersView(props: OperationsScreenProps) {
   const { data, query, view, returnTo } = props;
@@ -57,22 +61,6 @@ export function OrdersView(props: OperationsScreenProps) {
                 label: account.accountName,
               }))}
           />
-          <a
-            href="/api/admin/exports/orders"
-            download
-            className={buttonVariants({ variant: "outline" })}
-          >
-            <Download aria-hidden="true" />
-            Export orders CSV
-          </a>
-          <a
-            href="/api/admin/exports/orders?format=xlsx"
-            download
-            className={buttonVariants({ variant: "outline" })}
-          >
-            <Download aria-hidden="true" />
-            Export orders XLSX
-          </a>
         </div>
       )}
       {query.created && view === "orders" && (
@@ -106,94 +94,115 @@ export function OrdersView(props: OperationsScreenProps) {
         </form>
       )}
       {view === "orders" && (
-        <section className="panel">
-          <h2>Order index</h2>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Order</TableHead>
-                <TableHead>Customer name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Fulfillment</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.slice(0, 50).map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell>
-                    <a
-                      href={`/admin/orders/${order.id}?back=${encodeURIComponent(back)}`}
-                    >
-                      <strong>{order.referenceCode}</strong>
-                    </a>
-                  </TableCell>
-                  <TableCell>{order.guestName}</TableCell>
-                  <TableCell>{order.guestEmail}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        order.lifecycleStatus === "completed" ||
-                        order.lifecycleStatus === "confirmed"
-                          ? "default"
-                          : order.lifecycleStatus === "cancelled"
-                            ? "destructive"
-                            : "outline"
-                      }
-                    >
-                      {order.lifecycleStatus}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{order.fulfillmentType}</TableCell>
-                  <TableCell>
-                    {money(
-                      order.purchaseTotalCents,
-                      store?.currency,
-                      store?.precision,
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <time dateTime={order.createdAt.toISOString()}>
-                      {order.createdAt.toLocaleDateString("en-US", {
-                        timeZone: "UTC",
-                      })}
-                    </time>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <a
-                      className="admin-edit-link"
-                      href={`/admin/orders/${order.id}?back=${encodeURIComponent(back)}`}
-                    >
-                      View order
-                    </a>
-                  </TableCell>
+        <OrderSelection
+          key={back}
+          pageIds={rows.slice(0, 50).map((order) => order.id)}
+        >
+          <section className="panel">
+            <h2>Order index</h2>
+            {member.role === "owner" && (
+              <OrderExportToolbar search={search} status={status} />
+            )}
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {member.role === "owner" && (
+                    <TableHead>
+                      <OrderSelectionCheckbox />
+                    </TableHead>
+                  )}
+                  <TableHead>Order</TableHead>
+                  <TableHead>Customer name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Fulfillment</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          {rows.length === 0 && (
-            <p className="admin-empty">No orders match these filters.</p>
-          )}
-          <nav className="admin-pagination" aria-label="Order pages">
-            {page > 1 && (
-              <a
-                href={`/admin/orders?q=${encodeURIComponent(search)}&status=${status}&page=${page - 1}`}
-              >
-                ← Previous
-              </a>
+              </TableHeader>
+              <TableBody>
+                {rows.slice(0, 50).map((order) => (
+                  <TableRow key={order.id}>
+                    {member.role === "owner" && (
+                      <TableCell>
+                        <OrderSelectionCheckbox
+                          id={order.id}
+                          label={order.referenceCode}
+                        />
+                      </TableCell>
+                    )}
+                    <TableCell>
+                      <a
+                        href={`/admin/orders/${order.id}?back=${encodeURIComponent(back)}`}
+                      >
+                        <strong>{order.referenceCode}</strong>
+                      </a>
+                    </TableCell>
+                    <TableCell>{order.guestName}</TableCell>
+                    <TableCell>{order.guestEmail}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          order.lifecycleStatus === "completed" ||
+                          order.lifecycleStatus === "confirmed"
+                            ? "default"
+                            : order.lifecycleStatus === "cancelled"
+                              ? "destructive"
+                              : "outline"
+                        }
+                      >
+                        {order.lifecycleStatus}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{order.fulfillmentType}</TableCell>
+                    <TableCell>
+                      {money(
+                        order.purchaseTotalCents,
+                        store?.currency,
+                        store?.precision,
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <time dateTime={order.createdAt.toISOString()}>
+                        {order.createdAt.toLocaleDateString("en-US", {
+                          timeZone: "UTC",
+                        })}
+                      </time>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <a
+                        className="admin-edit-link"
+                        href={`/admin/orders/${order.id}?back=${encodeURIComponent(back)}`}
+                      >
+                        View order
+                      </a>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            {rows.length === 0 && (
+              <p className="admin-empty">No orders match these filters.</p>
             )}
-            {rows.length > 50 && (
-              <a
-                href={`/admin/orders?q=${encodeURIComponent(search)}&status=${status}&page=${page + 1}`}
-              >
-                Next →
-              </a>
-            )}
-          </nav>
-        </section>
+            <nav className="admin-pagination" aria-label="Order pages">
+              {page > 1 && (
+                <a
+                  href={`/admin/orders?q=${encodeURIComponent(search)}&status=${status}&page=${page - 1}`}
+                >
+                  ← Previous
+                </a>
+              )}
+              {rows.length > 50 && (
+                <a
+                  href={`/admin/orders?q=${encodeURIComponent(search)}&status=${status}&page=${page + 1}`}
+                >
+                  Next →
+                </a>
+              )}
+            </nav>
+          </section>
+        </OrderSelection>
       )}
       {view === "orders" && query.manage && (
         <AdminDialog

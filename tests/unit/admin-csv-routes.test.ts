@@ -154,6 +154,45 @@ describe("admin CSV routes", () => {
     );
   });
 
+  it.each(["csv", "xlsx"])(
+    "passes selected orders to the %s exporter",
+    async (format) => {
+      const id = "11111111-1111-4111-8111-111111111111";
+      const response = await getOrderExport(
+        new Request(
+          `http://localhost/api/admin/exports/orders?scope=selected&ids=${id}&format=${format}`,
+        ) as never,
+      );
+      expect(response.status).toBe(200);
+      await response.arrayBuffer();
+      expect(
+        format === "xlsx" ? mocks.exportOrdersXlsx : mocks.streamOrdersCsv,
+      ).toHaveBeenCalledWith({ ids: [id] });
+    },
+  );
+  it("rejects empty selection before starting an export", async () => {
+    const response = await getOrderExport(
+      new Request(
+        "http://localhost/api/admin/exports/orders?scope=selected&ids=",
+      ) as never,
+    );
+    expect(response.status).toBe(422);
+    expect(mocks.streamOrdersCsv).not.toHaveBeenCalled();
+    expect(mocks.exportOrdersXlsx).not.toHaveBeenCalled();
+  });
+  it("passes current filters to the exporter", async () => {
+    const response = await getOrderExport(
+      new Request(
+        "http://localhost/api/admin/exports/orders?scope=filtered&q=Buyer&status=unpaid",
+      ) as never,
+    );
+    await response.text();
+    expect(mocks.streamOrdersCsv).toHaveBeenCalledWith({
+      search: "Buyer",
+      status: "unpaid",
+    });
+  });
+
   it("returns 401 for an unauthenticated product import", async () => {
     mocks.getSession.mockResolvedValueOnce(null);
     const response = await importProducts(

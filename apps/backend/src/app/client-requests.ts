@@ -119,8 +119,13 @@ export async function importProductsCsv(
   return data;
 }
 
-export async function downloadAdminExport(type: "products" | "orders") {
-  const response = await fetch(`/api/admin/exports/${type}`);
+export async function downloadAdminExport(
+  type: "products" | "orders",
+  parameters?: URLSearchParams,
+) {
+  const response = await fetch(
+    `/api/admin/exports/${type}${parameters?.size ? `?${parameters}` : ""}`,
+  );
   if (!response.ok) {
     throw new Error(
       errorMessage(await readJson(response), "Unable to download the export."),

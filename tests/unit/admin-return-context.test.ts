@@ -22,6 +22,14 @@ it("preserves allowed queue filters, pages and selected management context", () 
     "/admin/orders?q=Buyer&page=2&status=unpaid&manage=11111111-1111-4111-8111-111111111111";
   expect(adminReturnPath(form(path))).toBe(path);
 });
+it("preserves the reviewed evidence and page after recording or confirming payment", () => {
+  const path =
+    "/admin/payments?evidencePage=2&reviewEvidence=11111111-1111-4111-8111-111111111111";
+  expect(adminReturnPath(form(path))).toBe(path);
+  expect(adminReturnContext("/admin/payments?reviewEvidence=invalid")).toBe(
+    "/admin/payments",
+  );
+});
 it("preserves safe inventory and fulfillment list contexts across order actions", () => {
   expect(
     adminReturnContext("/admin/inventory?q=shirt&status=low&page=3&saved=1"),

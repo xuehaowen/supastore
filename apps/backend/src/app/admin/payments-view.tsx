@@ -1,4 +1,8 @@
 import { AdminDialog } from "@/app/admin/admin-dialog";
+import type { QuoteTerms } from "@/application/use-cases/get-quote";
+import { Notice } from "@/app/components";
+import { EvidenceImage } from "./evidence-image";
+import { PaymentReview } from "./payment-review";
 import { adminQueueReturnContext } from "@/application/common/admin-return-context";
 import { Badge } from "@supastore/ui/badge";
 import { Button } from "@supastore/ui/button";
@@ -17,7 +21,7 @@ import type { OperationsScreenProps } from "./operations-types";
 import { QueuePagination } from "./queue-pagination";
 export function PaymentsView(props: OperationsScreenProps) {
   const { data, query, view, returnTo } = props;
-  const { rows, paymentRows, evidence, evidenceHasNext, store } = data;
+  const { paymentRows, evidence, evidenceHasNext, store } = data;
   const {
     paymentSearch,
     paymentStatus,
@@ -164,40 +168,116 @@ export function PaymentsView(props: OperationsScreenProps) {
             hasNext={evidenceHasNext}
           />
           {evidence.length === 0 && (
-            <p className="admin-empty">No payment evidence awaiting review.</p>
+            <p className="admin-empty">No submitted payment evidence.</p>
           )}
           <div className="evidence-grid">
             {evidence.map((item) => {
-              const order = rows.find((row) => row.id === item.orderId);
-              const label = order?.referenceCode ?? item.orderId;
+              const order = item.order;
+              const label = order.referenceCode;
+              const terms = order.termsSnapshot as QuoteTerms;
+              const currency = terms.currency ?? store?.currency ?? "USD";
+              const precision = terms.precision ?? store?.precision ?? 2;
+              const reviewReturnTo = adminQueueReturnContext(
+                "/admin/payments",
+                { ...query, reviewEvidence: item.id },
+              );
+              const recorded = data.evidenceReceipts.filter(
+                (receipt) => receipt.orderId === order.id,
+              );
               return (
                 <article className="evidence-card" key={item.id}>
-                  {/* eslint-disable-next-line @next/next/no-img-element -- authenticated evidence redirects cannot use the image optimizer */}
-                  <img
-                    src={`/api/evidence/${item.id}`}
-                    alt={`Payment evidence submitted for order ${label}`}
-                  />
+                  <a
+                    href={reviewReturnTo}
+                    aria-label={`Review payment evidence for ${label}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- authenticated evidence redirects cannot use the image optimizer */}
+                    <img
+                      src={`/api/evidence/${item.id}`}
+                      alt={`Payment evidence submitted for order ${label}`}
+                    />
+                  </a>
                   <div>
                     <strong>{label}</strong>
+                    <span>{order.guestName}</span>
+                    <Badge variant="outline">{order.lifecycleStatus}</Badge>
+                    <span>
+                      {money(order.purchaseTotalCents, currency, precision)}
+                    </span>
                     <AdminDialog
+                      wide
+                      defaultOpen={query.reviewEvidence === item.id}
                       trigger="Review evidence"
                       title={`Payment evidence · ${label}`}
                       description="Compare this image with the receiving account and recorded amount before confirming payment."
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element -- authenticated evidence redirects cannot use the image optimizer */}
-                      <img
-                        className="evidence-review-image"
-                        src={`/api/evidence/${item.id}`}
-                        alt={`Full-size payment evidence submitted for order ${label}`}
+                      <Notice
+                        error={
+                          query.reviewEvidence === item.id
+                            ? query.error
+                            : undefined
+                        }
                       />
-                      <a
-                        className="admin-edit-link"
-                        href={`/api/evidence/${item.id}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Open original in a new tab ↗
-                      </a>
+                      <div className="payment-evidence-workspace">
+                        <EvidenceImage id={item.id} label={label} />
+                        <div>
+                          <p>
+                            <strong>{order.guestName}</strong>
+                            <br />
+                            {order.guestEmail}
+                          </p>
+                          <p>
+                            Order total:{" "}
+                            {money(
+                              order.purchaseTotalCents,
+                              currency,
+                              precision,
+                            )}
+                            <br />
+                            Store credit:{" "}
+                            {money(
+                              order.creditAppliedCents,
+                              currency,
+                              precision,
+                            )}
+                          </p>
+                          <PaymentReview
+                            order={order}
+                            accounts={data.accounts}
+                            currency={currency}
+                            precision={precision}
+                            returnTo={reviewReturnTo}
+                            receiptSummary={
+                              recorded.length ? (
+                                <div>
+                                  <h4>Recorded receipts</h4>
+                                  {recorded.map((receipt) => (
+                                    <p key={receipt.id}>
+                                      {receipt.rawReference} ·{" "}
+                                      {money(
+                                        receipt.amountCents,
+                                        currency,
+                                        precision,
+                                      )}
+                                    </p>
+                                  ))}
+                                  <p>
+                                    Receipts are shown before any corrections or
+                                    returns.
+                                  </p>
+                                </div>
+                              ) : (
+                                <p>No receipts recorded yet.</p>
+                              )
+                            }
+                          />
+                          <a
+                            className="admin-edit-link"
+                            href={`/admin/orders/${order.id}`}
+                          >
+                            Full order details
+                          </a>
+                        </div>
+                      </div>
                     </AdminDialog>
                   </div>
                 </article>

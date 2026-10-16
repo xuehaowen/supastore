@@ -98,6 +98,7 @@ export function ManualOrderDialog({
           Fulfillment
           <NativeSelect
             name="fulfillmentType"
+            aria-label="Fulfillment"
             value={fulfillmentType}
             onChange={(event) => setFulfillmentType(event.target.value)}
           >
@@ -112,6 +113,7 @@ export function ManualOrderDialog({
               Pickup location
               <NativeSelect
                 name="pickupLocationId"
+                aria-label="Pickup location"
                 required
                 value={pickupLocationId}
                 onChange={(event) => setPickupLocationId(event.target.value)}
@@ -187,7 +189,11 @@ export function ManualOrderDialog({
         )}
         <label>
           Payment method
-          <NativeSelect name="paymentAccountId" required>
+          <NativeSelect
+            name="paymentAccountId"
+            aria-label="Payment method"
+            required
+          >
             <option value="">Choose payment method</option>
             {paymentAccounts.map((account) => (
               <option value={account.id} key={account.id}>

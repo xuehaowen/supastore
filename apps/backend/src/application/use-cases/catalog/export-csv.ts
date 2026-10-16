@@ -7,7 +7,8 @@ import {
   orderFulfillments,
   paymentReceipts,
 } from "@/infrastructure/db/schema";
-import { and, eq, asc, inArray, sql } from "drizzle-orm";
+import { and, eq, asc, inArray, ilike, or, sql } from "drizzle-orm";
+import type { OrderExportSelection } from "@/domain/catalog/order-export-selection";
 
 type ExportCursor = { id: string; timestamp: string };
 async function exportCutoff() {
@@ -135,7 +136,9 @@ export type OrderExportRow = Record<
   string | number | Date
 >;
 
-export async function* streamOrderExportRows(): AsyncGenerator<OrderExportRow> {
+export async function* streamOrderExportRows(
+  selection: OrderExportSelection = {},
+): AsyncGenerator<OrderExportRow> {
   const BATCH = 100;
   const cutoff = await exportCutoff();
   let cursor: ExportCursor | undefined;
@@ -160,6 +163,21 @@ export async function* streamOrderExportRows(): AsyncGenerator<OrderExportRow> {
       .where(
         and(
           sql`${orders.createdAt} <= ${cutoff}::timestamptz`,
+          selection.ids
+            ? selection.ids.length
+              ? inArray(orders.id, selection.ids)
+              : sql`false`
+            : undefined,
+          selection.status
+            ? eq(orders.lifecycleStatus, selection.status)
+            : undefined,
+          selection.search
+            ? or(
+                ilike(orders.referenceCode, `%${selection.search}%`),
+                ilike(orders.guestName, `%${selection.search}%`),
+                ilike(orders.guestEmail, `%${selection.search}%`),
+              )
+            : undefined,
           cursor
             ? sql`(${orders.createdAt}, ${orders.id}) > (${cursor.timestamp}::timestamptz, ${cursor.id}::uuid)`
             : undefined,
@@ -248,9 +266,11 @@ export async function* streamOrderExportRows(): AsyncGenerator<OrderExportRow> {
   }
 }
 
-export async function* streamOrdersCsv(): AsyncGenerator<string> {
+export async function* streamOrdersCsv(
+  selection: OrderExportSelection = {},
+): AsyncGenerator<string> {
   yield csvRow([...ORDER_EXPORT_COLUMNS]) + "\n";
-  for await (const row of streamOrderExportRows())
+  for await (const row of streamOrderExportRows(selection))
     yield csvRow(
       ORDER_EXPORT_COLUMNS.map((column) =>
         row[column] instanceof Date ? row[column].toISOString() : row[column],

@@ -1,10 +1,13 @@
 import ExcelJS from "exceljs";
 import { ORDER_EXPORT_COLUMNS, streamOrderExportRows } from "./export-csv";
 import { DomainError } from "@/domain/errors";
+import type { OrderExportSelection } from "@/domain/catalog/order-export-selection";
 
 const MAX_ROWS = 10000;
 
-export async function exportOrdersXlsx(): Promise<ArrayBuffer> {
+export async function exportOrdersXlsx(
+  selection: OrderExportSelection = {},
+): Promise<ArrayBuffer> {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "Supastore";
   workbook.created = new Date();
@@ -27,7 +30,7 @@ export async function exportOrdersXlsx(): Promise<ArrayBuffer> {
     fgColor: { argb: "FF17252A" },
   };
   let rowCount = 0;
-  for await (const row of streamOrderExportRows()) {
+  for await (const row of streamOrderExportRows(selection)) {
     if (++rowCount > MAX_ROWS)
       throw new DomainError(
         "XLSX exports support up to 10,000 rows. Use the streaming CSV export for larger downloads.",

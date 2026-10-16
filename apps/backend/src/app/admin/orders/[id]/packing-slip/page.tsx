@@ -61,7 +61,12 @@ export default async function PackingSlipPage({
   const shipping = order.shippingAddressSnapshot as any;
 
   return (
-    <div className="min-h-screen bg-neutral-100 p-4 font-mono text-xs text-black print:bg-white print:p-0">
+    <div
+      id="admin-content"
+      role="main"
+      tabIndex={-1}
+      className="min-h-screen bg-neutral-100 p-4 font-mono text-xs text-black print:bg-white print:p-0"
+    >
       <style>{`
         @media print {
           @page {
