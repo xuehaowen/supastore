@@ -53,6 +53,16 @@ describe.skipIf(!enabled)("durable notification leases and callbacks", () => {
     });
     await clear();
   });
+  it("retains a diagnostic code for an unsent template failure and allows owner recovery", async () => {
+    await clear();
+    const id = await seeded();
+    await queryClient`update outbox_events set event_type='missing.fixture' where id=(select event_id from event_deliveries where id=${id})`;
+    const send = vi.fn();
+    await processOutboxBatch({ providers: { email: acceptedSender(send) } });
+    const [delivery] = await db.select().from(eventDeliveries).where(eq(eventDeliveries.id, id));
+    expect(delivery).toMatchObject({ status: "review", failureCode: "TEMPLATE_UNKNOWN_EVENT", attempts: 0 });
+    expect(send).not.toHaveBeenCalled();
+  });
   it("coordinates concurrent replicas without duplicate submissions and retains acceptance separately", async () => {
     await clear();
     for (let index = 0; index < 6; index++)

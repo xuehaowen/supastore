@@ -142,8 +142,9 @@ describe("evidence upload boundary", () => {
       new Error("private endpoint and credentials"),
     );
     const response = await PUT(request());
-    expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({
+    expect(response.status).toBe(500);
+    expect(response.headers.get("x-request-id")).toBeTruthy();
+    expect(await response.json()).toMatchObject({
       error: "Upload failed. Please try again.",
     });
   });

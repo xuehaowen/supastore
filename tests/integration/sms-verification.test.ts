@@ -227,6 +227,26 @@ describe.skipIf(!server)("provider-neutral phone consent claims", () => {
     ).rejects.toThrow("new verification");
     expect(verifier.check).toHaveBeenCalledTimes(5);
   });
+  it("restores reserved attempts on provider outage and permits recovery", async () => {
+    const verifier = fake(), id = await user();
+    await updateCustomerSms(id, { operation: "start", phone: "+12025550123", consent: true }, verifier, true);
+    verifier.check = vi.fn().mockResolvedValue("unavailable");
+    for (let index = 0; index < 6; index++)
+      await expect(updateCustomerSms(id, { operation: "confirm", code: "123456" }, verifier, true)).rejects.toThrow("temporarily unavailable");
+    const [preference] = await client`select attempts,opted_in from sms_preferences s join customers c on c.id=s.customer_id where c.auth_user_id=${id}`;
+    expect(preference).toMatchObject({ attempts: 0, opted_in: false });
+    verifier.check = vi.fn().mockResolvedValue("approved");
+    await updateCustomerSms(id, { operation: "confirm", code: "123456" }, verifier, true);
+    expect((await client`select opted_in from sms_preferences s join customers c on c.id=s.customer_id where c.auth_user_id=${id}`)[0]!.opted_in).toBe(true);
+  });
+  it("distinguishes expired verification from an incorrect code", async () => {
+    const verifier = fake(), id = await user();
+    await updateCustomerSms(id, { operation: "start", phone: "+12025550123", consent: true }, verifier, true);
+    verifier.check = vi.fn().mockResolvedValue("expired");
+    await expect(updateCustomerSms(id, { operation: "confirm", code: "123456" }, verifier, true)).rejects.toThrow("expired");
+    await expect(updateCustomerSms(id, { operation: "confirm", code: "123456" }, verifier, true)).rejects.toThrow("new verification");
+    expect(verifier.check).toHaveBeenCalledOnce();
+  });
   it("limits verification starts by customer even when the number changes", async () => {
     const verifier = fake(),
       id = await user();

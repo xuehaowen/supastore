@@ -14,7 +14,9 @@ import { hashToken } from "@/application/common/guest-access";
 import {
   startStripeCheckout,
   acceptStripeEvent,
+  reconcileStripeInbox,
 } from "@/application/use-cases/payments/stripe-checkout";
+import * as paymentAdapters from "@/infrastructure/payments/payment-adapters";
 import { sendStripeRefund } from "@/application/use-cases/payments/stripe-refund";
 import { authorizeRefund } from "@/application/use-cases/refund-payout";
 import { createProduct } from "@/application/use-cases/catalog/create-product";
@@ -110,6 +112,25 @@ describe.skipIf(!server)("Stripe durable payment lifecycle", () => {
     );
     return { id: order!.id as string, token, session, adapter, network };
   }
+  it("defers failing reconciliation records and progresses newer sessions", async () => {
+    const first = await fixture(), second = await fixture();
+    await startStripeCheckout({ orderId: first.id, sessionToken: first.token }, first.adapter);
+    await startStripeCheckout({ orderId: second.id, sessionToken: second.token }, second.adapter);
+    const retrieve = vi.fn().mockImplementation(async (id: string) => {
+      if (id === first.session.id) throw Object.assign(new Error("private provider details"), { code: "ETIMEDOUT" });
+      return second.adapter.retrieveCheckoutSession(id);
+    });
+    const adapter = Object.assign(Object.create(first.adapter), { retrieveCheckoutSession: retrieve });
+    const spy = vi.spyOn(paymentAdapters, "paymentProviderFromEnvironment").mockReturnValue(adapter);
+    try {
+      expect(await reconcileStripeInbox(1)).toMatchObject({ failed: 1 });
+      expect(await reconcileStripeInbox(1)).toMatchObject({ succeeded: 1, deferred: 1 });
+      expect(retrieve.mock.calls.map(call => call[0])).toEqual([first.session.id, second.session.id]);
+    } finally {
+      spy.mockRestore();
+      await client`update stripe_checkout_attempts set status='review' where order_id in (${first.id},${second.id})`;
+    }
+  });
   it("rejects another order's proof before creating a payment intent", async () => {
     const f = await fixture();
     await expect(
