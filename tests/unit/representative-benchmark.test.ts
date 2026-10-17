@@ -19,7 +19,7 @@ const samples = (growthMiBPerMinute = 0) =>
   }));
 
 describe("representative benchmark protocol", () => {
-  it("fixes the workload and leaves resource budgets uncalibrated until measured", () => {
+  it("fixes the workload and local regression budgets after baseline measurement", () => {
     expect(benchmarkProtocol).toMatchObject({
       version: 1,
       workers: 8,
@@ -27,7 +27,15 @@ describe("representative benchmark protocol", () => {
       measurementSeconds: 1800,
       sampleEverySeconds: 5,
       memoryWindowSeconds: 300,
-      resourceLimits: null,
+      resourceLimits: {
+        backend: { peakMiB: 768, slopeMiBPerMinute: 0.5, medianGrowthMiB: 16 },
+        storefront: {
+          peakMiB: 640,
+          slopeMiBPerMinute: 0.5,
+          medianGrowthMiB: 16,
+        },
+        postgres: { peakMiB: 3072, slopeMiBPerMinute: 1, medianGrowthMiB: 32 },
+      },
       requestMix: {
         catalog: 30,
         search: 20,

@@ -17,14 +17,54 @@ describe("retained benchmark memory report", () => {
     expect(analyzeBenchmarkMemory(artifact())).toMatchObject({
       scope: "memory-only",
       protocolVersion: 1,
-      status: "uncalibrated",
+      status: "pass",
       benchmarkAcceptance: "not-evaluated",
       services: {
-        backend: { status: "uncalibrated", peakMiB: 200 },
-        storefront: { status: "uncalibrated", peakMiB: 200 },
-        postgres: { status: "uncalibrated", peakMiB: 200 },
+        backend: { status: "pass", peakMiB: 200 },
+        storefront: { status: "pass", peakMiB: 200 },
+        postgres: { status: "pass", peakMiB: 200 },
       },
     });
+  });
+
+  it.each([
+    ["backend", 769],
+    ["storefront", 641],
+    ["postgres", 3073],
+  ] as const)(
+    "enforces the calibrated %s peak independently",
+    (service, peak) => {
+      const input = artifact();
+      input.services[service] = series().map((row) => ({
+        ...row,
+        rssBytes: peak * 1024 * 1024,
+      }));
+      const result = analyzeBenchmarkMemory(input);
+      expect(result.status).toBe("fail");
+      expect(result.services[service]).toMatchObject({
+        status: "fail",
+        violations: ["peakMiB"],
+      });
+      for (const other of ["backend", "storefront", "postgres"] as const)
+        if (other !== service)
+          expect(result.services[other].status).toBe("pass");
+    },
+  );
+
+  it("refuses sustained growth even when all peaks have headroom", () => {
+    const input = artifact();
+    for (const service of ["backend", "storefront", "postgres"] as const)
+      input.services[service] = series().map((row) => ({
+        ...row,
+        rssBytes: (200 + (row.elapsedSeconds / 60) * 2) * 1024 * 1024,
+      }));
+    const result = analyzeBenchmarkMemory(input);
+    expect(result.status).toBe("fail");
+    for (const service of Object.values(result.services))
+      expect(service).toMatchObject({
+        status: "fail",
+        violations: ["slopeMiBPerMinute", "medianGrowthMiB"],
+      });
   });
 
   it("refuses to substitute a short smoke run for a standard run", () => {
