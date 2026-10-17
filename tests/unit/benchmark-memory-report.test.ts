@@ -9,10 +9,44 @@ const series = () =>
 const artifact = () => ({
   protocolVersion: 1,
   phase: "measurement",
+  environment: {
+    platform: "win32",
+    runtime: "Next CLI",
+    products: 1000,
+    fulfillment: "mixed",
+    rewards: true,
+    trackedStock: true,
+  },
   services: { backend: series(), storefront: series(), postgres: series() },
 });
 
 describe("retained benchmark memory report", () => {
+  it.each([
+    { platform: "linux" },
+    { runtime: "standalone" },
+    { products: 10000 },
+    { fulfillment: "pickup" },
+    { rewards: false },
+    { trackedStock: false },
+  ])(
+    "does not certify an environment outside the frozen calibration %#",
+    (change) => {
+      const input = artifact();
+      Object.assign(input.environment, change);
+      expect(analyzeBenchmarkMemory(input)).toMatchObject({
+        status: "inapplicable",
+        budgetApplicable: false,
+        budgetScope: { platform: "win32", runtime: "Next CLI", products: 1000 },
+      });
+    },
+  );
+  it("keeps legacy observations readable without silently certifying their environment", () => {
+    const { environment: _environment, ...input } = artifact();
+    expect(analyzeBenchmarkMemory(input)).toMatchObject({
+      status: "inapplicable",
+      budgetApplicable: false,
+    });
+  });
   it("reports every service separately without claiming complete benchmark acceptance", () => {
     expect(analyzeBenchmarkMemory(artifact())).toMatchObject({
       scope: "memory-only",
