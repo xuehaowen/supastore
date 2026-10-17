@@ -1,5 +1,9 @@
 // In-memory S3 protocol fixture for isolated M1 browser tests; never use in deployment.
 import http from "node:http";
+const benchmarkImage =
+  process.env.BENCHMARK_IMAGES === "true"
+    ? (await import("./benchmark/images.mjs")).benchmarkImageForKey
+    : () => undefined;
 const objects = new Map();
 const server = http.createServer(async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
@@ -47,7 +51,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(204).end();
     return;
   }
-  const object = objects.get(key);
+  const object = objects.get(key) ?? benchmarkImage(key);
   if (!object) {
     res.writeHead(404).end();
     return;
