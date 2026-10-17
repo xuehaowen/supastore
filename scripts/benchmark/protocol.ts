@@ -65,6 +65,16 @@ export interface MemoryLimits {
   medianGrowthMiB: number;
 }
 
+export type MemoryAnalysis =
+  | { status: "insufficient-data"; sampleCount: number }
+  | (MemoryLimits & {
+      status: "uncalibrated" | "pass" | "fail";
+      sampleCount: number;
+      firstMedianMiB: number;
+      lastMedianMiB: number;
+      violations: (keyof MemoryLimits)[];
+    });
+
 const MiB = 1024 * 1024;
 const finite = (value: number) =>
   typeof value === "number" && Number.isFinite(value);
@@ -86,7 +96,7 @@ export function analyzeMemory(
   samples: readonly MemorySample[],
   timing: MemoryTiming,
   limits: MemoryLimits | null,
-) {
+): MemoryAnalysis {
   const { durationSeconds, sampleEverySeconds, windowSeconds } = timing;
   if (
     ![durationSeconds, sampleEverySeconds, windowSeconds].every(finite) ||

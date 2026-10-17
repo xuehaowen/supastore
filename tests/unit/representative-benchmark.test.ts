@@ -111,6 +111,8 @@ describe("memory stability acceptance", () => {
   it("detects a deliberate retention control even below the peak ceiling", () => {
     const result = analyzeMemory(samples(2), timing, limits);
     expect(result.status).toBe("fail");
+    if (result.status === "insufficient-data")
+      throw new Error("Missing samples");
     expect(result.peakMiB).toBe(260);
     expect(result.slopeMiBPerMinute).toBeCloseTo(2, 8);
     expect(result.medianGrowthMiB).toBeGreaterThan(49);
@@ -120,7 +122,9 @@ describe("memory stability acceptance", () => {
   it("checks transient peak usage independently of the growth trend", () => {
     const data = samples();
     data[180]!.rssBytes = 513 * MiB;
-    expect(analyzeMemory(data, timing, limits).violations).toEqual(["peakMiB"]);
+    expect(analyzeMemory(data, timing, limits)).toMatchObject({
+      violations: ["peakMiB"],
+    });
   });
 
   it("uses median windows instead of a single endpoint and handles irregular sampling", () => {
@@ -133,6 +137,8 @@ describe("memory stability acceptance", () => {
       limits,
     );
     expect(result.status).toBe("pass");
+    if (result.status === "insufficient-data")
+      throw new Error("Missing samples");
     expect(result.medianGrowthMiB).toBe(0);
   });
 
