@@ -8,13 +8,33 @@ import {
   type GenerationOption,
 } from "../../apps/backend/src/domain/catalog/variant-combinations";
 
+export async function verifyFixtureOwnership(
+  tx: postgres.Sql | postgres.TransactionSql,
+  connection: string,
+  token: string,
+) {
+  const database = assertFixtureTarget(connection, token);
+  const [identity] =
+    await tx`select current_database() as name, host(inet_server_addr()) as host, inet_server_port()::text as port`;
+  if (
+    identity?.name !== database ||
+    identity.host !== "127.0.0.1" ||
+    identity.port !== new URL(connection).port
+  )
+    throw new Error("Benchmark fixture ownership mismatch");
+  const owners =
+    await tx`select token::text from benchmark_fixture_ownership for update`;
+  if (owners.length !== 1 || owners[0]!.token !== token)
+    throw new Error("Benchmark fixture ownership mismatch");
+}
+
 /** Only the owning harness creates/migrates the database and ownership marker. */
 export async function seedRepresentativeFixture(
   connection: string,
   token: string,
   requested: ReturnType<typeof fixtureProfile>,
 ) {
-  const database = assertFixtureTarget(connection, token);
+  assertFixtureTarget(connection, token);
   const profile = fixtureProfile(
     requested.products,
     requested.fulfillment,
@@ -24,18 +44,7 @@ export async function seedRepresentativeFixture(
   const client = postgres(connection, { max: 1, onnotice: () => {} });
   try {
     return await client.begin(async (tx) => {
-      const [identity] =
-        await tx`select current_database() as name, host(inet_server_addr()) as host, inet_server_port()::text as port`;
-      if (
-        identity?.name !== database ||
-        identity.host !== "127.0.0.1" ||
-        identity.port !== new URL(connection).port
-      )
-        throw new Error("Benchmark fixture ownership mismatch");
-      const owners =
-        await tx`select token::text from benchmark_fixture_ownership for update`;
-      if (owners.length !== 1 || owners[0]!.token !== token)
-        throw new Error("Benchmark fixture ownership mismatch");
+      await verifyFixtureOwnership(tx, connection, token);
       const [existing] =
         await tx`select (select count(*) from products) + (select count(*) from orders) + (select count(*) from store_settings) as n`;
       if (Number(existing!.n) !== 0)
