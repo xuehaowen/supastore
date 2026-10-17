@@ -8,6 +8,7 @@ import { addItem } from "./actions";
 import { Button } from "@supastore/ui/button";
 import { Input } from "@supastore/ui/input";
 import { Label } from "@supastore/ui/label";
+import { variantCanBePurchased } from "../lib/product-availability";
 
 export function ProductPurchase({
   product,
@@ -25,11 +26,12 @@ export function ProductPurchase({
   labels: { quantity: string; add: string; unavailable: string };
 }) {
   const initial =
-    product.variants.find((v) => v.isAvailable) || product.variants[0];
+    product.variants.find((v) => variantCanBePurchased(v, availableQuantities)) || product.variants[0];
   const [variantId, setVariantId] = useState(initial?.id || "");
   const [activeImageKey, setActiveImageKey] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const current = product.variants.find((v) => v.id === variantId);
+  const canPurchase = variantCanBePurchased(current, availableQuantities);
   const axes = [
     ...new Map(
       product.variants.flatMap((v) =>
@@ -145,7 +147,7 @@ export function ProductPurchase({
               <input
                 type="hidden"
                 name="variantId"
-                value={current?.isAvailable ? variantId : ""}
+                value={canPurchase ? variantId : ""}
               />
               {axes.map((axis, axisIndex) => {
                 const values = [
@@ -171,7 +173,7 @@ export function ProductPurchase({
                         // chooses a valid remaining combination instead of trapping sparse catalogs.
                         const match = product.variants.find(
                           (v) =>
-                            v.isAvailable &&
+                            variantCanBePurchased(v, availableQuantities) &&
                             axes
                               .slice(0, axisIndex + 1)
                               .every((a) =>
@@ -224,14 +226,14 @@ export function ProductPurchase({
                     type="radio"
                     name="variantId"
                     value={v.id}
-                    disabled={!v.isAvailable}
+                    disabled={!variantCanBePurchased(v, availableQuantities)}
                     required
                     checked={v.id === variantId}
                     onChange={() => selectVariant(v.id)}
                   />
                   <span>
                     {v.title}
-                    {!v.isAvailable ? ` · ${labels.unavailable}` : ""}
+                    {!variantCanBePurchased(v, availableQuantities) ? ` · ${labels.unavailable}` : ""}
                   </span>
                 </Label>
               ))}
@@ -239,7 +241,7 @@ export function ProductPurchase({
           )}
           <p role="status" aria-live="polite" className="text-lg font-medium">
             {current?.title} · {price}
-            {!current?.isAvailable ? ` · ${labels.unavailable}` : ""}
+            {!canPurchase ? ` · ${labels.unavailable}` : ""}
           </p>
           {availableQuantities[variantId] !== undefined && (
             <p className="text-sm text-muted-foreground">
@@ -281,7 +283,7 @@ export function ProductPurchase({
             </div>
           </div>
           <AddToCartButton
-            available={!!current?.isAvailable}
+            available={canPurchase}
             labels={labels}
             wait={textFor(locale).common.wait}
           />
