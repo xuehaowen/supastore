@@ -24,8 +24,12 @@ describe("representative benchmark protocol", () => {
     complete[359]!.elapsedSeconds = 1794.9995235;
     expect(analyzeMemory(complete, timing, limits).status).toBe("pass");
     complete[359]!.elapsedSeconds = 1794.998;
-    expect(analyzeMemory(complete, timing, limits).status).toBe("insufficient-data");
-    expect(analyzeMemory(complete.slice(0, -1), timing, limits).status).toBe("insufficient-data");
+    expect(analyzeMemory(complete, timing, limits).status).toBe(
+      "insufficient-data",
+    );
+    expect(analyzeMemory(complete.slice(0, -1), timing, limits).status).toBe(
+      "insufficient-data",
+    );
   });
   it("fixes the workload and local regression budgets after baseline measurement", () => {
     expect(benchmarkProtocol).toMatchObject({

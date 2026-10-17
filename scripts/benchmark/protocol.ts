@@ -103,6 +103,9 @@ export type MemoryAnalysis =
     });
 
 const MiB = 1024 * 1024;
+// Node timers may wake fractionally early. This bounds endpoint scheduling
+// precision only; sample counts, internal gaps and RSS/growth limits are unchanged.
+const coveragePrecisionSeconds = 0.001;
 const finite = (value: number) =>
   typeof value === "number" && Number.isFinite(value);
 
@@ -164,8 +167,9 @@ export function analyzeMemory(
     !first ||
     !last ||
     samples.length < Math.ceil((durationSeconds / sampleEverySeconds) * 0.9) ||
-    first.elapsedSeconds > sampleEverySeconds ||
-    last.elapsedSeconds < durationSeconds - sampleEverySeconds ||
+    first.elapsedSeconds > sampleEverySeconds + coveragePrecisionSeconds ||
+    last.elapsedSeconds <
+      durationSeconds - sampleEverySeconds - coveragePrecisionSeconds ||
     samples.some(
       (sample, index) =>
         index > 0 &&
