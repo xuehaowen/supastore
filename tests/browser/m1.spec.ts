@@ -3,10 +3,12 @@ import AxeBuilder from "@axe-core/playwright";
 import { openOrder, clickAction } from "./fixtures";
 test("C1-C6 storefront, persistent cart, order, refresh and direct upload", async ({
   page,
+  sql,
 }) => {
+  const [store] = await sql`select store_name from store_settings limit 1`;
   await page.goto("/en");
   await expect(
-    page.getByRole("heading", { name: "Considered essentials." }),
+    page.getByRole("heading", { name: store!.store_name, exact: true }),
   ).toBeVisible();
   await page.getByRole("link", { name: "Everyday shirt" }).click();
   await page.getByRole("button", { name: "Add to bag" }).click();
@@ -59,10 +61,11 @@ test("C1-C6 storefront, persistent cart, order, refresh and direct upload", asyn
     ),
   ).toEqual([]);
 });
-test("C1 language and C8 generic recovery response", async ({ page }) => {
+test("C1 language and C8 generic recovery response", async ({ page, sql }) => {
+  const [store] = await sql`select store_name from store_settings limit 1`;
   await page.goto("/zh");
   await expect(
-    page.getByRole("heading", { name: "精心挑选，日常之美。" }),
+    page.getByRole("heading", { name: store!.store_name, exact: true }),
   ).toBeVisible();
   await page.goto("/recover");
   await page.getByLabel("Email", { exact: true }).fill("nobody@example.test");

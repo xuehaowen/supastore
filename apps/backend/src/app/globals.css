@@ -1,6 +1,24 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "../../../../packages/ui/src/styles/vendor/shadcn.css";
+
+.launch-next-action {
+  margin-block: 1rem;
+  padding: 1rem 1.25rem;
+  border-inline-start: 3px solid var(--primary);
+  background: var(--muted);
+}
+.launch-next-action h3 {
+  margin-block: 0.5rem;
+  font-size: 1.125rem;
+}
+.launch-next-action p {
+  max-width: 65ch;
+  line-height: 1.6;
+}
+.launch-checklist li {
+  padding-block: 0.35rem;
+}
 @source "../../../../packages/ui/src";
 
 @custom-variant dark (&:where(.dark, .dark *));

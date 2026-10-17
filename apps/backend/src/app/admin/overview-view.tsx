@@ -117,20 +117,23 @@ export function OverviewView(props: OperationsScreenProps) {
         <>
           <LaunchChecklist checklist={readiness.checklist} />
           <section className="panel">
-          <h2>New orders</h2>
-          <p>Pausing stops new orders. Existing orders, payment review and fulfillment remain available.</p>
-          <form action={togglePause}>
-            <Hidden name="returnTo" value={returnTo} />
-            <Hidden name="paused" value={String(!store?.isPaused)} />
-            <Field
-              label="Pause message"
-              name="message"
-              value={store?.pauseMessage}
-            />
-            <Button type="submit">
-              {store?.isPaused ? "Resume new orders" : "Pause new orders"}
-            </Button>
-          </form>
+            <h2>New orders</h2>
+            <p>
+              Pausing stops new orders. Existing orders, payment review and
+              fulfillment remain available.
+            </p>
+            <form action={togglePause}>
+              <Hidden name="returnTo" value={returnTo} />
+              <Hidden name="paused" value={String(!store?.isPaused)} />
+              <Field
+                label="Pause message"
+                name="message"
+                value={store?.pauseMessage}
+              />
+              <Button type="submit">
+                {store?.isPaused ? "Resume new orders" : "Pause new orders"}
+              </Button>
+            </form>
           </section>
         </>
       )}

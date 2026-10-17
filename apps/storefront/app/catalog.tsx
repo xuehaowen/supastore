@@ -1,6 +1,8 @@
 import { readRequestPage } from "../lib/page-data";
 import { textFor } from "@supastore/i18n/messages";
 import Link from "next/link";
+import Image from "next/image";
+import { policyPresentation } from "../lib/page-metadata";
 import Form from "next/form";
 import { ProductCard } from "./product-card";
 import { NativeSelect } from "@supastore/ui/native-select";
@@ -34,6 +36,14 @@ export default async function Catalog({
   const { result, store, facets, collections, collectionTitles, groups } =
     await readRequestPage("catalog", locale, query);
   const facetAxes = [...new Set(facets.map((f) => f.attribute))].slice(0, 4);
+  const featured = result.items.find((product) => product.coverImageKey);
+  const about = policyPresentation(store, locale, "about")?.content;
+  const introductionCharacters = Array.from(
+    (about || t("subtitle")).replace(/\s+/g, " ").trim(),
+  );
+  const introduction =
+    introductionCharacters.slice(0, 240).join("") +
+    (introductionCharacters.length > 240 ? "…" : "");
   const pageHref = (page: number) => {
     const state = new URLSearchParams({
       page: String(page),
@@ -47,32 +57,40 @@ export default async function Catalog({
   return (
     <>
       {showHero ? (
-        <section className="catalog-hero relative min-h-[480px] border-b py-18 pr-[48%] max-sm:min-h-[580px] max-sm:py-10 max-sm:pr-0">
-          <p className="mb-7 text-[10px] font-bold tracking-[0.2em]">
-            {textFor(locale).common.collectionEyebrow}
-          </p>
-          <h1 className="mb-7 font-serif text-5xl leading-none tracking-[-0.045em] md:text-7xl">
-            {t("intro")}
-          </h1>
-          <p className="max-w-sm leading-7 text-muted-foreground">
-            {t("subtitle")}
-          </p>
-          <a
-            className="mt-6 inline-block border-b pb-1.5 text-sm no-underline"
-            href="#collection"
-          >
-            {t("collection")} ↓
-          </a>
-          <div
-            className="absolute top-0 right-0 -z-10 h-[90%] w-[43%] overflow-hidden rounded-t-full bg-[#e6e7d5] max-sm:top-auto max-sm:bottom-5 max-sm:h-60 max-sm:w-[65%]"
-            aria-hidden="true"
-          >
-            <div className="absolute bottom-[15%] left-[20%] h-[50%] w-[37%] rounded-[30%_30%_42%_42%] bg-[#bc8962] shadow-xl" />
-            <div className="absolute right-[7%] bottom-[22%] aspect-square w-[34%] rounded-full bg-[radial-gradient(circle_at_35%_30%,#f3eed2,#b3b89b)] shadow-xl" />
-            <span className="absolute right-6 bottom-5 text-[9px] tracking-[0.22em]">
-              {textFor(locale).common.lessButBetter}
-            </span>
+        <section
+          className={
+            "catalog-hero" + (featured ? " catalog-hero-with-image" : "")
+          }
+        >
+          <div className="catalog-hero-copy">
+            <p className="catalog-hero-eyebrow">{t("collection")}</p>
+            <h1>{store?.storeName || t("shop")}</h1>
+            <p className="catalog-hero-description">{introduction}</p>
+            <a className="catalog-hero-link" href="#collection">
+              {t("collection")} <span aria-hidden="true">↓</span>
+            </a>
           </div>
+          {featured?.coverImageKey && (
+            <Link
+              className="catalog-hero-feature"
+              href={`/${locale}/products/${featured.handle}`}
+            >
+              <div className="catalog-hero-image">
+                <Image
+                  src={`/api/assets?key=${encodeURIComponent(featured.coverImageKey)}&inline=1`}
+                  alt={featured.title}
+                  width={800}
+                  height={800}
+                  sizes="(max-width: 767px) 88vw, 42vw"
+                  priority
+                />
+              </div>
+              <span>
+                {featured.title}
+                <span aria-hidden="true"> ↗</span>
+              </span>
+            </Link>
+          )}
         </section>
       ) : (
         <header className="storefront-catalog-heading">

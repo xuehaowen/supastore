@@ -24,21 +24,31 @@ export function CopyButton({
   locale?: string;
 }) {
   const [copied, setCopied] = useState(false);
+  const [failed, setFailed] = useState(false);
   return (
-    <Button
-      type="button"
-      variant="outline"
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(value);
-          setCopied(true);
-        } catch {
-          setCopied(false);
-        }
-      }}
-    >
-      {copied ? textFor(locale).common.copied : label}
-    </Button>
+    <span className="grid gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(value);
+            setCopied(true);
+            setFailed(false);
+          } catch {
+            setCopied(false);
+            setFailed(true);
+          }
+        }}
+      >
+        {copied ? textFor(locale).common.copied : label}
+      </Button>
+      {failed && (
+        <span className="text-sm text-muted-foreground" role="status">
+          {textFor(locale).common.copyFailed}
+        </span>
+      )}
+    </span>
   );
 }
 export function Uploader({

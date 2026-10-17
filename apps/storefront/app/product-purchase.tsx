@@ -26,7 +26,9 @@ export function ProductPurchase({
   labels: { quantity: string; add: string; unavailable: string };
 }) {
   const initial =
-    product.variants.find((v) => variantCanBePurchased(v, availableQuantities)) || product.variants[0];
+    product.variants.find((v) =>
+      variantCanBePurchased(v, availableQuantities),
+    ) || product.variants[0];
   const [variantId, setVariantId] = useState(initial?.id || "");
   const [activeImageKey, setActiveImageKey] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -233,7 +235,9 @@ export function ProductPurchase({
                   />
                   <span>
                     {v.title}
-                    {!variantCanBePurchased(v, availableQuantities) ? ` · ${labels.unavailable}` : ""}
+                    {!variantCanBePurchased(v, availableQuantities)
+                      ? ` · ${labels.unavailable}`
+                      : ""}
                   </span>
                 </Label>
               ))}

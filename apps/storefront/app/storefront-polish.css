@@ -6,6 +6,96 @@
   width: 100%;
   min-width: 0;
 }
+.catalog-hero {
+  display: grid;
+  gap: 2rem;
+  padding-block: clamp(2.5rem, 6vw, 5rem);
+  border-bottom: 1px solid var(--border);
+}
+.catalog-hero-copy {
+  align-self: center;
+  max-width: 44rem;
+}
+.catalog-hero-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  margin-bottom: 1.25rem;
+}
+.catalog-hero h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(2.5rem, 6vw, 5.75rem);
+  letter-spacing: -0.045em;
+  margin-bottom: 1.25rem;
+}
+.catalog-hero-description {
+  color: var(--muted-foreground);
+  line-height: 1.8;
+  max-width: 48ch;
+  white-space: normal;
+}
+.catalog-hero-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 2.75rem;
+  margin-top: 1.25rem;
+  border-bottom: 1px solid currentColor;
+  text-decoration: none;
+}
+.catalog-hero-feature {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  color: var(--foreground);
+  text-decoration: none;
+}
+.catalog-hero-feature > span {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+}
+.catalog-hero-image {
+  aspect-ratio: 1.15;
+  overflow: hidden;
+  border-radius: 1.5rem 0.5rem 0.5rem 0.5rem;
+  background: var(--muted);
+}
+.catalog-hero-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 200ms;
+}
+.catalog-hero-feature:hover img {
+  transform: scale(1.02);
+}
+@media (min-width: 768px) {
+  .catalog-hero-with-image {
+    grid-template-columns: 1.1fr 1fr;
+    gap: clamp(2rem, 6vw, 6rem);
+  }
+}
+@media (max-width: 767px) {
+  .catalog-hero {
+    gap: 1.5rem;
+    padding-block: 2rem;
+  }
+  .catalog-hero-image {
+    aspect-ratio: 1.6;
+  }
+  .catalog-hero h1 {
+    font-size: clamp(2.25rem, 10vw, 3.75rem);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .catalog-hero-image img {
+    transition: none;
+  }
+  .catalog-hero-feature:hover img {
+    transform: none;
+  }
+}
 .storefront-shell #main {
   min-width: 0;
   overflow-wrap: anywhere;

@@ -5,6 +5,7 @@
     "account": "Account",
     "wait": "Please wait…",
     "copied": "Copied",
+    "copyFailed": "Copy unavailable. Select and copy the reference shown on this page, or try again.",
     "signingOut": "Signing out…",
     "emailPlaceholder": "you@example.com",
     "languageName": "中文",
