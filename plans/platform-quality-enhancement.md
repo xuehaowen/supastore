@@ -346,3 +346,21 @@ root/application type checks, repository lint and full formatting pass. Both
 production builds, race/browser preflights and owned-service cleanup passed in
 the clean standard run. No application optimization or production action was
 performed; memory growth remains the next performance issue to diagnose.
+
+Step 4 memory investigation: [controlled diagnostics and full compact confirmation](../docs/memory-diagnosis.md)
+separate live heap, external buffers, working-set RSS and Windows private
+commitment. Forced-GC short samples do not reproduce accumulating live heap;
+this does not rule out slower retention. An explicit 16 MiB young-generation
+candidate (`--runtime-memory=compact`) retains the standard 300/1,800-second
+workload without probes or forced GC. Clean `022f92f` completes 154,168 measured
+requests / 7,704 measured orders; 8,767 orders including warm-up reconcile, with
+zero HTTP/amount/cart/stock failures. App RSS peaks are 267.54/246.02 MiB versus
+593.46/484.85; both pass unchanged local stability limits. PostgreSQL gross RSS
+still fails growth, and throughput is 85.65 versus 117.32 requests/sec. Host
+activity and completed-work differences limit attribution; no production default
+is changed or deployment readiness declared. `89c0113` RED / `ca714db` GREEN fixes
+an observed 0.477 ms sample-coverage edge with a documented 1 ms endpoint allowance;
+raw data, counts, internal gaps and all resource thresholds remain unchanged.
+Original and reanalyzed artifacts are retained separately. Full unit/library
+suite: 1,142 pass; types/lint/format pass. Continue with target-host database
+accounting, controlled runtime tradeoffs and Step 4 discovery/bundle enforcement.

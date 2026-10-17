@@ -140,6 +140,12 @@ within one sampling interval of their boundaries, at least 90% of the nominal
 samples must exist, and gaps cannot exceed two intervals. Do not interpolate
 missing observations to obtain a passing report.
 
+Coverage endpoints permit at most 1 ms of timer precision (`ca714db`); raw
+timestamps, sample-count requirements and internal gap limits remain unchanged.
+The [compact runtime confirmation](memory-diagnosis.md#sampling-boundary-correction)
+records the actual 0.477 ms boundary case and preserves its original result
+separately from reanalysis. Resource thresholds are unchanged.
+
 For each service the report retains peak MiB, ordinary least-squares slope in
 MiB/minute, the first/last five-minute RSS medians and their signed difference.
 The first window is `[0, 300)` seconds; the last is `(1500, 1800]`. Negative growth
@@ -225,3 +231,9 @@ uncalibrated, while the versioned CLI now applies each frozen service limit.
 
 No live store, customer information, provider credentials or KVM 2 deployment is
 used by this tooling change. Steps 3 and 4 remain open.
+
+Memory follow-up: [numeric heap/private-memory diagnosis and compact runtime trial](memory-diagnosis.md).
+The candidate completes the full standard workload with zero correctness errors;
+both app RSS series pass the frozen local rules, while database gross RSS still
+fails growth. Measured throughput is lower. No production default or release
+acceptance changes; target-host accounting and tradeoff validation remain open.

@@ -30,6 +30,16 @@ describe("representative benchmark protocol", () => {
     expect(analyzeMemory(complete.slice(0, -1), timing, limits).status).toBe(
       "insufficient-data",
     );
+    const lateStart = samples().slice(1);
+    lateStart[0]!.elapsedSeconds = 5.0005;
+    expect(analyzeMemory(lateStart, timing, limits).status).toBe("pass");
+    lateStart[0]!.elapsedSeconds = 5.002;
+    expect(analyzeMemory(lateStart, timing, limits).status).toBe(
+      "insufficient-data",
+    );
+    const gap = samples().filter((_, index) => index !== 100);
+    gap[100]!.elapsedSeconds = 505.0005;
+    expect(analyzeMemory(gap, timing, limits).status).toBe("insufficient-data");
   });
   it("fixes the workload and local regression budgets after baseline measurement", () => {
     expect(benchmarkProtocol).toMatchObject({

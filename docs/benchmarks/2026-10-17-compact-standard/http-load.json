@@ -1,0 +1,229 @@
+{
+  "scope": "representative-http-load",
+  "protocolVersion": 1,
+  "mode": "standard",
+  "status": "http-pass",
+  "benchmarkAcceptance": "not-certified",
+  "fatal": null,
+  "failures": [],
+  "warmup": {
+    "durationSeconds": 300,
+    "requests": 21328,
+    "successes": 21328,
+    "expectedConflicts": 0,
+    "unexpectedFailures": 0,
+    "requestsPerSecond": 71.09333333333333,
+    "operations": {
+      "catalog": {
+        "requests": 6394,
+        "successes": 6394,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 725750970,
+        "overflowCount": 0,
+        "p50Ms": 101,
+        "p95Ms": 149
+      },
+      "search": {
+        "requests": 4266,
+        "successes": 4266,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 477744069,
+        "overflowCount": 0,
+        "p50Ms": 158,
+        "p95Ms": 228
+      },
+      "product": {
+        "requests": 3201,
+        "successes": 3201,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 110017137,
+        "overflowCount": 0,
+        "p50Ms": 110,
+        "p95Ms": 158
+      },
+      "cart": {
+        "requests": 2134,
+        "successes": 2134,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 58111128,
+        "overflowCount": 0,
+        "p50Ms": 111,
+        "p95Ms": 164
+      },
+      "checkout": {
+        "requests": 1066,
+        "successes": 1066,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 41487952,
+        "overflowCount": 0,
+        "p50Ms": 135,
+        "p95Ms": 201
+      },
+      "cartEdit": {
+        "requests": 2139,
+        "successes": 2139,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 1171382,
+        "overflowCount": 0,
+        "p50Ms": 71,
+        "p95Ms": 111
+      },
+      "quote": {
+        "requests": 1065,
+        "successes": 1065,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 702644,
+        "overflowCount": 0,
+        "p50Ms": 49,
+        "p95Ms": 80
+      },
+      "order": {
+        "requests": 1063,
+        "successes": 1063,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 201970,
+        "overflowCount": 0,
+        "p50Ms": 83,
+        "p95Ms": 142
+      }
+    },
+    "drainSeconds": 0.017181600000014896
+  },
+  "measurement": {
+    "durationSeconds": 1800,
+    "requests": 154168,
+    "successes": 154168,
+    "expectedConflicts": 0,
+    "unexpectedFailures": 0,
+    "requestsPerSecond": 85.64888888888889,
+    "operations": {
+      "catalog": {
+        "requests": 46247,
+        "successes": 46247,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 5249265735,
+        "overflowCount": 0,
+        "p50Ms": 86,
+        "p95Ms": 121
+      },
+      "search": {
+        "requests": 30834,
+        "successes": 30834,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 3453056580,
+        "overflowCount": 0,
+        "p50Ms": 136,
+        "p95Ms": 184
+      },
+      "product": {
+        "requests": 23127,
+        "successes": 23127,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 794851639,
+        "overflowCount": 0,
+        "p50Ms": 95,
+        "p95Ms": 131
+      },
+      "cart": {
+        "requests": 15419,
+        "successes": 15419,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 419876348,
+        "overflowCount": 0,
+        "p50Ms": 97,
+        "p95Ms": 133
+      },
+      "checkout": {
+        "requests": 7708,
+        "successes": 7708,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 299996134,
+        "overflowCount": 0,
+        "p50Ms": 116,
+        "p95Ms": 159
+      },
+      "cartEdit": {
+        "requests": 15421,
+        "successes": 15421,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 8445128,
+        "overflowCount": 0,
+        "p50Ms": 62,
+        "p95Ms": 96
+      },
+      "quote": {
+        "requests": 7708,
+        "successes": 7708,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 5085471,
+        "overflowCount": 0,
+        "p50Ms": 41,
+        "p95Ms": 71
+      },
+      "order": {
+        "requests": 7704,
+        "successes": 7704,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 1463760,
+        "overflowCount": 0,
+        "p50Ms": 71,
+        "p95Ms": 120
+      }
+    },
+    "drainSeconds": 0.060025299999779236
+  },
+  "invariants": {
+    "amount_mismatches": 0,
+    "stock_mismatches": 0,
+    "cart_mismatches": 0
+  },
+  "orderCountMatches": true,
+  "successfulOrders": 8767,
+  "workloadCovered": true,
+  "memoryAcceptance": {
+    "scope": "memory-only",
+    "protocolVersion": 1,
+    "benchmarkAcceptance": "not-evaluated",
+    "budgetScope": {
+      "diagnostics": "none",
+      "platform": "win32",
+      "runtime": "Next CLI",
+      "products": 1000,
+      "fulfillment": "mixed",
+      "rewards": true,
+      "trackedStock": true
+    },
+    "budgetApplicable": true,
+    "status": "insufficient-data",
+    "services": {
+      "backend": {
+        "status": "insufficient-data",
+        "sampleCount": 360
+      },
+      "storefront": {
+        "status": "insufficient-data",
+        "sampleCount": 360
+      },
+      "postgres": {
+        "status": "insufficient-data",
+        "sampleCount": 360
+      }
+    }
+  }
+}

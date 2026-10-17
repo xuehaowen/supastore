@@ -5,6 +5,11 @@ Its initial short diagnostic passes. Standard-duration measurements, browser
 transfers and bounded races are verified; local resource ceilings are frozen,
 while measured memory stability remains an open issue.
 
+The [memory diagnosis and compact runtime confirmation](memory-diagnosis.md)
+retain a separate standard-duration candidate: app stability passes with lower
+observed peaks, database gross-RSS growth still fails and throughput is lower.
+Default runtime and production configuration remain unchanged.
+
 ## Commands
 
 ```sh
