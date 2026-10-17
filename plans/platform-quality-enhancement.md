@@ -364,3 +364,20 @@ raw data, counts, internal gaps and all resource thresholds remain unchanged.
 Original and reanalyzed artifacts are retained separately. Full unit/library
 suite: 1,142 pass; types/lint/format pass. Continue with target-host database
 accounting, controlled runtime tradeoffs and Step 4 discovery/bundle enforcement.
+
+Step 4 discovery and bundle enforcement: [implementation and acceptance](../docs/storefront-discovery.md).
+CI now enforces all four shopping-route JavaScript budgets: 200 KiB gzip maximum
+and no more than 10% growth against frozen clean `022f92f` values. Missing or
+invalid build evidence fails closed; actual CLI regressions verify nonzero exits.
+Fresh catalog/product/cart/checkout values are 156.7/158.1/155.4/161.3 KiB, all
+passing. Public metadata uses the merchant's name/content, paginated listings
+retain their own canonicals, locale alternates resolve published policy content,
+and public image crawling retains backend authorization. Homepage query handling
+was corrected so page 2 renders the corresponding data. Private and search/filter
+indexing rules remain explicit. The owner requested “keep location private”:
+no address, hours, phone or LocalBusiness/Bakery markup is added; this is not a
+launch gate. Full unit/library suite: 1,159 pass; types/lint pass; fresh production
+browser suite: 36 pass, with disposable-service cleanup complete. Reviewer found
+no confirmed issues. Real HTTPS-origin/Search Console setup, mobile/target-host
+performance and the existing database-memory/runtime tradeoffs remain open.
+Step 4 and production readiness are not marked complete.

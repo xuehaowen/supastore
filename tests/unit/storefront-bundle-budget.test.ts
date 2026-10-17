@@ -9,7 +9,8 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve, join, sep } from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import {
   measureStorefrontBundle,
   evaluateBundleBudget,
@@ -106,4 +107,26 @@ it("fails the real CLI when a route is missing instead of reporting a small bund
       stdio: "pipe",
     }),
   ).toThrow();
+});
+it("returns a nonzero budget status with actionable per-route evidence", () => {
+  manifest();
+  writeFileSync(join(directory, "static/chunks/page.js"), randomBytes(220000));
+  const result = spawnSync(
+    process.execPath,
+    ["scripts/measure-storefront-bundle.mjs"],
+    {
+      env: { ...process.env, STOREFRONT_DIST_DIR: directory },
+      encoding: "utf8",
+      windowsHide: true,
+    },
+  );
+  expect(result.status).toBe(2);
+  expect(JSON.parse(result.stdout)).toMatchObject({
+    status: "fail",
+    routes: expect.arrayContaining([
+      expect.objectContaining({
+        violations: ["absolute-budget", "relative-growth"],
+      }),
+    ]),
+  });
 });
