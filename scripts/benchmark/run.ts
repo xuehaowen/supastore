@@ -9,6 +9,7 @@ import { verifyFixtureOwnership } from "./seed";
 import { benchmarkProtocol } from "./protocol";
 import { analyzeBenchmarkMemory } from "./memory-report";
 import { processMemory } from "./process-memory.mjs";
+import { publishHeapPhase } from "./heap-phase.mjs";
 import { LoadMetrics, shoppingCycle, type BenchmarkRequest } from "./http-load";
 
 const parsedOptions = parseBenchmarkOptions(process.argv.slice(2));
@@ -127,11 +128,7 @@ try {
   > = { backend: [], storefront: [], postgres: [] };
   let successfulOrders = 0;
   async function phase(name: "warmup" | "measurement", seconds: number) {
-    if (options.diagnostics !== "none")
-      writeFileSync(
-        output + "/heap-phase.json",
-        JSON.stringify({ phase: name }),
-      );
+    if (options.diagnostics !== "none") publishHeapPhase(output, name);
     const metrics = new LoadMetrics();
     const started = performance.now();
     const deadline = started + seconds * 1000;
