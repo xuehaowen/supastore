@@ -1,6 +1,6 @@
 # Supastore platform quality enhancement plan
 
-Prepared: 2026-10-16, America/Los_Angeles. Status: implementation in progress; Steps 1 and 2 verified locally, Step 3 next.
+Prepared: 2026-10-16, America/Los_Angeles. Status: implementation in progress; Steps 1 and 2 verified locally, Step 3 protocol/analysis implemented; representative load pending.
 Working branch: `codex/platform-quality`. Baseline: `ec68e0f`.
 
 ## Outcome
@@ -284,3 +284,11 @@ suite: 1,022 passed; fresh production browser suite: 36 passed; both builds,
 root/apps types, lint and formatting passed. No initial client-JS raw-byte growth
 on the measured catalog/product routes. Deployment order is backend first, then
 storefront; no new data migration. Steps 3–10 remain open as scoped above.
+
+Step 3 foundation implemented: [versioned protocol and memory analysis](../docs/representative-benchmark.md).
+The standard workload and fixture counts are fixed; incomplete sampling and
+uncalibrated budgets cannot pass. A deliberate-growth control and exact-ceiling
+regression are verified across 50 focused tests. The offline memory artifact
+command validates all three services without accepting input budget overrides.
+Actual fixture seeding, HTTP/browser load, bounded races, sustained measurements
+and calibrated resource ceilings remain pending. Step 3 is not complete.
