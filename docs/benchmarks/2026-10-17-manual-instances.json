@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-17",
+  "timezone": "America/Los_Angeles",
+  "scope": "two independent manual-payment instances",
+  "profiles": ["pickup-only", "shipping-only"],
+  "deploymentRegressions": { "passed": 4, "failed": 0 },
+  "concurrentDependencyProjects": [
+    {
+      "project": "supastore-codex-pickup",
+      "database": "pickup_fixture",
+      "databaseHostPort": 15461,
+      "storageHostPort": 19091
+    },
+    {
+      "project": "supastore-codex-shipping",
+      "database": "shipping_fixture",
+      "databaseHostPort": 15462,
+      "storageHostPort": 19092
+    }
+  ],
+  "isolation": {
+    "uniqueContainerNamesNetworksVolumesPorts": true,
+    "customDatabaseHealthchecksPassed": true,
+    "databaseMarkersIndependent": true,
+    "sameBucketAndObjectKeyContentsIndependent": true,
+    "backendRecoveryFlagsRenderedCorrectly": true,
+    "allTestProjectsAndVolumesRemoved": true
+  },
+  "browserProfiles": {
+    "viewportWidth": 375,
+    "passed": 2,
+    "onlyIntendedFulfillmentMethod": true,
+    "manualPaymentOnly": true,
+    "exactlyOneMatchingReceipt": true,
+    "confirmationAndFulfillmentComplete": true,
+    "realMoneyTransferred": false,
+    "profileConfigurationRestored": true
+  },
+  "defaultBrowserTestsPassed": 45,
+  "unitLibraryTestsPassed": 1181,
+  "bundleStatus": "pass",
+  "fullApplicationStacksLoadTestedConcurrently": false,
+  "productionAccepted": false
+}

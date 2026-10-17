@@ -5,6 +5,11 @@ private backend. PostgreSQL and S3-compatible storage retain application data.
 The backend also runs the outbox worker when explicitly enabled. No Redis or
 external cache is required.
 
+For the pickup-only and shipping-only manual-payment launch, use the
+[two-instance recipe](milky-bakery-two-instances.md). It covers explicit project
+names, separate data/secrets/origins, non-conflicting host ports and independent
+inventory/backup operations.
+
 ## Docker Compose
 
 Follow [two-service deployment](two-service-deployment.md) for environment

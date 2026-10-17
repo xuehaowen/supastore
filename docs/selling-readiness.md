@@ -2,6 +2,8 @@
 
 Updated October 17, 2026 (America/Los_Angeles). Work follows the owner's selling-first priority: usability, fixed storefront design and reliability before performance optimization. This record distinguishes completed local development from store-owner and deployment acceptance.
 
+The owner's working launch direction is now two independent instances—pickup-only and shipping-only—with manual payment on both. [The two-instance recipe](milky-bakery-two-instances.md) records configuration, data separation and both passing mobile sales rehearsals. Latest acceptance is 1,181 unit/library and 45 default browser tests; earlier dated results below remain part of the evidence trail.
+
 ## Usability findings and changes
 
 | Observed issue                                                                                 | Delivered behavior                                                                                                                                             | Verification                                             |

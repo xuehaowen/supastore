@@ -3,8 +3,8 @@
 Date: October 17, 2026, America/Los_Angeles. Branch: `codex/platform-quality`.
 Status: identified selling-path development changes pass local acceptance; not deployed or certified for real sales.
 
-Local acceptance: 1,177 unit/library tests pass; the earlier 143 PostgreSQL
-integration results are retained. The current default CI command passes 43
+Local acceptance: 1,181 unit/library tests pass; the earlier 143 PostgreSQL
+integration results are retained. The current default CI command passes 45
 production browser tests; the earlier extended run passed 49, including six
 legacy M1 tests outside the default selection. Both production builds, types, lint,
 formatting and all four frozen route budgets pass. Responsive/accessibility
@@ -17,6 +17,13 @@ poller confirms healthy readiness in 984.386 ms after the Docker start command
 returns, within its enforced 30-second polling deadline. See [current recovery
 evidence](reliability-acceptance-2026-10-17.md) for source/image identifiers and
 the separate production shell/asset-backup limitations.
+
+Working launch direction: separate pickup-only and shipping-only instances,
+manual payment on both. [Configuration and profile acceptance](milky-bakery-two-instances.md)
+cover isolated names/ports/data, the relevant mobile checkout fields, manual
+receipt confirmation and fulfillment. Card credentials/provider acceptance are
+not required for this manual-payment launch; verified transactional email and
+actual manual-payment reconciliation remain required.
 
 ## Evidence by workstream
 

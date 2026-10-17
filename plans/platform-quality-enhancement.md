@@ -11,6 +11,13 @@ Preserve the existing two-app deployment, PostgreSQL, transactional outbox, exac
 
 No general plugin system, theme marketplace, configurable theme framework, multi-tenancy or database abstraction rewrite is included before V2 launch. Deploy the existing architecture to KVM 2. Optional rewards, credit and scheduled fulfillment remain supported; simplify their presentation where Milky Bakery needs it. Keep bakery branding/content in presentation or deployment configuration rather than adding bakery-specific rules to generic financial/domain logic.
 
+Working launch direction, clarified October 17: likely two independent instances,
+one pickup-only and one shipping-only, with manual payment on both. Use separate
+databases/storage, project names, origins and secrets; do not share the database
+to obtain different fulfillment settings. Stock/catalog/accounts are not
+automatically synchronized. Card integration is not a launch prerequisite for
+this choice. See [two-instance configuration and acceptance](../docs/milky-bakery-two-instances.md).
+
 ## Baseline and evidence limits
 
 - Source already separates domain calculations, application workflows, infrastructure and app entry points. Application workflows deliberately use Drizzle directly.
@@ -467,3 +474,20 @@ application image IDs and complete cleanup; its existing read smoke completes
 24,334 requests with zero failures. Full unit/library suite: 1,177 pass; root/apps
 types, repository lint, script syntax and formatting pass. Counts from both
 container runs are retained separately without making a throughput claim.
+
+Manual-payment instance follow-up, October 17: `bc34cc4` RED / `ee44d15` GREEN
+fixes hard-coded Compose database/storage names, dependency ports and database
+health checks that prevented clean same-host operation. `4d2ff33` RED /
+`bdd4ad6` GREEN fixes dropped backend recovery suppression/worker settings;
+normal defaults are preserved. Two synthetic database/storage projects run
+concurrently with separate networks/volumes and markers; the same storage
+bucket/key retains different contents in each instance. Only their test resources
+are removed afterward. This is dependency isolation, not two-store capacity proof.
+
+Pickup-only and shipping-only mobile manual-payment journeys both pass order
+placement -> exact receipt -> confirmation -> completed pickup/shipment delivery,
+with only the intended fulfillment method and relevant inputs shown. Added to
+normal CI. Full default browser acceptance: 45 pass; unit/library: 1,181 pass;
+root/apps types, lint and unchanged bundle limits pass. Real receiving
+instructions, domain/secrets, rates/schedules, email, backups and owner catalog/
+design acceptance remain open. No production settings or live funds changed.

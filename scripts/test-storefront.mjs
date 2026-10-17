@@ -475,6 +475,7 @@ try {
             "tests/browser/sitemap.spec.ts",
             "tests/browser/cross-service-scale.spec.ts",
             "tests/browser/sales-usability.spec.ts",
+            "tests/browser/manual-launch-profiles.spec.ts",
             "tests/browser/ui-page-audit.spec.ts",
           ];
     await completed(
