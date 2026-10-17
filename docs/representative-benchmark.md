@@ -1,7 +1,8 @@
 # Representative benchmark protocol and progress
 
-Step 3 is in progress. This change provides the versioned protocol and memory
-analysis, not an executable representative-load runner or capacity evidence.
+Step 3 is in progress. The versioned protocol, isolated catalog/order fixture
+generator and memory analysis are implemented. These are not an executable
+representative-load runner or capacity evidence.
 The earlier one-product smoke measurements remain diagnostic only.
 
 ## Fixed workload
@@ -24,9 +25,70 @@ The standard profile has 1,000 products, four variants and two images per produc
 
 `fixtureProfile()` validates 100/1,000/10,000-product profiles, shipping/pickup/mixed
 fulfillment and boolean rewards/stock options, returning seed `20261016` and
-expected record counts. It does not create records. Actual seed generation,
-image dimensions/payloads, stock replenishment and historical ledger creation
-remain to be implemented and verified against PostgreSQL.
+expected record counts. The generator below creates these records in owned
+fixtures. General-load stock replenishment remains to be connected to the
+future load runner.
+
+## Reproduce and verify the data fixtures
+
+```sh
+pnpm bench:fixture
+```
+
+This runs the existing embedded PostgreSQL integration harness, creates fresh
+databases, migrates them, seeds and validates each profile, then drops only those
+owned databases and stops the test cluster. It does not attach to an existing
+store or retain a running deployment. Windows requires the normal process
+permissions already documented for integration tests; sandbox-denied process
+or loopback operations are infrastructure failures, not product regressions.
+
+The reusable [seed function](../scripts/benchmark/seed.ts) requires an explicit
+connection and a matching UUID ownership token in `benchmark_fixture_ownership`.
+Before connecting it accepts only PostgreSQL on literal `127.0.0.1`, fixture
+ports 25438/25449, synthetic credentials and `supastore_cuj_<13 digits>` database
+names. URL query overrides and fragments are refused. It checks the actual
+connected database/address/port, locks the ownership marker and requires an empty
+store/catalog/order set before inserting. The entire seed is one transaction:
+wrong ownership or an insert conflict cannot partially populate commerce data.
+It never truncates records or resets financial history; a second seed is refused.
+
+Validated profiles:
+
+| Products | Variants | Images | Fulfillment | Rewards | Tracked stock |
+| -------: | -------: | -----: | ----------- | ------- | ------------- |
+|      100 |      400 |    200 | Shipping    | Off     | Off           |
+|    1,000 |    4,000 |  2,000 | Mixed       | On      | On            |
+|   10,000 |   40,000 | 20,000 | Pickup      | Off     | On            |
+|      100 |      400 |    200 | Mixed       | On      | Off           |
+
+Each has eight categories, two filterable attributes, four values and complete
+product/variant option associations. Combination identities come from the real
+domain generator. Catalog/history identities, names, prices, associations and
+historical dates derive from fixed recipes and seed `20261016`; infrastructure
+ownership and default configuration timestamps are allowed to vary per run.
+
+Each profile has 10,000 closed guest orders: 8,000 completed and 2,000 cancelled.
+They include converted carts, expired quotes, order items, complete frozen terms,
+receipts/funding for completed orders, fulfilled pickup records or delivered
+shipments, and consumed/released stock reservations where tracking is enabled.
+Stock movements reconcile to on-hand balances; outstanding reservations are zero.
+Tracked variants begin with 1,000,000 units before historical sales. These are
+bulk synthetic ledger fixtures, not evidence of 10,000 successful checkout API
+calls. Guest history receives no customer reward credit, including with rewards
+enabled. No delivery events are enqueued and no payment/email provider is called.
+
+Successful checks retain machine-readable fixture metadata under ignored
+`.tmp-cuj/benchmark-fixtures/*.json`, marked `fixture-verification-only`. The
+test command's exit status remains necessary evidence; the files alone do not
+certify benchmark acceptance.
+
+Two deterministic 1200 × 900 RGB PNG payloads are 82,071 and 82,077 bytes. Reports
+record their SHA-256 digests. Every product has two distinct immutable asset URLs;
+the synthetic S3 fixture serves shared buffers only with `BENCHMARK_IMAGES=true`.
+It therefore avoids retaining a separate physical copy for every URL. Normal
+storage tests retain missing-image 404 behavior. Actual GET bytes and HEAD
+metadata are checked through HTTP. Synthetic texture/compression and local S3
+behavior do not model real product photography, remote storage or mobile latency.
 
 ## Retained memory analysis
 
@@ -96,6 +158,22 @@ establish that measurement method.
 - Full unit/storefront-library suite: 1,072 tests passed in 120 files. Root and
   both application typechecks passed. Independent TypeScript review found the
   rounding issue above and confirmed its fix with no remaining findings.
+- Fixture RED `8add544` / GREEN `a4a31ca`: owned catalog and balanced historical
+  ledgers. Storage RED `0f1fbb4` / GREEN `776bf5d`: actual benchmark image bytes.
+- Review-driven RED `22b758e` / GREEN `fc1c7cf`: complete historical API terms and
+  canonical variant identities. Profile matrix RED `35bab47` / GREEN `73205e1`:
+  commerce policy is a JSON object rather than a double-encoded string.
+- Six PostgreSQL fixture checks cover all three catalog sizes, fulfillment and
+  option configurations, ownership refusal, repeated-seed refusal and atomic
+  rollback after a later insert conflict. Historical terms pass the shared page
+  decoder; amounts, funding and stock balances reconcile.
+- Focused generator/safety coverage run: 20 tests passed, 98.03% lines, 96.87%
+  branches and 91.66% functions for the measured TypeScript tooling. PNG payload
+  structure/decompression and enabled/disabled storage HTTP behavior also pass.
+- Fixture milestone full regressions: 1,087 unit/storefront-library tests in 122
+  files and 142 PostgreSQL integration tests in 20 files pass. Root/backend/
+  storefront types, repository lint and formatting pass. Independent TypeScript
+  review confirmed both fixture contract fixes with no remaining findings.
 
 Focused verification:
 
@@ -105,8 +183,8 @@ pnpm exec vitest run tests/unit/representative-benchmark.test.ts tests/unit/benc
 
 ## Remaining Step 3 work
 
-- Seed exact catalog, category/attribute/image and established-order profiles in
-  disposable owned services, refusing all other targets before any mutation.
+- Connect the verified fixture generator and opt-in image service to the
+  production benchmark runner; preserve ownership checks and cleanup.
 - Connect HTTP session workers to the fixed mix; retain achieved throughput,
   latency distributions, expected conflicts and unexpected failures separately.
 - Capture cold/warm browser HTML/RSC/image transfers and initial JS alongside

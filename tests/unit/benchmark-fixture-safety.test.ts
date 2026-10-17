@@ -13,6 +13,7 @@ it("accepts only explicit synthetic database targets and an ownership token", ()
   expect(assertFixtureTarget(url, token)).toBe("supastore_cuj_1792200000000");
 });
 it.each([
+  "not-a-url",
   url.replace("127.0.0.1", "production.example"),
   url.replace(":25449", ":5432"),
   url.replace("supastore_cuj_1792200000000", "supastore"),

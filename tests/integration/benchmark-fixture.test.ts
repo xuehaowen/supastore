@@ -1,9 +1,13 @@
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
-import { fixtureProfile } from "../../scripts/benchmark/protocol";
+import {
+  benchmarkProtocol,
+  fixtureProfile,
+} from "../../scripts/benchmark/protocol";
 import { seedRepresentativeFixture } from "../../scripts/benchmark/seed";
 import { validateOrderReferenceCode } from "@/domain/money/reference-code";
 import { buildVariantCombinations } from "@/domain/catalog/variant-combinations";
@@ -17,6 +21,26 @@ const token = randomUUID();
 let admin: ReturnType<typeof postgres>;
 let client: ReturnType<typeof postgres>;
 let url: string;
+function retainFixtureReport(
+  report: Awaited<ReturnType<typeof seedRepresentativeFixture>>,
+) {
+  const folder = ".tmp-cuj/benchmark-fixtures";
+  mkdirSync(folder, { recursive: true });
+  const { profile } = report;
+  const name = `${profile.products}-${profile.fulfillment}-rewards-${profile.rewards}-stock-${profile.trackedStock}`;
+  writeFileSync(
+    `${folder}/${name}.json`,
+    JSON.stringify(
+      {
+        protocolVersion: benchmarkProtocol.version,
+        scope: "fixture-verification-only",
+        ...report,
+      },
+      null,
+      2,
+    ) + "\n",
+  );
+}
 beforeAll(async () => {
   if (!server)
     throw new Error("Use scripts/test-integration.mjs for this fixture test.");
@@ -74,7 +98,6 @@ it("seeds the standard catalog and established history with balanced ledgers", a
     attributes: 2,
   });
   expect(report.images).toHaveLength(2);
-  console.info("BENCHMARK_FIXTURE", JSON.stringify(report));
   const snapshots = await client`select distinct terms_snapshot from orders`;
   for (const row of snapshots) {
     expect
@@ -150,6 +173,7 @@ it("seeds the standard catalog and established history with balanced ledgers", a
       fixtureProfile(1000, "mixed", true, true),
     ),
   ).rejects.toThrow("Benchmark fixture must be empty");
+  retainFixtureReport(report);
 }, 60000);
 
 it.each([
@@ -180,7 +204,6 @@ it.each([
         isolatedToken,
         profile,
       );
-      console.info("BENCHMARK_FIXTURE", JSON.stringify(report));
       expect(report.counts).toMatchObject({
         products,
         variants: profile.variants,
@@ -213,6 +236,7 @@ it.each([
           benchmarkImageForKey("/browser-public-fixture/" + row.s3_key),
         ),
       ).toBe(true);
+      retainFixtureReport(report);
     } finally {
       if (isolated) await isolated.end();
       await admin.unsafe(

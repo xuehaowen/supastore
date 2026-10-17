@@ -1,6 +1,6 @@
 # Supastore platform quality enhancement plan
 
-Prepared: 2026-10-16, America/Los_Angeles. Status: implementation in progress; Steps 1 and 2 verified locally, Step 3 protocol/analysis implemented; representative load pending.
+Prepared: 2026-10-16, America/Los_Angeles. Status: implementation in progress; Steps 1 and 2 verified locally, Step 3 protocol/analysis and isolated data fixtures verified; representative load pending.
 Working branch: `codex/platform-quality`. Baseline: `ec68e0f`.
 
 ## Outcome
@@ -290,5 +290,15 @@ The standard workload and fixture counts are fixed; incomplete sampling and
 uncalibrated budgets cannot pass. A deliberate-growth control and exact-ceiling
 regression are verified across 50 focused tests. The offline memory artifact
 command validates all three services without accepting input budget overrides.
-Actual fixture seeding, HTTP/browser load, bounded races, sustained measurements
-and calibrated resource ceilings remain pending. Step 3 is not complete.
+HTTP/browser load, bounded races, sustained measurements and calibrated resource
+ceilings remain pending; fixture generation is verified below. Step 3 is not complete.
+
+Step 3 fixture generation is now verified against PostgreSQL via `pnpm bench:fixture`:
+100/1,000/10,000 products, four variants and two image records each, and 10,000
+closed historical orders per profile. Shipping/pickup/mixed, rewards and stock
+options are covered. Tests verify ledger balances, complete API terms, canonical
+variant keys, wrong-owner/repeated-seed refusal and transaction rollback. The
+synthetic image server returns real deterministic PNG bytes only in benchmark
+mode. Machine-readable fixture metadata is retained locally; no live store or
+external provider is used. Production load-runner integration, concurrent races,
+35-minute measurements and calibrated limits remain open.
