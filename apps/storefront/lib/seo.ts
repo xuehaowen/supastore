@@ -4,14 +4,25 @@ export function publicOrigin() {
       process.env.APP_URL ||
       "http://localhost:3001",
   );
+  if (
+    !["http:", "https:"].includes(url.protocol) ||
+    url.username ||
+    url.password
+  )
+    throw new Error("Invalid public storefront origin");
   return url.origin;
 }
-export function alternateLinks(path: string) {
+export function alternateLinks(
+  path: string,
+  locales: readonly ("en" | "zh")[] = ["en", "zh"],
+) {
   const origin = publicOrigin();
+  if (!locales.length) throw new Error("Missing public locales");
   return {
-    en: `${origin}/en${path}`,
-    zh: `${origin}/zh${path}`,
-    "x-default": `${origin}/en${path}`,
+    ...Object.fromEntries(
+      locales.map((locale) => [locale, `${origin}/${locale}${path}`]),
+    ),
+    "x-default": `${origin}/${locales.includes("en") ? "en" : locales[0]}${path}`,
   };
 }
 export function safeJsonLd(value: unknown) {

@@ -9,9 +9,13 @@ vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 afterEach(() => vi.unstubAllEnvs());
 describe("original public discoverability on separate storefront", () => {
   it("points x-default at the published locale when English is absent", () => {
-    const body = [...customerSitemapEntries([{ path: "/pages/about", locales: ["zh"] }])].join("");
-    expect(body).toContain('hreflang="x-default" href="http://localhost:3001/zh/pages/about"');
-    expect(body).not.toContain('/en/pages/about');
+    const body = [
+      ...customerSitemapEntries([{ path: "/pages/about", locales: ["zh"] }]),
+    ].join("");
+    expect(body).toContain(
+      'hreflang="x-default" href="http://localhost:3001/zh/pages/about"',
+    );
+    expect(body).not.toContain("/en/pages/about");
   });
   it("indexes product, category, collection and static shards with the public origin", () => {
     vi.stubEnv("STOREFRONT_ORIGIN", "http://localhost:3001");

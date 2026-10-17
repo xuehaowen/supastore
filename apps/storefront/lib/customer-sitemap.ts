@@ -64,7 +64,9 @@ export function* customerSitemapEntries(entries: SitemapEntry[]) {
   yield '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">';
   for (const entry of entries)
     for (const locale of entry.locales ?? ["en", "zh"]) {
-      const alternates = Object.entries(alternateLinks(entry.path))
+      const alternates = Object.entries(
+        alternateLinks(entry.path, entry.locales),
+      )
         .filter(
           ([language]) =>
             language === "x-default" ||
