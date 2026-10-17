@@ -95,6 +95,17 @@ failures or invariant mismatches. Transfer error accounting was subsequently
 strengthened with a regression (RED `2d248db`, GREEN `1f88993`); the next standard
 run must exercise that correction. Full unit/library suite: 1,114 passed.
 
+The first standard attempt (`supastore_cuj_1792214352336`, clean `4662c16`)
+stopped before warm-up: client navigation preserved the window but reported zero
+RSC bytes. Its trace showed 200 RSC streams canceled by the client. The collector
+had discarded bytes received before cancellation. It now retains CDP encoded
+body chunks for canceled streams; completed streams still use their final total,
+without double counting. Partial canceled sizes exclude response headers and are
+labeled as such. The unchanged positive-RSC-byte assertion then passed in
+`supastore_cuj_1792214513634`, together with all route/access checks, five races
+and 344 orders including warm-up; zero unexpected failures/invariant mismatches.
+The failed attempt remains evidence and does not count toward standard duration.
+
 ## Initial local diagnostic
 
 Run directory: `.tmp-cuj/benchmark-supastore_cuj_1792212753913`.

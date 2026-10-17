@@ -21,7 +21,7 @@ type Transfer = {
   canceled?: boolean;
 };
 function recorder(session: CDPSession) {
-  const pending = new Map<string, Omit<Transfer, "encodedBytes">>();
+  const pending = new Map<string, Transfer>();
   let finished: Transfer[] = [];
   const kind = (mime: string, type: string): Transfer["kind"] =>
     mime.startsWith("text/x-component")
@@ -42,6 +42,7 @@ function recorder(session: CDPSession) {
         kind: kind("", event.type ?? "Other"),
         status: null,
         fromCache: false,
+        encodedBytes: 0,
       });
     },
   );
@@ -72,7 +73,15 @@ function recorder(session: CDPSession) {
           event.response.fromDiskCache ||
           event.response.fromServiceWorker,
         ),
+        encodedBytes: pending.get(event.requestId)?.encodedBytes ?? 0,
       });
+    },
+  );
+  session.on(
+    "Network.dataReceived",
+    (event: { requestId: string; encodedDataLength: number }) => {
+      const row = pending.get(event.requestId);
+      if (row) row.encodedBytes += event.encodedDataLength;
     },
   );
   session.on(
@@ -90,7 +99,6 @@ function recorder(session: CDPSession) {
       if (row)
         finished.push({
           ...row,
-          encodedBytes: 0,
           canceled: Boolean(event.canceled),
         });
       pending.delete(event.requestId);
@@ -264,6 +272,8 @@ test("representative cold/warm browser transfers and private HTTP boundaries", a
         clientNavigation,
         clientNavigationScope:
           "source catalog load, prefetch and product transition combined",
+        canceledTransferBytes:
+          "partial encoded body bytes observed before cancellation; excludes headers",
         authorization,
       },
       null,
