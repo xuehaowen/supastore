@@ -13,9 +13,9 @@ The versioned policy is [storefront-budgets.json](../scripts/storefront-budgets.
 | Route    | Baseline gzip bytes | Current gzip bytes | Current KiB | Result |
 | -------- | ------------------: | -----------------: | ----------: | ------ |
 | Catalog  |             160,484 |            160,484 |       156.7 | Pass   |
-| Product  |             161,908 |            161,907 |       158.1 | Pass   |
+| Product  |             161,908 |            161,909 |       158.1 | Pass   |
 | Cart     |             159,117 |            159,117 |       155.4 | Pass   |
-| Checkout |             165,130 |            165,164 |       161.3 | Pass   |
+| Checkout |             165,130 |            165,149 |       161.3 | Pass   |
 
 All four routes currently include 17 unique chunks. Values are from a fresh production fixture build at application commit `045efd6`; small compression differences do not establish a runtime performance change. [Machine-readable result](benchmarks/2026-10-17-storefront-budgets.json).
 
