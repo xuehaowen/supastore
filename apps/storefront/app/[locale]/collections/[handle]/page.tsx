@@ -1,4 +1,27 @@
-import { readPage } from "../../../../lib/page-data";
+import { readRequestPage } from "../../../../lib/page-data";
+import { publicPageMetadata } from "../../../../lib/page-metadata";
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string; handle: string }>;
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { locale, handle } = await params;
+  const { collection, translated, result, store } = await readRequestPage(
+    "collection",
+    locale,
+    { ...(await searchParams), handle },
+  );
+  return publicPageMetadata({
+    locale,
+    path: "/collections/" + encodeURIComponent(handle),
+    title: translated?.title ?? collection.title,
+    storeName: store?.storeName,
+    description: translated?.description ?? collection.description,
+    page: result.page,
+  });
+}
 import { textFor } from "@supastore/i18n/messages";
 import Link from "next/link";
 import Image from "next/image";
@@ -11,7 +34,7 @@ export default async function Collection({
   searchParams: Promise<{ page?: string }>;
 }) {
   const { locale, handle } = await params;
-  const { collection, translated, result, store } = await readPage(
+  const { collection, translated, result, store } = await readRequestPage(
     "collection",
     locale,
     { ...(await searchParams), handle },

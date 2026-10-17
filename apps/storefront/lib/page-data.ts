@@ -31,3 +31,27 @@ export async function readPage<K extends keyof PageModels>(
 export const readProductPage = cache((locale: string, handle: string) =>
   readPage("product", locale, { handle }),
 );
+
+// Share metadata/render reads only within the current RSC request, including
+// its identity. Sorted keys make equivalent query objects share the same read.
+const readRequestPageSerialized = cache(
+  <K extends keyof PageModels>(page: K, locale: string, query: string) =>
+    readPage(page, locale, JSON.parse(query)),
+);
+export function readRequestPage<K extends keyof PageModels>(
+  page: K,
+  locale: string,
+  query: Record<string, string | string[] | undefined> = {},
+): Promise<PageModels[K]> {
+  return readRequestPageSerialized(
+    page,
+    locale,
+    JSON.stringify(
+      Object.fromEntries(
+        Object.entries(query)
+          .filter(([, value]) => value !== undefined)
+          .sort(([a], [b]) => a.localeCompare(b)),
+      ),
+    ),
+  );
+}

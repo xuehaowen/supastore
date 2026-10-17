@@ -1,4 +1,5 @@
 import { publicOrigin } from "../../../../lib/seo";
+import { publicPageMetadata } from "../../../../lib/page-metadata";
 import { BackendApiError } from "../../../../lib/api";
 import { readProductPage } from "../../../../lib/page-data";
 import { textFor } from "@supastore/i18n/messages";
@@ -90,17 +91,14 @@ export async function generateMetadata({
     throw error;
   });
   const p = data?.purchasable;
-  const base = publicOrigin().replace(/\/$/, "");
   return {
-    title: p?.title || textFor(locale).common.productNotFound,
-    description: p?.description.slice(0, 160),
-    alternates: {
-      canonical: `${base}/${locale}/products/${encodeURIComponent(handle)}`,
-      languages: {
-        en: `${base}/en/products/${encodeURIComponent(handle)}`,
-        zh: `${base}/zh/products/${encodeURIComponent(handle)}`,
-      },
-    },
+    ...publicPageMetadata({
+      locale,
+      path: "/products/" + encodeURIComponent(handle),
+      title: p?.title || textFor(locale).common.productNotFound,
+      storeName: data?.store?.storeName,
+      description: p?.description,
+    }),
     robots: p ? undefined : { index: false, follow: false },
   };
 }

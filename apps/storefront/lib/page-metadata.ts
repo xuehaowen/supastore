@@ -43,8 +43,8 @@ export function publicPageMetadata({
   locale: string;
   path: string;
   title: string;
-  storeName?: string;
-  description?: string;
+  storeName?: string | undefined;
+  description?: string | undefined;
   page?: number;
   locales?: readonly ("en" | "zh")[];
 }): Metadata {

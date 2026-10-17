@@ -1,4 +1,4 @@
-import { readPage } from "../lib/page-data";
+import { readRequestPage } from "../lib/page-data";
 import { textFor } from "@supastore/i18n/messages";
 import Link from "next/link";
 import Form from "next/form";
@@ -32,7 +32,7 @@ export default async function Catalog({
     .filter(Boolean)
     .slice(0, 4);
   const { result, store, facets, collections, collectionTitles, groups } =
-    await readPage("catalog", locale, query);
+    await readRequestPage("catalog", locale, query);
   const facetAxes = [...new Set(facets.map((f) => f.attribute))].slice(0, 4);
   const pageHref = (page: number) => {
     const state = new URLSearchParams({

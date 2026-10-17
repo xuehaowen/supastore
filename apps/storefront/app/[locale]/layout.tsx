@@ -1,4 +1,4 @@
-import { readPage } from "../../lib/page-data";
+import { readRequestPage } from "../../lib/page-data";
 import { textFor } from "@supastore/i18n/messages";
 import { LanguageLink } from "../interactive";
 import { StorefrontNavLink } from "../storefront-nav-link";
@@ -9,6 +9,15 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Alert, AlertDescription } from "@supastore/ui/alert";
 export const dynamic = "force-dynamic";
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const { store } = await readRequestPage("layout", locale);
+  return { title: store?.storeName || textFor(locale).shop };
+}
 export default async function ShopLayout({
   children,
   params,
@@ -19,7 +28,7 @@ export default async function ShopLayout({
   const { locale } = await params;
   if (!["en", "zh"].includes(locale)) notFound();
   const t = await getTranslations({ locale });
-  const { store, session } = await readPage("layout", locale);
+  const { store, session } = await readRequestPage("layout", locale);
   return (
     <div
       className="storefront-shell mx-auto flex min-h-screen max-w-375 flex-col px-[6%]"
