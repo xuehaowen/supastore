@@ -31,13 +31,15 @@ it("keeps standard timing fixed and labels smoke/profile diagnostics", () => {
     rewards: false,
   });
 });
-it.each([
-  ["--benchmark", "--duration=1"],
-  ["--benchmark", "--products=1"],
-  ["--benchmark", "--smoke", "--smoke"],
-  ["--benchmark", "--stock=false"],
-  ["--benchmark", "--fulfillment=shipping", "--fulfillment=pickup"],
-])("rejects unsupported/duplicated benchmark overrides %#", (args) => {
+it.each(
+  [
+    ["--benchmark", "--duration=1"],
+    ["--benchmark", "--products=1"],
+    ["--benchmark", "--smoke", "--smoke"],
+    ["--benchmark", "--stock=false"],
+    ["--benchmark", "--fulfillment=shipping", "--fulfillment=pickup"],
+  ].map((args) => ({ args })),
+)("rejects unsupported/duplicated benchmark overrides %#", ({ args }) => {
   expect(() => parseBenchmarkOptions(args)).toThrow(
     "Invalid benchmark options",
   );
