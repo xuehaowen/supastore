@@ -8,6 +8,7 @@ import {
 } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { tmpdir } from "node:os";
 import { spawn } from "node:child_process";
 import {
   publishHeapPhase,
@@ -15,9 +16,7 @@ import {
 } from "../../scripts/benchmark/heap-phase.mjs";
 
 it("publishes monotonic phases while another process continuously reads", async () => {
-  const directory = mkdtempSync(
-    join(resolve(".tmp-cuj/platform-quality"), "phase-test-"),
-  );
+  const directory = mkdtempSync(join(tmpdir(), "supastore-heap-phase-"));
   const done = join(directory, "done");
   let child;
   let exited: Promise<number | null> | undefined;
@@ -51,7 +50,7 @@ it("publishes monotonic phases while another process continuously reads", async 
     });
     await new Promise<void>((resolve, reject) => {
       child!.once("error", reject);
-      child!.stdout!.on("data", (chunk) => {
+      child!.stdout!.on("data", (chunk: Buffer) => {
         output += String(chunk);
         if (output.includes("ready\n")) resolve();
       });

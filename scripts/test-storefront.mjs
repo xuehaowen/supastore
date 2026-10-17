@@ -106,6 +106,8 @@ function completed(child) {
   });
 }
 function start(args, runtime = false, overrides = {}) {
+  if (runtime && benchmark?.runtimeMemory === "compact")
+    args = ["--max-semi-space-size=16", ...args];
   const diagnostics = runtime && benchmark && benchmark.diagnostics !== "none";
   if (diagnostics)
     args = [
