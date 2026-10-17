@@ -141,12 +141,12 @@ describe("memory stability acceptance", () => {
   });
 
   it.each([
-    [],
-    samples().slice(0, 13),
-    samples().slice(2),
-    samples().slice(0, -2),
-    samples().filter((_, i) => i < 90 || i > 94),
-    samples().filter((_, i) => i % 10 === 0),
+    [[]],
+    [samples().slice(0, 13)],
+    [samples().slice(2)],
+    [samples().slice(0, -2)],
+    [samples().filter((_, i) => i < 90 || i > 94)],
+    [samples().filter((_, i) => i % 10 === 0)],
   ])("refuses incomplete or discontinuous measurements %#", (data) => {
     expect(analyzeMemory(data, timing, limits).status).toBe(
       "insufficient-data",
@@ -154,22 +154,26 @@ describe("memory stability acceptance", () => {
   });
 
   it.each([
-    [{ elapsedSeconds: 0, rssBytes: NaN }],
-    [{ elapsedSeconds: 0, rssBytes: -1 }],
-    [{ elapsedSeconds: Infinity, rssBytes: MiB }],
-    [{ elapsedSeconds: -1, rssBytes: MiB }],
-    [{ elapsedSeconds: 1801, rssBytes: MiB }],
-    [
-      { elapsedSeconds: 1, rssBytes: MiB },
-      { elapsedSeconds: 1, rssBytes: MiB },
-    ],
-    [
-      { elapsedSeconds: 2, rssBytes: MiB },
-      { elapsedSeconds: 1, rssBytes: MiB },
-    ],
+    { data: [{ elapsedSeconds: 0, rssBytes: NaN }] },
+    { data: [{ elapsedSeconds: 0, rssBytes: -1 }] },
+    { data: [{ elapsedSeconds: Infinity, rssBytes: MiB }] },
+    { data: [{ elapsedSeconds: -1, rssBytes: MiB }] },
+    { data: [{ elapsedSeconds: 1801, rssBytes: MiB }] },
+    {
+      data: [
+        { elapsedSeconds: 1, rssBytes: MiB },
+        { elapsedSeconds: 1, rssBytes: MiB },
+      ],
+    },
+    {
+      data: [
+        { elapsedSeconds: 2, rssBytes: MiB },
+        { elapsedSeconds: 1, rssBytes: MiB },
+      ],
+    },
   ])(
     "rejects corrupt observations %# rather than producing a passing report",
-    (data) => {
+    ({ data }) => {
       expect(() => analyzeMemory(data, timing, limits)).toThrow(
         "Invalid memory samples",
       );
