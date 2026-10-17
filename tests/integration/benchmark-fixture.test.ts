@@ -6,6 +6,9 @@ import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { fixtureProfile } from "../../scripts/benchmark/protocol";
 import { seedRepresentativeFixture } from "../../scripts/benchmark/seed";
 import { validateOrderReferenceCode } from "@/domain/money/reference-code";
+import { buildVariantCombinations } from "@/domain/catalog/variant-combinations";
+import { parseCustomerPage } from "@supastore/contracts/customer-page-validation";
+import { pages } from "../fixtures/customer-pages";
 
 const server = process.env.TRANSLATION_TEST_DATABASE_URL;
 const name = `supastore_cuj_${Date.now()}`;
@@ -70,6 +73,41 @@ it("seeds the standard catalog and established history with balanced ledgers", a
     attributes: 2,
   });
   expect(report.images).toHaveLength(2);
+  const snapshots = await client`select distinct terms_snapshot from orders`;
+  for (const row of snapshots) {
+    expect
+      .soft(() =>
+        parseCustomerPage("order", {
+          ...pages.order,
+          result: {
+            ...pages.order.result,
+            order: {
+              ...pages.order.result.order,
+              termsSnapshot: row.terms_snapshot,
+            },
+          },
+        }),
+      )
+      .not.toThrow();
+  }
+  const options = await client<
+    { id: string; code: string; name: string }[]
+  >`select id,code,name from attributes order by sort_order`;
+  const values = await client<
+    { id: string; attribute_id: string; code: string; label: string }[]
+  >`select id,attribute_id,code,label from attribute_values order by sort_order`;
+  const combinations = buildVariantCombinations(
+    options.map((option) => ({
+      ...option,
+      values: values.filter((value) => value.attribute_id === option.id),
+    })),
+    "BENCH",
+  );
+  const keys =
+    await client`select combination_key from product_variants where product_id=(select id from products where handle='benchmark-product-1')`;
+  expect
+    .soft(new Set(keys.map((row) => row.combination_key)))
+    .toEqual(new Set(combinations.map((combination) => combination.key)));
   const [balance] = await client`
     select
       (select count(*)::int from orders o where purchase_total_cents <> (select sum(line_total_cents) from order_items i where i.order_id=o.id)) as wrong_totals,
