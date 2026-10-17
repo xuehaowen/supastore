@@ -33,6 +33,7 @@
     "bench:memory": "node scripts/test-storefront.mjs --measure",
     "bench:memory:analyze": "tsx scripts/benchmark/analyze-memory.ts",
     "bench:fixture": "node scripts/test-integration.mjs tests/integration/benchmark-fixture.test.ts",
+    "bench:representative": "node scripts/test-storefront.mjs --benchmark",
     "auth:recover-owner": "tsx scripts/recover-owner.ts",
     "test:browser:existing": "playwright test",
     "test:frontend:coverage": "vitest run tests/unit --coverage --coverage.include=apps/backend/src/app/actions.ts --coverage.include=apps/backend/src/app/client-requests.ts",

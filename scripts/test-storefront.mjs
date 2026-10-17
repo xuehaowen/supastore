@@ -1,13 +1,22 @@
 import { fixtureDirectory } from "./fixture-directory.mjs";
 import { measureFixtureResources } from "./measure-fixture-resources.mjs";
+import { parseBenchmarkOptions } from "./benchmark/options.mjs";
+import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
-import { cpSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import postgres from "postgres";
 import EmbeddedPostgres from "embedded-postgres";
 
+const benchmark = parseBenchmarkOptions(process.argv.slice(2));
 // A dedicated synthetic cluster, database and Next cache. Never use the app DB.
 const fixture = fixtureDirectory("storefront");
 const databaseDir = fixture.path;
@@ -21,6 +30,11 @@ const pg = new EmbeddedPostgres({
   onError: console.error,
 });
 const database = "supastore_cuj_" + Date.now();
+const benchmarkToken = benchmark ? randomUUID() : "";
+const benchmarkReport = benchmark
+  ? join(process.cwd(), ".tmp-cuj", "benchmark-" + database)
+  : "";
+if (benchmark) mkdirSync(benchmarkReport, { recursive: true });
 const production = true;
 const measure = process.argv.includes("--measure");
 const standalone =
@@ -49,11 +63,14 @@ const env = {
   PLAYWRIGHT_BASE_URL: "http://localhost:3103",
   ADMIN_SETUP_SECRET: "SyntheticSetupSecret123!",
   BETTER_AUTH_SECRET: "SyntheticAuthSecretForBrowserTests123!",
-  M1_DEMO: "true",
+  M1_DEMO: benchmark ? "false" : "true",
+  BENCHMARK_OWNER_TOKEN: benchmarkToken,
+  BENCHMARK_REPORT_PATH: benchmarkReport,
+  BENCHMARK_IMAGES: benchmark ? "true" : "false",
   DEMO_OWNER_PASSWORD: "SyntheticOwnerPassword123!",
-  DISABLE_OUTBOUND_DELIVERY: "false",
+  DISABLE_OUTBOUND_DELIVERY: benchmark ? "true" : "false",
   // Authentication links now use the durable outbox.
-  ENABLE_OUTBOX_WORKER: "true",
+  ENABLE_OUTBOX_WORKER: benchmark ? "false" : "true",
   EMAIL_PROVIDER: "nodemailer",
   SMS_PROVIDER: "disabled",
   PHONE_VERIFICATION_PROVIDER: "disabled",
@@ -252,6 +269,15 @@ try {
   } finally {
     await admin.end();
   }
+  if (benchmark) {
+    const owned = postgres(env.DATABASE_URL);
+    try {
+      await owned`create table benchmark_fixture_ownership(token uuid primary key)`;
+      await owned`insert into benchmark_fixture_ownership values(${benchmarkToken})`;
+    } finally {
+      await owned.end();
+    }
+  }
   writeFileSync(
     "apps/backend/" + env.NEXT_TSCONFIG,
     readFileSync("apps/backend/tsconfig.json"),
@@ -265,7 +291,15 @@ try {
   start(["scripts/test-storage.mjs"]);
 
   await completed(
-    start(["node_modules/tsx/dist/cli.mjs", "scripts/seed-demo.ts"]),
+    start(
+      benchmark
+        ? [
+            "node_modules/tsx/dist/cli.mjs",
+            "scripts/benchmark/prepare-cli.ts",
+            ...process.argv.slice(2),
+          ]
+        : ["node_modules/tsx/dist/cli.mjs", "scripts/seed-demo.ts"],
+    ),
   );
 
   if (production)
@@ -327,6 +361,8 @@ try {
           "apps/backend",
           "--port",
           "3102",
+          "--hostname",
+          "127.0.0.1",
         ],
     true,
     { PORT: "3102", HOSTNAME: "127.0.0.1" },
@@ -347,51 +383,72 @@ try {
           "apps/storefront",
           "--port",
           "3103",
+          "--hostname",
+          "127.0.0.1",
         ],
     true,
     { PORT: "3103", HOSTNAME: "127.0.0.1" },
   );
   await ready(env.APP_URL + "/en", storefront);
-  const testTarget =
-    testArguments.length > 0
-      ? testArguments
-      : [
-          "tests/browser/original-storefront-separation.spec.ts",
-          "tests/browser/cuj.spec.ts",
-          "tests/browser/i18n.spec.ts",
-          "tests/browser/boundaries.spec.ts",
-          "tests/browser/cross-service-sitemap.spec.ts",
-          "tests/browser/sitemap.spec.ts",
-          "tests/browser/cross-service-scale.spec.ts",
-        ];
-  await completed(
-    start([
-      "node_modules/@playwright/test/cli.js",
-      "test",
-      "--output=test-results/storefront",
-      ...testTarget,
-    ]),
-  );
-  if (measure) {
-    console.log(
-      JSON.stringify(
-        {
-          metric:
-            "Production Next process RSS after synthetic browser journeys",
-          platform: process.platform,
-          runtime: standalone ? "standalone" : "Next CLI",
-          nodeVersion: process.version,
-          workload: testTarget,
-          services: measureFixtureResources([
-            { service: "backend", pid: server.pid },
-            { service: "storefront", pid: storefront.pid },
-          ]),
-        },
-        null,
-        2,
-      ),
+  if (benchmark) {
+    Object.assign(env, {
+      BENCHMARK_BACKEND_PID: String(server.pid),
+      BENCHMARK_STOREFRONT_PID: String(storefront.pid),
+      BENCHMARK_POSTGRES_PID: readFileSync(
+        join(databaseDir, "postmaster.pid"),
+        "utf8",
+      ).split(/\r?\n/)[0],
+      BENCHMARK_RUNTIME_MODE: standalone ? "standalone" : "Next CLI",
+    });
+    await completed(
+      start([
+        "node_modules/tsx/dist/cli.mjs",
+        "scripts/benchmark/run.ts",
+        ...process.argv.slice(2),
+      ]),
     );
-    await completed(start(["scripts/measure-storefront-bundle.mjs"]));
+  } else {
+    const testTarget =
+      testArguments.length > 0
+        ? testArguments
+        : [
+            "tests/browser/original-storefront-separation.spec.ts",
+            "tests/browser/cuj.spec.ts",
+            "tests/browser/i18n.spec.ts",
+            "tests/browser/boundaries.spec.ts",
+            "tests/browser/cross-service-sitemap.spec.ts",
+            "tests/browser/sitemap.spec.ts",
+            "tests/browser/cross-service-scale.spec.ts",
+          ];
+    await completed(
+      start([
+        "node_modules/@playwright/test/cli.js",
+        "test",
+        "--output=test-results/storefront",
+        ...testTarget,
+      ]),
+    );
+    if (measure) {
+      console.log(
+        JSON.stringify(
+          {
+            metric:
+              "Production Next process RSS after synthetic browser journeys",
+            platform: process.platform,
+            runtime: standalone ? "standalone" : "Next CLI",
+            nodeVersion: process.version,
+            workload: testTarget,
+            services: measureFixtureResources([
+              { service: "backend", pid: server.pid },
+              { service: "storefront", pid: storefront.pid },
+            ]),
+          },
+          null,
+          2,
+        ),
+      );
+      await completed(start(["scripts/measure-storefront-bundle.mjs"]));
+    }
   }
 } catch (error) {
   console.error(

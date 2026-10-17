@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import { parseBenchmarkOptions } from "../../scripts/benchmark/options.mjs";
 import { LoadMetrics, shoppingCycle } from "../../scripts/benchmark/http-load";
+import { processMemory } from "../../scripts/benchmark/process-memory.mjs";
 
 it("keeps standard timing fixed and labels smoke/profile diagnostics", () => {
   expect(parseBenchmarkOptions([])).toBeNull();
@@ -160,4 +161,64 @@ it("does not issue later writes after the phase deadline", async () => {
     () => false,
   );
   expect(requests).toBe(0);
+});
+
+it.each(["missing-cookie", "wrong-quote", "wrong-order"])(
+  "rejects %s instead of continuing a corrupt purchase",
+  async (defect) => {
+    await expect(
+      shoppingCycle(
+        {
+          variantId: "variant",
+          handle: "p",
+          priceCents: 1,
+          paymentAccountId: "bank",
+          pickupLocationId: "location",
+          fulfillment: "pickup",
+        },
+        async (_operation, path, method) => {
+          if (path.endsWith("/cart") && method === "POST")
+            return {
+              data: { id: "cart", items: [{ id: "item" }] },
+              ...(defect === "missing-cookie"
+                ? {}
+                : { cartCookie: "shop-cart=fixture" }),
+            };
+          if (path.endsWith("/quotes"))
+            return {
+              data: {
+                id: "quote",
+                totalPayableCents: defect === "wrong-quote" ? 9 : 2,
+              },
+            };
+          if (path.endsWith("/orders"))
+            return {
+              data: {
+                id: "order",
+                purchaseTotalCents: defect === "wrong-order" ? 9 : 2,
+              },
+            };
+          return { data: null };
+        },
+        () => true,
+      ),
+    ).rejects.toThrow();
+  },
+);
+it("collects owned process memory asynchronously and rejects untrusted identifiers", async () => {
+  await expect(processMemory([-1])).rejects.toThrow(
+    "Invalid benchmark process identifiers",
+  );
+  await expect(processMemory([process.pid, process.pid])).rejects.toThrow(
+    "Invalid benchmark process identifiers",
+  );
+  if (!["win32", "linux"].includes(process.platform)) {
+    await expect(processMemory([process.pid])).rejects.toThrow(
+      "supports Windows and Linux",
+    );
+    return;
+  }
+  const records = await processMemory([process.pid]);
+  expect(records).toHaveLength(1);
+  expect(records[0]!.rssBytes).toBeGreaterThan(0);
 });
