@@ -35,7 +35,7 @@ export function diagnosticTarget(env) {
   const database = basename(directory).replace(/^benchmark-/, "");
   if (
     !["backend", "storefront"].includes(role) ||
-    !["natural", "gc"].includes(env.BENCHMARK_MEMORY_DIAGNOSTICS) ||
+    !["natural", "gc", "compact"].includes(env.BENCHMARK_MEMORY_DIAGNOSTICS) ||
     !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
       env.BENCHMARK_OWNER_TOKEN ?? "",
     ) ||
@@ -59,7 +59,8 @@ if (process.env.BENCHMARK_MEMORY_ROLE) {
   const sample = () => {
     const phase = readHeapPhase(process.env.BENCHMARK_REPORT_PATH);
     const mode =
-      phase === "startup"
+      phase === "startup" ||
+      process.env.BENCHMARK_MEMORY_DIAGNOSTICS === "compact"
         ? "natural"
         : process.env.BENCHMARK_MEMORY_DIAGNOSTICS;
     const started = performance.now();

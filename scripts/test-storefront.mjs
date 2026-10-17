@@ -110,6 +110,9 @@ function start(args, runtime = false, overrides = {}) {
   if (diagnostics)
     args = [
       ...(benchmark.diagnostics === "gc" ? ["--expose-gc"] : []),
+      ...(benchmark.diagnostics === "compact"
+        ? ["--max-semi-space-size=16"]
+        : []),
       "--import",
       pathToFileURL(join(process.cwd(), "scripts/benchmark/heap-probe.mjs"))
         .href,

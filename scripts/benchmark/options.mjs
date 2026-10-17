@@ -2,7 +2,7 @@
 export function parseBenchmarkOptions(args) {
   if (!args.includes("--benchmark")) return null;
   const accepted =
-    /^(--benchmark|--smoke|--measure|--standalone|--production|--diagnose-memory=(natural|gc)|--products=(100|1000|10000)|--fulfillment=(shipping|pickup|mixed)|--rewards=(on|off)|--stock=(tracked|untracked))$/;
+    /^(--benchmark|--smoke|--measure|--standalone|--production|--diagnose-memory=(natural|gc|compact)|--products=(100|1000|10000)|--fulfillment=(shipping|pickup|mixed)|--rewards=(on|off)|--stock=(tracked|untracked))$/;
   const names = args.map((arg) => arg.split("=")[0]);
   if (
     args.some((arg) => !accepted.test(arg)) ||
