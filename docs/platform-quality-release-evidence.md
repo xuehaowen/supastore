@@ -3,7 +3,7 @@
 Date: October 17, 2026, America/Los_Angeles. Branch: `codex/platform-quality`.
 Status: identified selling-path development changes pass local acceptance; not deployed or certified for real sales.
 
-Local acceptance: 1,181 unit/library tests pass; the earlier 143 PostgreSQL
+Local acceptance: 1,182 unit/library tests pass; the earlier 143 PostgreSQL
 integration results are retained. The current default CI command passes 45
 production browser tests; the earlier extended run passed 49, including six
 legacy M1 tests outside the default selection. Both production builds, types, lint,
@@ -24,6 +24,11 @@ cover isolated names/ports/data, the relevant mobile checkout fields, manual
 receipt confirmation and fulfillment. Card credentials/provider acceptance are
 not required for this manual-payment launch; verified transactional email and
 actual manual-payment reconciliation remain required.
+
+Each store can now select its backend/storefront/migration release images
+independently. Compose rendering verifies candidate/previous pickup references
+without changing shipping references or data volumes. This is configuration
+acceptance only; no target-host upgrade/rollback or image provenance is certified.
 
 ## Evidence by workstream
 

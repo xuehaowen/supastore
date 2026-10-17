@@ -46,7 +46,43 @@ docker compose --env-file /etc/supastore/pickup.env -p milky-pickup -f docker-co
 docker compose --env-file /etc/supastore/shipping.env -p milky-shipping -f docker-compose.yml up -d backend storefront
 ```
 
-Build the application and migration targets before these startup commands using the [deployment recipe](deployment-recipes.md). The root Compose recipe currently uses shared local `latest` image tags: record immutable image IDs before an update and release both instances deliberately. Compose project isolation does not create independent image versions or provide independent rollback tags. Existing containers keep their current image until replaced; build/recreation must not accidentally become an unplanned update of the other store.
+Build the application and migration targets before these startup commands using the [deployment recipe](deployment-recipes.md). Select `BACKEND_IMAGE`, `STOREFRONT_IMAGE` and `MIGRATION_IMAGE` independently in each instance's environment file. Empty application references preserve the local `latest` defaults; an empty migration reference preserves the project-specific migration tag. For releases, use versioned tags that are never overwritten or verified registry digests. Project isolation alone does not pin versions.
+
+## Independent releases and rollback
+
+Treat backend, storefront and migration images as a tested release set. These example values are illustrative tags to build or replace with actual verified image references:
+
+```dotenv
+BACKEND_IMAGE=supastore-backend:release-20261017-a
+STOREFRONT_IMAGE=supastore-storefront:release-20261017-a
+MIGRATION_IMAGE=supastore-migrate:release-20261017-a
+```
+
+Building from a chosen checkout requires writable tag names, not digest references:
+
+```sh
+docker compose --env-file /etc/supastore/pickup.env -p milky-pickup -f docker-compose.yml --profile migration build backend storefront migrate
+```
+
+When using prebuilt registry images, pull and verify the approved digests instead. Before changing running services, inspect the effective selection without printing environment secrets:
+
+```sh
+docker compose --env-file /etc/supastore/pickup.env -p milky-pickup -f docker-compose.yml --profile migration config --images
+```
+
+Confirm each selected image is already present locally and matches the approved release, and record its immutable image ID/registry digest plus the previous release and database schema version. Stop if any selected image is missing or unverified. Back up and rehearse on an isolated copy before migrating an existing store. Apply only the approved forward-compatible migration image, then replace backend before storefront:
+
+```sh
+docker compose --env-file /etc/supastore/pickup.env -p milky-pickup -f docker-compose.yml --profile migration run --rm --pull never migrate
+docker compose --env-file /etc/supastore/pickup.env -p milky-pickup -f docker-compose.yml up -d --wait --no-deps --no-build --pull never backend
+docker compose --env-file /etc/supastore/pickup.env -p milky-pickup -f docker-compose.yml up -d --wait --no-deps --no-build --pull never storefront
+```
+
+The shipping environment file and project are not part of those commands. It can continue selecting the previous release. Do not overwrite its version tags while building the pickup candidate. Do not use `--build` during service replacement or rollback.
+
+To roll back pickup, select the previously verified image set in **its** environment file, verify compatibility with the current database, then replace storefront before backend using the same `up --wait --no-deps --no-build --pull never` options. Do not run reverse migrations or restore an older database to undo an application upgrade: financial history and real payment outcomes must remain intact. A rollback that is incompatible with the current schema is not available merely because an older image exists; pause new orders and resolve compatibility instead. Validate order access, worker health and the intended manual-payment path after replacement.
+
+This selection mechanism does not automatically verify image provenance, schema compatibility, health of the other store or a target-host rollout. Those remain operator acceptance checks.
 
 Provision the owner separately for each store using the existing trusted terminal tooling, then use its admin UI:
 
@@ -76,3 +112,5 @@ The root Compose recipe was rendered for two explicitly named synthetic projects
 `tests/browser/manual-launch-profiles.spec.ts` rehearses pickup-only and shipping-only configurations in disposable services at 375px: exactly one fulfillment choice, only relevant address/location fields, manual payment instructions, unpaid order placement, one exact synthetic receipt, confirmation and completed pickup/shipment delivery. The test restores configuration afterward. It does not transfer real money. Both profiles pass and are included in the normal CI browser selection.
 
 This verifies same-host dependency isolation and each configured sales workflow separately. It is not a simultaneous two-store application load test or proof of KVM 2 capacity. Actual domains, secrets, receiving instructions, pickup rules, shipping rates, real catalog/photographs, email delivery, provider reconciliation and matching backups still require owner/target acceptance. Performance optimization remains deferred.
+
+Release-selection follow-up: Docker Compose's actual parser resolves all three explicit image references independently for pickup and shipping, including the migration profile and default fallback. Changing the pickup candidate and selecting its previous release leaves shipping image references and pickup volume definitions unchanged. This is a configuration-only check with illustrative references; no sample release image was built, pulled or deployed, and no live rollback was performed. Five deployment regressions and the full 1,182-test unit/library suite pass; canonical types, lint and formatting pass. Existing 45-test browser acceptance is retained because this follow-up changes no application code. [Release-selection evidence](benchmarks/2026-10-17-instance-releases.json).

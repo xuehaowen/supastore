@@ -19,6 +19,10 @@ configuration, PostgreSQL upgrades, public origins and trusted ingress.
    credentials and the public HTTPS storefront origin.
 2. Build the explicit targets with
    `docker compose build backend storefront migrate`.
+   For independent store releases, set `BACKEND_IMAGE`, `STOREFRONT_IMAGE` and
+   `MIGRATION_IMAGE` to versioned tags before building, or use verified prebuilt
+   registry digests. Do not build to digest references. See the
+   [release and rollback procedure](milky-bakery-two-instances.md#independent-releases-and-rollback).
 3. Start PostgreSQL and object storage with
    `docker compose up -d postgres rustfs`.
 4. Back up an existing installation and rehearse recovery before applying

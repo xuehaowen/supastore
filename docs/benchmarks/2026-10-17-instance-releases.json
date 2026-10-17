@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-17",
+  "timezone": "America/Los_Angeles",
+  "configurationCommit": "916d0f1",
+  "status": "pass",
+  "scope": "Docker Compose rendering and release selection only",
+  "variables": ["BACKEND_IMAGE", "STOREFRONT_IMAGE", "MIGRATION_IMAGE"],
+  "defaults": {
+    "backend": "supastore-backend:latest",
+    "storefront": "supastore-storefront:latest",
+    "migrationForPickupFixture": "supastore-codex-pickup-migrate:latest"
+  },
+  "pickup": {
+    "before": "pickup-release-a",
+    "candidate": "pickup-release-c",
+    "rollbackSelection": "pickup-release-a",
+    "allThreeReferencesChangedTogether": true,
+    "dataVolumeDefinitionsUnchanged": true
+  },
+  "shipping": {
+    "before": "shipping-release-b",
+    "afterPickupSelectionChanges": "shipping-release-b",
+    "allThreeReferencesUnchanged": true
+  },
+  "migrationProfileIncluded": true,
+  "deploymentTestsPassed": 5,
+  "unitLibraryTestsPassed": 1182,
+  "sampleImagesBuiltPulledOrDeployed": false,
+  "runtimeUpgradePerformed": false,
+  "runtimeRollbackPerformed": false,
+  "productionAccepted": false
+}

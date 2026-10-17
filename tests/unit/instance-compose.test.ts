@@ -22,9 +22,15 @@ it("names database and storage containers per Compose project", () => {
   }
 });
 it("lets each instance select all release images without changing default application tags", () => {
-  expect(compose.services.backend!.image).toBe("${BACKEND_IMAGE:-supastore-backend:latest}");
-  expect(compose.services.storefront!.image).toBe("${STOREFRONT_IMAGE:-supastore-storefront:latest}");
-  expect(compose.services.migrate!.image).toBe("${MIGRATION_IMAGE:-${COMPOSE_PROJECT_NAME:-supastore}-migrate:latest}");
+  expect(compose.services.backend!.image).toBe(
+    "${BACKEND_IMAGE:-supastore-backend:latest}",
+  );
+  expect(compose.services.storefront!.image).toBe(
+    "${STOREFRONT_IMAGE:-supastore-storefront:latest}",
+  );
+  expect(compose.services.migrate!.image).toBe(
+    "${MIGRATION_IMAGE:-${COMPOSE_PROJECT_NAME:-supastore}-migrate:latest}",
+  );
 });
 it("allows each instance to choose its loopback-only dependency ports", () => {
   for (const [service, variable, fallback, internal] of [

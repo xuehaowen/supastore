@@ -491,3 +491,15 @@ normal CI. Full default browser acceptance: 45 pass; unit/library: 1,181 pass;
 root/apps types, lint and unchanged bundle limits pass. Real receiving
 instructions, domain/secrets, rates/schedules, email, backups and owner catalog/
 design acceptance remain open. No production settings or live funds changed.
+
+Independent release selection, October 17: `97fdbbd` RED / `916d0f1` GREEN adds
+per-instance `BACKEND_IMAGE`, `STOREFRONT_IMAGE` and `MIGRATION_IMAGE` references,
+preserving default application tags and the project-scoped migration tag.
+Docker Compose rendering verifies explicit pickup/shipping releases, default
+fallbacks and pickup candidate -> previous selection while shipping references
+and volume definitions remain unchanged. No runtime upgrade, sample image build
+or live rollback was performed. The documented procedure requires a coherent
+verified image set, forward-compatible migrations and schema-compatible app
+rollback without reverting financial data. Five deployment regressions and
+1,182 unit/library tests pass; types/lint/format pass. Existing 45-browser and
+143-integration results are retained because application code did not change.
