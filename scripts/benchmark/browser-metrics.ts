@@ -24,8 +24,7 @@ export function summarizeTransfers(input: unknown) {
     unexpectedFailures: transfers.filter(
       (t) =>
         !t.canceled &&
-        t.kind !== "other" &&
-        (t.status === null || (t.status >= 400 && t.status !== 304)),
+        (t.status === null || t.status >= 400),
     ).length,
   };
 }
