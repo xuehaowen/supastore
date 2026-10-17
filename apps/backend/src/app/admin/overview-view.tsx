@@ -5,6 +5,7 @@ import { Button } from "@supastore/ui/button";
 import { money } from "@/infrastructure/web";
 import type { OperationsScreenProps } from "./operations-types";
 import { QueuePagination } from "./queue-pagination";
+import { LaunchChecklist } from "./launch-checklist";
 export function OverviewView(props: OperationsScreenProps) {
   const { data, query, view, returnTo } = props;
   const {
@@ -113,15 +114,11 @@ export function OverviewView(props: OperationsScreenProps) {
         </>
       )}
       {view === "overview" && member.role === "owner" && (
-        <section className="panel">
-          <h2>Launch checklist</h2>
-          <ul>
-            {readiness.checklist.map((c) => (
-              <li key={c.key}>
-                {c.isReady ? "✓" : "○"} {c.label}
-              </li>
-            ))}
-          </ul>
+        <>
+          <LaunchChecklist checklist={readiness.checklist} />
+          <section className="panel">
+          <h2>New orders</h2>
+          <p>Pausing stops new orders. Existing orders, payment review and fulfillment remain available.</p>
           <form action={togglePause}>
             <Hidden name="returnTo" value={returnTo} />
             <Hidden name="paused" value={String(!store?.isPaused)} />
@@ -134,7 +131,8 @@ export function OverviewView(props: OperationsScreenProps) {
               {store?.isPaused ? "Resume new orders" : "Pause new orders"}
             </Button>
           </form>
-        </section>
+          </section>
+        </>
       )}
       {view === "overview" && (
         <section id="emails">

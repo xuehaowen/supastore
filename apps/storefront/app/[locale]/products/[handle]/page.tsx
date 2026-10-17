@@ -6,6 +6,7 @@ import { textFor } from "@supastore/i18n/messages";
 import { notFound } from "next/navigation";
 import { ProductPurchase } from "../../../product-purchase";
 import { getTranslations } from "next-intl/server";
+import { variantCanBePurchased } from "../../../../lib/product-availability";
 export default async function Product({
   params,
 }: {
@@ -36,7 +37,7 @@ export default async function Product({
       price: (v.priceCents / 10 ** (store?.precision ?? 2)).toFixed(
         store?.precision ?? 2,
       ),
-      availability: `https://schema.org/${v.isAvailable ? "InStock" : "OutOfStock"}`,
+      availability: `https://schema.org/${variantCanBePurchased(v, availableQuantities) ? "InStock" : "OutOfStock"}`,
       url: `${base}/${locale}/products/${encodeURIComponent(handle)}`,
     })),
   };

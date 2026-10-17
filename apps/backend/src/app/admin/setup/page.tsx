@@ -34,6 +34,8 @@ import { Button } from "@supastore/ui/button";
 import { Checkbox } from "@supastore/ui/checkbox";
 import { NativeSelect } from "@supastore/ui/native-select";
 import { Alert, AlertDescription } from "@supastore/ui/alert";
+import { LaunchChecklist } from "../launch-checklist";
+import { getLaunchReadiness } from "@/application/use-cases/store/get-launch-readiness";
 export default async function Setup({
   searchParams,
 }: {
@@ -67,6 +69,7 @@ export default async function Setup({
     .from(pickupLocation)
     .orderBy(pickupLocation.name);
   const staffMembers = await db.select().from(staffMemberships);
+  const readiness = await getLaunchReadiness();
   return (
     <>
       <AdminNav />
@@ -77,6 +80,7 @@ export default async function Setup({
           Configure your store, payment methods, fulfillment, and team access.
         </p>
         <Notice error={q.error} />
+        <LaunchChecklist checklist={readiness.checklist} />
         <SettingsDirectory />
         <div className="admin-grid setup-sections">
           <section className="panel">
