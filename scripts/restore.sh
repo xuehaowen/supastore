@@ -18,7 +18,7 @@ for tool in pg_restore psql node; do
 done
 if [ -d "$BACKUP_SOURCE" ]; then
   test -f "$BACKUP_SOURCE/SHA256SUMS" || { echo "Backup directory has no verified integrity manifest." >&2; exit 1; }
-  (cd "$BACKUP_SOURCE" && sha256sum --check SHA256SUMS)
+  (cd "$BACKUP_SOURCE" && sha256sum -c SHA256SUMS)
   DUMP_FILE="$BACKUP_SOURCE/database.dump"
 else
   DUMP_FILE="$BACKUP_SOURCE"
