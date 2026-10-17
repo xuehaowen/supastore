@@ -119,6 +119,19 @@ describe("memory stability acceptance", () => {
     expect(result.violations).toEqual(["slopeMiBPerMinute", "medianGrowthMiB"]);
   });
 
+  it("accepts an exact slope ceiling despite regression rounding", () => {
+    expect(
+      analyzeMemory(samples(1), timing, { ...limits, medianGrowthMiB: 100 })
+        .status,
+    ).toBe("pass");
+    expect(
+      analyzeMemory(samples(1.0001), timing, {
+        ...limits,
+        medianGrowthMiB: 100,
+      }).status,
+    ).toBe("fail");
+  });
+
   it("checks transient peak usage independently of the growth trend", () => {
     const data = samples();
     data[180]!.rssBytes = 513 * MiB;
