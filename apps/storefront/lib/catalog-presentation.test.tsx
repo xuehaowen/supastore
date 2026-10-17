@@ -5,12 +5,14 @@ import Catalog from "../app/catalog";
 const state = vi.hoisted(() => ({
   image: "catalog/loaf.png",
   about: "Our small bakery's current collection.",
+  latestName: "Fixture bakery",
 }));
 vi.mock("./page-data", () => ({
-  readRequestPage: async () => ({
+  readRequestPage: async (page: string) => ({
     ...pages.catalog,
     store: {
       ...pages.catalog.store,
+      storeName: page === "layout" ? state.latestName : "Fixture bakery",
       publicContent: { en: { about: state.about } },
     },
     result: {
@@ -34,6 +36,13 @@ vi.mock("../app/product-card", () => ({ ProductCard: () => null }));
 beforeEach(() => {
   state.image = "catalog/loaf.png";
   state.about = "Our small bakery's current collection.";
+  state.latestName = "Fixture bakery";
+});
+it("keeps hero branding current when the anonymous product catalog is cached", async () => {
+  state.latestName = "Current bakery name";
+  const html = renderToStaticMarkup(await Catalog({ locale: "en", showHero: true }));
+  expect(html).toContain("Current bakery name");
+  expect(html).not.toContain("Fixture bakery");
 });
 it("uses the configured merchant identity and a real catalog image instead of decorative shapes", async () => {
   const html = renderToStaticMarkup(
