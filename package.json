@@ -31,6 +31,7 @@
     "test:storage": "node scripts/test-storage.mjs",
     "bench:search": "tsx scripts/measure-search.ts",
     "bench:memory": "node scripts/test-storefront.mjs --measure",
+    "bench:memory:analyze": "tsx scripts/benchmark/analyze-memory.ts",
     "auth:recover-owner": "tsx scripts/recover-owner.ts",
     "test:browser:existing": "playwright test",
     "test:frontend:coverage": "vitest run tests/unit --coverage --coverage.include=apps/backend/src/app/actions.ts --coverage.include=apps/backend/src/app/client-requests.ts",
