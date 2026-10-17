@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "baselineCommit": "022f92f4bb8abe12c8e8200f148d5a3c2525ee3d",
+  "maxIncreasePercent": 10,
+  "routes": {
+    "/[locale]/page": { "baselineGzipBytes": 160484, "maxGzipBytes": 204800 },
+    "/[locale]/products/[handle]/page": {
+      "baselineGzipBytes": 161908,
+      "maxGzipBytes": 204800
+    },
+    "/[locale]/cart/page": {
+      "baselineGzipBytes": 159117,
+      "maxGzipBytes": 204800
+    },
+    "/[locale]/checkout/page": {
+      "baselineGzipBytes": 165130,
+      "maxGzipBytes": 204800
+    }
+  }
+}

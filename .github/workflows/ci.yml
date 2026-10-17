@@ -40,6 +40,8 @@ jobs:
       - run: pnpm --filter @supastore/storefront run build
         env:
           BACKEND_URL: http://127.0.0.1:3000
+      - name: Enforce four-route JavaScript budgets
+        run: pnpm run bench:storefront
 
   integration:
     runs-on: ubuntu-latest
