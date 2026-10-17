@@ -19,11 +19,17 @@ export async function waitForRecoveryReadiness(
     attempts++;
     try {
       const response = await fetcher(url, {
-        signal: AbortSignal.timeout(Math.max(1, Math.floor(Math.min(2000, remaining)))),
+        signal: AbortSignal.timeout(
+          Math.max(1, Math.floor(Math.min(2000, remaining))),
+        ),
       });
       if (response.ok) {
         const finished = now();
-        return { recovered: finished <= deadline, elapsedMs: finished - started, attempts };
+        return {
+          recovered: finished <= deadline,
+          elapsedMs: finished - started,
+          attempts,
+        };
       }
     } catch {
       // Expected while the fixture backend is restarting; the deadline still applies.

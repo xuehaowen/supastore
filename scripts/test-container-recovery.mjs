@@ -73,7 +73,10 @@ try {
   assert.ok(!offline.ok, "Backend outage must fail public readiness");
   docker([...compose, "start", "backend"]);
   const recovery = await waitForRecoveryReadiness(origin + "/api/health/ready");
-  assert.ok(recovery.recovered, `Backend readiness recovery exceeded 30 seconds (${recovery.elapsedMs} ms)`);
+  assert.ok(
+    recovery.recovered,
+    `Backend readiness recovery exceeded 30 seconds (${recovery.elapsedMs} ms)`,
+  );
   console.log(
     JSON.stringify({
       passed: true,

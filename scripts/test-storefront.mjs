@@ -474,6 +474,8 @@ try {
             "tests/browser/cross-service-sitemap.spec.ts",
             "tests/browser/sitemap.spec.ts",
             "tests/browser/cross-service-scale.spec.ts",
+            "tests/browser/sales-usability.spec.ts",
+            "tests/browser/ui-page-audit.spec.ts",
           ];
     await completed(
       start([

@@ -1,0 +1,66 @@
+{
+  "date": "2026-10-17",
+  "timezone": "America/Los_Angeles",
+  "applicationCommit": "8fb272c69a4518f4a710f6b76a11c88af88d058b",
+  "recoveryToolingCommit": "58bcf9f",
+  "command": "node scripts/test-container-acceptance.mjs",
+  "environment": "local Linux containers on Docker Desktop",
+  "dockerEngine": "29.7.2",
+  "nodeVersion": "v22.23.3",
+  "composeProject": "supastore-codex-smoke",
+  "syntheticDataOnly": true,
+  "workerEnabled": false,
+  "status": "pass",
+  "upgrade": {
+    "baselineMigrationIndex": 28,
+    "latestAppliedCount": 40,
+    "restoredBeforeUpgrade": true,
+    "preserved": ["catalog", "variants", "store", "payment-accounts"]
+  },
+  "databaseRestore": {
+    "fingerprintsMatch": true,
+    "tables": ["orders", "order_items", "guest_order_sessions"],
+    "productionShellProcedureExercised": false,
+    "objectStorageRestored": false
+  },
+  "backendOutage": {
+    "readinessStatus": 502,
+    "recoveredWithin30Seconds": true,
+    "recoveryElapsedMs": 984.3858999999993,
+    "recoveryAttempts": 2,
+    "deadlineMs": 30000,
+    "measurementStartsAfterDockerStartReturns": true,
+    "confirmationCommand": "CONTAINER_SKIP_BUILD=true node scripts/test-container-acceptance.mjs"
+  },
+  "readSmoke": {
+    "durationSeconds": 120,
+    "concurrency": 8,
+    "requests": 23803,
+    "failures": 0,
+    "representativeCapacityClaim": false
+  },
+  "confirmationReadSmoke": {
+    "durationSeconds": 120,
+    "concurrency": 8,
+    "requests": 24334,
+    "failures": 0
+  },
+  "unitLibraryTestsPassed": 1177,
+  "images": {
+    "backend": "sha256:eaebfdbbd98f15a2d5c2c7d91b04b1e2b9abbf680d47752bd1fa74b0005a2449",
+    "storefront": "sha256:c1c8a90998aa430e5fbcc9e62ecd347a0b27f1a299f9f4905f952b925705b09c",
+    "migrations": "sha256:b4d9f2197e052d35d8052f025fdb7f7028777302f7a8367e5184c9445144f69a"
+  },
+  "runtimeUser": "nextjs",
+  "defaultBrowserAcceptance": {
+    "command": "node scripts/test-storefront.mjs --measure",
+    "passed": 43,
+    "failed": 0,
+    "responsiveScreens": 109,
+    "sourcePages": { "backend": 44, "storefront": 15 },
+    "viewportWidths": [375, 768, 1440],
+    "bundleStatus": "pass"
+  },
+  "fixtureCleanupConfirmed": true,
+  "productionAccepted": false
+}

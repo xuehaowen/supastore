@@ -431,3 +431,39 @@ could not run because the local Docker engine was unavailable; prior rehearsal
 evidence is retained without being relabeled as current acceptance. Performance
 optimization remains deferred. These inputs are not substituted by fixture
 results, and V2 is not declared deployed or ready for real sales.
+
+Reliability follow-up completed locally, October 17:
+[fresh Linux container acceptance](../docs/reliability-acceptance-2026-10-17.md).
+The earlier unavailable Docker engine was started; current application images
+build and run as the non-root `nextjs` user. Smoke checks, restored baseline
+migration index 28 -> 40 applied migrations, exact order/item/private-session
+database-copy fingerprints and backend outage (readiness 502) -> recovery pass.
+The runner's existing 120-second read smoke completes 23,803 requests with zero
+failures; this is not new representative performance acceptance. All isolated
+container resources are cleaned up. The production shell restore and matching
+merchant database/assets backup still require actual acceptance.
+
+The normal browser selection now includes sales usability and the full-page
+responsive/accessibility audit, so the existing CI command enforces this work.
+`node scripts/test-storefront.mjs --measure` passes 43 tests, the 109-screen audit,
+both production builds and unchanged four-route bundle budgets. The earlier
+extended 49-test run additionally includes six legacy M1 tests. Explicit test
+selectors and the benchmark path retain their existing behavior. No product or
+transaction logic changed in this follow-up. Step 9's local container-rehearsal
+gap is closed; real store/provider/host/assets-backup acceptance remains open.
+
+Recovery review correction: the old 60-attempt retry loop did not enforce its
+stated 30-second deadline. `b3154ef` RED / `58bcf9f` GREEN adds a monotonic deadline,
+bounded request/wait times and rejection of late successes, retaining actual
+elapsed time. Six focused regressions pass (100% statement/line/function and
+90% branch coverage). A repeat container run uses the same freshly built
+application images and measures readiness in 984.386 ms across two attempts,
+after `docker start` returns. The claim applies to that polling window, not
+total outage duration. The first retry-count-only result is not evidence of a
+30-second bound.
+
+The corrected-deadline full container confirmation passes with identical
+application image IDs and complete cleanup; its existing read smoke completes
+24,334 requests with zero failures. Full unit/library suite: 1,177 pass; root/apps
+types, repository lint, script syntax and formatting pass. Counts from both
+container runs are retained separately without making a throughput claim.

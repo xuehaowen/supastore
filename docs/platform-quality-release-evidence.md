@@ -3,22 +3,31 @@
 Date: October 17, 2026, America/Los_Angeles. Branch: `codex/platform-quality`.
 Status: identified selling-path development changes pass local acceptance; not deployed or certified for real sales.
 
-Final local acceptance: 1,171 unit/library tests, 143 PostgreSQL integration tests
-and 49 production browser tests pass. Both production builds, types, lint,
+Local acceptance: 1,177 unit/library tests pass; the earlier 143 PostgreSQL
+integration results are retained. The current default CI command passes 43
+production browser tests; the earlier extended run passed 49, including six
+legacy M1 tests outside the default selection. Both production builds, types, lint,
 formatting and all four frozen route budgets pass. Responsive/accessibility
 acceptance covers 109 rendered screens at 375/768/1440px with no serious/critical
 automated findings. [Detailed scope and limitations](selling-readiness.md).
 
+Fresh Linux container smoke, restored migration upgrade, synthetic database
+restore and measured backend-outage recovery pass. The corrected recovery
+poller confirms healthy readiness in 984.386 ms after the Docker start command
+returns, within its enforced 30-second polling deadline. See [current recovery
+evidence](reliability-acceptance-2026-10-17.md) for source/image identifiers and
+the separate production shell/asset-backup limitations.
+
 ## Evidence by workstream
 
-| Workstream                                    | Evidence                                                                                                                   | Release limit                                                                   |
-| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Baseline                                      | [Reproduced failures and supported checks](platform-quality-baseline.md)                                                   | Local environment                                                               |
-| HTTP contract safety                          | [Validated page contracts and rollout order](customer-page-contracts.md)                                                   | Real mixed-version deployment still needs acceptance                            |
-| Discovery and route budgets                   | [Merchant metadata, indexing and enforced limits](storefront-discovery.md)                                                 | Real HTTPS domain and Search Console pending                                    |
-| Usability, fixed design and sales reliability | [Findings, implementation and owner checklist](selling-readiness.md)                                                       | Actual catalog, photographs, providers and owner acceptance pending             |
-| Recovery                                      | [Existing isolated launch evidence](launch-acceptance-2026-10-11.md), [recovery procedure](playbooks/disaster-recovery.md) | Fresh container rehearsal and matching production backup/assets restore pending |
-| Performance                                   | [Retained measurements and unresolved tradeoffs](memory-diagnosis.md)                                                      | Deferred by owner; no resource thresholds changed                               |
+| Workstream                                    | Evidence                                                                                                                       | Release limit                                                         |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| Baseline                                      | [Reproduced failures and supported checks](platform-quality-baseline.md)                                                       | Local environment                                                     |
+| HTTP contract safety                          | [Validated page contracts and rollout order](customer-page-contracts.md)                                                       | Real mixed-version deployment still needs acceptance                  |
+| Discovery and route budgets                   | [Merchant metadata, indexing and enforced limits](storefront-discovery.md)                                                     | Real HTTPS domain and Search Console pending                          |
+| Usability, fixed design and sales reliability | [Findings, implementation and owner checklist](selling-readiness.md)                                                           | Actual catalog, photographs, providers and owner acceptance pending   |
+| Recovery                                      | [Fresh local container acceptance](reliability-acceptance-2026-10-17.md), [recovery procedure](playbooks/disaster-recovery.md) | Matching production backup/assets restore and shell procedure pending |
+| Performance                                   | [Retained measurements and unresolved tradeoffs](memory-diagnosis.md)                                                          | Deferred by owner; no resource thresholds changed                     |
 
 ## Release decisions
 

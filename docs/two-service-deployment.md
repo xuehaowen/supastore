@@ -113,7 +113,8 @@ external deployment configuration.
 
 Run `pnpm test:storefront` for the production-build browser journeys across both
 services. Its default selection includes `original-storefront-separation.spec.ts`,
-`cuj.spec.ts`, `boundaries.spec.ts`, `i18n.spec.ts`, sitemap and scale checks; the CI browser
+`cuj.spec.ts`, `boundaries.spec.ts`, `i18n.spec.ts`, sitemap and scale checks,
+`sales-usability.spec.ts` and `ui-page-audit.spec.ts`; the CI browser
 job runs this command. The runner uses an isolated database, local SMTP inbox and
 storage fixture. Customer requests use the storefront proxy and merchant actions
 use a separate authenticated backend browser session.

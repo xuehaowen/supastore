@@ -29,13 +29,15 @@ The owner's **“keep location private”** decision still applies. No LocalBusi
 - Owners can pause new orders from Overview while retaining existing order/payment/fulfillment access. The pause section now explains this behavior.
 - Required email templates, verification and failed notifications retain their existing checks and queues. Configuration completion is explicitly distinct from an actual controlled order/payment and backup restore.
 - Existing backup/restore guards refuse overwrite, incomplete/corrupt evidence and active restore targets; recovery suppresses outbound delivery. Their regression tests are included in unit acceptance. See [disaster recovery](playbooks/disaster-recovery.md) and [outbox reconciliation](playbooks/outbox-reconciliation.md).
-- A new container backup/upgrade/restore rehearsal is pending: the local Docker engine was unavailable during this work. Earlier isolated rehearsal evidence remains in [October 11 launch acceptance](launch-acceptance-2026-10-11.md); it does not certify this deployment or current production backups.
+- The earlier Docker-engine limitation is resolved. A [fresh Linux container rehearsal](reliability-acceptance-2026-10-17.md) passes current builds, migration upgrade, synthetic database restore and backend-outage recovery. The production shell procedure and a matching merchant database/assets backup still require separate acceptance; local database-copy checks do not certify those.
 
 ## Local acceptance record
 
 RED/GREEN checkpoints are retained on `codex/platform-quality`: `9ffac71`/`0bf4fdd` for stock selection and guidance, `3e448dd`/`ad97953` for rendered setup and Product offers, `1b94803`/`0c1689b` for merchant design and copy recovery, and `c61e7af`/`8a9f6a9` for current branding and accurate fallback copy.
 
 Final acceptance passes **1,171 unit/library tests, 143 PostgreSQL integration tests and all 49 production browser tests**. Both production builds, canonical root/backend/storefront types, repository ESLint and full formatting pass. Focused coverage of the new availability/guidance/checklist helpers is 100% statements/lines/functions and 93.75% branches. Independent review found no remaining confirmed issues after the copy-feedback correction.
+
+The later [reliability follow-up](reliability-acceptance-2026-10-17.md) adds six recovery-deadline regressions: **1,177 unit/library tests now pass**, along with the fresh container recovery chain. The standard CI browser command now includes sales usability and the responsive audit and passes **43 tests**; the earlier extended 49-test selection additionally includes six legacy M1 tests. Existing integration evidence is retained because application transaction code did not change.
 
 The final browser audit inspected **109 rendered screens covering 44 backend and 15 storefront page sources at 375/768/1440px**, with no serious/critical automated accessibility findings or horizontal-overflow failures. Representative product, populated checkout and setup screenshots were also visually inspected. Browser fixtures and integration PostgreSQL shut down cleanly.
 
