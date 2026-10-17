@@ -9,6 +9,16 @@ const series = v.pipe(v.array(sample), v.maxLength(10000));
 const artifact = v.strictObject({
   protocolVersion: v.literal(benchmarkProtocol.version),
   phase: v.literal("measurement"),
+  environment: v.optional(
+    v.strictObject({
+      platform: v.string(),
+      runtime: v.string(),
+      products: v.number(),
+      fulfillment: v.string(),
+      rewards: v.boolean(),
+      trackedStock: v.boolean(),
+    }),
+  ),
   services: v.strictObject({
     backend: series,
     storefront: series,
@@ -20,6 +30,13 @@ const artifact = v.strictObject({
 export function analyzeBenchmarkMemory(input: unknown) {
   const parsed = v.safeParse(artifact, input);
   if (!parsed.success) throw new Error("Invalid benchmark memory artifact");
+  const environment = parsed.output.environment;
+  const budgetApplicable = Boolean(
+    environment &&
+    Object.entries(benchmarkProtocol.budgetScope).every(
+      ([key, value]) => environment[key as keyof typeof environment] === value,
+    ),
+  );
   const timing = {
     durationSeconds: benchmarkProtocol.measurementSeconds,
     sampleEverySeconds: benchmarkProtocol.sampleEverySeconds,
@@ -29,17 +46,17 @@ export function analyzeBenchmarkMemory(input: unknown) {
     backend: analyzeMemory(
       parsed.output.services.backend,
       timing,
-      benchmarkProtocol.resourceLimits.backend,
+      budgetApplicable ? benchmarkProtocol.resourceLimits.backend : null,
     ),
     storefront: analyzeMemory(
       parsed.output.services.storefront,
       timing,
-      benchmarkProtocol.resourceLimits.storefront,
+      budgetApplicable ? benchmarkProtocol.resourceLimits.storefront : null,
     ),
     postgres: analyzeMemory(
       parsed.output.services.postgres,
       timing,
-      benchmarkProtocol.resourceLimits.postgres,
+      budgetApplicable ? benchmarkProtocol.resourceLimits.postgres : null,
     ),
   };
   const results = Object.values(services);
@@ -47,13 +64,17 @@ export function analyzeBenchmarkMemory(input: unknown) {
     scope: "memory-only",
     protocolVersion: benchmarkProtocol.version,
     benchmarkAcceptance: "not-evaluated",
-    status: results.some((result) => result.status === "insufficient-data")
-      ? "insufficient-data"
-      : results.some((result) => result.status === "fail")
-        ? "fail"
-        : results.some((result) => result.status === "uncalibrated")
-          ? "uncalibrated"
-          : "pass",
+    budgetScope: benchmarkProtocol.budgetScope,
+    budgetApplicable,
+    status: !budgetApplicable
+      ? "inapplicable"
+      : results.some((result) => result.status === "insufficient-data")
+        ? "insufficient-data"
+        : results.some((result) => result.status === "fail")
+          ? "fail"
+          : results.some((result) => result.status === "uncalibrated")
+            ? "uncalibrated"
+            : "pass",
     services,
   };
 }

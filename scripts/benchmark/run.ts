@@ -51,6 +51,14 @@ try {
   if (!bank || (options.fulfillment !== "shipping" && !location))
     throw new Error("Benchmark fixture fulfillment mismatch");
   const [before] = await client`select count(*)::int as orders from orders`;
+  const environment = {
+    platform: platform(),
+    runtime: process.env.BENCHMARK_RUNTIME_MODE ?? "unknown",
+    products: options.products,
+    fulfillment: options.fulfillment,
+    rewards: options.rewards,
+    trackedStock: options.trackedStock,
+  };
   const metadata = {
     protocolVersion: benchmarkProtocol.version,
     workers: benchmarkProtocol.workers,
@@ -109,6 +117,7 @@ try {
     postgresMemory:
       "gross sum of postmaster and pg_stat_activity process RSS; shared pages counted repeatedly; not container memory or PSS",
     resourceLimits: benchmarkProtocol.resourceLimits,
+    budgetScope: benchmarkProtocol.budgetScope,
   };
   writeFileSync(output + "/manifest.json", JSON.stringify(metadata, null, 2));
   const memory: Record<
@@ -315,6 +324,7 @@ try {
     memoryAcceptance: analyzeBenchmarkMemory({
       protocolVersion: benchmarkProtocol.version,
       phase: "measurement",
+      environment,
       services: memory,
     }),
   };
@@ -324,6 +334,7 @@ try {
       {
         protocolVersion: benchmarkProtocol.version,
         phase: "measurement",
+        environment,
         services: memory,
       },
       null,

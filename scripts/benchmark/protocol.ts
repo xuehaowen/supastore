@@ -6,6 +6,14 @@ export const benchmarkProtocol = Object.freeze({
   measurementSeconds: 1800,
   sampleEverySeconds: 5,
   memoryWindowSeconds: 300,
+  budgetScope: Object.freeze({
+    platform: "win32",
+    runtime: "Next CLI",
+    products: 1000,
+    fulfillment: "mixed",
+    rewards: true,
+    trackedStock: true,
+  }),
   // Local Windows/Next CLI regression envelope, calibrated after d7f2e79.
   // Not KVM 2 host sizing. Growth breaches remain open even with peak headroom.
   resourceLimits: Object.freeze({
