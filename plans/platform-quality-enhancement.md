@@ -1,6 +1,6 @@
 # Supastore platform quality enhancement plan
 
-Prepared: 2026-10-16; priorities revised 2026-10-17, America/Los_Angeles. Status: implementation in progress; Steps 1 and 2 verified locally; representative standard runs retained; four-route budgets and local discovery checks pass. Active work is store usability, fixed-theme design and sales reliability. Performance optimization is deferred until after these priorities; production acceptance remains open.
+Prepared: 2026-10-16; priorities revised 2026-10-17, America/Los_Angeles. Status: implementation in progress; foundations, discovery/budgets and identified selling-path fixes implemented locally. Store usability, fixed-theme design and reliability acceptance are recorded in [selling readiness](../docs/selling-readiness.md). Owner/store, provider, recovery and KVM 2 acceptance remain open. Performance optimization is deferred.
 Working branch: `codex/platform-quality`. Baseline: `ec68e0f`.
 
 ## Outcome
@@ -275,17 +275,21 @@ Tasks:
 - [ ] 3. Representative read/mutation benchmarks retained
 - [ ] 4. Budgets enforced; robots/sitemaps/metadata and local discovery verified
 - [ ] 9. KVM 2 host, deployment, providers and recovery acceptance verified
-- [ ] 5/6. Observed bakery setup/operations blockers fixed or explicitly deferred
-- [ ] 7. Fixed bakery storefront accepted; configuration machinery deferred
-- [ ] 8. Necessary workflow changes reviewed, or justified skip recorded
+- [x] 5/6 local development: actionable setup, sold-out selection, payment-copy recovery and current storefront identity implemented; existing workflow regressions retained
+- [ ] 5/6 owner acceptance: actual catalog/configuration and bakery operations rehearsal
+- [x] 7 local development: fixed merchant-led responsive storefront; no configuration machinery
+- [ ] 7 owner acceptance: approved real bakery photography/content, fixed design and human usability review
+- [x] 8. Skip recorded: no domain/workflow extraction justified by these presentation fixes
 - [ ] 10. Owner launch acceptance and first-sales monitoring recorded
 
 Priority decision, 2026-10-17: the owner directs usability, fixed-theme design and
 sales reliability ahead of performance. Steps 5/6/7 and the reliability portion
 of 9 are now active priorities. Keep existing budget/discovery gates and
 correctness checks; defer further load/memory optimization without marking it
-complete. The next implementation batch is the store-usability inspection and
-first demonstrated sales-path fix described above.
+complete. The store-usability inspection and demonstrated sales-path fixes are
+now delivered locally; see selling readiness for verification and remaining
+owner/deployment acceptance. Continue with actual store rehearsal and reliability
+acceptance rather than an unrelated platform refactor.
 
 D is continuous and non-blocking. Append commit IDs, commands, results and evidence links for completed work. Change workloads/thresholds through versioned decisions, not silent relaxation. Friendly merchants and theme configuration are post-launch improvements. Host/payment/access/recovery failures remain genuine launch blockers. Distinguish local readiness from production acceptance and external account actions.
 
@@ -398,3 +402,32 @@ browser suite: 36 pass, with disposable-service cleanup complete. Reviewer found
 no confirmed issues. Real HTTPS-origin/Search Console setup, mobile/target-host
 performance and the existing database-memory/runtime tradeoffs remain open.
 Step 4 and production readiness are not marked complete.
+
+Selling-first development completed locally, October 17:
+[findings, implementation and acceptance](../docs/selling-readiness.md) and
+[release evidence](../docs/platform-quality-release-evidence.md). Owner setup and
+overview now provide one actionable next step. Product selection and Product
+offers consistently respect zero tracked stock. The fixed homepage uses current
+merchant identity, localized public copy and existing catalog photography when
+available, with a compact no-photo state. Clipboard failure/retry is visible and
+localized for both exact amount and payment reference. No schema, dependency,
+transaction workflow or production runtime default changed. Independent review
+found a copy-guidance ambiguity, corrected with regression coverage; no remaining
+confirmed findings. Step 8 is skipped because no workflow refactor is justified.
+
+Final acceptance: 1,171 unit/library tests, 143 PostgreSQL integration tests and
+49 production browser tests pass. The browser audit covers 109 rendered screens
+from 44 backend and 15 storefront page sources at 375/768/1440px; no serious or
+critical automated accessibility findings or horizontal-overflow failures.
+Product, populated checkout and setup screenshots were visually inspected.
+Both production builds, root/apps types, repository lint and formatting pass.
+Catalog/product/cart/checkout budgets pass at 156.8/158.2/155.5/161.4 KiB gzip
+against unchanged limits. Local fixture services shut down cleanly.
+
+Remaining acceptance is explicit: owner-approved real catalog/photography and
+fixed design, actual configured payment/email/fulfillment/refund, real HTTPS/KVM 2
+and matching database/assets backup recovery. A fresh container restore rehearsal
+could not run because the local Docker engine was unavailable; prior rehearsal
+evidence is retained without being relabeled as current acceptance. Performance
+optimization remains deferred. These inputs are not substituted by fixture
+results, and V2 is not declared deployed or ready for real sales.

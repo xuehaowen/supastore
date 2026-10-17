@@ -10,6 +10,14 @@ This is the merchant task guide. The [journey index](critical-user-journeys.md) 
 4. Add products, variants, images and translations, or preview a product CSV import.
 5. Complete a synthetic purchase, payment, fulfillment and refund before launch.
 
+The owner overview and Store setup now show a **Next step** link for the first
+missing configuration item. Follow it, save the relevant settings, and return to
+the checklist. Completed configuration does not prove that a real payment,
+transactional email or backup restore works. Rehearse synthetic purchases only
+in disposable fixtures; perform real provider acceptance as a separately
+authorized controlled transaction. See [selling readiness](selling-readiness.md)
+for the current implementation and remaining launch acceptance.
+
 Currency locks after the first order. Placement reserves tracked stock and configured slot capacity; untracked variants require an explicit count to enable stock tracking. Cash must be collected before preparation. Installation requires an application host, database, object storage and email provider; see the [deployment guide](two-service-deployment.md).
 
 ## Find and process an order
@@ -61,6 +69,11 @@ Physical returns require an eligible fulfilled order and cannot exceed its remai
 Customers use scoped tracking sessions or email recovery. If neither works, use owner-assisted identity verification. Failed emails remain actionable until delivered or explicitly resolved; review them in the queue. See [access recovery](business-workflows.md#8-access-recovery-and-customer-communication).
 
 Owners manage staff, settings and exports. Preview imports before applying selected changes; order import is unsupported. Pause new orders when needed while continuing existing-order work.
+
+If copying a payment amount or reference is unavailable in the customer's
+browser, the order page explains how to copy the displayed value manually and
+allows another copy attempt. A failed copy is not a failed order or payment;
+do not create a replacement order for it.
 
 Back up database and assets, rehearse restore with sends disabled, and follow the [upgrade and recovery guide](development-deployment.md#backups-and-upgrades). These procedures must be tested before release.
 

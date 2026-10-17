@@ -40,7 +40,9 @@ beforeEach(() => {
 });
 it("keeps hero branding current when the anonymous product catalog is cached", async () => {
   state.latestName = "Current bakery name";
-  const html = renderToStaticMarkup(await Catalog({ locale: "en", showHero: true }));
+  const html = renderToStaticMarkup(
+    await Catalog({ locale: "en", showHero: true }),
+  );
   expect(html).toContain("Current bakery name");
   expect(html).not.toContain("Fixture bakery");
 });

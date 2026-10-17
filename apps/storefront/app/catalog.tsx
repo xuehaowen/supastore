@@ -37,7 +37,9 @@ export default async function Catalog({
     await readRequestPage("catalog", locale, query);
   const facetAxes = [...new Set(facets.map((f) => f.attribute))].slice(0, 4);
   const featured = result.items.find((product) => product.coverImageKey);
-  const branding = showHero ? (await readRequestPage("layout", locale)).store : store;
+  const branding = showHero
+    ? (await readRequestPage("layout", locale)).store
+    : store;
   const about = policyPresentation(branding, locale, "about")?.content;
   const introductionCharacters = Array.from(
     (about || t("subtitle")).replace(/\s+/g, " ").trim(),
