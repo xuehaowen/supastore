@@ -2,8 +2,8 @@
 
 Step 3 is in progress. The versioned protocol, isolated catalog/order fixture
 generator, production HTTP load runner and memory analysis are implemented.
-The short HTTP diagnostic passes; the full standard-duration run, browser
-measurements, bounded race acceptance and resource calibration remain open.
+The clean standard-duration HTTP run, browser preflight and bounded races pass.
+Local resource limits are frozen; retained memory growth fails stability.
 These results do not establish production capacity.
 The earlier one-product smoke measurements remain diagnostic only.
 
@@ -28,8 +28,9 @@ The standard profile has 1,000 products, four variants and two images per produc
 `fixtureProfile()` validates 100/1,000/10,000-product profiles, shipping/pickup/mixed
 fulfillment and boolean rewards/stock options, returning seed `20261016` and
 expected record counts. The generator below creates these records in owned
-fixtures. General-load stock replenishment remains to be connected to the
-standard sustained run. See the [HTTP runner and first diagnostic](representative-http-benchmark.md).
+fixtures. Each sustained run recreates owned stock with one million units per
+variant before history; no live inventory or in-run replenishment is used.
+See the [HTTP runner and retained baseline](representative-http-benchmark.md).
 
 ## Reproduce and verify the data fixtures
 
@@ -113,6 +114,14 @@ and changes no services or database records. The artifact format is:
 {
   "protocolVersion": 1,
   "phase": "measurement",
+  "environment": {
+    "platform": "win32",
+    "runtime": "Next CLI",
+    "products": 1000,
+    "fulfillment": "mixed",
+    "rewards": true,
+    "trackedStock": true
+  },
   "services": {
     "backend": [{ "elapsedSeconds": 0, "rssBytes": 209715200 }],
     "storefront": [{ "elapsedSeconds": 0, "rssBytes": 209715200 }],
@@ -138,10 +147,12 @@ is permitted. A `1e-9` absolute tolerance applies only when comparing computed
 slope/growth against their limits, avoiding floating-point false failures at an
 exact boundary. The peak ceiling is exact. Raw results remain unrounded.
 
-Resource limits are intentionally `null` until a real baseline is retained and
-reviewed. Complete samples therefore produce `uncalibrated`, never `pass`.
+Resource limits were `null` before the retained baseline. The CLI now applies
+frozen per-service limits only when artifact environment fields match the
+documented local calibration. Other or unspecified environments return
+`inapplicable`; generic analysis without limits still returns `uncalibrated`.
 Exit codes: `0` for passing memory acceptance after calibration, `2` for
-uncalibrated/incomplete/failing results, `1` for invalid input or invocation.
+inapplicable/uncalibrated/incomplete/failing results, `1` for invalid input or invocation.
 Every report states `scope: memory-only` and `benchmarkAcceptance: not-evaluated`:
 memory results alone cannot certify traffic mix, throughput, order invariants,
 authorization, browser rendering or production capacity.
@@ -200,14 +211,17 @@ pnpm exec vitest run tests/unit/representative-benchmark.test.ts tests/unit/benc
 
 ## Remaining Step 3 work
 
-- Retain the full standard-duration HTTP workload from a clean committed tree.
-- Capture cold/warm browser HTML/RSC/image transfers and initial JS alongside
-  the HTTP load; retain host/runtime/commit/network metadata and memory samples.
-- Run separate last-unit, same-cart, slot-capacity and provider-replay races;
-  verify stock/accounting/idempotency and unauthorized-access invariants.
-- Execute the full standard workload, retain artifacts, then freeze numeric
-  ceilings and stability limits before application optimization. An increasing
-  baseline remains an open defect rather than a justification for higher limits.
+- Independent contributor reproduction remains pending; commands and public
+  synthetic artifacts are retained in the guide below.
+- Memory stability is an open Step 4 issue. Diagnose growth and rerun the same
+  standard profile after fixes; do not relax limits to accept this baseline.
+- Larger-profile capacity and KVM 2 host acceptance remain unclaimed. Fixture
+  generation covers all sizes; the full HTTP measurement covers 1,000 products.
+
+The [clean 35-minute baseline and calibrated limits](representative-http-benchmark.md#clean-standard-baseline-and-memory-acceptance)
+retain all three 360-sample memory series. The deliberate-growth control fails
+even with peak headroom. General `analyzeMemory(..., null)` still reports
+uncalibrated, while the versioned CLI now applies each frozen service limit.
 
 No live store, customer information, provider credentials or KVM 2 deployment is
 used by this tooling change. Steps 3 and 4 remain open.

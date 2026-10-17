@@ -2,7 +2,8 @@
 
 This is the HTTP workload component of [Step 3](representative-benchmark.md).
 Its initial short diagnostic passes. Standard-duration measurements, browser
-transfers, bounded races and calibrated resource ceilings remain open.
+transfers and bounded races are verified; local resource ceilings are frozen,
+while measured memory stability remains an open issue.
 
 ## Commands
 
@@ -141,3 +142,83 @@ integration tests and all 34 default production browser journeys pass. Both apps
 build successfully. Root/application types, lint and formatting pass; independent
 TypeScript review has no remaining findings. The default browser run also verifies
 that non-benchmark seeding/delivery and explicit loopback binding still work.
+
+## Clean standard baseline and memory acceptance
+
+Run `supastore_cuj_1792233965529` uses clean commit `d7f2e79`, protocol v1,
+1,000 products/4,000 variants/2,000 images/10,000 historical orders, mixed
+shipping/pickup, rewards and tracked stock. Eight session workers ran 300 seconds
+warm-up and 1,800 seconds measured. The machine/runtime/network are recorded in
+the retained [manifest](benchmarks/2026-10-17-local/manifest.json).
+
+The [HTTP report](benchmarks/2026-10-17-local/http-load.json) records 211,177
+measured requests, 117.32 admitted requests/second and 10,554 measured orders.
+Warm-up plus measurement produced 13,103 orders, matching the database increase.
+Unexpected failures, expected conflicts, amount mismatches, stock mismatches and
+cart conversion mismatches are all zero. All eight operations have coverage.
+Owned services stopped and the temporary database directory was cleaned up.
+
+| Operation | p50 ms | p95 ms |
+| --------- | -----: | -----: |
+| Catalog   |     61 |     81 |
+| Search    |     95 |    123 |
+| Product   |     67 |     88 |
+| Cart      |     69 |     90 |
+| Checkout  |     82 |    108 |
+| Cart edit |     48 |     69 |
+| Quote     |     31 |     51 |
+| Order     |     55 |     86 |
+
+The [browser report](benchmarks/2026-10-17-local/browser.json) retains all 30
+cold/warm route samples plus actual client navigation and 401/403 access probes.
+Cold script transfer medians range from 166,874 to 174,826 encoded bytes; catalog
+and search image medians are 344,366/375,672 bytes. Warm script/image medians are
+zero from cache. Local desktop Chromium with a mobile viewport is not a mobile
+network/CPU test. The [five bounded races](benchmarks/2026-10-17-local/races.json)
+also pass; they are separate use-case fixtures, not representative HTTP races.
+
+Each service has 360 measured samples. After completing the baseline and before
+application optimization, `33bf3bd` freezes the following local regression limits:
+
+| Service              | Peak cap MiB | Max slope MiB/min | Max median growth MiB |
+| -------------------- | -----------: | ----------------: | --------------------: |
+| Backend              |          768 |               0.5 |                    16 |
+| Storefront           |          640 |               0.5 |                    16 |
+| PostgreSQL gross RSS |        3,072 |                 1 |                    32 |
+
+Peak caps round above observed peaks with roughly 24–32% headroom. Stability
+limits allow at most 15 MiB of linear app drift over 30 minutes, with a separate
+16 MiB median check; PostgreSQL uses 30/32 MiB. These are strict local regression
+rules, not KVM 2 sizing or proof of a leak. Gross database RSS repeats shared
+pages; target-host physical memory/connection/cache measurements remain necessary.
+
+| Service              | Peak MiB | Slope MiB/min | First median MiB | Last median MiB | Growth MiB |
+| -------------------- | -------: | ------------: | ---------------: | --------------: | ---------: |
+| Backend              |   593.46 |         12.32 |           326.86 |          565.29 |     238.43 |
+| Storefront           |   484.85 |          7.12 |           332.78 |          473.63 |     140.85 |
+| PostgreSQL gross RSS | 2,487.15 |         80.64 |           787.17 |        2,464.92 |   1,677.75 |
+
+All peaks fit, but **all three services fail slope and median-growth limits**.
+The [calibrated analysis](benchmarks/2026-10-17-local/memory-calibrated.json)
+returns exit 2; the original HTTP report preserves its pre-calibration
+`uncalibrated` result. Reproduce without a database or provider:
+
+The tracked memory file preserves every observation and adds environment fields
+derived from the retained run manifest; observations are unchanged. Scope matching requires
+Windows, Next CLI, 1,000 products, mixed fulfillment, rewards and tracked stock.
+Other environments/profiles and legacy unscoped files return `inapplicable` with
+the explicit frozen budget scope; they cannot receive a memory pass. Future
+runner artifacts include these environment fields directly.
+
+```sh
+pnpm bench:memory:analyze docs/benchmarks/2026-10-17-local/memory.json
+```
+
+This expected failing analysis is an open Step 4 issue, not a completed memory
+acceptance. Diagnose app heap/native/cache retention and database shared-page
+accounting, then repeat the same profile. Do not raise growth limits to pass it.
+HTTP success does not certify the whole benchmark or production readiness.
+Independent reproduction, larger-profile HTTP capacity and KVM 2/provider checks
+remain pending. Final tooling regression: 1,118 unit/library tests pass; root/apps
+types, repository lint and focused formatting pass. Environment-scope regressions
+add seven cases; see the final verification record in the plan.

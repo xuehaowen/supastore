@@ -1,0 +1,70 @@
+{
+  "protocolVersion": 1,
+  "workers": 8,
+  "requestMix": {
+    "catalog": 30,
+    "search": 20,
+    "product": 15,
+    "cart": 10,
+    "checkout": 5,
+    "cartEdit": 10,
+    "quote": 5,
+    "order": 5
+  },
+  "options": {
+    "products": 1000,
+    "fulfillment": "mixed",
+    "rewards": true,
+    "trackedStock": true,
+    "mode": "standard",
+    "warmupSeconds": 300,
+    "measurementSeconds": 1800
+  },
+  "commit": "d7f2e790ae5243547e7454e32b3039c9472f1847",
+  "sourceTreeDirty": false,
+  "host": {
+    "platform": "win32",
+    "release": "10.0.26200",
+    "cpuModel": "AMD Ryzen 7 9700X 8-Core Processor             ",
+    "logicalCpus": 16,
+    "ramBytes": 33377583104
+  },
+  "nodeVersion": "v24.12.0",
+  "nextVersion": "15.5.27",
+  "runtime": "Next CLI",
+  "network": "local loopback, no latency shaping",
+  "browser": "153.0.8010.12",
+  "preflight": {
+    "browser": "browser.json",
+    "boundedRaces": "races.json",
+    "note": "Browser and separate owned-DB races complete before HTTP warm-up; no browser competes during load."
+  },
+  "initialJs": {
+    "metric": "initial route JS from manifest (sum of per-chunk gzip)",
+    "warningKiB": 200,
+    "routes": [
+      {
+        "route": "/[locale]/page",
+        "chunks": 16,
+        "rawBytes": 506558,
+        "gzipBytes": 159836,
+        "gzipKiB": 156.1,
+        "regressionWarning": false
+      },
+      {
+        "route": "/[locale]/products/[handle]/page",
+        "chunks": 16,
+        "rawBytes": 510814,
+        "gzipBytes": 161260,
+        "gzipKiB": 157.5,
+        "regressionWarning": false
+      }
+    ]
+  },
+  "startedAt": "2026-10-17T10:47:48.959Z",
+  "latency": "complete response body; successful-response quantiles rounded up to 1ms; timeout 15s",
+  "bytes": "decoded response bodies; excludes headers, browser JS, images and RSC navigation",
+  "throughput": "requests admitted during phase divided by phase seconds; their responses may complete in drainSeconds; achieved operation shares include partial cycles",
+  "postgresMemory": "gross sum of postmaster and pg_stat_activity process RSS; shared pages counted repeatedly; not container memory or PSS",
+  "resourceLimits": null
+}

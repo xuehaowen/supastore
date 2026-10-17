@@ -323,3 +323,26 @@ Review findings about ordinary test discovery and omitted CSS/font/fetch errors
 are fixed. [Measurement scope and artifacts](../docs/representative-http-benchmark.md)
 document the limits. Standard-duration measurements, numeric resource calibration
 and replenishment/capacity evidence remain open; Step 3 remains in progress.
+
+Step 3 clean standard run retained: `d7f2e79`, 300-second warm-up plus 1,800-second
+measurement, 211,177 measured requests and 10,554 measured orders; 13,103 orders
+including warm-up reconcile with zero HTTP/amount/cart/stock failures. Browser
+preflight and five bounded races pass. [Tracked synthetic artifacts and results](../docs/representative-http-benchmark.md#clean-standard-baseline-and-memory-acceptance)
+include 360 memory samples per service. `4fa3134` / `33bf3bd` freeze local
+per-service ceilings and strict growth rules after the baseline, before any
+application optimization. All three measured series FAIL slope/median-growth
+criteria despite peak headroom; this remains an explicit Step 4 issue. The CLI
+reproduces that failure with exit 2. Unit/library regression: 1,118 pass.
+Independent reproduction, larger-profile HTTP capacity and target-host acceptance
+remain open. Fresh owned fixtures provide isolated stock on every run; no live
+inventory or in-run replenishment is used. Do not mark production ready.
+
+Final calibration review fixed scope handling (`08d9794` RED / `0e9c359` GREEN):
+Windows/Next CLI/1,000-product mixed/rewards/tracked-stock criteria are explicit.
+Other environments and unscoped legacy artifacts return `inapplicable`, never a
+memory pass. The tracked memory artifact adds environment from its retained
+manifest while preserving observations. Full unit/library suite: 1,125 pass;
+root/application type checks, repository lint and full formatting pass. Both
+production builds, race/browser preflights and owned-service cleanup passed in
+the clean standard run. No application optimization or production action was
+performed; memory growth remains the next performance issue to diagnose.

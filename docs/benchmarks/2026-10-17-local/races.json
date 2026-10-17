@@ -1,0 +1,31 @@
+{
+  "scope": "bounded-use-case-races",
+  "cases": [
+    {
+      "title": "serializes pickup capacity and enforces variant quotas after cancellation",
+      "status": "passed",
+      "duration": 289.3896
+    },
+    {
+      "title": "reserves the last unit once, preserves the losing cart and releases on cancellation",
+      "status": "passed",
+      "duration": 85.51720000000023
+    },
+    {
+      "title": "C4/C5 returns one authorized order after racing and expiry",
+      "status": "passed",
+      "duration": 116.99450000000002
+    },
+    {
+      "title": "serializes parallel payment delivery into one receipt and confirmation",
+      "status": "passed",
+      "duration": 99.28250000000003
+    },
+    {
+      "title": "preserves unsigned/mode-mismatched events outside the trusted settlement path",
+      "status": "passed",
+      "duration": 4.49389999999994
+    }
+  ],
+  "note": "Separate owned PostgreSQL fixtures with fake providers; not load throughput or representative-fixture HTTP races."
+}

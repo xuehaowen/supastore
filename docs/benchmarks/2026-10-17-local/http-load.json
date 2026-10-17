@@ -1,0 +1,237 @@
+{
+  "scope": "representative-http-load",
+  "protocolVersion": 1,
+  "mode": "standard",
+  "status": "http-pass",
+  "benchmarkAcceptance": "pending-standard-duration-and-resource-calibration",
+  "fatal": null,
+  "failures": [],
+  "warmup": {
+    "durationSeconds": 300,
+    "requests": 51071,
+    "successes": 51071,
+    "expectedConflicts": 0,
+    "unexpectedFailures": 0,
+    "requestsPerSecond": 170.23666666666668,
+    "operations": {
+      "catalog": {
+        "requests": 15317,
+        "successes": 15317,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 1738556085,
+        "overflowCount": 0,
+        "p50Ms": 41,
+        "p95Ms": 63
+      },
+      "search": {
+        "requests": 10216,
+        "successes": 10216,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 1144087267,
+        "overflowCount": 0,
+        "p50Ms": 63,
+        "p95Ms": 96
+      },
+      "product": {
+        "requests": 7661,
+        "successes": 7661,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 263304633,
+        "overflowCount": 0,
+        "p50Ms": 44,
+        "p95Ms": 68
+      },
+      "cart": {
+        "requests": 5108,
+        "successes": 5108,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 139096452,
+        "overflowCount": 0,
+        "p50Ms": 45,
+        "p95Ms": 69
+      },
+      "checkout": {
+        "requests": 2554,
+        "successes": 2554,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 99401809,
+        "overflowCount": 0,
+        "p50Ms": 53,
+        "p95Ms": 84
+      },
+      "cartEdit": {
+        "requests": 5112,
+        "successes": 5112,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 2799519,
+        "overflowCount": 0,
+        "p50Ms": 30,
+        "p95Ms": 48
+      },
+      "quote": {
+        "requests": 2554,
+        "successes": 2554,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 1685039,
+        "overflowCount": 0,
+        "p50Ms": 21,
+        "p95Ms": 37
+      },
+      "order": {
+        "requests": 2549,
+        "successes": 2549,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 484310,
+        "overflowCount": 0,
+        "p50Ms": 35,
+        "p95Ms": 60
+      }
+    },
+    "drainSeconds": 0.03464859999996861
+  },
+  "measurement": {
+    "durationSeconds": 1800,
+    "requests": 211177,
+    "successes": 211177,
+    "expectedConflicts": 0,
+    "unexpectedFailures": 0,
+    "requestsPerSecond": 117.32055555555556,
+    "operations": {
+      "catalog": {
+        "requests": 63348,
+        "successes": 63348,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 7190314740,
+        "overflowCount": 0,
+        "p50Ms": 61,
+        "p95Ms": 81
+      },
+      "search": {
+        "requests": 42238,
+        "successes": 42238,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 4730217003,
+        "overflowCount": 0,
+        "p50Ms": 95,
+        "p95Ms": 123
+      },
+      "product": {
+        "requests": 31678,
+        "successes": 31678,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 1088735932,
+        "overflowCount": 0,
+        "p50Ms": 67,
+        "p95Ms": 88
+      },
+      "cart": {
+        "requests": 21120,
+        "successes": 21120,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 575120864,
+        "overflowCount": 0,
+        "p50Ms": 69,
+        "p95Ms": 90
+      },
+      "checkout": {
+        "requests": 10558,
+        "successes": 10558,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 410925804,
+        "overflowCount": 0,
+        "p50Ms": 82,
+        "p95Ms": 108
+      },
+      "cartEdit": {
+        "requests": 21123,
+        "successes": 21123,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 11567763,
+        "overflowCount": 0,
+        "p50Ms": 48,
+        "p95Ms": 69
+      },
+      "quote": {
+        "requests": 10558,
+        "successes": 10558,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 6965804,
+        "overflowCount": 0,
+        "p50Ms": 31,
+        "p95Ms": 51
+      },
+      "order": {
+        "requests": 10554,
+        "successes": 10554,
+        "expectedConflicts": 0,
+        "unexpectedFailures": 0,
+        "decodedBodyBytes": 2005260,
+        "overflowCount": 0,
+        "p50Ms": 55,
+        "p95Ms": 86
+      }
+    },
+    "drainSeconds": 0.05737479999993411
+  },
+  "invariants": {
+    "amount_mismatches": 0,
+    "stock_mismatches": 0,
+    "cart_mismatches": 0
+  },
+  "orderCountMatches": true,
+  "successfulOrders": 13103,
+  "workloadCovered": true,
+  "memoryAcceptance": {
+    "scope": "memory-only",
+    "protocolVersion": 1,
+    "benchmarkAcceptance": "not-evaluated",
+    "status": "uncalibrated",
+    "services": {
+      "backend": {
+        "status": "uncalibrated",
+        "sampleCount": 360,
+        "firstMedianMiB": 326.859375,
+        "lastMedianMiB": 565.291015625,
+        "peakMiB": 593.46484375,
+        "slopeMiBPerMinute": 12.31977060980819,
+        "medianGrowthMiB": 238.431640625,
+        "violations": []
+      },
+      "storefront": {
+        "status": "uncalibrated",
+        "sampleCount": 360,
+        "firstMedianMiB": 332.78125,
+        "lastMedianMiB": 473.630859375,
+        "peakMiB": 484.8515625,
+        "slopeMiBPerMinute": 7.1183860221982656,
+        "medianGrowthMiB": 140.849609375,
+        "violations": []
+      },
+      "postgres": {
+        "status": "uncalibrated",
+        "sampleCount": 360,
+        "firstMedianMiB": 787.171875,
+        "lastMedianMiB": 2464.921875,
+        "peakMiB": 2487.15234375,
+        "slopeMiBPerMinute": 80.64139881013904,
+        "medianGrowthMiB": 1677.75,
+        "violations": []
+      }
+    }
+  }
+}
