@@ -9,6 +9,7 @@ import { validateOrderReferenceCode } from "@/domain/money/reference-code";
 import { buildVariantCombinations } from "@/domain/catalog/variant-combinations";
 import { parseCustomerPage } from "@supastore/contracts/customer-page-validation";
 import { pages } from "../fixtures/customer-pages";
+import { benchmarkImageForKey } from "../../scripts/benchmark/images.mjs";
 
 const server = process.env.TRANSLATION_TEST_DATABASE_URL;
 const name = `supastore_cuj_${Date.now()}`;
@@ -73,6 +74,7 @@ it("seeds the standard catalog and established history with balanced ledgers", a
     attributes: 2,
   });
   expect(report.images).toHaveLength(2);
+  console.info("BENCHMARK_FIXTURE", JSON.stringify(report));
   const snapshots = await client`select distinct terms_snapshot from orders`;
   for (const row of snapshots) {
     expect
@@ -149,3 +151,114 @@ it("seeds the standard catalog and established history with balanced ledgers", a
     ),
   ).rejects.toThrow("Benchmark fixture must be empty");
 }, 60000);
+
+it.each([
+  [100, "shipping", false, false],
+  [10000, "pickup", false, true],
+  [100, "mixed", true, false],
+])(
+  "verifies %i products / %s / rewards=%s / tracked=%s in a fresh owned database",
+  async (products, fulfillment, rewards, tracked) => {
+    const profile = fixtureProfile(products, fulfillment, rewards, tracked);
+    const isolatedName = `supastore_cuj_${Date.now()}`;
+    const isolatedUrl = new URL(url);
+    isolatedUrl.pathname = `/${isolatedName}`;
+    const isolatedToken = randomUUID();
+    let isolated: ReturnType<typeof postgres> | undefined;
+    await admin.unsafe(
+      `CREATE DATABASE "${isolatedName}" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C'`,
+    );
+    try {
+      isolated = postgres(isolatedUrl.href, { onnotice: () => {} });
+      await migrate(drizzle(isolated), {
+        migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
+      });
+      await isolated`create table benchmark_fixture_ownership(token uuid primary key)`;
+      await isolated`insert into benchmark_fixture_ownership values(${isolatedToken})`;
+      const report = await seedRepresentativeFixture(
+        isolatedUrl.href,
+        isolatedToken,
+        profile,
+      );
+      console.info("BENCHMARK_FIXTURE", JSON.stringify(report));
+      expect(report.counts).toMatchObject({
+        products,
+        variants: profile.variants,
+        images: profile.images,
+        orders: 10000,
+      });
+      const [settings] =
+        await isolated`select commerce_policy from store_settings`;
+      expect(settings!.commerce_policy).toMatchObject({
+        shippingEnabled: fulfillment !== "pickup",
+        pickupEnabled: fulfillment !== "shipping",
+        rewardsEnabled: rewards,
+      });
+      const [stock] =
+        await isolated`select count(*)::int as variants, count(*) filter(where tracking_enabled)::int as tracked from variant_stock`;
+      expect(stock).toEqual({
+        variants: profile.variants,
+        tracked: tracked ? profile.variants : 0,
+      });
+      expect(
+        (await isolated`select count(*)::int as n from stock_reservations`)[0]!
+          .n,
+      ).toBe(tracked ? 10000 : 0);
+      const [balance] =
+        await isolated`select count(*)::int as n from variant_stock s where on_hand <> (select coalesce(sum(delta),0) from stock_movements m where m.variant_id=s.variant_id) or reserved<>0`;
+      expect(balance!.n).toBe(0);
+      const images = await isolated`select s3_key from product_images`;
+      expect(
+        images.every((row) =>
+          benchmarkImageForKey("/browser-public-fixture/" + row.s3_key),
+        ),
+      ).toBe(true);
+    } finally {
+      if (isolated) await isolated.end();
+      await admin.unsafe(
+        `DROP DATABASE IF EXISTS "${isolatedName}" WITH (FORCE)`,
+      );
+    }
+  },
+  90000,
+);
+
+it("rolls back the entire seed when a later fixture insert conflicts", async () => {
+  const isolatedName = `supastore_cuj_${Date.now()}`;
+  const isolatedUrl = new URL(url);
+  isolatedUrl.pathname = `/${isolatedName}`;
+  const isolatedToken = randomUUID();
+  let isolated: ReturnType<typeof postgres> | undefined;
+  await admin.unsafe(
+    `CREATE DATABASE "${isolatedName}" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C'`,
+  );
+  try {
+    isolated = postgres(isolatedUrl.href, { onnotice: () => {} });
+    await migrate(drizzle(isolated), {
+      migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
+    });
+    await isolated`create table benchmark_fixture_ownership(token uuid primary key)`;
+    await isolated`insert into benchmark_fixture_ownership values(${isolatedToken})`;
+    await isolated`insert into categories(slug,name) values('benchmark-category-1','Retain this existing record')`;
+    await expect(
+      seedRepresentativeFixture(
+        isolatedUrl.href,
+        isolatedToken,
+        fixtureProfile(100, "mixed", true, true),
+      ),
+    ).rejects.toThrow();
+    const [result] =
+      await isolated`select (select count(*)::int from store_settings) as settings, (select count(*)::int from payment_accounts) as accounts, (select count(*)::int from products) as products, (select count(*)::int from categories) as categories`;
+    expect(result).toEqual({
+      settings: 0,
+      accounts: 0,
+      products: 0,
+      categories: 1,
+    });
+  } finally {
+    if (isolated) await isolated.end();
+    await admin.unsafe(
+      `DROP DATABASE IF EXISTS "${isolatedName}" WITH (FORCE)`,
+    );
+  }
+}, 30000);
