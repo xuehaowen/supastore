@@ -1,6 +1,7 @@
-import { appendFileSync, readFileSync, realpathSync } from "node:fs";
+import { appendFileSync, realpathSync } from "node:fs";
 import { join, resolve, basename } from "node:path";
 import { getHeapStatistics } from "node:v8";
+import { readHeapPhase } from "./heap-phase.mjs";
 
 /** Numeric runtime counters only: never retain request data or heap contents. */
 export function captureHeapSample(mode, collect = globalThis.gc) {
@@ -56,20 +57,7 @@ export function diagnosticTarget(env) {
 if (process.env.BENCHMARK_MEMORY_ROLE) {
   const output = diagnosticTarget(process.env);
   const sample = () => {
-    let phase = "startup";
-    try {
-      const marker = JSON.parse(
-        readFileSync(
-          join(process.env.BENCHMARK_REPORT_PATH, "heap-phase.json"),
-          "utf8",
-        ),
-      );
-      if (!["warmup", "measurement"].includes(marker.phase))
-        throw new Error("Invalid diagnostic phase");
-      phase = marker.phase;
-    } catch (error) {
-      if (error.code !== "ENOENT") throw error;
-    }
+    const phase = readHeapPhase(process.env.BENCHMARK_REPORT_PATH);
     const mode =
       phase === "startup"
         ? "natural"

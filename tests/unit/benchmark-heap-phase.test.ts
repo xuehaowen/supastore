@@ -1,36 +1,43 @@
 import { expect, it } from "vitest";
 import {
   mkdtempSync,
-  readFileSync,
   writeFileSync,
   unlinkSync,
   rmdirSync,
   existsSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { spawn } from "node:child_process";
-import { publishHeapPhase } from "../../scripts/benchmark/heap-phase.mjs";
+import {
+  publishHeapPhase,
+  readHeapPhase,
+} from "../../scripts/benchmark/heap-phase.mjs";
 
-it("publishes complete phase markers while another process continuously reads", async () => {
+it("publishes monotonic phases while another process continuously reads", async () => {
   const directory = mkdtempSync(
     join(resolve(".tmp-cuj/platform-quality"), "phase-test-"),
   );
-  const marker = join(directory, "heap-phase.json");
   const done = join(directory, "done");
   let child;
+  let exited: Promise<number | null> | undefined;
   try {
+    expect(readHeapPhase(directory)).toBe("startup");
     publishHeapPhase(directory, "warmup");
-    expect(JSON.parse(readFileSync(marker, "utf8"))).toEqual({
-      phase: "warmup",
-    });
-    const source = `import { readFileSync, existsSync } from 'node:fs';
+    expect(readHeapPhase(directory)).toBe("warmup");
+    const moduleUrl = pathToFileURL(
+      resolve("scripts/benchmark/heap-phase.mjs"),
+    ).href;
+    const source = `import { existsSync } from 'node:fs';
+      import { readHeapPhase } from ${JSON.stringify(moduleUrl)};
       process.stdout.write('ready\\n');
-      let reads = 0;
+      let reads = 0, measured = false;
       const deadline = Date.now() + 5000;
       while (!existsSync(${JSON.stringify(done)}) && Date.now() < deadline) {
-        const phase = JSON.parse(readFileSync(${JSON.stringify(marker)}, 'utf8')).phase;
+        const phase = readHeapPhase(${JSON.stringify(directory)});
         if (phase !== 'warmup' && phase !== 'measurement') throw Error('Incomplete phase');
-        reads++;
+        if (measured && phase !== 'measurement') throw Error('Phase moved backward');
+        measured ||= phase === 'measurement'; reads++;
       }
       console.log(JSON.stringify({ reads }));`;
     child = spawn(process.execPath, ["--input-type=module", "-e", source], {
@@ -38,11 +45,9 @@ it("publishes complete phase markers while another process continuously reads", 
       stdio: ["ignore", "pipe", "pipe"],
     });
     let output = "";
-    const exited = new Promise<void>((resolve, reject) => {
-      child!.once("error", reject);
-      child!.once("exit", (code) =>
-        code === 0 ? resolve() : reject(new Error("Concurrent reader failed")),
-      );
+    exited = new Promise<number | null>((resolve) => {
+      child!.once("error", () => resolve(-1));
+      child!.once("exit", resolve);
     });
     await new Promise<void>((resolve, reject) => {
       child!.once("error", reject);
@@ -52,19 +57,24 @@ it("publishes complete phase markers while another process continuously reads", 
       });
     });
     for (let i = 0; i < 500; i++)
-      publishHeapPhase(directory, i % 2 ? "warmup" : "measurement");
+      publishHeapPhase(directory, i < 250 ? "warmup" : "measurement");
     writeFileSync(done, "done");
-    await exited;
+    expect(await exited).toBe(0);
     expect(JSON.parse(output.trim().split("\n").at(-1)!).reads).toBeGreaterThan(
       0,
     );
+    expect(readHeapPhase(directory)).toBe("measurement");
     expect(() => publishHeapPhase(directory, "invalid")).toThrow(
       "Invalid diagnostic phase",
     );
   } finally {
     child?.kill();
-    for (const file of [marker, done, join(directory, "heap-phase.tmp")])
-      if (existsSync(file)) unlinkSync(file);
+    await exited;
+    if (existsSync(done)) unlinkSync(done);
+    for (const phase of ["warmup", "measurement"]) {
+      const marker = join(directory, "heap-phase-" + phase);
+      if (existsSync(marker)) rmdirSync(marker);
+    }
     rmdirSync(directory);
   }
 }, 10000);
