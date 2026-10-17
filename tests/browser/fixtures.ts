@@ -60,19 +60,22 @@ export { expect };
 export async function deliveredLink(page: Page, email: string, path: string) {
   let link = "";
   await expect
-    .poll(async () => {
-      const response = await page.request.get("http://127.0.0.1:9010");
-      expect(response.ok()).toBe(true);
-      const messages: string[] = await response.json();
-      const message = [...messages]
-        .reverse()
-        .find((text) => text.includes(email) && text.includes(path));
-      link =
-        message
-          ?.match(/https?:\/\/[^\s<>"']+/g)
-          ?.find((url) => new URL(url).pathname.includes(path)) ?? "";
-      return Boolean(link);
-    })
+    .poll(
+      async () => {
+        const response = await page.request.get("http://127.0.0.1:9010");
+        expect(response.ok()).toBe(true);
+        const messages: string[] = await response.json();
+        const message = [...messages]
+          .reverse()
+          .find((text) => text.includes(email) && text.includes(path));
+        link =
+          message
+            ?.match(/https?:\/\/[^\s<>"']+/g)
+            ?.find((url) => new URL(url).pathname.includes(path)) ?? "";
+        return Boolean(link);
+      },
+      { timeout: 15_000 },
+    )
     .toBe(true);
   return link;
 }

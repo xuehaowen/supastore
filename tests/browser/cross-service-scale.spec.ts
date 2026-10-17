@@ -49,11 +49,16 @@ test("serves bounded catalog pages and concurrent reports for 10,000-row fixture
         first.items.some((other) => other.id === item.id),
       ),
     ).toBe(false);
-    for (const response of responses.slice(2, 4))
+    for (const response of responses.slice(2, 4)) {
+      const body = await response.text();
       expect(
-        (await response.text()).includes("outside_adjustment"),
-        "Report page must contain actual adjustment evidence",
-      ).toBe(true);
+        body,
+        "Report page must identify the fixture adjustment",
+      ).toContain(prefix);
+      expect(body, "Report page must label the actual adjustment").toContain(
+        "outside adjustment",
+      );
+    }
     expect(responses[4]!.headers()["cache-control"]).toBe("no-store");
     const lines = (await responses[4]!.text()).trimEnd().split("\r\n");
     expect(lines).toHaveLength(10001);

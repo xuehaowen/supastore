@@ -6,6 +6,7 @@ import {
   openOrder,
   clickAction,
   record,
+  deliveredLink,
 } from "./fixtures";
 
 async function accessible(page: import("@playwright/test").Page) {
@@ -170,16 +171,11 @@ test("Account registration requires verification, retries sign-in, denies admin 
   await expect(page.locator('[data-slot="alert"]')).toContainText(
     "Please verify your email",
   );
-  const messages: string[] = await (
-    await page.request.get("http://127.0.0.1:9010")
-  ).json();
-  const message = messages.find(
-    (message) =>
-      message.includes(email) && message.includes("/api/auth/verify-email"),
-  )!;
-  const verificationUrl = message.match(
-    /https?:\/\/[^\s<>"']*\/api\/auth\/verify-email\?[^\s<>"']+/,
-  )![0]!;
+  const verificationUrl = await deliveredLink(
+    page,
+    email,
+    "/api/auth/verify-email",
+  );
   await page.goto(verificationUrl);
   await expect(
     page.getByRole("heading", { name: "Good to see you." }),
@@ -264,16 +260,7 @@ test("customer profile and emailed password reset persist and reject the old pas
   await page.getByLabel("Email for password reset").fill(email);
   await page.getByRole("button", { name: "Send link", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Check your inbox");
-  const messages: string[] = await (
-    await page.request.get("http://127.0.0.1:9010")
-  ).json();
-  const message = messages.find(
-    (text) => text.includes(email) && text.includes("reset-password"),
-  );
-  expect(message).toBeTruthy();
-  await page.goto(
-    message!.match(/https?:\/\/[^\s<>"']*reset-password[^\s<>"']*/)![0]!,
-  );
+  await page.goto(await deliveredLink(page, email, "reset-password"));
   await page.getByLabel("New password", { exact: true }).fill(newPassword);
   await page.getByLabel("Confirm password", { exact: true }).fill(newPassword);
   await page
