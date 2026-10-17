@@ -82,6 +82,23 @@ it("rejects corrupt transfer observations", () => {
     ]),
   ).toThrow();
 });
+it("counts stylesheet, font and fetch failures classified as other", () => {
+  expect(
+    summarizeTransfers([
+      { kind: "other", encodedBytes: 10, status: 404, fromCache: false },
+      { kind: "other", encodedBytes: 0, status: null, fromCache: false },
+      { kind: "other", encodedBytes: 0, status: 503, fromCache: false },
+      {
+        kind: "other",
+        encodedBytes: 0,
+        status: null,
+        fromCache: false,
+        canceled: true,
+      },
+      { kind: "other", encodedBytes: 0, status: 304, fromCache: true },
+    ]).unexpectedFailures,
+  ).toBe(3);
+});
 it("reports small-sample cold/warm percentiles with their actual counts", () => {
   const samples = [10, 20, 30].flatMap((ttfbMs) =>
     ["cold", "warm"].map((cache) => ({
