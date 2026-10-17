@@ -1,26 +1,8 @@
 import type { CustomerPageModels as PageModels } from "@supastore/contracts";
+import { parseCustomerPage } from "@supastore/contracts/customer-page-validation";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { BackendApiError, readApi, readPublicApi } from "./api";
-
-const requiredFields: Record<keyof PageModels, string[]> = {
-  layout: ["session"],
-  catalog: ["result", "facets", "collections", "groups"],
-  product: ["purchasable", "availableQuantities", "specs"],
-  cart: ["cart"],
-  checkout: [
-    "cart",
-    "shippingRules",
-    "accounts",
-    "locations",
-    "delivery",
-    "methods",
-    "onlinePayment",
-  ],
-  account: ["session", "account", "page", "reference", "creditPage"],
-  order: ["result", "onlinePayment"],
-  collection: ["collection", "result"],
-};
 
 /** Every customer page reads the public contract through HTTP. */
 export async function readPage<K extends keyof PageModels>(
@@ -36,16 +18,9 @@ export async function readPage<K extends keyof PageModels>(
     }
   }
   const read = page === "catalog" ? readPublicApi : readApi;
-  return read(`customer-pages/${page}?${search}`, (data) => {
-    if (
-      !data ||
-      typeof data !== "object" ||
-      Array.isArray(data) ||
-      !requiredFields[page].every((key) => key in data)
-    )
-      throw new Error("Invalid customer page response.");
-    return data as PageModels[K];
-  }).catch((error) => {
+  return read(`customer-pages/${page}?${search}`, (data) =>
+    parseCustomerPage(page, data),
+  ).catch((error) => {
     if (error instanceof BackendApiError && error.status === 404) notFound();
     throw error;
   });

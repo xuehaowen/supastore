@@ -1,6 +1,6 @@
 # Supastore platform quality enhancement plan
 
-Prepared: 2026-10-16, America/Los_Angeles. Status: implementation in progress; Step 1 local baseline complete, Step 2 next.
+Prepared: 2026-10-16, America/Los_Angeles. Status: implementation in progress; Steps 1 and 2 verified locally, Step 3 next.
 Working branch: `codex/platform-quality`. Baseline: `ec68e0f`.
 
 ## Outcome
@@ -261,7 +261,7 @@ Tasks:
 ## Completion tracking and plan changes
 
 - [x] 1. Baseline reproduced and required local checks passing ([evidence](../docs/platform-quality-baseline.md))
-- [ ] 2. Runtime contracts and mixed-version behavior verified
+- [x] 2. Runtime contracts and mixed-version behavior verified locally ([evidence](../docs/customer-page-contracts.md))
 - [ ] 3. Representative read/mutation benchmarks retained
 - [ ] 4. Budgets enforced; robots/sitemaps/metadata and local discovery verified
 - [ ] 9. KVM 2 host, deployment, providers and recovery acceptance verified
@@ -275,3 +275,12 @@ D is continuous and non-blocking. Append commit IDs, commands, results and evide
 Review revision: accepted solo-project priorities. Replaced research gating with owner dogfooding; withdrew team-based calendar estimates; retained 1/2/3/4/9 as engineering core; scoped 5/6 to bakery needs; replaced 7a–7c with one fixed theme and deferred configuration; added existing SEO foundations plus local discovery and KVM 2 acceptance.
 
 Execution started 2026-10-16: [Step 1 baseline evidence](../docs/platform-quality-baseline.md). Commit `02c0e2b` replaces stale delivery/queue expectations with authorized PostgreSQL regressions; full unit, integration, type/lint and coverage checks pass. Both production builds and all 34 default browser journeys pass after correcting async-mail and report-label test assumptions. Process RSS and route JS samples are retained in the evidence document. Step 1 local baseline is complete; KVM 2/provider/representative-load acceptance remains in later steps. No production business logic changed.
+
+Step 2 local acceptance completed: [customer-page contracts](../docs/customer-page-contracts.md).
+RED checkpoints `b7b81ac` and `f664c71` capture absent nested decoding and the legacy
+policy producer mismatch. Shared runtime validation now covers all eight pages,
+with backend policy normalization and an isolated decoder export. Full unit/library
+suite: 1,022 passed; fresh production browser suite: 36 passed; both builds,
+root/apps types, lint and formatting passed. No initial client-JS raw-byte growth
+on the measured catalog/product routes. Deployment order is backend first, then
+storefront; no new data migration. Steps 3–10 remain open as scoped above.

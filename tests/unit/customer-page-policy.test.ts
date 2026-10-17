@@ -1,7 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { store } from "../fixtures/customer-pages";
 import { layoutPage } from "@/infrastructure/http/customer-page-data";
-import { parseCustomerPage } from "@supastore/contracts";
+import { parseCustomerPage } from "@supastore/contracts/customer-page-validation";
 
 // The persisted default from migration 0022, before later optional policy fields.
 const legacyPolicy = vi.hoisted(() => ({

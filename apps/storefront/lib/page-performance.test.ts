@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readPage } from "./page-data";
+import { pages } from "../../../tests/fixtures/customer-pages";
 
 vi.mock("next/headers", () => ({
   headers: async () => new Headers({ cookie: "session=private-customer" }),
@@ -10,35 +11,30 @@ const fetchMock = vi.fn();
 beforeEach(() => {
   fetchMock.mockReset();
   vi.stubGlobal("fetch", fetchMock);
-  fetchMock.mockImplementation(() =>
-    Response.json({
-      data: {
-        result: {},
-        facets: [],
-        collections: [],
-        groups: [],
-        session: null,
-        cart: null,
-        purchasable: {},
-        availableQuantities: {},
-        specs: [],
-        shippingRules: [],
-        accounts: [],
-        locations: [],
-        delivery: {},
-        methods: [],
-        onlinePayment: {},
-        account: null,
-        page: 1,
-        reference: "",
-        creditPage: 1,
-      },
-    }),
-  );
+  fetchMock.mockImplementation((url: string) => {
+    const page = new URL(url).pathname.split("/").at(-1)! as keyof typeof pages;
+    return Response.json({ data: pages[page] });
+  });
 });
 afterEach(() => vi.unstubAllGlobals());
 
 describe("page-level caching and customer isolation", () => {
+  it("maps malformed nested page data to the existing safe HTTP failure", async () => {
+    fetchMock.mockImplementation(() =>
+      Response.json(
+        { data: { ...pages.product, availableQuantities: { variant: -1 } } },
+        { headers: { "x-request-id": "contract-fixture" } },
+      ),
+    );
+    await expect(
+      readPage("product", "en", { handle: "bread" }),
+    ).rejects.toMatchObject({
+      status: 502,
+      message: "Invalid API response.",
+      requestId: "contract-fixture",
+    });
+  });
+
   it.each(["en", "zh"])(
     "reuses the common %s catalog without customer cookies",
     async (locale) => {

@@ -104,6 +104,13 @@ Storefront server actions retain backend request IDs and render validated refere
 on checkout and redirect error notices. Unit tests `server-request` and `notice`
 cover correlation/privacy; browser `error-handling` covers the visible reference.
 
+Customer-page reads also validate nested response contracts before rendering.
+Malformed consumed fields produce the existing safe 502 (`Invalid API response.`)
+with the backend request ID, without exposing schema issues or payload contents.
+Unit `customer-page-contracts` and storefront `page-performance` cover malformed
+amounts/statuses, additive fields, cookie/cache isolation and correlation; browser
+`customer-page-contracts` validates all eight actual serialized page responses.
+
 Files live under `tests/unit`, `tests/integration` and `tests/browser`. A listed
 test is evidence, not a claim that every possible failure is tested. Extend this
 matrix whenever adding a failure path.

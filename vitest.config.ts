@@ -58,6 +58,13 @@ export default defineConfig({
         replacement: path.resolve(__dirname, "packages/shipping/src/$1"),
       },
       {
+        find: "@supastore/contracts/customer-page-validation",
+        replacement: path.resolve(
+          __dirname,
+          "packages/contracts/src/customer-page-validation.ts",
+        ),
+      },
+      {
         find: "@supastore/contracts/sitemap",
         replacement: path.resolve(
           __dirname,

@@ -1,4 +1,4 @@
-/** Serializable HTTP DTOs and pure validation. No server code or external dependencies. */
+/** Serializable HTTP DTOs and pure validation. No server or database dependencies. */
 export * from "./checkout";
 export * from "./responses";
 export type {

@@ -107,7 +107,7 @@ export type CatalogResult = {
 /** Public customer page response shapes. Dates are ISO strings on the wire. */
 export interface CustomerPageModels {
   layout: {
-    store: CustomerStore;
+    store?: CustomerStore | undefined;
     session: null | {
       user: {
         id: string;
@@ -119,7 +119,7 @@ export interface CustomerPageModels {
   };
   catalog: {
     result: CatalogResult;
-    store: CustomerStore;
+    store?: CustomerStore | undefined;
     facets: Array<{
       attribute: string;
       name: string;
@@ -186,7 +186,7 @@ export interface CustomerPageModels {
       }>;
       categories: Array<{ id: string; slug: string; name: string }>;
     };
-    store: CustomerStore;
+    store?: CustomerStore | undefined;
     availableQuantities: { [key: string]: number };
     specs: Array<{
       valueId: string;
@@ -197,11 +197,11 @@ export interface CustomerPageModels {
   };
   cart: {
     cart: CustomerCart;
-    store: CustomerStore;
+    store?: CustomerStore | undefined;
   };
   checkout: {
     cart: CustomerCart;
-    store: CustomerStore;
+    store?: CustomerStore | undefined;
     shippingRules: Array<{
       countryCodes: null | Array<string>;
       regionCodes: Array<string>;
@@ -244,23 +244,7 @@ export interface CustomerPageModels {
       updatedAt: string;
     }>;
     methods: Array<"shipping" | "pickup" | "local_delivery">;
-    savedQuote: {
-      id: string;
-      cartId: string;
-      cartRevision: number;
-      termsSnapshot: unknown;
-      merchandiseSubtotalCents: number;
-      shippingCents: number;
-      exclusiveTaxCents: number;
-      inclusiveTaxCents: number;
-      totalPayableCents: number;
-      discountCents: number;
-      itemsSnapshot: unknown;
-      shippingSnapshot: unknown;
-      expiresAt: string;
-      createdAt: string;
-    };
-    quote:
+    savedQuote?:
       | undefined
       | {
           id: string;
@@ -278,7 +262,25 @@ export interface CustomerPageModels {
           expiresAt: string;
           createdAt: string;
         };
-    initial:
+    quote?:
+      | undefined
+      | {
+          id: string;
+          cartId: string;
+          cartRevision: number;
+          termsSnapshot: unknown;
+          merchandiseSubtotalCents: number;
+          shippingCents: number;
+          exclusiveTaxCents: number;
+          inclusiveTaxCents: number;
+          totalPayableCents: number;
+          discountCents: number;
+          itemsSnapshot: unknown;
+          shippingSnapshot: unknown;
+          expiresAt: string;
+          createdAt: string;
+        };
+    initial?:
       | undefined
       | {
           rewardProgramActive: boolean;
@@ -395,10 +397,12 @@ export interface CustomerPageModels {
         settledCents: number;
       }>;
     };
-    store: CustomerStore;
-    paymentAttempt: {
-      status: "open" | "review" | "expired" | "creating" | "paid";
-    };
+    store?: CustomerStore | undefined;
+    paymentAttempt?:
+      | undefined
+      | {
+          status: "open" | "review" | "expired" | "creating" | "paid";
+        };
     onlinePayment: boolean;
   };
   collection: {
@@ -414,7 +418,7 @@ export interface CustomerPageModels {
       createdAt: string;
       updatedAt: string;
     };
-    translated:
+    translated?:
       | undefined
       | {
           id: string;
@@ -424,7 +428,7 @@ export interface CustomerPageModels {
           description: string;
         };
     result: CatalogResult;
-    store: CustomerStore;
+    store?: CustomerStore | undefined;
   };
 }
 export type QuoteTerms = {

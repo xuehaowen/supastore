@@ -23,6 +23,17 @@ beforeEach(() => {
 });
 
 describe("storefront page locale boundary", () => {
+  it("validates nested page data through the HTTP decoder", async () => {
+    readApi.mockImplementation(async (_path, decode) =>
+      decode({ cart: { id: "cart", items: [], subtotalCents: "invalid" } }),
+    );
+    await expect(readPage("cart", "en")).rejects.toThrow(
+      "Invalid customer page response.",
+    );
+    readApi.mockImplementation(async (_path, decode) => decode({ cart: null }));
+    await expect(readPage("cart", "en")).resolves.toEqual({ cart: null });
+  });
+
   it.each(["favicon.ico", "robots.txt", "en_US", "fr", ""])(
     "rejects unsupported route locale %s before backend reads or formatting",
     async (locale) => {

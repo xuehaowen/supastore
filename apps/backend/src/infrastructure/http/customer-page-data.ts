@@ -86,7 +86,9 @@ async function publicStore() {
     })
     .from(storeSettings)
     .limit(1);
-  return store;
+  return store
+    ? { ...store, commercePolicy: commercePolicy(store.commercePolicy) }
+    : undefined;
 }
 async function verifiedSession() {
   const session = await auth.api.getSession({ headers: await headers() });
