@@ -3,6 +3,10 @@ import { assertFixtureTarget } from "./fixture-target";
 import { fixtureProfile } from "./protocol";
 import { benchmarkImages } from "./images.mjs";
 import { computeCrockfordChecksum } from "../../apps/backend/src/domain/money/reference-code";
+import {
+  buildVariantCombinations,
+  type GenerationOption,
+} from "../../apps/backend/src/domain/catalog/variant-combinations";
 
 /** Only the owning harness creates/migrates the database and ownership marker. */
 export async function seedRepresentativeFixture(
@@ -62,6 +66,16 @@ export async function seedRepresentativeFixture(
           case n when 1 then 'small' when 2 then 'large' when 3 then 'plain' else 'cocoa' end,
           case n when 1 then 'Small' when 2 then 'Large' when 3 then 'Plain' else 'Cocoa' end,n
         from generate_series(1,4) n`;
+      const optionRows = await tx<
+        { option: GenerationOption }[]
+      >`select jsonb_build_object(
+        'id',a.id,'code',a.code,'name',a.name,'values',
+        (select jsonb_agg(jsonb_build_object('id',v.id,'code',v.code,'label',v.label) order by v.sort_order) from attribute_values v where v.attribute_id=a.id)
+      ) as option from attributes a order by a.sort_order`;
+      const combinationKeys = buildVariantCombinations(
+        optionRows.map((row) => row.option),
+        "BENCH",
+      ).map((combination) => combination.key);
       await tx`insert into products(id,handle,title,description,created_at,updated_at)
         select pg_temp.bench_id('product',n),'benchmark-product-'||n,'Bakery loaf '||n,
           repeat('Synthetic baked goods catalog description with ingredients, storage and collection instructions. ',5),
@@ -79,7 +93,7 @@ export async function seedRepresentativeFixture(
           (case when v<=2 then 'Small' else 'Large' end)||' / '||(case when v%2=1 then 'Plain' else 'Cocoa' end),
           800+(n%50)*25+v*100,
           jsonb_build_object('benchmark-size',case when v<=2 then 'small' else 'large' end,'benchmark-flavor',case when v%2=1 then 'plain' else 'cocoa' end),
-          'size:'||(case when v<=2 then 'small' else 'large' end)||'|flavor:'||(case when v%2=1 then 'plain' else 'cocoa' end),v,
+          (${combinationKeys}::text[])[v],v,
           '2025-12-01','2025-12-01'
         from generate_series(1,${profile.products}::int) n cross join generate_series(1,4) v`;
       await tx`insert into variant_attribute_values(variant_id,attribute_id,attribute_value_id)
@@ -122,9 +136,13 @@ export async function seedRepresentativeFixture(
           jsonb_build_object('amountCents',0,'taxCents',0,'isTaxInclusive',false),
           jsonb_build_object('settingsVersion',1,'currency','USD','precision',2,'fulfillmentType',h.fulfillment,
             'shippingAddress',jsonb_build_object('country','US','address','1 Fixture Street'),
-            'pickup',case when h.fulfillment='pickup' then jsonb_build_object('locationId',pg_temp.bench_id('location',1),'name','Synthetic pickup','address','1 Fixture Street') else null end,
+            'pickup',case when h.fulfillment='pickup' then jsonb_build_object('locationId',pg_temp.bench_id('location',1),'address','1 Fixture Street','date','','startTime','','endTime','') else null end,
+            'delivery',null,'promotion',null,
             'payment',jsonb_build_object('id',pg_temp.bench_id('bank',1),'name','Synthetic bank','instructions','Synthetic transfer instructions'),
-            'onlinePayment',false,'rewardProgramActive',${profile.rewards}),
+            'onlinePayment',false,'rewardProgramActive',${profile.rewards},
+            'input',jsonb_build_object('fulfillmentType',h.fulfillment,'shippingAddress',jsonb_build_object('country','US','address','1 Fixture Street'),
+              'pickupDate','','pickupLocationId',case when h.fulfillment='pickup' then pg_temp.bench_id('location',1)::text else '' end,
+              'pickupTime','','paymentAccountId',pg_temp.bench_id('bank',1),'promotionCode','','deliveryAreaId','')),
           h.created+interval '15 minutes',h.created
         from benchmark_history h join product_variants v on v.id=h.variant_id`;
       await tx`insert into orders(id,source_cart_id,reference_code,quote_id,lifecycle_status,purchase_total_cents,guest_email,guest_name,fulfillment_type,shipping_address_snapshot,terms_snapshot,created_at,updated_at)
