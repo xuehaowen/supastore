@@ -79,7 +79,12 @@ try {
     ).version,
     runtime: process.env.BENCHMARK_RUNTIME_MODE,
     network: "local loopback, no latency shaping",
-    browser: "none; HTTP document load only",
+    browser: JSON.parse(readFileSync(output + "/browser.json", "utf8")).browser,
+    preflight: {
+      browser: "browser.json",
+      boundedRaces: "races.json",
+      note: "Browser and separate owned-DB races complete before HTTP warm-up; no browser competes during load.",
+    },
     initialJs: JSON.parse(
       execFileSync(
         process.execPath,
@@ -298,7 +303,7 @@ try {
         : options.mode === "smoke"
           ? "diagnostic-pass"
           : "http-pass",
-    benchmarkAcceptance: "pending-browser-races-and-resource-calibration",
+    benchmarkAcceptance: "pending-standard-duration-and-resource-calibration",
     fatal,
     failures,
     warmup,

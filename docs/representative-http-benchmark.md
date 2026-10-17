@@ -40,8 +40,12 @@ deadline divided by phase seconds. Responses may finish afterward; `drainSeconds
 records that tail. Latency includes consuming the full response body. Fixed-size
 histograms report successful-response p50/p95 rounded up to one millisecond, with
 explicit overflow beyond 60 seconds. Ordinary load expects zero conflicts.
-Expected mutation-conflict classification is unit-tested; bounded race probes
-are not yet connected. Failed requests, missing operation coverage, malformed
+Expected mutation-conflict classification is unit-tested; five bounded race probes
+run before warm-up against separate owned PostgreSQL fixtures with fake providers.
+These validate last-unit reservation/cancellation, pickup capacity/quotas,
+same-cart order races, payment replay and untrusted payment events. Their report
+must contain exactly the five named passing cases; an empty/skipped run fails.
+Failed requests, missing operation coverage, malformed
 purchase responses or reconciliation errors fail the run.
 
 ## Artifacts and interpretation
@@ -55,6 +59,9 @@ Each run retains ignored `.tmp-cuj/benchmark-supastore_cuj_<id>/` artifacts:
   stock/amount/cart invariants and memory-analysis status.
 - `memory.jsonl`: five-second samples with phase and PostgreSQL process count.
 - `memory.json`: measurement-only series for `bench:memory:analyze`.
+- `races-vitest.json` and `races.json`: raw and validated bounded-race evidence.
+- `browser.json`: Chromium cold/warm transfers and authorization checks, completed
+  before HTTP warm-up. Browser processes do not compete during measured load.
 
 Memory collection is asynchronous. App measurements use each Node process's RSS.
 Database measurement sums the postmaster and `pg_stat_activity` processes' RSS:
@@ -66,7 +73,27 @@ Zero exit status certifies only this HTTP diagnostic and its checked invariants;
 `benchmarkAcceptance` explicitly stays pending. Decoded HTML body sizes exclude
 headers, browser script/image transfers and client-side RSC navigation. The
 existing bundle script counts compiled initial chunks for two routes; four-route
-budgets remain Step 4 work. The manifest explicitly states no browser was used.
+budgets remain Step 4 work. The manifest records the browser version and preflight
+artifact references separately from HTTP load.
+
+Browser measurements use a 390 x 844 viewport on desktop Chromium with no network
+or CPU emulation. Each of five routes has three fresh-context browser-cache-cold
+loads and three warm reloads, recording TTFB, DOMContentLoaded and CDP encoded
+HTML/RSC/script/image/other transfer bytes. Cold refers only to browser HTTP cache;
+server caches are already warmed. p95 is the maximum of three samples, a diagnostic
+rather than a statistically robust field percentile. Client navigation combines
+the source catalog load, prefetch and product transition; it verifies a preserved
+window marker and actual RSC traffic. All noncanceled failed resources count,
+including stylesheets, fonts and fetches. No request URLs, cookies or headers are
+retained. Unauthenticated order reads must return 401 and foreign-origin cart
+writes 403. Ordinary browser discovery skips this benchmark-only test.
+
+Preflight diagnostic `.tmp-cuj/benchmark-supastore_cuj_1792214089935` passed all
+five races, 30 route/cache browser samples, client navigation and both access
+checks. The short load completed 344 orders including warm-up with zero unexpected
+failures or invariant mismatches. Transfer error accounting was subsequently
+strengthened with a regression (RED `2d248db`, GREEN `1f88993`); the next standard
+run must exercise that correction. Full unit/library suite: 1,114 passed.
 
 ## Initial local diagnostic
 

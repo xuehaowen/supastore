@@ -302,6 +302,26 @@ try {
     ),
   );
 
+  if (benchmark) {
+    await completed(
+      start([
+        "scripts/test-integration.mjs",
+        "tests/integration/m1.test.ts",
+        "tests/integration/lightweight-commerce.test.ts",
+        "tests/integration/stripe-lifecycle.test.ts",
+        "--testNamePattern=returns one authorized order after racing and expiry|reserves the last unit once|serializes pickup capacity|serializes parallel payment delivery|preserves unsigned/mode-mismatched events",
+        "--reporter=json",
+        "--outputFile=" + join(benchmarkReport, "races-vitest.json"),
+      ]),
+    );
+    await completed(
+      start([
+        "node_modules/tsx/dist/cli.mjs",
+        "scripts/benchmark/check-races.ts",
+      ]),
+    );
+  }
+
   if (production)
     await completed(
       start(["node_modules/next/dist/bin/next", "build", "apps/backend"]),
@@ -391,6 +411,14 @@ try {
   );
   await ready(env.APP_URL + "/en", storefront);
   if (benchmark) {
+    await completed(
+      start([
+        "node_modules/@playwright/test/cli.js",
+        "test",
+        "tests/browser/representative-benchmark.spec.ts",
+        "--output=" + join(benchmarkReport, "playwright"),
+      ]),
+    );
     Object.assign(env, {
       BENCHMARK_BACKEND_PID: String(server.pid),
       BENCHMARK_STOREFRONT_PID: String(storefront.pid),

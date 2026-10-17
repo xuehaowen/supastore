@@ -22,9 +22,7 @@ export function summarizeTransfers(input: unknown) {
     cachedRequests: transfers.filter((t) => t.fromCache).length,
     canceledRequests: transfers.filter((t) => t.canceled).length,
     unexpectedFailures: transfers.filter(
-      (t) =>
-        !t.canceled &&
-        (t.status === null || t.status >= 400),
+      (t) => !t.canceled && (t.status === null || t.status >= 400),
     ).length,
   };
 }

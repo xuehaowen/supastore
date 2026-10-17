@@ -312,3 +312,14 @@ PostgreSQL suites pass: 1,102 and 143 tests. The short memory series is explicit
 insufficient for stability acceptance. Standard 35-minute results, cold/warm
 browser transfers, bounded race/authorization probes, stock replenishment and
 calibrated limits remain open; Step 3 is not marked complete.
+
+Step 3 browser/race preflights connected: five existing concurrency/security
+regressions run against separate owned PostgreSQL fixtures and require exact
+passing-case evidence. Chromium measures three cold/warm samples per shopping
+route, encoded transfers, actual client navigation, private-order rejection and
+cross-origin mutation rejection before HTTP load. The first integrated diagnostic
+passed and completed 344 orders including warm-up; 1,114 unit/library tests pass.
+Review findings about ordinary test discovery and omitted CSS/font/fetch errors
+are fixed. [Measurement scope and artifacts](../docs/representative-http-benchmark.md)
+document the limits. Standard-duration measurements, numeric resource calibration
+and replenishment/capacity evidence remain open; Step 3 remains in progress.
