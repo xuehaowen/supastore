@@ -2,6 +2,7 @@ import { expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
+import { processMemory } from "../../scripts/benchmark/process-memory.mjs";
 import { parseBenchmarkOptions } from "../../scripts/benchmark/options.mjs";
 import {
   captureHeapSample,
@@ -65,6 +66,12 @@ it("observes real explicit collection of discarded allocations in an isolated No
   );
   expect(sample.forcedGc).toBe(true);
   expect(sample.after.heapUsedBytes).toBeLessThan(sample.before.heapUsedBytes);
+});
+it("retains Windows private committed bytes separately from working-set RSS", async () => {
+  if (process.platform !== "win32") return;
+  const [record] = await processMemory([process.pid], { privateMemory: true });
+  expect(record?.rssBytes).toBeGreaterThan(0);
+  expect(record?.privateBytes).toBeGreaterThan(0);
 });
 it.each([
   {},
