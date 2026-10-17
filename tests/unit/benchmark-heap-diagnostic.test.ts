@@ -30,6 +30,13 @@ it.each([
     "Invalid benchmark options",
   );
 });
+it("can confirm compact memory settings under the unchanged standard workload", () => {
+  expect(parseBenchmarkOptions(["--benchmark", "--runtime-memory=compact"])).toMatchObject({
+    mode: "standard", diagnostics: "none", runtimeMemory: "compact",
+    warmupSeconds: 300, measurementSeconds: 1800,
+  });
+  expect(() => parseBenchmarkOptions(["--benchmark", "--diagnose-memory=gc", "--runtime-memory=compact"])).toThrow("Invalid benchmark options");
+});
 it("captures finite runtime heap and external memory without collecting request data", () => {
   const sample = captureHeapSample("natural");
   expect(sample.forcedGc).toBe(false);
