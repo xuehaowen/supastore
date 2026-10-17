@@ -9,7 +9,7 @@ import {
   diagnosticTarget,
 } from "../../scripts/benchmark/heap-probe.mjs";
 
-it.each(["natural", "gc"])(
+it.each(["natural", "gc", "compact"])(
   "keeps %s heap diagnosis outside standard acceptance",
   (mode) => {
     expect(
