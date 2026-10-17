@@ -185,7 +185,10 @@ export function analyzeMemory(
   };
   const violations = limits
     ? (Object.keys(measured) as (keyof MemoryLimits)[]).filter(
-        (key) => measured[key] > limits[key],
+        // Regression/median arithmetic can round above an exact boundary.
+        // One billionth of a MiB (or MiB/min) is numerical tolerance only;
+        // peak RSS retains its exact ceiling and raw measurements are unchanged.
+        (key) => measured[key] - limits[key] > (key === "peakMiB" ? 0 : 1e-9),
       )
     : [];
   return {
