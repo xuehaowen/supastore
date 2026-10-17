@@ -22,6 +22,8 @@ const artifact = () => ({
 
 describe("retained benchmark memory report", () => {
   it.each([
+    { diagnostics: "natural" },
+    { diagnostics: "gc" },
     { platform: "linux" },
     { runtime: "standalone" },
     { products: 10000 },

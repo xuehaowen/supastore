@@ -106,11 +106,23 @@ function completed(child) {
   });
 }
 function start(args, runtime = false, overrides = {}) {
+  const diagnostics = runtime && benchmark && benchmark.diagnostics !== "none";
+  if (diagnostics)
+    args = [
+      ...(benchmark.diagnostics === "gc" ? ["--expose-gc"] : []),
+      "--import",
+      pathToFileURL(join(process.cwd(), "scripts/benchmark/heap-probe.mjs"))
+        .href,
+      ...args,
+    ];
   const child = spawn(process.execPath, args, {
     env: runtime
       ? {
           ...env,
           NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=256",
+          ...(diagnostics
+            ? { BENCHMARK_MEMORY_DIAGNOSTICS: benchmark.diagnostics }
+            : {}),
           ...overrides,
         }
       : env,
@@ -385,7 +397,12 @@ try {
           "127.0.0.1",
         ],
     true,
-    { PORT: "3102", HOSTNAME: "127.0.0.1" },
+    {
+      PORT: "3102",
+      HOSTNAME: "127.0.0.1",
+      BENCHMARK_MEMORY_ROLE:
+        benchmark?.diagnostics !== "none" && benchmark ? "backend" : "",
+    },
   );
   await ready("http://127.0.0.1:3102/api/health/live", server);
   const storefront = start(
@@ -407,7 +424,12 @@ try {
           "127.0.0.1",
         ],
     true,
-    { PORT: "3103", HOSTNAME: "127.0.0.1" },
+    {
+      PORT: "3103",
+      HOSTNAME: "127.0.0.1",
+      BENCHMARK_MEMORY_ROLE:
+        benchmark?.diagnostics !== "none" && benchmark ? "storefront" : "",
+    },
   );
   await ready(env.APP_URL + "/en", storefront);
   if (benchmark) {

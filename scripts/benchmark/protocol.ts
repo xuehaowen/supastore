@@ -7,6 +7,7 @@ export const benchmarkProtocol = Object.freeze({
   sampleEverySeconds: 5,
   memoryWindowSeconds: 300,
   budgetScope: Object.freeze({
+    diagnostics: "none",
     platform: "win32",
     runtime: "Next CLI",
     products: 1000,

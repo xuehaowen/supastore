@@ -2,7 +2,7 @@
 export function parseBenchmarkOptions(args) {
   if (!args.includes("--benchmark")) return null;
   const accepted =
-    /^(--benchmark|--smoke|--measure|--standalone|--production|--products=(100|1000|10000)|--fulfillment=(shipping|pickup|mixed)|--rewards=(on|off)|--stock=(tracked|untracked))$/;
+    /^(--benchmark|--smoke|--measure|--standalone|--production|--diagnose-memory=(natural|gc)|--products=(100|1000|10000)|--fulfillment=(shipping|pickup|mixed)|--rewards=(on|off)|--stock=(tracked|untracked))$/;
   const names = args.map((arg) => arg.split("=")[0]);
   if (
     args.some((arg) => !accepted.test(arg)) ||
@@ -16,17 +16,27 @@ export function parseBenchmarkOptions(args) {
   const rewards = option("--rewards", "on") === "on";
   const trackedStock = option("--stock", "tracked") === "tracked";
   const smoke = args.includes("--smoke");
+  const diagnostics = option("--diagnose-memory", "none");
+  if (smoke && diagnostics !== "none")
+    throw new Error("Invalid benchmark options");
   return Object.freeze({
     products,
     fulfillment,
     rewards,
     trackedStock,
-    mode: smoke
-      ? "smoke"
-      : products === 1000 && fulfillment === "mixed" && rewards && trackedStock
-        ? "standard"
-        : "profile-diagnostic",
-    warmupSeconds: smoke ? 5 : 300,
-    measurementSeconds: smoke ? 30 : 1800,
+    diagnostics,
+    mode:
+      diagnostics !== "none"
+        ? "heap-diagnostic"
+        : smoke
+          ? "smoke"
+          : products === 1000 &&
+              fulfillment === "mixed" &&
+              rewards &&
+              trackedStock
+            ? "standard"
+            : "profile-diagnostic",
+    warmupSeconds: diagnostics !== "none" ? 30 : smoke ? 5 : 300,
+    measurementSeconds: diagnostics !== "none" ? 120 : smoke ? 30 : 1800,
   });
 }

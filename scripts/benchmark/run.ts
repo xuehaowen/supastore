@@ -58,6 +58,7 @@ try {
     fulfillment: options.fulfillment,
     rewards: options.rewards,
     trackedStock: options.trackedStock,
+    diagnostics: options.diagnostics,
   };
   const metadata = {
     protocolVersion: benchmarkProtocol.version,
@@ -126,6 +127,11 @@ try {
   > = { backend: [], storefront: [], postgres: [] };
   let successfulOrders = 0;
   async function phase(name: "warmup" | "measurement", seconds: number) {
+    if (options.diagnostics !== "none")
+      writeFileSync(
+        output + "/heap-phase.json",
+        JSON.stringify({ phase: name }),
+      );
     const metrics = new LoadMetrics();
     const started = performance.now();
     const deadline = started + seconds * 1000;

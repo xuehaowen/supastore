@@ -11,6 +11,7 @@ const artifact = v.strictObject({
   phase: v.literal("measurement"),
   environment: v.optional(
     v.strictObject({
+      diagnostics: v.optional(v.string(), "none"),
       platform: v.string(),
       runtime: v.string(),
       products: v.number(),
