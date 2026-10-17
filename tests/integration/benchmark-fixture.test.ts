@@ -9,6 +9,7 @@ import {
   fixtureProfile,
 } from "../../scripts/benchmark/protocol";
 import { seedRepresentativeFixture } from "../../scripts/benchmark/seed";
+import { prepareRepresentativeFixture } from "../../scripts/benchmark/prepare";
 import { validateOrderReferenceCode } from "@/domain/money/reference-code";
 import { buildVariantCombinations } from "@/domain/catalog/variant-combinations";
 import { parseCustomerPage } from "@supastore/contracts/customer-page-validation";
@@ -278,6 +279,44 @@ it("rolls back the entire seed when a later fixture insert conflicts", async () 
       accounts: 0,
       products: 0,
       categories: 1,
+    });
+  } finally {
+    if (isolated) await isolated.end();
+    await admin.unsafe(
+      `DROP DATABASE IF EXISTS "${isolatedName}" WITH (FORCE)`,
+    );
+  }
+}, 30000);
+
+it("checks ownership before migrations and bootstraps only its owned database", async () => {
+  const isolatedName = `supastore_cuj_${Date.now()}`;
+  const isolatedUrl = new URL(url);
+  isolatedUrl.pathname = `/${isolatedName}`;
+  const isolatedToken = randomUUID();
+  let isolated: ReturnType<typeof postgres> | undefined;
+  await admin.unsafe(
+    `CREATE DATABASE "${isolatedName}" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C'`,
+  );
+  try {
+    isolated = postgres(isolatedUrl.href, { onnotice: () => {} });
+    await isolated`create table benchmark_fixture_ownership(token uuid primary key)`;
+    await isolated`insert into benchmark_fixture_ownership values(${isolatedToken})`;
+    const profile = fixtureProfile(100, "shipping", false, false);
+    await expect(
+      prepareRepresentativeFixture(isolatedUrl.href, randomUUID(), profile),
+    ).rejects.toThrow("Benchmark fixture ownership mismatch");
+    expect(
+      (await isolated`select to_regnamespace('drizzle') as schema`)[0]!.schema,
+    ).toBeNull();
+    const report = await prepareRepresentativeFixture(
+      isolatedUrl.href,
+      isolatedToken,
+      profile,
+    );
+    expect(report.counts).toMatchObject({
+      products: 100,
+      variants: 400,
+      orders: 10000,
     });
   } finally {
     if (isolated) await isolated.end();
