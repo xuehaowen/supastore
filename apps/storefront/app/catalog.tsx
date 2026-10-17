@@ -37,7 +37,8 @@ export default async function Catalog({
     await readRequestPage("catalog", locale, query);
   const facetAxes = [...new Set(facets.map((f) => f.attribute))].slice(0, 4);
   const featured = result.items.find((product) => product.coverImageKey);
-  const about = policyPresentation(store, locale, "about")?.content;
+  const branding = showHero ? (await readRequestPage("layout", locale)).store : store;
+  const about = policyPresentation(branding, locale, "about")?.content;
   const introductionCharacters = Array.from(
     (about || t("subtitle")).replace(/\s+/g, " ").trim(),
   );
@@ -64,7 +65,7 @@ export default async function Catalog({
         >
           <div className="catalog-hero-copy">
             <p className="catalog-hero-eyebrow">{t("collection")}</p>
-            <h1>{store?.storeName || t("shop")}</h1>
+            <h1>{branding?.storeName || t("shop")}</h1>
             <p className="catalog-hero-description">{introduction}</p>
             <a className="catalog-hero-link" href="#collection">
               {t("collection")} <span aria-hidden="true">↓</span>
