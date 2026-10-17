@@ -2,6 +2,10 @@ import { afterEach, expect, it, vi } from "vitest";
 import { publicPageMetadata, policyPresentation } from "./page-metadata";
 import { store } from "../../../tests/fixtures/customer-pages";
 import { alternateLinks, publicOrigin, safeJsonLd } from "./seo";
+import robots from "../app/robots";
+it("allows crawling public product assets while keeping private API routes disallowed", () => {
+  expect(robots()).toMatchObject({ rules: { allow: ["/", "/api/assets"], disallow: expect.arrayContaining(["/api/", "/en/orders/"]) } });
+});
 afterEach(() => vi.unstubAllEnvs());
 
 it("brands public metadata and preserves paginated HTTPS canonicals and alternates", () => {
