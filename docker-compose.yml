@@ -48,7 +48,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: backend
-    image: supastore-backend:latest
+    image: ${BACKEND_IMAGE:-supastore-backend:latest}
     restart: unless-stopped
     stop_grace_period: 45s
     expose: ["3000"]
@@ -117,7 +117,7 @@ services:
       target: storefront
       args:
         BACKEND_URL: http://backend:3000
-    image: supastore-storefront:latest
+    image: ${STOREFRONT_IMAGE:-supastore-storefront:latest}
     restart: unless-stopped
     ports:
       - "${PORT:-3000}:3000"
@@ -132,6 +132,7 @@ services:
         condition: service_healthy
 
   migrate:
+    image: ${MIGRATION_IMAGE:-${COMPOSE_PROJECT_NAME:-supastore}-migrate:latest}
     build:
       context: .
       dockerfile: Dockerfile
