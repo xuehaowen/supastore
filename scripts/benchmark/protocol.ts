@@ -6,7 +6,25 @@ export const benchmarkProtocol = Object.freeze({
   measurementSeconds: 1800,
   sampleEverySeconds: 5,
   memoryWindowSeconds: 300,
-  resourceLimits: null,
+  // Local Windows/Next CLI regression envelope, calibrated after d7f2e79.
+  // Not KVM 2 host sizing. Growth breaches remain open even with peak headroom.
+  resourceLimits: Object.freeze({
+    backend: Object.freeze({
+      peakMiB: 768,
+      slopeMiBPerMinute: 0.5,
+      medianGrowthMiB: 16,
+    }),
+    storefront: Object.freeze({
+      peakMiB: 640,
+      slopeMiBPerMinute: 0.5,
+      medianGrowthMiB: 16,
+    }),
+    postgres: Object.freeze({
+      peakMiB: 3072,
+      slopeMiBPerMinute: 1,
+      medianGrowthMiB: 32,
+    }),
+  }),
   requestMix: Object.freeze({
     catalog: 30,
     search: 20,

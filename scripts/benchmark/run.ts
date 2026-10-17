@@ -303,7 +303,7 @@ try {
         : options.mode === "smoke"
           ? "diagnostic-pass"
           : "http-pass",
-    benchmarkAcceptance: "pending-standard-duration-and-resource-calibration",
+    benchmarkAcceptance: "not-certified",
     fatal,
     failures,
     warmup,

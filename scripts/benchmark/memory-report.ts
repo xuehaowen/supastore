@@ -29,17 +29,17 @@ export function analyzeBenchmarkMemory(input: unknown) {
     backend: analyzeMemory(
       parsed.output.services.backend,
       timing,
-      benchmarkProtocol.resourceLimits,
+      benchmarkProtocol.resourceLimits.backend,
     ),
     storefront: analyzeMemory(
       parsed.output.services.storefront,
       timing,
-      benchmarkProtocol.resourceLimits,
+      benchmarkProtocol.resourceLimits.storefront,
     ),
     postgres: analyzeMemory(
       parsed.output.services.postgres,
       timing,
-      benchmarkProtocol.resourceLimits,
+      benchmarkProtocol.resourceLimits.postgres,
     ),
   };
   const results = Object.values(services);
