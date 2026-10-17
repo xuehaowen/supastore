@@ -880,6 +880,55 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
     const retry = await createOrder(losing);
     expect(retry.lifecycleStatus).toBe("unpaid");
   });
+  it("requires delivery details and preserves saved details when completing delivery", async () => {
+    const variant = await product();
+    const order = await createOrder(await prepare(variant.id));
+    await recordReceipt({
+      orderId: order.id,
+      paymentAccountId: bank,
+      amountCents: order.purchaseTotalCents,
+      rawReference: randomUUID(),
+      staffUserId: owner,
+    });
+    await confirmOrder({ orderId: order.id, staffUserId: owner });
+
+    await expect(
+      fulfillOrder({ orderId: order.id, staffUserId: owner }),
+    ).rejects.toThrow("Carrier or manual delivery method is required.");
+    expect(
+      (
+        await client`select lifecycle_status from orders where id=${order.id}`
+      )[0],
+    ).toMatchObject({ lifecycle_status: "confirmed" });
+    expect(
+      await client`select id from order_shipments where order_id=${order.id}`,
+    ).toHaveLength(0);
+
+    await client`update order_fulfillments set carrier='Manual delivery', tracking_number='saved-tracking' where order_id=${order.id}`;
+    const result = await fulfillOrder({
+      orderId: order.id,
+      staffUserId: owner,
+    });
+    expect(result.lifecycleStatus).toBe("completed");
+    expect(
+      (
+        await client`select carrier,tracking_number,status from order_fulfillments where order_id=${order.id}`
+      )[0],
+    ).toMatchObject({
+      carrier: "Manual delivery",
+      tracking_number: "saved-tracking",
+      status: "fulfilled",
+    });
+    expect(
+      await client`select carrier,tracking_number,status from order_shipments where order_id=${order.id}`,
+    ).toEqual([
+      expect.objectContaining({
+        carrier: "Manual delivery",
+        tracking_number: "saved-tracking",
+        status: "delivered",
+      }),
+    ]);
+  });
   it("blocks shortages and consumes stock exactly once at fulfillment", async () => {
     const v = await product();
     await adjustStock({

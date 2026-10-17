@@ -212,15 +212,22 @@ describe.skipIf(!process.env.DATABASE_URL?.endsWith("/supastore_test"))(
       expect(summary.queueCounts.evidenceReviews).toBe(110);
     });
     it("paginates fulfillment and opens orders outside the selected page", async () => {
+      const activeWork = await getAdminOperations({
+        ...input,
+        view: "fulfillment",
+      });
+      expect(activeWork.rows).toEqual([]);
       const receiptWork = await getAdminOperations({
         ...input,
         view: "fulfillment",
+        fulfillmentWork: "all",
       });
       expect(receiptWork.rows).toHaveLength(50);
       const staffWork = await getAdminOperations({
         ...input,
         view: "fulfillment",
         staffUserId: staff,
+        fulfillmentWork: "all",
       });
       expect(staffWork.rows).toEqual([]);
       await db.update(orders).set({ lifecycleStatus: "confirmed" });
