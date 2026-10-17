@@ -4,7 +4,7 @@ import { promisify } from "node:util";
 const execute = promisify(execFile);
 
 /** Async collection does not pause HTTP workers while PowerShell starts. */
-export async function processMemory(pids) {
+export async function processMemory(pids, { privateMemory = false } = {}) {
   if (
     !Array.isArray(pids) ||
     !pids.length ||
@@ -19,7 +19,7 @@ export async function processMemory(pids) {
         "-NoProfile",
         "-NonInteractive",
         "-Command",
-        `@(Get-Process -Id @(${pids.join(",")}) -ErrorAction SilentlyContinue | Select-Object Id,WorkingSet64) | ConvertTo-Json -Compress`,
+        `@(Get-Process -Id @(${pids.join(",")}) -ErrorAction SilentlyContinue | Select-Object Id,WorkingSet64${privateMemory ? ",PrivateMemorySize64" : ""}) | ConvertTo-Json -Compress`,
       ],
       { windowsHide: true, timeout: 4000 },
     );
@@ -32,7 +32,17 @@ export async function processMemory(pids) {
         row.WorkingSet64 <= 0
       )
         throw new Error("Invalid benchmark process memory");
-      return { pid: row.Id, rssBytes: row.WorkingSet64 };
+      if (
+        privateMemory &&
+        (!Number.isSafeInteger(row.PrivateMemorySize64) ||
+          row.PrivateMemorySize64 <= 0)
+      )
+        throw new Error("Invalid benchmark private memory");
+      return {
+        pid: row.Id,
+        rssBytes: row.WorkingSet64,
+        privateBytes: privateMemory ? row.PrivateMemorySize64 : undefined,
+      };
     });
   }
   if (process.platform !== "linux")
@@ -44,7 +54,7 @@ export async function processMemory(pids) {
         const rssBytes = Number(/^VmRSS:\s+(\d+)/m.exec(status)?.[1]) * 1024;
         if (!Number.isSafeInteger(rssBytes) || rssBytes <= 0)
           throw new Error("Invalid benchmark process memory");
-        return { pid, rssBytes };
+        return { pid, rssBytes, privateBytes: undefined };
       } catch (error) {
         if (error.code === "ENOENT") return null;
         throw error;

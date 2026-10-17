@@ -147,9 +147,10 @@ try {
         const pgPids = [
           ...new Set([postmasterPid, ...pgRows.map((row) => row.pid)]),
         ];
-        const records = await processMemory([
-          ...new Set([...appPids, ...pgPids]),
-        ]);
+        const records = await processMemory(
+          [...new Set([...appPids, ...pgPids])],
+          { privateMemory: options.diagnostics !== "none" },
+        );
         const rss = (pid: number) =>
           records.find((row) => row.pid === pid)?.rssBytes;
         const backend = rss(appPids[0]!),
@@ -166,6 +167,19 @@ try {
           storefront,
           postgres: postgresRss,
           databaseProcessCount: pgPids.length,
+          ...(options.diagnostics !== "none" && platform() === "win32"
+            ? {
+                backendPrivateBytes: records.find(
+                  (row) => row.pid === appPids[0],
+                )?.privateBytes,
+                storefrontPrivateBytes: records.find(
+                  (row) => row.pid === appPids[1],
+                )?.privateBytes,
+                postgresPrivateBytes: records
+                  .filter((row) => pgPids.includes(row.pid))
+                  .reduce((sum, row) => sum + (row.privateBytes ?? 0), 0),
+              }
+            : {}),
         };
         appendFileSync(output + "/memory.jsonl", JSON.stringify(record) + "\n");
         if (name === "measurement")
