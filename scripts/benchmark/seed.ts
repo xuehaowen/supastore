@@ -48,7 +48,7 @@ export async function seedRepresentativeFixture(
       $$`);
       await tx`insert into store_settings(store_name,support_email,setup_completed,is_bootstrap_completed,email_verified_at,commerce_policy,created_at,updated_at)
         values('Synthetic benchmark store','support@example.test',true,true,'2025-12-01',
-          ${JSON.stringify({ guestCheckout: true, rewardsEnabled: profile.rewards, rewardRateBasisPoints: 500, rewardEligibleCategoryIds: [], rewardsStartAt: null, rewardsEndAt: null, shippingEnabled: profile.fulfillment !== "pickup", pickupEnabled: profile.fulfillment !== "shipping", deliveryEnabled: false, salesThresholdCents: null, fiscalYearStartMonth: 1 })}::jsonb,'2025-12-01','2025-12-01')`;
+          ${tx.json({ guestCheckout: true, rewardsEnabled: profile.rewards, rewardRateBasisPoints: 500, rewardEligibleCategoryIds: [], rewardsStartAt: null, rewardsEndAt: null, shippingEnabled: profile.fulfillment !== "pickup", pickupEnabled: profile.fulfillment !== "shipping", deliveryEnabled: false, salesThresholdCents: null, fiscalYearStartMonth: 1 })}::jsonb,'2025-12-01','2025-12-01')`;
       await tx`insert into payment_accounts(id,account_name,account_identifier,account_type)
         values(pg_temp.bench_id('bank',1),'Synthetic bank','Synthetic transfer instructions','other')`;
       if (profile.fulfillment !== "pickup")
