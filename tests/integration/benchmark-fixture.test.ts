@@ -77,7 +77,7 @@ it("seeds the standard catalog and established history with balanced ledgers", a
       (select count(*)::int from orders o where lifecycle_status='completed' and purchase_total_cents <> (select coalesce(sum(funded_amount_cents),0) from confirmation_funding f where f.order_id=o.id)) as wrong_funding,
       (select count(*)::int from stock_reservations where status='active' or (status='consumed' and consumed_quantity<>quantity)) as wrong_reservations,
       (select count(*)::int from carts where converted_order_id is null) as unconverted,
-      (select count(*)::int from notification_outbox) as notifications`;
+      (select count(*)::int from outbox_events) as notifications`;
   expect(balance).toEqual({
     wrong_totals: 0,
     wrong_stock: 0,
