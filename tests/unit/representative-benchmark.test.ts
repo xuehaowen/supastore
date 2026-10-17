@@ -19,6 +19,14 @@ const samples = (growthMiBPerMinute = 0) =>
   }));
 
 describe("representative benchmark protocol", () => {
+  it("accepts sub-millisecond timer rounding at coverage boundaries without hiding missing intervals", () => {
+    const complete = samples().slice(0, 360);
+    complete[359]!.elapsedSeconds = 1794.9995235;
+    expect(analyzeMemory(complete, timing, limits).status).toBe("pass");
+    complete[359]!.elapsedSeconds = 1794.998;
+    expect(analyzeMemory(complete, timing, limits).status).toBe("insufficient-data");
+    expect(analyzeMemory(complete.slice(0, -1), timing, limits).status).toBe("insufficient-data");
+  });
   it("fixes the workload and local regression budgets after baseline measurement", () => {
     expect(benchmarkProtocol).toMatchObject({
       version: 1,
