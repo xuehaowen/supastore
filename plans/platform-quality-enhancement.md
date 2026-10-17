@@ -1,6 +1,6 @@
 # Supastore platform quality enhancement plan
 
-Prepared: 2026-10-16, America/Los_Angeles. Status: implementation in progress; Steps 1 and 2 verified locally, Step 3 protocol/analysis and isolated data fixtures verified; representative load pending.
+Prepared: 2026-10-16, America/Los_Angeles. Status: implementation in progress; Steps 1 and 2 verified locally; Step 3 fixtures and production HTTP diagnostic verified; full-duration/browser/race/resource acceptance pending.
 Working branch: `codex/platform-quality`. Baseline: `ec68e0f`.
 
 ## Outcome
@@ -290,8 +290,8 @@ The standard workload and fixture counts are fixed; incomplete sampling and
 uncalibrated budgets cannot pass. A deliberate-growth control and exact-ceiling
 regression are verified across 50 focused tests. The offline memory artifact
 command validates all three services without accepting input budget overrides.
-HTTP/browser load, bounded races, sustained measurements and calibrated resource
-ceilings remain pending; fixture generation is verified below. Step 3 is not complete.
+Fixture generation and HTTP integration are verified below. Browser measurements,
+bounded races, sustained measurements and calibrated ceilings remain pending.
 
 Step 3 fixture generation is now verified against PostgreSQL via `pnpm bench:fixture`:
 100/1,000/10,000 products, four variants and two image records each, and 10,000
@@ -300,5 +300,15 @@ options are covered. Tests verify ledger balances, complete API terms, canonical
 variant keys, wrong-owner/repeated-seed refusal and transaction rollback. The
 synthetic image server returns real deterministic PNG bytes only in benchmark
 mode. Machine-readable fixture metadata is retained locally; no live store or
-external provider is used. Production load-runner integration, concurrent races,
-35-minute measurements and calibrated limits remain open.
+external provider is used. Production HTTP integration is verified below;
+concurrent races, 35-minute measurements and calibrated limits remain open.
+
+Step 3 production HTTP runner connected: [command, artifacts and short diagnostic](../docs/representative-http-benchmark.md).
+`pnpm bench:representative --smoke` uses eight isolated sessions and the fixed mix,
+with fresh production builds and external providers/delivery disabled. The first
+30-second measurement completed 5,552 requests and 273 orders without HTTP or
+stock/amount/cart invariant failures (305 orders including warm-up). Full unit and
+PostgreSQL suites pass: 1,102 and 143 tests. The short memory series is explicitly
+insufficient for stability acceptance. Standard 35-minute results, cold/warm
+browser transfers, bounded race/authorization probes, stock replenishment and
+calibrated limits remain open; Step 3 is not marked complete.

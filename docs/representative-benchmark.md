@@ -1,8 +1,10 @@
 # Representative benchmark protocol and progress
 
 Step 3 is in progress. The versioned protocol, isolated catalog/order fixture
-generator and memory analysis are implemented. These are not an executable
-representative-load runner or capacity evidence.
+generator, production HTTP load runner and memory analysis are implemented.
+The short HTTP diagnostic passes; the full standard-duration run, browser
+measurements, bounded race acceptance and resource calibration remain open.
+These results do not establish production capacity.
 The earlier one-product smoke measurements remain diagnostic only.
 
 ## Fixed workload
@@ -27,7 +29,7 @@ The standard profile has 1,000 products, four variants and two images per produc
 fulfillment and boolean rewards/stock options, returning seed `20261016` and
 expected record counts. The generator below creates these records in owned
 fixtures. General-load stock replenishment remains to be connected to the
-future load runner.
+standard sustained run. See the [HTTP runner and first diagnostic](representative-http-benchmark.md).
 
 ## Reproduce and verify the data fixtures
 
@@ -90,6 +92,14 @@ storage tests retain missing-image 404 behavior. Actual GET bytes and HEAD
 metadata are checked through HTTP. Synthetic texture/compression and local S3
 behavior do not model real product photography, remote storage or mobile latency.
 
+## Production HTTP workload
+
+Use `pnpm bench:representative --smoke` for fresh production builds and a short
+diagnostic, or `pnpm bench:representative` for the fixed 35-minute workload.
+The [runner guide](representative-http-benchmark.md) defines options, artifact
+formats, admission-window throughput and the limits of the initial measurement.
+It reuses the owned fixture lifecycle and disables external delivery/providers.
+
 ## Retained memory analysis
 
 ```sh
@@ -136,11 +146,12 @@ Every report states `scope: memory-only` and `benchmarkAcceptance: not-evaluated
 memory results alone cannot certify traffic mix, throughput, order invariants,
 authorization, browser rendering or production capacity.
 
-The future sampler must document what PostgreSQL memory represents. A postmaster
+The sampler must document what PostgreSQL memory represents. A postmaster
 process alone omits its workers; summing process RSS includes shared pages more
 than once. Retain that measurement method in the full run manifest and use the
-same method for calibration and comparison. This analyzer does not collect or
-establish that measurement method.
+same method for calibration and comparison. The HTTP runner now records its gross
+RSS method in the manifest. The offline analyzer does not establish the
+correctness of the supplied measurements.
 
 ## Verification retained so far
 
@@ -174,6 +185,12 @@ establish that measurement method.
   files and 142 PostgreSQL integration tests in 20 files pass. Root/backend/
   storefront types, repository lint and formatting pass. Independent TypeScript
   review confirmed both fixture contract fixes with no remaining findings.
+- HTTP tooling: RED `ccbc88b` / GREEN `53bd1c6` covers the fixed cycle, bounded
+  histograms and option validation. RED `684868f` / GREEN `9a6b3a9` verifies
+  ownership before migrations. Production integration is committed in `d12fad8`.
+  Fifteen focused tests pass; workload-helper coverage is 96.62% lines, 97.46%
+  branches and 100% functions. Full unit/library suite: 1,102 tests; PostgreSQL
+  suite: 143 tests. Independent final review has no findings.
 
 Focused verification:
 
@@ -183,10 +200,7 @@ pnpm exec vitest run tests/unit/representative-benchmark.test.ts tests/unit/benc
 
 ## Remaining Step 3 work
 
-- Connect the verified fixture generator and opt-in image service to the
-  production benchmark runner; preserve ownership checks and cleanup.
-- Connect HTTP session workers to the fixed mix; retain achieved throughput,
-  latency distributions, expected conflicts and unexpected failures separately.
+- Retain the full standard-duration HTTP workload from a clean committed tree.
 - Capture cold/warm browser HTML/RSC/image transfers and initial JS alongside
   the HTTP load; retain host/runtime/commit/network metadata and memory samples.
 - Run separate last-unit, same-cart, slot-capacity and provider-replay races;
