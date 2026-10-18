@@ -4,6 +4,14 @@ Updated October 18, 2026. Release priorities are usability, fixed storefront des
 
 The latest [Docker launch rehearsal](reliability-acceptance-2026-10-18.md) passes fresh image builds, all 42 migrations through `0041_promotion_limits`, synthetic order creation/retry, database restore and backend-outage recovery. Its 120-second read smoke completes 30,884 requests with zero failures; fixture cleanup is confirmed. The separate [giveaway acceptance](benchmarks/2026-10-18-giveaway-launch.json) records the latest 1,211 unit/library, 163 integration and 52 browser results. Earlier counts below are historical observations. Real store configuration, delivery and target-environment acceptance remain required.
 
+The later [local service verification](local-service-acceptance-2026-10-18.md)
+passes 1,214 unit/library tests, 25 focused integration checks and 33 Docker sales
+browser journeys with real RustFS and the worker enabled. It verifies matching
+database/files restore and restored private access, and fixes browser-facing
+storage signatures. Configured local SMTP authentication succeeds; a real test
+recipient/inbox confirmation remains pending. The configured development schema
+is upgraded to all 42 migrations after a verified backup.
+
 The optional [two-instance recipe](independent-store-instances.md) records independent pickup-only and shipping-only configurations, data separation and both passing manual-payment mobile sales rehearsals. A single store can also enable both methods. These are supported configuration choices, not mandatory launch defaults. Profile acceptance recorded 1,181 unit/library and 45 default browser tests; later dated results below extend that evidence.
 
 ## Usability findings and changes

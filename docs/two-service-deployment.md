@@ -43,8 +43,9 @@ The development and production start launchers default `APP_URL`, `STOREFRONT_OR
 ## Containers
 
 PostgreSQL, RustFS and optional Adminer host ports bind only to `127.0.0.1`.
-Use an SSH tunnel for remote operator access. Only the storefront port is intended
-for public ingress.
+Use an SSH tunnel for remote operator access. Only the storefront port publishes
+application traffic. Browser-facing signed storage links additionally require a
+separately configured reachable storage origin, as described below.
 
 ### Existing PostgreSQL volume correction
 

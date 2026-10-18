@@ -1,0 +1,105 @@
+{
+  "date": "2026-10-18",
+  "timezone": "America/Los_Angeles",
+  "applicationCommit": "4a7dbe0ef0d3528eb7a6db132faebc661233b75a",
+  "redCheckpoint": "7114d33",
+  "composeProject": "supastore-local-verify",
+  "salesAndRecoveryData": "isolated synthetic fixtures",
+  "productionAccepted": false,
+  "smtp": {
+    "configuredOAuth2Authentication": "pass",
+    "realTestEmailSent": false,
+    "realInboxReceiptVerified": false,
+    "pendingInput": "approved test recipient",
+    "localSinkCannotRelay": true,
+    "workerHealthStatus": 200,
+    "durableFailureRetry": "pass",
+    "backendRestartRecovery": "pass",
+    "acceptedAttempt": 2,
+    "sinkMessagesForDelivery": 1,
+    "duplicateAfterTwoFurtherTicks": false
+  },
+  "configuredRustfs": {
+    "authentication": "pass",
+    "missingCatalogBucketCreatedWithPrivateAccess": true,
+    "bothConfiguredBucketsAccessible": true,
+    "writesCopiesAndSignedReads": "pass",
+    "unsignedPrivateReadStatus": 403,
+    "onlyUniqueSyntheticProbeObjectsDeleted": true,
+    "existingObjectsChanged": false
+  },
+  "configuredDevelopmentDatabase": {
+    "localEndpointVerified": true,
+    "backupArchiveVerifiedBeforeUpgrade": true,
+    "backupRetainedLocally": true,
+    "migrationsBefore": 40,
+    "migrationsAfter": 42,
+    "latestFeatureColumnsPresent": true,
+    "financialFingerprintsUnchanged": true,
+    "missingRuntimeRoleCreated": true,
+    "existingCredentialsReset": false,
+    "runtimePasswordSavedOnlyInIgnoredEnv": true,
+    "runtimeConnectionVerified": true,
+    "runtimeSchemaCreationDenied": true,
+    "migrationCommand": "pass",
+    "composeConfiguration": "pass",
+    "configuredStoreContainersStarted": false
+  },
+  "unitAndLibrary": { "filesPassed": 146, "testsPassed": 1214 },
+  "focusedDockerPostgresIntegration": {
+    "filesPassed": 2,
+    "testsPassed": 25,
+    "scope": ["contextual commerce", "credit rewards"],
+    "precededStorageOnlyFix": true
+  },
+  "dockerBrowser": {
+    "testsPassed": 33,
+    "freshFixture": true,
+    "realRustfs": true,
+    "workerEnabled": true,
+    "selectors": [
+      "tests/browser/cuj.spec.ts",
+      "tests/browser/manual-launch-profiles.spec.ts",
+      "tests/browser/contextual-commerce.spec.ts",
+      "tests/browser/boundaries.spec.ts"
+    ]
+  },
+  "sourceAndRestoredApplicationAccess": {
+    "ownerPrivateEvidenceDownloadStatus": 200,
+    "anonymousEvidenceStatus": 401,
+    "unsignedStorageStatus": 403,
+    "inlineCatalogImageStatus": 200,
+    "unknownAssetStatus": 404
+  },
+  "recovery": {
+    "sourceWritesPaused": true,
+    "postgresAndRustfsRestartPersistence": "pass",
+    "databaseFingerprintTables": [
+      "orders",
+      "order_items",
+      "guest_order_sessions",
+      "payment_upload_intents",
+      "payment_receipts",
+      "refund_authorizations",
+      "event_deliveries"
+    ],
+    "databaseFingerprintsMatch": true,
+    "objectsRestored": 5,
+    "objectByteChecksumsMatch": true,
+    "restoredApplicationReadinessStatus": 200,
+    "outboundSuppressed": true,
+    "restoredWorkerEnabled": false,
+    "productionShellProcedureExercised": false
+  },
+  "images": {
+    "backend": "sha256:715b520045dce937eb6b4f06cbea76e4aeb8514425a5091c67c1c616efb0e9d5",
+    "storefront": "sha256:950690c479eb20cbaad76b431cc24a97188571729ea182e903943f0430edebe5",
+    "rustfs": "sha256:97171b3d72cd47dc81000f92ea84de25608bfc35a94c965501afaeb5d99f6035",
+    "backendRebuiltForFix": true,
+    "storefrontReusedWithUnchangedSource": true
+  },
+  "staticChecks": { "typecheck": "pass", "eslint": "pass", "prettier": "pass" },
+  "codeReview": "no remaining confirmed findings",
+  "fixtureCleanupConfirmed": true,
+  "existingLocalDependencyContainersLeftRunning": true
+}

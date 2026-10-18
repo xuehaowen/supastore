@@ -75,6 +75,7 @@ const env = {
   SMS_PROVIDER: "disabled",
   PHONE_VERIFICATION_PROVIDER: "disabled",
   S3_ENDPOINT: "http://127.0.0.1:9009",
+  S3_PUBLIC_ENDPOINT: "http://127.0.0.1:9009",
   S3_ACCESS_KEY_ID: "fixture",
   S3_SECRET_ACCESS_KEY: "fixture",
   S3_BUCKET_PRIVATE: "browser-fixture",
