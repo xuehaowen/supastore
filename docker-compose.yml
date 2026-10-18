@@ -71,6 +71,7 @@ services:
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
       - S3_ENDPOINT=http://rustfs:9000
+      - S3_PUBLIC_ENDPOINT=${S3_PUBLIC_ENDPOINT:-http://localhost:${S3_API_PORT:-9000}}
       - S3_BUCKET_PRIVATE=supastore-private
       - S3_BUCKET_PUBLIC=supastore-public
       - S3_REGION=us-east-1

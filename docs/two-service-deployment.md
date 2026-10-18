@@ -59,6 +59,19 @@ a fresh PostgreSQL 18 instance with the corrected mount, verify application data
 and then switch the application connection. Do not use `down --volumes` or simply
 recreate the old container as a migration procedure.
 
+### Storage access
+
+`S3_ENDPOINT` is the backend's internal object-storage endpoint. Set
+`S3_PUBLIC_ENDPOINT` to the browser-reachable S3 origin when it differs, including
+the port. Browser upload/download signatures use that origin directly; rewriting
+the host of an already signed URL invalidates its signature. Server-side uploads,
+copies and inline catalog image fetches retain the internal endpoint. Without
+`S3_PUBLIC_ENDPOINT`, non-Compose deployments retain the single-endpoint behavior.
+Compose defaults signed browser links to `http://localhost:${S3_API_PORT:-9000}`
+for local development. Public deployment requires a reachable HTTPS storage origin
+and appropriate ingress/CORS configuration; bucket access remains private. Ensure
+both configured buckets exist before uploading catalog images or evidence.
+
 ### Application startup
 
 `docker compose build backend storefront migrate` creates two application images

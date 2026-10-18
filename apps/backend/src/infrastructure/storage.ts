@@ -8,7 +8,7 @@ import {
   CreateBucketCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-export const storage = new S3Client({
+const clientOptions = {
   region: process.env.S3_REGION ?? "us-east-1",
   ...(process.env.S3_ENDPOINT
     ? { endpoint: process.env.S3_ENDPOINT, forcePathStyle: true }
@@ -17,7 +17,16 @@ export const storage = new S3Client({
     accessKeyId: process.env.S3_ACCESS_KEY_ID ?? "",
     secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "",
   },
-});
+};
+export const storage = new S3Client(clientOptions);
+// Browser signatures must use their final host; rewriting a signed URL breaks it.
+const signingStorage = process.env.S3_PUBLIC_ENDPOINT
+  ? new S3Client({
+      ...clientOptions,
+      endpoint: process.env.S3_PUBLIC_ENDPOINT,
+      forcePathStyle: true,
+    })
+  : storage;
 const bucket = () => {
   const name = process.env.S3_BUCKET_PRIVATE ?? process.env.S3_BUCKET;
   if (!name) throw new Error("S3_BUCKET_PRIVATE is required.");
@@ -25,7 +34,7 @@ const bucket = () => {
 };
 export async function presignUpload(key: string, mime: string, size: number) {
   return getSignedUrl(
-    storage,
+    signingStorage,
     new PutObjectCommand({
       Bucket: bucket(),
       Key: key,
@@ -91,7 +100,7 @@ export async function copyCandidate(stagingKey: string, candidateKey: string) {
 }
 export async function presignDownload(key: string) {
   return getSignedUrl(
-    storage,
+    signingStorage,
     new GetObjectCommand({
       Bucket: bucket(),
       Key: key,
@@ -105,11 +114,14 @@ export async function deleteObject(key: string) {
   await storage.send(new DeleteObjectCommand({ Bucket: bucket(), Key: key }));
 }
 
-export async function presignAsset(key: string) {
+export async function presignAsset(
+  key: string,
+  options: { internal?: boolean } = {},
+) {
   const name = process.env.S3_BUCKET_PUBLIC;
   if (!name) throw new Error("S3_BUCKET_PUBLIC is required.");
   return getSignedUrl(
-    storage,
+    options.internal ? storage : signingStorage,
     new GetObjectCommand({ Bucket: name, Key: key }),
     { expiresIn: 300 },
   );

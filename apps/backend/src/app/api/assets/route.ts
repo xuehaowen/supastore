@@ -33,9 +33,9 @@ export async function GET(request: NextRequest) {
     .limit(1);
   if (!image && !logo && !collection)
     return new NextResponse("Not found", { status: 404 });
-  const url = await presignAsset(key);
-  if (request.nextUrl.searchParams.get("inline") !== "1")
-    return NextResponse.redirect(url);
+  const inline = request.nextUrl.searchParams.get("inline") === "1";
+  const url = await presignAsset(key, { internal: inline });
+  if (!inline) return NextResponse.redirect(url);
   try {
     const upstream = await fetch(url, { signal: AbortSignal.timeout(10_000) });
     const type = upstream.headers.get("content-type")?.split(";")[0];

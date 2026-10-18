@@ -20,9 +20,21 @@ async function storageModule(publicEndpoint: string) {
 it("signs browser URLs for the public endpoint while retaining internal storage access", async () => {
   const module = await storageModule("http://localhost:9009");
   for (const [signed, path, expiry] of [
-    [await module.presignDownload("proof.png"), "/private-fixture/proof.png", "60"],
-    [await module.presignUpload("upload.png", "image/png", 100), "/private-fixture/upload.png", "900"],
-    [await module.presignAsset("catalog.png"), "/catalog-fixture/catalog.png", "300"],
+    [
+      await module.presignDownload("proof.png"),
+      "/private-fixture/proof.png",
+      "60",
+    ],
+    [
+      await module.presignUpload("upload.png", "image/png", 100),
+      "/private-fixture/upload.png",
+      "900",
+    ],
+    [
+      await module.presignAsset("catalog.png"),
+      "/catalog-fixture/catalog.png",
+      "300",
+    ],
   ]) {
     const url = new URL(signed!);
     expect(url.origin).toBe("http://localhost:9009");
@@ -34,11 +46,18 @@ it("signs browser URLs for the public endpoint while retaining internal storage 
 
 it("keeps inline image fetches internal even with a public signing endpoint", async () => {
   const module = await storageModule("http://localhost:9009");
-  expect(new URL(await module.presignAsset("catalog.png", { internal: true })).origin).toBe("http://rustfs:9000");
+  expect(
+    new URL(await module.presignAsset("catalog.png", { internal: true }))
+      .origin,
+  ).toBe("http://rustfs:9000");
 });
 
 it("preserves single-endpoint deployments when no public endpoint is configured", async () => {
   const module = await storageModule("");
-  expect(new URL(await module.presignDownload("proof.png")).origin).toBe("http://rustfs:9000");
-  expect(new URL(await module.presignAsset("catalog.png")).origin).toBe("http://rustfs:9000");
+  expect(new URL(await module.presignDownload("proof.png")).origin).toBe(
+    "http://rustfs:9000",
+  );
+  expect(new URL(await module.presignAsset("catalog.png")).origin).toBe(
+    "http://rustfs:9000",
+  );
 });
