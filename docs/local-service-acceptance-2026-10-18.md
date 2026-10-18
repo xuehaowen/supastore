@@ -9,8 +9,13 @@ probes below. No real payment was made.
 
 The `.env` SMTP OAuth2 configuration authenticated successfully using
 `node scripts/check-release-services.mjs --connect`. This probe sends no message.
-Real SMTP acceptance and inbox receipt require an approved test recipient and
-separate receipt confirmation; they are not established by authentication.
+After explicit recipient approval, one labeled test email was sent using the
+configured SMTP settings. SMTP accepted one recipient and rejected none at
+2026-10-18 19:27:03 UTC. The subject is
+`[Supastore test] Local email delivery verification`. Recipient details and the
+provider message identifier remain in ignored local evidence. No customer email
+or transaction was used. Inbox/spam receipt still requires recipient confirmation;
+SMTP acceptance does not establish delivery.
 
 The configured local RustFS service authenticated successfully. Its private
 evidence bucket existed, but its configured catalog bucket was missing. The empty
@@ -98,10 +103,9 @@ production shell procedure against merchant backups. Fixture containers, network
 and volumes were removed; independent inventories found no project resources.
 The user's existing PostgreSQL and RustFS services remain running.
 
-[Machine-readable summary](benchmarks/2026-10-18-local-services.json). Real SMTP
-acceptance/inbox receipt is the only email check still pending an approved test
-recipient. Public deployment, real payment settlement and human usability
-acceptance remain separate.
+[Machine-readable summary](benchmarks/2026-10-18-local-services.json). Recipient
+confirmation of inbox/spam receipt is the only email check still pending. Public
+deployment, real payment settlement and human usability acceptance remain separate.
 
 ## Diagnostic attempts
 
