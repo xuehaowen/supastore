@@ -91,6 +91,9 @@ describe("API route boundaries", () => {
         request("https://shop.test/api/assets?key=image.png&inline=1"),
       );
       expect(response.status).toBe(200);
+      expect(mocks.presignAsset).toHaveBeenCalledWith("image.png", {
+        internal: true,
+      });
       expect(new Uint8Array(await response.arrayBuffer())).toEqual(
         new Uint8Array([1, 2, 3]),
       );
