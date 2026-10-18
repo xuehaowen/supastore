@@ -31,9 +31,6 @@ export async function submitCommerceRule(
           .split(",")
           .map((value) => value.trim().toUpperCase())
           .filter(Boolean);
-      const method = String(form.get("method") ?? "");
-      const pickup = String(form.get("pickupLocationId") ?? "");
-      const variantId = String(form.get("variantId") ?? "");
       const kind = String(form.get("kind"));
       await saveCommerceRule({
         ...actor,
@@ -57,7 +54,7 @@ export async function submitCommerceRule(
                   0,
                   2147483647,
                 ),
-          variantIds: variantId ? [variantId] : [],
+          variantIds: form.getAll("variantIds").map(String),
           ...(kind === "promotion"
             ? {
                 promotionCode: String(form.get("promotionCode") ?? "")
@@ -66,11 +63,11 @@ export async function submitCommerceRule(
               }
             : {}),
           conditions: {
-            fulfillmentMethods: method ? [method] : [],
+            fulfillmentMethods: form.getAll("methods").map(String),
             countries: list("countries"),
             regions: list("regions"),
             postalPrefixes: list("postalPrefixes"),
-            pickupLocationIds: pickup ? [pickup] : [],
+            pickupLocationIds: form.getAll("pickupLocationIds").map(String),
             startsAt: String(form.get("startsAt") ?? "").trim() || null,
             endsAt: String(form.get("endsAt") ?? "").trim() || null,
           },

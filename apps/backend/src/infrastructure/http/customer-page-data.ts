@@ -83,7 +83,7 @@ async function publicStore() {
       pauseMessage: storeSettings.pauseMessage,
       isOrderingEnabled: storeSettings.isOrderingEnabled,
       commercePolicy: storeSettings.commercePolicy,
-      hasContextualRules: sql<boolean>`jsonb_array_length(${storeSettings.commerceRules}) > 0`,
+      hasContextualRules: sql<boolean>`exists (select 1 from jsonb_array_elements(${storeSettings.commerceRules}) r where coalesce(r->>'enabled', 'true') = 'true')`,
     })
     .from(storeSettings)
     .limit(1);

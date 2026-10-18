@@ -16,17 +16,21 @@ export function VariantPicker({
   initialOptions,
   scope = "sale",
   initialSelected,
+  multiple = false,
+  initialSelections = [],
 }: {
   name: string;
   label: string;
   initialOptions: Option[];
   scope?: "sale" | "quota";
   initialSelected?: Option | undefined;
+  multiple?: boolean;
+  initialSelections?: Option[];
 }) {
   const id = useId();
   const [options, setOptions] = useState(initialOptions);
-  const [selected, setSelected] = useState<Option | null>(
-    initialSelected ?? null,
+  const [chosen, setChosen] = useState<Option[]>(
+    multiple ? initialSelections : initialSelected ? [initialSelected] : [],
   );
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
@@ -73,10 +77,11 @@ export function VariantPicker({
       if (active.current === controller) setBusy(false);
     }
   }
-  const visible =
-    selected && !options.some((option) => option.id === selected.id)
-      ? [selected, ...options]
-      : options;
+  const visible = [
+    ...new Map(
+      [...chosen, ...options].map((option) => [option.id, option]),
+    ).values(),
+  ];
   return (
     <div className="grid gap-2">
       <label htmlFor={`${id}-search`}>Search variants</label>
@@ -114,14 +119,19 @@ export function VariantPicker({
         id={`${id}-variant`}
         name={name}
         required
-        value={selected?.id || ""}
-        onChange={(event) =>
-          setSelected(
-            visible.find((option) => option.id === event.target.value) || null,
-          )
+        multiple={multiple}
+        className={multiple ? "h-36" : undefined}
+        value={
+          multiple ? chosen.map((option) => option.id) : chosen[0]?.id || ""
         }
+        onChange={(event) => {
+          const ids = multiple
+            ? Array.from(event.target.selectedOptions, (option) => option.value)
+            : [event.target.value];
+          setChosen(visible.filter((option) => ids.includes(option.id)));
+        }}
       >
-        <option value="">Choose variant</option>
+        {!multiple && <option value="">Choose variant</option>}
         {visible.map((option) => (
           <option key={option.id} value={option.id}>
             {option.label}

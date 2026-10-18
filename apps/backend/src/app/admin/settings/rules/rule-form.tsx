@@ -1,5 +1,5 @@
 "use client";
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import type { CommerceRule } from "@/domain/commerce-evaluation";
 import { submitCommerceRule } from "./actions";
 import { Field, Hidden, Notice } from "@/app/components";
@@ -23,7 +23,18 @@ export function RuleForm({
   const [kind, setKind] = useState(rule?.kind ?? "price");
   const [state, action, pending] = useActionState(submitCommerceRule, {});
   return (
-    <form action={action} className="grid gap-4">
+    <form
+      action={action}
+      className="grid gap-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const data = new FormData(
+          event.currentTarget,
+          (event.nativeEvent as SubmitEvent).submitter,
+        );
+        startTransition(() => action(data));
+      }}
+    >
       <Notice error={state.error} />
       <Hidden name="id" value={id} />
       <Hidden name="version" value={String(version)} />
@@ -56,11 +67,12 @@ export function RuleForm({
       />
       {(kind === "price" || kind === "availability") && (
         <VariantPicker
-          name="variantId"
+          name="variantIds"
           label="Target variant"
           initialOptions={variants}
-          initialSelected={variants.find(
-            (variant) => variant.id === rule?.variantIds[0],
+          multiple
+          initialSelections={variants.filter((variant) =>
+            rule?.variantIds.includes(variant.id),
           )}
         />
       )}
@@ -87,18 +99,30 @@ export function RuleForm({
           </p>
         </>
       )}
-      <label>
-        Fulfillment method
-        <NativeSelect
-          name="method"
-          defaultValue={rule?.conditions.fulfillmentMethods[0] ?? ""}
-        >
-          <option value="">Any method</option>
-          <option value="shipping">Shipping</option>
-          <option value="pickup">Pickup</option>
-          <option value="local_delivery">Local delivery</option>
-        </NativeSelect>
-      </label>
+      <fieldset className="grid gap-2">
+        <legend>Fulfillment methods</legend>
+        <p className="text-sm text-muted-foreground">
+          Leave unchecked for any method.
+        </p>
+        {(
+          [
+            ["shipping", "Shipping"],
+            ["pickup", "Pickup"],
+            ["local_delivery", "Local delivery"],
+          ] as const
+        ).map(([value, label]) => (
+          <label key={value} className="flex items-center gap-2">
+            <Checkbox
+              name="methods"
+              value={value}
+              defaultChecked={
+                rule?.conditions.fulfillmentMethods.includes(value) ?? false
+              }
+            />
+            {label}
+          </label>
+        ))}
+      </fieldset>
       <Field
         name="countries"
         label="Countries"
@@ -122,20 +146,25 @@ export function RuleForm({
         rules require exactly one country. A pickup-location rule requires
         Pickup and no destination conditions.
       </p>
-      <label>
-        Pickup location
-        <NativeSelect
-          name="pickupLocationId"
-          defaultValue={rule?.conditions.pickupLocationIds[0] ?? ""}
-        >
-          <option value="">Any pickup location</option>
-          {locations.map((location) => (
-            <option key={location.id} value={location.id}>
-              {location.name}
-            </option>
-          ))}
-        </NativeSelect>
-      </label>
+      <fieldset className="grid gap-2">
+        <legend>Pickup locations</legend>
+        <p className="text-sm text-muted-foreground">
+          Leave unchecked for any pickup location.
+        </p>
+        {locations.map((location) => (
+          <label key={location.id} className="flex items-center gap-2">
+            <Checkbox
+              name="pickupLocationIds"
+              value={location.id}
+              defaultChecked={
+                rule?.conditions.pickupLocationIds.includes(location.id) ??
+                false
+              }
+            />
+            {location.name}
+          </label>
+        ))}
+      </fieldset>
       <Field
         name="startsAt"
         label="Start (UTC, optional)"
