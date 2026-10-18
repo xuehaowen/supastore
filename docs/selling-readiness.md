@@ -9,8 +9,8 @@ passes 1,214 unit/library tests, 25 focused integration checks and 33 Docker sal
 browser journeys with real RustFS and the worker enabled. It verifies matching
 database/files restore and restored private access, and fixes browser-facing
 storage signatures. Configured local SMTP authentication succeeds, and SMTP
-accepted the single explicitly approved test message; inbox confirmation remains
-pending. The configured development schema
+accepted the single explicitly approved test message, and its recipient confirmed
+Inbox receipt. The configured development schema
 is upgraded to all 42 migrations after a verified backup.
 
 The optional [two-instance recipe](independent-store-instances.md) records independent pickup-only and shipping-only configurations, data separation and both passing manual-payment mobile sales rehearsals. A single store can also enable both methods. These are supported configuration choices, not mandatory launch defaults. Profile acceptance recorded 1,181 unit/library and 45 default browser tests; later dated results below extend that evidence.

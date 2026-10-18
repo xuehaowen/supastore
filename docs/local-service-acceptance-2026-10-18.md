@@ -14,8 +14,9 @@ configured SMTP settings. SMTP accepted one recipient and rejected none at
 2026-10-18 19:27:03 UTC. The subject is
 `[Supastore test] Local email delivery verification`. Recipient details and the
 provider message identifier remain in ignored local evidence. No customer email
-or transaction was used. Inbox/spam receipt still requires recipient confirmation;
-SMTP acceptance does not establish delivery.
+or transaction was used. The approved recipient confirmed receipt in Inbox.
+Delivery evidence therefore includes both SMTP acceptance and recipient
+confirmation for this single test message.
 
 The configured local RustFS service authenticated successfully. Its private
 evidence bucket existed, but its configured catalog bucket was missing. The empty
@@ -103,9 +104,9 @@ production shell procedure against merchant backups. Fixture containers, network
 and volumes were removed; independent inventories found no project resources.
 The user's existing PostgreSQL and RustFS services remain running.
 
-[Machine-readable summary](benchmarks/2026-10-18-local-services.json). Recipient
-confirmation of inbox/spam receipt is the only email check still pending. Public
-deployment, real payment settlement and human usability acceptance remain separate.
+[Machine-readable summary](benchmarks/2026-10-18-local-services.json). The scoped
+local email, RustFS, sales and recovery checks are complete. Public deployment,
+real payment settlement and human usability acceptance remain separate.
 
 ## Diagnostic attempts
 
