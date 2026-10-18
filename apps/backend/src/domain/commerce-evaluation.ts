@@ -110,11 +110,11 @@ export function commerceRules(value: unknown): CommerceRule[] {
   return v.parse(commerceRulesSchema, value ?? []);
 }
 export type ShoppingContext = {
-  fulfillmentType?: (typeof methods)[number];
-  country?: string;
-  region?: string;
-  postalCode?: string;
-  pickupLocationId?: string;
+  fulfillmentType?: (typeof methods)[number] | undefined;
+  country?: string | undefined;
+  region?: string | undefined;
+  postalCode?: string | undefined;
+  pickupLocationId?: string | undefined;
 };
 export function shoppingContext(input: ShoppingContext): ShoppingContext {
   const context = v.parse(
@@ -218,7 +218,7 @@ export function evaluateCommerce(input: {
   items: readonly EvaluationItem[];
   rewardRateBasisPoints: number;
   rewardsEnabled: boolean;
-  promotionCode?: string;
+  promotionCode?: string | undefined;
   now: Date;
 }) {
   if (!Number.isFinite(input.now.getTime()))

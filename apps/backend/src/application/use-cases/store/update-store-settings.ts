@@ -1,6 +1,7 @@
 import { eq, sql, inArray } from "drizzle-orm";
 import * as v from "valibot";
 import { commercePolicySchema } from "@/domain/commerce-policy";
+import { commerceRulesSchema } from "@/domain/commerce-evaluation";
 import { db } from "@/infrastructure/db";
 import {
   storeSettings,
@@ -16,6 +17,7 @@ import {
   NotFoundError,
 } from "@/application/common/errors";
 const schema = v.object({
+  commerceRules: v.optional(commerceRulesSchema),
   commercePolicy: v.optional(commercePolicySchema),
   storeName: v.optional(
     v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(120)),
@@ -113,6 +115,7 @@ export async function updateStoreSettings(input: UpdateStoreSettingsInput) {
           "isTaxInclusive",
           "timezone",
           "commercePolicy",
+          "commerceRules",
         ].some((key) => key in parsed)
           ? sql`${storeSettings.quoteVersion} + 1`
           : settings.quoteVersion,

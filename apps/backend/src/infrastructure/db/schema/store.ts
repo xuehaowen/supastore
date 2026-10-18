@@ -11,6 +11,10 @@ import {
 export const storeSettings = pgTable("store_settings", {
   id: uuid("id").primaryKey().defaultRandom(),
   storeName: text("store_name").notNull(),
+  commerceRules: jsonb("commerce_rules")
+    .$type<import("@/domain/commerce-evaluation").CommerceRule[]>()
+    .notNull()
+    .default([]),
   commercePolicy: jsonb("commerce_policy")
     .$type<import("@/domain/commerce-policy").CommercePolicy>()
     .notNull()

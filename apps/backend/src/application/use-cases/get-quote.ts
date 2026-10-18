@@ -16,6 +16,11 @@ import { allocateRewardFunding } from "@/domain/rewards";
 import { stripeCurrencyIssue } from "@/domain/stripe-currency";
 import { db } from "@/infrastructure/db";
 import {
+  commerceRules,
+  evaluateCommerce,
+  shoppingContext,
+} from "@/domain/commerce-evaluation";
+import {
   cartItems,
   carts,
   deliveryAreas,
@@ -29,6 +34,7 @@ import {
   quotes,
   shippingZones,
   storeSettings,
+  variantStock,
 } from "@/infrastructure/db/schema";
 import { stripeConfiguredFor } from "@/infrastructure/payments/configuration";
 import { eq, inArray, sql } from "drizzle-orm";
@@ -97,6 +103,66 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
         )
     : [];
   const rewardProgramActive = rewardsActive(policy, new Date());
+  const stock = await tx
+    .select()
+    .from(variantStock)
+    .where(
+      inArray(
+        variantStock.variantId,
+        items.map((item) => item.variantId),
+      ),
+    );
+  const context = shoppingContext({
+    fulfillmentType: input.fulfillmentType,
+    ...(input.fulfillmentType === "pickup"
+      ? { pickupLocationId: input.pickupLocationId }
+      : {
+          country: input.shippingAddress.country,
+          region: input.shippingAddress.region,
+          postalCode: input.shippingAddress.postalCode,
+        }),
+  });
+  const evaluation = evaluateCommerce({
+    rules: commerceRules(settings.commerceRules),
+    context,
+    now: new Date(),
+    items: items.map((item) => {
+      const row = rows.find(
+        (row) => row.product_variants.id === item.variantId,
+      );
+      const available = stock.find((s) => s.variantId === item.variantId);
+      return {
+        variantId: item.variantId,
+        quantity: item.quantity,
+        unitPriceCents: row?.product_variants.priceCents ?? 0,
+        isAvailable: Boolean(
+          row?.products.isPublished && row.product_variants.isAvailable,
+        ),
+        availableQuantity: available?.trackingEnabled
+          ? Math.max(0, available.onHand - available.reserved)
+          : null,
+      };
+    }),
+    rewardsEnabled: rewardProgramActive,
+    rewardRateBasisPoints: policy.rewardRateBasisPoints,
+    promotionCode: input.promotionCode,
+  });
+  for (const item of evaluation.items) {
+    if (item.pending)
+      throw new InvariantViolationError(
+        "Choose fulfillment and complete the destination or pickup location before reviewing prices.",
+      );
+    if (!item.available)
+      throw new InvariantViolationError(
+        item.reason === "INSUFFICIENT_STOCK"
+          ? "Insufficient stock. Review your cart."
+          : "An item is not offered for this fulfillment or destination. Review your cart.",
+      );
+  }
+  if (evaluation.reward.pending || evaluation.shipping.pending)
+    throw new InvariantViolationError(
+      "Complete the destination or pickup location to calculate rewards and shipping.",
+    );
   let calculationItems = items.map((item) => {
     const row = rows.find((r) => r.product_variants.id === item.variantId);
     if (!row?.products.isPublished || !row.product_variants.isAvailable)
@@ -111,7 +177,9 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
       title: row.products.title + " — " + variant.title,
       catalogVersion: row.products.quoteVersion,
       quantity: item.quantity,
-      unitPriceCents: variant.priceCents,
+      unitPriceCents: evaluation.items.find(
+        (item) => item.variantId === variant.id,
+      )!.unitPriceCents!,
       taxRateBasisPoints:
         row.products.taxable === false ? 0 : settings.taxRateBasisPoints,
       isTaxInclusive: settings.isTaxInclusive,
@@ -147,6 +215,14 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
     startTime?: string;
     endTime?: string;
   } | null = null;
+  const shippingRules =
+    input.fulfillmentType === "shipping"
+      ? await tx
+          .select()
+          .from(shippingZones)
+          .orderBy(shippingZones.sortOrder, shippingZones.id)
+      : [];
+  let selectedDeliveryArea: typeof deliveryAreas.$inferSelect | undefined;
   if (input.fulfillmentType === "shipping") {
     if (
       !/^[A-Z]{2}$/.test(input.shippingAddress.country) ||
@@ -156,10 +232,7 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
         "Enter your shipping address and country.",
       );
     shippingCents = shippingPrice(
-      await tx
-        .select()
-        .from(shippingZones)
-        .orderBy(shippingZones.sortOrder, shippingZones.id),
+      shippingRules,
       input.shippingAddress.country,
       subtotal,
       input.shippingAddress,
@@ -178,6 +251,7 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
       );
     if (!area)
       throw new InvariantViolationError("Choose an available delivery area.");
+    selectedDeliveryArea = area;
     delivery = quoteDelivery(
       area,
       input.shippingAddress.country,
@@ -231,6 +305,10 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
     discountCents: number;
   } | null = null;
   if (promotionCode) {
+    if (!evaluation.promotion.eligible)
+      throw new InvariantViolationError(
+        "This promotion is not eligible for the selected fulfillment or destination.",
+      );
     const [candidate] = await tx
       .select()
       .from(promotions)
@@ -284,6 +362,31 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
         .externalAmount,
     }));
   }
+  const adjustedSubtotal = subtotal - (promotion?.discountCents ?? 0);
+  if (input.fulfillmentType === "shipping")
+    shippingCents = shippingPrice(
+      shippingRules,
+      input.shippingAddress.country,
+      adjustedSubtotal,
+      input.shippingAddress,
+    );
+  if (selectedDeliveryArea) {
+    shippingCents = quoteDelivery(
+      selectedDeliveryArea,
+      input.shippingAddress.country,
+      input.shippingAddress.postalCode ?? "",
+      adjustedSubtotal,
+    ).rateCents;
+    if (delivery) delivery.rateCents = shippingCents;
+  }
+  if (
+    input.fulfillmentType !== "pickup" &&
+    evaluation.shipping.freeThresholdCents !== null &&
+    adjustedSubtotal >= evaluation.shipping.freeThresholdCents
+  ) {
+    shippingCents = 0;
+    if (delivery) delivery.rateCents = 0;
+  }
   const discountedResult = calculatePurchaseTotal(calculationItems, {
     amountCents: shippingCents,
     taxRateBasisPoints: settings.taxRateBasisPoints,
@@ -315,6 +418,11 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
     calculationItems,
     result: discountedResult,
     terms: {
+      evaluation: {
+        context: evaluation.context,
+        matchedRuleIds: evaluation.matchedRuleIds,
+        rewardRateBasisPoints: evaluation.reward.rateBasisPoints ?? 0,
+      },
       rewardProgramActive,
       settingsVersion: settings.quoteVersion,
       currency: settings.currency,

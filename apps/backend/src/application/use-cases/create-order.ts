@@ -224,7 +224,7 @@ export async function createOrderInTransaction(
           customerId: customer.id,
           verified: true,
           enabled: true,
-          rateBasisPoints: policy.rewardRateBasisPoints,
+          rateBasisPoints: current.terms.evaluation.rewardRateBasisPoints,
           externalAmount: quote.totalPayableCents - creditAppliedCents,
           components: rewardComponents,
         })
