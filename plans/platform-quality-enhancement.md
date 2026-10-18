@@ -516,9 +516,19 @@ Deployment stages: verify Docker locally or on a private server before public
 cutover; public DNS is not required for private verification. The current
 two-instance deployment assumes distinct hostnames and does not support
 independent path-prefixed stores without routing/session work. One instance
-supports both fulfillment methods with shared stock/accounts/orders, but each
-variant currently has one price; method-specific prices and availability need
-additional implementation. See [private verification and domain layout](../docs/independent-store-instances.md#private-verification-and-domain-layout).
+supports both fulfillment methods with shared stock/accounts/orders and optional
+contextual prices and availability through the commerce rules described below.
+See [private verification and domain layout](../docs/independent-store-instances.md#private-verification-and-domain-layout).
 Do not mark public TLS, canonical origins or ingress accepted from private
 Docker results. Select topology from merchant requirements before adding
 path-prefix architecture.
+
+Contextual commerce implementation follows the shared-context design in
+[commerce evaluation](../docs/commerce-evaluation.md): optional typed price,
+availability, reward, shipping-minimum and promotion-eligibility rules within one
+store. Existing inventory/credit reservations and financial workflows retain
+ownership. Migration 0040 adds neutral rule storage. Owner edits are audited and
+revision-fenced; customer estimates are separate from order acceptance. The
+shipping calculation now follows the adjusted-subtotal transaction contract,
+including for existing stores without rules. Updated acceptance is recorded in
+the commerce module documentation; historical counts above remain dated evidence.

@@ -12,6 +12,15 @@ Snapshot the currency/precision, rates, rounding policy, inputs, components and 
 
 ## Generic reward/provenance contract
 
+Contextual commerce evaluation selects prices, offering eligibility, shipping
+minimums, promotion eligibility and a single reward rate before order acceptance.
+Quotes snapshot the settings revision, validated context and matched rule IDs.
+Order creation revalidates these under existing locks; changed terms require
+customer review. Contextual reward rates cannot bypass program, product/category
+or verified-customer eligibility. Accepted snapshots and credit provenance remain
+authoritative after rule changes. See [commerce evaluation](commerce-evaluation.md)
+for precedence and calculation order.
+
 These expansion contracts require migration/use-case acceptance before release. At accepted order creation snapshot policy version, rate (0–10000 basis points), verified linked customer identity and discounted line eligibility. Components include merchandise excluding extracted inclusive tax, tax and fulfillment fees. Let P be their sum and E accepted external funding excluding overpayments. Allocate floor(E*c_i/P), then remaining units by descending remainder, ties lexical component type/immutable ID. P=0 yields zero. Integer minor units and overflow-safe intermediate arithmetic are mandatory. Freeze funding at confirmation; extra receipts do not earn.
 
 Eligible external merchandise basis B earns floor(B*rate/10000), once per order. Completion releases pending entitlement. Original per-component external refunds reduce remaining basis; cumulative target is floor(remainingBasis*originalRate/10000), and incremental reversal is original entitlement minus target minus previously reversed. Tax/fee-only refunds do not reverse merchandise rewards. Later configuration changes do not rewrite accepted snapshots; uncertain source corrections require review.

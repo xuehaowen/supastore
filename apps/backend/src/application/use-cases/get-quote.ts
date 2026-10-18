@@ -222,7 +222,11 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
           .from(shippingZones)
           .orderBy(shippingZones.sortOrder, shippingZones.id)
       : [];
-  const shippingRules = baseShippingRules.map(zone => evaluation.shipping.ruleId ? { ...zone, freeThresholdCents: evaluation.shipping.freeThresholdCents } : zone);
+  const shippingRules = baseShippingRules.map((zone) =>
+    evaluation.shipping.ruleId
+      ? { ...zone, freeThresholdCents: evaluation.shipping.freeThresholdCents }
+      : zone,
+  );
   let selectedDeliveryArea: typeof deliveryAreas.$inferSelect | undefined;
   if (input.fulfillmentType === "shipping") {
     if (
@@ -252,7 +256,9 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
       );
     if (!area)
       throw new InvariantViolationError("Choose an available delivery area.");
-    selectedDeliveryArea = evaluation.shipping.ruleId ? { ...area, freeThresholdCents: evaluation.shipping.freeThresholdCents } : area;
+    selectedDeliveryArea = evaluation.shipping.ruleId
+      ? { ...area, freeThresholdCents: evaluation.shipping.freeThresholdCents }
+      : area;
     delivery = quoteDelivery(
       selectedDeliveryArea,
       input.shippingAddress.country,

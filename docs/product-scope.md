@@ -31,6 +31,12 @@ Accounts, inventory and store credit are existing capabilities. The implementati
 
 ## Merchant defaults
 
+Optional [contextual commerce rules](commerce-evaluation.md) select variant
+prices/availability, reward rates, shipping minimums and existing promotion
+eligibility by fulfillment, destination, pickup location and activation dates.
+They share the store's inventory and customer accounts. The backend revalidates
+accepted terms; previews never reserve stock or issue credit.
+
 Use one store timezone, currency and supported precision. Currency is locked after the first order is created, including free orders. English and Simplified Chinese are initial locales, with fallback to the default locale. Language never changes currency.
 
 Shipping uses configured destinations, flat rates and an optional free-shipping threshold. Pickup/local delivery support optional schedules, order capacity and variant quotas. Customers may browse before selecting fulfillment. Switching fulfillment preserves the cart and explains incompatible items. One fulfillment method per order is supported. Quantity-based partial shipments are tracked separately; completion and reward release wait for all ordered units to be delivered.

@@ -37,22 +37,77 @@ it("round-trips every selected variant and fulfillment method in the owner edito
     expect(selected.some((option) => option.includes(`value="${id}"`))).toBe(
       true,
     );
-  const checked = [...html.matchAll(/<input\b([^>]*)>/g)].map(match => match[1]!).filter(attributes => attributes.includes('name="methods"') && attributes.includes('checked=""'));
+  const checked = [...html.matchAll(/<input\b([^>]*)>/g)]
+    .map((match) => match[1]!)
+    .filter(
+      (attributes) =>
+        attributes.includes('name="methods"') &&
+        attributes.includes('checked=""'),
+    );
   expect(checked).toHaveLength(2);
-  expect(checked.some(attributes => attributes.includes('value="shipping"'))).toBe(true);
-  expect(checked.some(attributes => attributes.includes('value="local_delivery"'))).toBe(true);
+  expect(
+    checked.some((attributes) => attributes.includes('value="shipping"')),
+  ).toBe(true);
+  expect(
+    checked.some((attributes) => attributes.includes('value="local_delivery"')),
+  ).toBe(true);
 });
 it("keeps global availability editable without forcing variant selection", () => {
-  const rule = commerceRules([{ id: crypto.randomUUID(), name: "Global availability", kind: "availability", value: 0, priority: 10, conditions: {} }])[0]!;
-  const html = renderToStaticMarkup(<RuleForm id={rule.id} rule={rule} version={1} variants={[]} locations={[]} />);
-  const selector = [...html.matchAll(/<select\b([^>]*)>/g)].find(match => match[1]!.includes('name="variantIds"'));
+  const rule = commerceRules([
+    {
+      id: crypto.randomUUID(),
+      name: "Global availability",
+      kind: "availability",
+      value: 0,
+      priority: 10,
+      conditions: {},
+    },
+  ])[0]!;
+  const html = renderToStaticMarkup(
+    <RuleForm
+      id={rule.id}
+      rule={rule}
+      version={1}
+      variants={[]}
+      locations={[]}
+    />,
+  );
+  const selector = [...html.matchAll(/<select\b([^>]*)>/g)].find((match) =>
+    match[1]!.includes('name="variantIds"'),
+  );
   expect(selector).toBeDefined();
   expect(selector![1]).not.toContain("required");
 });
 it("preserves every selected pickup location", () => {
-  const ids = ["10000000-0000-4000-8000-000000000001", "10000000-0000-4000-8000-000000000002"];
-  const rule = commerceRules([{ id: crypto.randomUUID(), name: "Pickup rewards", kind: "reward", value: 500, priority: 10, conditions: { fulfillmentMethods: ["pickup"], pickupLocationIds: ids } }])[0]!;
-  const html = renderToStaticMarkup(<RuleForm id={rule.id} rule={rule} version={1} variants={[]} locations={ids.map((id, index) => ({ id, name: `Location ${index}` }))} />);
-  const checked = [...html.matchAll(/<input\b([^>]*)>/g)].map(match => match[1]!).filter(attributes => attributes.includes('name="pickupLocationIds"') && attributes.includes('checked=""'));
+  const ids = [
+    "10000000-0000-4000-8000-000000000001",
+    "10000000-0000-4000-8000-000000000002",
+  ];
+  const rule = commerceRules([
+    {
+      id: crypto.randomUUID(),
+      name: "Pickup rewards",
+      kind: "reward",
+      value: 500,
+      priority: 10,
+      conditions: { fulfillmentMethods: ["pickup"], pickupLocationIds: ids },
+    },
+  ])[0]!;
+  const html = renderToStaticMarkup(
+    <RuleForm
+      id={rule.id}
+      rule={rule}
+      version={1}
+      variants={[]}
+      locations={ids.map((id, index) => ({ id, name: `Location ${index}` }))}
+    />,
+  );
+  const checked = [...html.matchAll(/<input\b([^>]*)>/g)]
+    .map((match) => match[1]!)
+    .filter(
+      (attributes) =>
+        attributes.includes('name="pickupLocationIds"') &&
+        attributes.includes('checked=""'),
+    );
   expect(checked).toHaveLength(2);
 });

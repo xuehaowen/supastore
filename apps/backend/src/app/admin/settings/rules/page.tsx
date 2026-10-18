@@ -74,8 +74,10 @@ export default async function CommerceRulesPage({
             : {}),
           ...(query.country ? { country: query.country } : {}),
           ...(query.region ? { region: query.region } : {}),
+          ...(query.postalCode ? { postalCode: query.postalCode } : {}),
           ...(query.pickup ? { pickupLocationId: query.pickup } : {}),
         },
+        ...(query.promotionCode ? { promotionCode: query.promotionCode } : {}),
       });
     } catch (failure) {
       error = describeFailure(failure, "admin.commerce.preview").message;
@@ -189,6 +191,22 @@ export default async function CommerceRulesPage({
                   </option>
                 ))}
               </NativeSelect>
+            </label>
+            <label>
+              ZIP or postal code
+              <Input
+                name="postalCode"
+                defaultValue={query.postalCode ?? ""}
+                maxLength={24}
+              />
+            </label>
+            <label>
+              Preview promotion code
+              <Input
+                name="promotionCode"
+                defaultValue={query.promotionCode ?? ""}
+                maxLength={40}
+              />
             </label>
             <Button type="submit">Preview rules</Button>
           </form>

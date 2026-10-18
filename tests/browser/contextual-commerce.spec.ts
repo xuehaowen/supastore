@@ -6,6 +6,9 @@ test("owner configures a regional price and customers preview it before acceptin
   admin,
   sql,
 }) => {
+  page.setDefaultTimeout(15000);
+  admin.setDefaultTimeout(15000);
+  await page.setViewportSize({ width: 375, height: 900 });
   const [original] =
     await sql`select commerce_rules from store_settings limit 1`;
   const [variant] =
@@ -31,11 +34,9 @@ test("owner configures a regional price and customers preview it before acceptin
       admin.getByRole("button", { name: "Save rule", exact: true }),
     );
     await expect(admin.getByText(name, { exact: true })).toBeVisible();
-    const addRule = admin
-      .locator("section")
-      .filter({
-        has: admin.getByRole("heading", { name: "Add rule", exact: true }),
-      });
+    const addRule = admin.locator("section").filter({
+      has: admin.getByRole("heading", { name: "Add rule", exact: true }),
+    });
     await addRule
       .getByLabel("Rule name", { exact: true })
       .fill("Preserve this draft");
@@ -65,20 +66,31 @@ test("owner configures a regional price and customers preview it before acceptin
     });
     await expect(preview).toBeVisible();
     await preview.getByLabel("Fulfillment method").selectOption("shipping");
-    await preview.getByLabel("Country code").fill("US");
-    await preview.getByLabel("State or region code").fill("CA");
+    await preview
+      .getByRole("combobox", { name: "Country", exact: true })
+      .selectOption("US");
+    await preview
+      .getByRole("combobox", { name: "State / region", exact: true })
+      .selectOption("CA");
     await preview
       .getByRole("button", { name: "Check options", exact: true })
       .click();
     await expect(preview.getByText(/\$12\.50/).first()).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: test.info().outputPath("commerce-product-mobile.png"),
+      fullPage: true,
+    });
     await page.getByRole("button", { name: "Add to bag", exact: true }).click();
     await page
       .getByRole("link", { name: "Continue to checkout", exact: true })
       .click();
     await page.getByLabel("Street address").fill("1 Synthetic street");
-    await page
-      .getByLabel("State or region", { exact: true })
-      .selectOption("CA");
+    await page.getByLabel("State / region", { exact: true }).selectOption("CA");
     await page
       .getByLabel("Payment method")
       .selectOption({ label: "Demo bank transfer" });
@@ -120,6 +132,44 @@ test("disabled rules preserve the base storefront price and structured offers", 
       await page.locator('script[type="application/ld+json"]').innerText(),
     );
     expect(structured.offers.length).toBeGreaterThan(0);
+  } finally {
+    await sql`update store_settings set commerce_rules=${sql.json(original!.commerce_rules)},quote_version=quote_version+1`;
+  }
+});
+
+test("owner can rename a global availability rule without narrowing its targets", async ({
+  admin,
+  sql,
+}) => {
+  admin.setDefaultTimeout(15000);
+  const [original] =
+    await sql`select commerce_rules from store_settings limit 1`;
+  const rule = {
+    id: randomUUID(),
+    name: "Global availability fixture",
+    kind: "availability",
+    enabled: true,
+    value: 1,
+    priority: 10,
+    variantIds: [],
+    conditions: {},
+  };
+  try {
+    await sql`update store_settings set commerce_rules=${sql.json([rule])},quote_version=quote_version+1`;
+    await admin.goto("/admin/settings/rules");
+    await admin.getByText(rule.name, { exact: true }).click();
+    const editor = admin.locator("details").filter({ hasText: rule.name });
+    await editor
+      .getByLabel("Rule name", { exact: true })
+      .fill("Updated global availability");
+    await clickAction(
+      admin,
+      editor.getByRole("button", { name: "Save rule", exact: true }),
+    );
+    const [saved] =
+      await sql`select commerce_rules from store_settings limit 1`;
+    expect(saved!.commerce_rules[0].variantIds).toEqual([]);
+    expect(saved!.commerce_rules[0].name).toBe("Updated global availability");
   } finally {
     await sql`update store_settings set commerce_rules=${sql.json(original!.commerce_rules)},quote_version=quote_version+1`;
   }

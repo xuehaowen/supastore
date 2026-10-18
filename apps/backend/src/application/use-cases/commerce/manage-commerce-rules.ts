@@ -75,15 +75,13 @@ async function change(input: Actor, replacement: unknown, removeId?: string) {
         updatedAt: new Date(),
       })
       .where(eq(storeSettings.id, store.id));
-    await tx
-      .insert(auditRecords)
-      .values({
-        actorId: input.staffUserId,
-        entityType: "store",
-        entityId: store.id,
-        action: removeId ? "commerce.rule_deleted" : "commerce.rule_saved",
-        details: { ruleId: removeId ?? rule!.id, rule },
-      });
+    await tx.insert(auditRecords).values({
+      actorId: input.staffUserId,
+      entityType: "store",
+      entityId: store.id,
+      action: removeId ? "commerce.rule_deleted" : "commerce.rule_saved",
+      details: { ruleId: removeId ?? rule!.id, rule },
+    });
     return next;
   });
 }

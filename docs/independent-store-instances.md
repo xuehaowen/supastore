@@ -21,9 +21,10 @@ catalog, inventory, customer accounts and orders. This is the recommended
 launch configuration if both methods serve the same business and stock pool.
 If independent stores are required, separate hostnames match the existing
 deployment model; using the proposed paths instead requires explicit routing,
-cookie/session isolation and acceptance work. Each variant currently has one
-price; enabling both methods does not provide fulfillment-specific product
-prices or availability rules.
+cookie/session isolation and acceptance work. Optional
+[contextual commerce rules](commerce-evaluation.md) provide different variant
+prices, availability, reward rates and free-shipping minimums by fulfillment
+method or destination within the shared store.
 
 For two-instance browser verification, use distinct test hostnames resolving to
 the Docker host rather than two ports on `localhost`, since ports do not isolate

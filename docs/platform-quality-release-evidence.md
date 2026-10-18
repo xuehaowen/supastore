@@ -73,3 +73,7 @@ target-host acceptance below open.
 
 No target host, provider account, real backup or production store was changed by
 the isolated local acceptance work.
+
+The later contextual commerce module adds migration 0040 and has separate
+[implementation and acceptance evidence](commerce-evaluation.md#local-acceptance-2026-10-17).
+Earlier migration/test counts in this document describe their recorded revisions.

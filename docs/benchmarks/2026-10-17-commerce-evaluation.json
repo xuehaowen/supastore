@@ -1,0 +1,69 @@
+{
+  "date": "2026-10-17",
+  "timezone": "America/Los_Angeles",
+  "feature": "contextual commerce evaluation",
+  "applicationCommitBeforeEvidence": "aa014cd",
+  "migration": "0040_contextual_commerce",
+  "migrationCount": 41,
+  "syntheticDataOnly": true,
+  "productionAccepted": false,
+  "unitAndLibrary": {
+    "command": "pnpm exec vitest run tests/unit apps/storefront/lib",
+    "filesPassed": 143,
+    "testsPassed": 1203
+  },
+  "postgresIntegration": {
+    "command": "node scripts/test-integration.mjs",
+    "filesPassed": 21,
+    "testsPassed": 152,
+    "includesUpgradeAndConcurrentLastStock": true
+  },
+  "errorContracts": {
+    "command": "pnpm run test:errors",
+    "testsPassed": 75
+  },
+  "evaluatorCoveragePercent": {
+    "statements": 95.55,
+    "branches": 93.33,
+    "functions": 95.45,
+    "lines": 95.34,
+    "unchangedMinimum": 90
+  },
+  "staticChecks": {
+    "typecheck": "pass",
+    "eslint": "pass",
+    "prettier": "pass",
+    "finalCodeReview": "no remaining confirmed findings"
+  },
+  "fullBrowser": {
+    "command": "node scripts/test-storefront.mjs --measure",
+    "testsPassed": 48,
+    "responsiveAccessibilityAudit": "pass",
+    "bundleLimits": "pass",
+    "scope": "Complete implementation before final country-selector and labeled-base-price presentation refinements"
+  },
+  "finalFocusedBrowser": {
+    "command": "node scripts/test-storefront.mjs --measure tests/browser/contextual-commerce.spec.ts",
+    "freshBackendAndStorefrontProductionBuilds": true,
+    "testsPassed": 3,
+    "bundleLimits": "pass",
+    "fixtureCleanupConfirmed": true,
+    "scope": "Final country/state controls, mobile contextual pricing through checkout, failed-save retention, disabled-rule fallback and global availability edits"
+  },
+  "finalBundleGzipBytes": {
+    "home": 160691,
+    "product": 163324,
+    "cart": 169275,
+    "checkout": 172638
+  },
+  "unchangedBundlePolicy": {
+    "maximumBytesPerRoute": 204800,
+    "maximumIncreasePercentFromBaseline": 10
+  },
+  "limitations": [
+    "Local synthetic acceptance does not establish real payment receipt, email delivery, merchant configuration or public ingress acceptance.",
+    "Shipping now qualifies against post-discount merchandise subtotal, including stores without rules.",
+    "Preview does not reserve stock, capacity, credit or promotion usage.",
+    "Customer-group and quantity pricing, multiple currencies, promotion stacking and shipping-only coupon benefits are outside this version."
+  ]
+}

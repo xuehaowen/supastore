@@ -4,6 +4,13 @@ This is a conceptual model, not executable SQL. Add Drizzle schemas and migratio
 
 ## Conventions
 
+`store_settings.commerce_rules` stores at most 100 validated contextual commerce
+rules as a JSON array, separate from `commerce_policy`. Migration 0040 initializes
+existing rows with an empty array. Rule edits increment `quote_version` under the
+settings lock and append audit records. Accepted quotes/orders retain their own
+context, rule identities, selected prices and reward rate; they do not join live
+rules to reconstruct historical financial terms.
+
 Authentication uses shared `user`, `account` and `verification` records, with separate customer `session` and merchant `staff_session` tables. Each session table has independently unique tokens and a cascading user foreign key. Staff sessions have an index on user ID for listing/revocation. Migration 0038 introduces staff sessions without promoting historical customer rows. Password reset revokes both tables; ordinary session operations remain scoped to their realm.
 
 UUID IDs, UTC instants and explicit IANA timezones. Monetary snapshots carry currency and precision. Use restrictive foreign keys for financial history and soft deletion for catalog entities. Administrative changes include actor, reason, revision and request identity. Applied financial history is append-only; projections are derived.
