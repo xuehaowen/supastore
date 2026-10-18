@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   parseCommercePreviewRequest,
   parseCommercePreview,
@@ -13,11 +13,18 @@ import {
   shippingZones,
   storeSettings,
   variantStock,
+  promotions,
+  promotionRedemptions,
 } from "@/infrastructure/db/schema";
 import { InvariantViolationError } from "@/application/common/errors";
 import { commercePolicy, rewardsActive } from "@/domain/commerce-policy";
 import { commerceRules, evaluateCommerce } from "@/domain/commerce-evaluation";
-import { availableFulfillment } from "@supastore/shipping/destination";
+import {
+  availableFulfillment,
+  shippingRequiredFields,
+} from "@supastore/shipping/destination";
+import { shippingQuote } from "@/domain/checkout";
+import { calculateDiscountCents } from "@/domain/promotions";
 
 /** Public estimate only: no customer identity, credit balance or reservation writes. */
 export async function previewCommerce(raw: CommercePreviewRequest) {
@@ -46,7 +53,10 @@ export async function previewCommerce(raw: CommercePreviewRequest) {
     const locations = await tx
       .select({ id: pickupLocation.id, name: pickupLocation.name })
       .from(pickupLocation);
-    const zones = await tx.select({ id: shippingZones.id }).from(shippingZones);
+    const zones = await tx
+      .select()
+      .from(shippingZones)
+      .orderBy(shippingZones.sortOrder, shippingZones.id);
     const areas = await tx
       .select({ id: deliveryAreas.id })
       .from(deliveryAreas)
@@ -70,13 +80,14 @@ export async function previewCommerce(raw: CommercePreviewRequest) {
       )
     )
       throw new InvariantViolationError("Choose an available pickup location.");
+    const now = new Date();
     const evaluation = evaluateCommerce({
       rules,
       context: input.context,
-      now: new Date(),
+      now,
       promotionCode: input.promotionCode,
       rewardRateBasisPoints: policy.rewardRateBasisPoints,
-      rewardsEnabled: rewardsActive(policy, new Date()),
+      rewardsEnabled: rewardsActive(policy, now),
       items: input.items.map((item) => {
         const row = rows.find((row) => row.variant.id === item.variantId)!;
         return {
@@ -89,6 +100,85 @@ export async function previewCommerce(raw: CommercePreviewRequest) {
         };
       }),
     });
+    const code = input.promotionCode?.trim().toUpperCase();
+    if (code && evaluation.promotion.eligible) {
+      const [promotion] = await tx
+        .select()
+        .from(promotions)
+        .where(eq(promotions.code, code));
+      const [usage] =
+        promotion?.usageLimit !== null && promotion
+          ? await tx
+              .select({ count: sql<number>`count(*)::int` })
+              .from(promotionRedemptions)
+              .where(eq(promotionRedemptions.promotionId, promotion.id))
+          : [];
+      if (
+        !promotion?.isActive ||
+        (promotion.startsAt && promotion.startsAt > now) ||
+        (promotion.endsAt && promotion.endsAt <= now) ||
+        (evaluation.merchandiseSubtotalCents !== null &&
+          evaluation.merchandiseSubtotalCents <
+            promotion.minimumSubtotalCents) ||
+        (promotion.usageLimit !== null &&
+          (usage?.count ?? 0) >= promotion.usageLimit)
+      ) {
+        evaluation.promotion.eligible = false;
+        evaluation.promotion.reason = "PROMOTION_INELIGIBLE";
+      } else if (evaluation.merchandiseSubtotalCents !== null) {
+        evaluation.merchandiseSubtotalCents -= calculateDiscountCents(
+          promotion.discountType,
+          promotion.discountValue,
+          evaluation.merchandiseSubtotalCents,
+        );
+      }
+    }
+    const context = evaluation.context;
+    if (context.fulfillmentType === "shipping") {
+      const required = shippingRequiredFields(zones, context.country ?? "");
+      const pending =
+        evaluation.shipping.pending ||
+        !context.country ||
+        (required.region && !context.region) ||
+        (required.postalCode && !context.postalCode) ||
+        evaluation.merchandiseSubtotalCents === null;
+      evaluation.shipping.pending = Boolean(pending);
+      if (!pending) {
+        const selected = shippingQuote(
+          zones.map((zone) =>
+            evaluation.shipping.ruleId
+              ? {
+                  ...zone,
+                  freeThresholdCents: evaluation.shipping.freeThresholdCents,
+                }
+              : zone,
+          ),
+          context.country!,
+          evaluation.merchandiseSubtotalCents!,
+          {
+            ...(context.region ? { region: context.region } : {}),
+            ...(context.postalCode ? { postalCode: context.postalCode } : {}),
+          },
+        );
+        evaluation.shipping.freeThresholdCents = selected.freeThresholdCents;
+        evaluation.shipping.remainingCents = selected.remainingCents;
+      }
+    } else if (
+      context.fulfillmentType === "pickup" ||
+      !context.fulfillmentType
+    ) {
+      evaluation.shipping.remainingCents = null;
+      evaluation.shipping.pending = !context.fulfillmentType;
+    } else if (
+      evaluation.shipping.freeThresholdCents !== null &&
+      evaluation.merchandiseSubtotalCents !== null
+    ) {
+      evaluation.shipping.remainingCents = Math.max(
+        0,
+        evaluation.shipping.freeThresholdCents -
+          evaluation.merchandiseSubtotalCents,
+      );
+    }
     return parseCommercePreview({
       currency: store.currency,
       precision: store.precision,

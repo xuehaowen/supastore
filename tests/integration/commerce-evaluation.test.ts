@@ -304,10 +304,21 @@ describe.skipIf(!server)("contextual commerce PostgreSQL", () => {
     ).rejects.toThrow(/unavailable/i);
   });
   it("previews the same post-discount shipping qualification as checkout and rejects invalid promotions", async () => {
-    const result = await previewCommerce({ items: [{ variantId: variant, quantity: 2 }], context: { fulfillmentType: "shipping", country: "US", region: "CA" }, promotionCode: "SAVE" });
-    expect(result.evaluation.shipping).toMatchObject({ freeThresholdCents: 2000, remainingCents: 500 });
+    const result = await previewCommerce({
+      items: [{ variantId: variant, quantity: 2 }],
+      context: { fulfillmentType: "shipping", country: "US", region: "CA" },
+      promotionCode: "SAVE",
+    });
+    expect(result.evaluation.shipping).toMatchObject({
+      freeThresholdCents: 2000,
+      remainingCents: 500,
+    });
     expect(result.evaluation.merchandiseSubtotalCents).toBe(1500);
-    const invalid = await previewCommerce({ items: [{ variantId: variant, quantity: 1 }], context: { fulfillmentType: "shipping", country: "US", region: "CA" }, promotionCode: "DOESNOTEXIST" });
+    const invalid = await previewCommerce({
+      items: [{ variantId: variant, quantity: 1 }],
+      context: { fulfillmentType: "shipping", country: "US", region: "CA" },
+      promotionCode: "DOESNOTEXIST",
+    });
     expect(invalid.evaluation.promotion.eligible).toBe(false);
   });
   it("edits individual rules with revision fencing, reference validation and owner authorization", async () => {

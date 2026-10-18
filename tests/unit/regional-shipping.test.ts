@@ -21,8 +21,23 @@ const postal = {
 };
 describe("regional shipping", () => {
   it("returns the selected threshold and remaining amount alongside the authoritative charge", () => {
-    expect(shippingQuote([{ ...west, freeThresholdCents: 2000 }, fallback], "US", 1500, { region: "CA" })).toMatchObject({ amountCents: 800, freeThresholdCents: 2000, remainingCents: 500 });
-    expect(shippingQuote([{ ...west, freeThresholdCents: 2000 }], "US", 2000, { region: "CA" })).toMatchObject({ amountCents: 0, remainingCents: 0 });
+    expect(
+      shippingQuote(
+        [{ ...west, freeThresholdCents: 2000 }, fallback],
+        "US",
+        1500,
+        { region: "CA" },
+      ),
+    ).toMatchObject({
+      amountCents: 800,
+      freeThresholdCents: 2000,
+      remainingCents: 500,
+    });
+    expect(
+      shippingQuote([{ ...west, freeThresholdCents: 2000 }], "US", 2000, {
+        region: "CA",
+      }),
+    ).toMatchObject({ amountCents: 0, remainingCents: 0 });
   });
   it("uses the same region policy for setup and checkout", () => {
     expect(validShippingRegion("US", "CA")).toBe(true);

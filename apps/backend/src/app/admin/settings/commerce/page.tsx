@@ -1,4 +1,5 @@
 import { CategoryPicker } from "@/app/admin/category-picker";
+import Link from "next/link";
 import { CurrencyField } from "@/app/admin/currency-field";
 import { db } from "@/infrastructure/db";
 import { storeSettings, categories } from "@/infrastructure/db/schema";
@@ -40,9 +41,9 @@ export default async function CommerceSettings({
       <main tabIndex={-1} id="admin-content" className="admin">
         <h1>Commerce policies</h1>
         <p>
-          <a href="/admin/settings/rules">
+          <Link href="/admin/settings/rules">
             Manage contextual prices, availability, rewards and promotion rules
-          </a>
+          </Link>
         </p>
         <Notice error={query.error} />
         {query.saved && (

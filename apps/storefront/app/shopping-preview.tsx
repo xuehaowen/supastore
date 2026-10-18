@@ -1,5 +1,11 @@
 "use client";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import {
   parseCommercePreview,
   type CommercePreview,
@@ -35,17 +41,17 @@ export function ShoppingPreview({
   const callback = useRef(onEvaluation);
   callback.current = onEvaluation;
   const itemKey = JSON.stringify(items);
-  useEffect(() => {
+  const cancel = useCallback(() => {
     sequence.current++;
     controller.current?.abort();
+  }, []);
+  useEffect(() => {
+    cancel();
     setPreview(null);
     callback.current?.(null);
     setBusy(false);
-    return () => {
-      sequence.current++;
-      controller.current?.abort();
-    };
-  }, [itemKey]);
+    return cancel;
+  }, [itemKey, cancel]);
   function invalidate() {
     sequence.current++;
     controller.current?.abort();

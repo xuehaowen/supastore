@@ -1,6 +1,6 @@
 import { InvariantViolationError } from "@/domain/errors";
 import { validShippingRegion } from "@supastore/shipping/destination";
-export function shippingPrice(
+export function shippingQuote(
   zones: {
     countryCodes: string[] | null;
     regionCodes?: string[];
@@ -39,9 +39,20 @@ export function shippingPrice(
   const zone = matches.sort((a, b) => specificity(b) - specificity(a))[0];
   if (!zone)
     throw new InvariantViolationError("We do not ship to this destination.");
-  return zone.freeThresholdCents !== null && subtotal >= zone.freeThresholdCents
-    ? 0
-    : zone.rateCents;
+  return {
+    amountCents:
+      zone.freeThresholdCents !== null && subtotal >= zone.freeThresholdCents
+        ? 0
+        : zone.rateCents,
+    freeThresholdCents: zone.freeThresholdCents,
+    remainingCents:
+      zone.freeThresholdCents === null
+        ? null
+        : Math.max(0, zone.freeThresholdCents - subtotal),
+  };
+}
+export function shippingPrice(...args: Parameters<typeof shippingQuote>) {
+  return shippingQuote(...args).amountCents;
 }
 export function normalizeShippingPostal(value: string) {
   return value.trim().toUpperCase().replace(/[\s-]/g, "");
