@@ -17,6 +17,7 @@ import { CommerceSummary } from "./commerce-summary";
 import { Button } from "@supastore/ui/button";
 import { Input } from "@supastore/ui/input";
 import { NativeSelect } from "@supastore/ui/native-select";
+import { countryOptions, stateOptions } from "@supastore/shipping/destination";
 
 export function ShoppingPreview({
   items,
@@ -32,6 +33,7 @@ export function ShoppingPreview({
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [method, setMethod] = useState("");
+  const [country, setCountry] = useState("");
   const [options, setOptions] = useState<Pick<
     CommercePreview,
     "methods" | "locations"
@@ -189,12 +191,39 @@ export function ShoppingPreview({
         ) : (
           <>
             <label className="grid gap-1 text-sm">
-              {zh ? "国家代码" : "Country code"}
-              <Input name="country" placeholder="US" maxLength={2} />
+              {zh ? "国家" : "Country"}
+              <NativeSelect
+                name="country"
+                aria-label={zh ? "国家" : "Country"}
+                value={country}
+                onChange={(event) => setCountry(event.target.value)}
+              >
+                <option value="">{zh ? "请选择国家" : "Choose country"}</option>
+                {countryOptions(locale).map((option) => (
+                  <option key={option.code} value={option.code}>
+                    {option.name}
+                  </option>
+                ))}
+              </NativeSelect>
             </label>
             <label className="grid gap-1 text-sm">
-              {zh ? "州或地区代码" : "State or region code"}
-              <Input name="region" placeholder="CA" maxLength={12} />
+              {zh ? "州 / 地区" : "State / region"}
+              {country === "US" ? (
+                <NativeSelect
+                  name="region"
+                  aria-label={zh ? "州 / 地区" : "State / region"}
+                  defaultValue=""
+                >
+                  <option value="">{zh ? "请选择州" : "Choose state"}</option>
+                  {stateOptions(locale).map(([code, name]) => (
+                    <option key={code} value={code}>
+                      {name}
+                    </option>
+                  ))}
+                </NativeSelect>
+              ) : (
+                <Input key={country} name="region" maxLength={12} />
+              )}
             </label>
             <label className="grid gap-1 text-sm">
               {zh ? "邮政编码" : "ZIP or postal code"}
