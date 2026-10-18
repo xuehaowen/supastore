@@ -69,9 +69,10 @@ export function ProductPurchase({
     (activeImageKey
       ? product.images.find((i) => i.s3Key === activeImageKey)
       : null) || variantImage;
-  const effectivePrice = hasContextualRules
-    ? evaluated?.unitPriceCents
-    : current?.priceCents;
+  const effectivePrice =
+    hasContextualRules && evaluated
+      ? evaluated.unitPriceCents
+      : current?.priceCents;
   const price =
     effectivePrice !== null && effectivePrice !== undefined
       ? new Intl.NumberFormat(locale, {
@@ -269,6 +270,13 @@ export function ProductPurchase({
             </fieldset>
           )}
           <p role="status" aria-live="polite" className="text-lg font-medium">
+            {hasContextualRules && !evaluated && (
+              <small className="block text-xs text-muted-foreground">
+                {locale === "zh"
+                  ? "基础价格，选项可能影响售价"
+                  : "Base price; options may change price"}
+              </small>
+            )}
             {current?.title} · {price}
             {!canPurchase ? ` · ${labels.unavailable}` : ""}
           </p>

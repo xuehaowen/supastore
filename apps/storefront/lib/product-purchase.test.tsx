@@ -14,7 +14,13 @@ const props = {
   },
 };
 it("keeps the labeled base price visible before optional shopping context is selected", () => {
-  const html = renderToStaticMarkup(<ProductPurchase {...props} product={pages.product.purchasable} hasContextualRules />);
+  const html = renderToStaticMarkup(
+    <ProductPurchase
+      {...props}
+      product={pages.product.purchasable}
+      hasContextualRules
+    />,
+  );
   expect(html).toContain("$5.00");
   expect(html).toContain("Base price; options may change price");
 });
