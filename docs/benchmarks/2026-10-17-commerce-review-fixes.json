@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-17",
+  "timezone": "America/Los_Angeles",
+  "applicationCommit": "e52961f1a6b47327f981d605313d181cc35c1919",
+  "redCheckpoint": "2c99efb",
+  "syntheticDataOnly": true,
+  "productionAccepted": false,
+  "additionalMigrationRequired": false,
+  "regressions": [
+    "Promotion renames atomically preserve enabled and disabled restrictions, advance the settings revision, reject stale rule edits and allow safe code reuse.",
+    "Incomplete promotion context displays a pending prompt in English and Chinese rather than definitive rejection.",
+    "Local-delivery preview rejects unsupported destinations and keeps missing or overlapping delivery-area qualification pending. Unique-area thresholds agree with discounted checkout."
+  ],
+  "unitAndLibrary": { "filesPassed": 143, "testsPassed": 1204 },
+  "postgresIntegration": { "filesPassed": 21, "testsPassed": 155 },
+  "browser": {
+    "command": "node scripts/test-storefront.mjs --measure",
+    "testsPassed": 49,
+    "freshProductionBuilds": true,
+    "responsiveAccessibilityAudit": "pass",
+    "fixtureCleanupConfirmed": true
+  },
+  "staticChecks": { "typecheck": "pass", "eslint": "pass", "prettier": "pass" },
+  "deliveryDomainCoveragePercent": {
+    "statements": 92.72,
+    "branches": 95.23,
+    "functions": 100,
+    "lines": 92.59,
+    "unchangedMinimum": 90
+  },
+  "bundle": {
+    "status": "pass",
+    "unchangedMaximumBytesPerRoute": 204800,
+    "unchangedMaximumIncreasePercent": 10,
+    "gzipBytes": {
+      "home": 160692,
+      "product": 163329,
+      "cart": 169313,
+      "checkout": 172667
+    }
+  },
+  "codeReview": "no remaining confirmed findings"
+}

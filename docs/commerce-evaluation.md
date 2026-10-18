@@ -123,3 +123,12 @@ for scope and measurements.
 
 These checks use isolated synthetic data. They do not establish public deployment,
 real email delivery, payment receipt or acceptance of a merchant's actual rules.
+
+### Review follow-up (2026-10-17)
+
+The promotion-rename, pending-promotion presentation and local-delivery preview
+fixes passed 1,204 unit/library tests, 155 PostgreSQL integration tests and all 49
+production-build browser cases. Type checking, lint, formatting and unchanged
+bundle budgets pass. The shared delivery-domain validation exceeds the unchanged
+90% coverage threshold. No additional database migration is required. See the
+[review-fix acceptance record](benchmarks/2026-10-17-commerce-review-fixes.json).
