@@ -1,6 +1,73 @@
 import { randomUUID } from "node:crypto";
 import { test, expect, clickAction } from "./fixtures";
 
+test("customers can complete a pending promotion destination without seeing a rejection", async ({
+  page,
+  sql,
+}) => {
+  page.setDefaultTimeout(15000);
+  const [original] =
+    await sql`select commerce_rules from store_settings limit 1`;
+  const code = "REGION_" + randomUUID().slice(0, 8).toUpperCase();
+  const rule = {
+    id: randomUUID(),
+    name: "Regional promotion fixture",
+    kind: "promotion",
+    enabled: true,
+    value: 0,
+    priority: 10,
+    promotionCode: code,
+    conditions: { countries: ["US"], regions: ["WA"] },
+  };
+  try {
+    await sql`insert into promotions(code,name,discount_type,discount_value) values(${code},'Regional preview','fixed',100)`;
+    await sql`update store_settings set commerce_rules=${sql.json([rule])},quote_version=quote_version+1`;
+    await page.goto("/en/products/studio-cup");
+    const preview = page.getByRole("region", {
+      name: "Shopping options",
+      exact: true,
+    });
+    await preview.getByLabel("Fulfillment method").selectOption("shipping");
+    await preview
+      .getByRole("combobox", { name: "Country", exact: true })
+      .selectOption("US");
+    await preview.getByLabel("Promotion code (optional)").fill(code);
+    await preview
+      .getByRole("button", { name: "Check options", exact: true })
+      .click();
+    await expect(
+      preview.getByText(
+        "Complete your destination or pickup location to check this promotion.",
+      ),
+    ).toBeVisible();
+    await expect(
+      preview.getByText(
+        "This promotion is not eligible for the selected options.",
+      ),
+    ).toHaveCount(0);
+    await preview
+      .getByRole("combobox", { name: "State / region", exact: true })
+      .selectOption("WA");
+    await preview
+      .getByRole("button", { name: "Check options", exact: true })
+      .click();
+    await expect(preview.getByText("Merchandise estimate:")).toBeVisible();
+    await expect(
+      preview.getByText(
+        "Complete your destination or pickup location to check this promotion.",
+      ),
+    ).toHaveCount(0);
+    await expect(
+      preview.getByText(
+        "This promotion is not eligible for the selected options.",
+      ),
+    ).toHaveCount(0);
+  } finally {
+    await sql`update store_settings set commerce_rules=${sql.json(original!.commerce_rules)},quote_version=quote_version+1`;
+    await sql`delete from promotions where code=${code}`;
+  }
+});
+
 test("owner configures a regional price and customers preview it before accepting checkout", async ({
   page,
   admin,

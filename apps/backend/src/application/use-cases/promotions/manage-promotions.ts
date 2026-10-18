@@ -1,4 +1,5 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import { commerceRules } from "@/domain/commerce-evaluation";
 import { db } from "@/infrastructure/db";
 import {
   auditRecords,
@@ -63,7 +64,11 @@ export async function savePromotion(input: PromotionInput) {
     throw new DomainError("Promotion end must be after its start.");
   return db.transaction(async (tx) => {
     await verifyStaffInTransaction(tx, input.staffUserId, "owner");
-    await tx.select().from(storeSettings).for("update");
+    const [settings] = await tx.select().from(storeSettings).for("update");
+    const [previous] = id
+      ? await tx.select().from(promotions).where(eq(promotions.id, id))
+      : [];
+    if (id && !previous) throw new NotFoundError("Promotion not found.");
     const [duplicate] = await tx
       .select()
       .from(promotions)
@@ -90,6 +95,37 @@ export async function savePromotion(input: PromotionInput) {
           .returning()
       : await tx.insert(promotions).values(values).returning();
     if (!saved) throw new NotFoundError("Promotion not found.");
+    if (settings && previous && previous.code !== code) {
+      const rules = commerceRules(settings.commerceRules);
+      const affected = rules.filter(
+        (rule) =>
+          rule.kind === "promotion" && rule.promotionCode === previous.code,
+      );
+      if (affected.length) {
+        await tx
+          .update(storeSettings)
+          .set({
+            commerceRules: rules.map((rule) =>
+              affected.includes(rule) ? { ...rule, promotionCode: code } : rule,
+            ),
+            quoteVersion: sql`${storeSettings.quoteVersion} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(eq(storeSettings.id, settings.id));
+        await tx.insert(auditRecords).values({
+          entityType: "store",
+          entityId: settings.id,
+          actorId: input.staffUserId,
+          action: "commerce.promotion_renamed",
+          details: {
+            promotionId: saved.id,
+            previousCode: previous.code,
+            code,
+            ruleIds: affected.map((rule) => rule.id),
+          },
+        });
+      }
+    }
     await tx.insert(auditRecords).values({
       entityType: "promotion",
       entityId: saved.id,

@@ -24,6 +24,7 @@ import {
   shippingRequiredFields,
 } from "@supastore/shipping/destination";
 import { shippingQuote } from "@/domain/checkout";
+import { matchesDeliveryDestination } from "@/domain/delivery";
 import { calculateDiscountCents } from "@/domain/promotions";
 
 /** Public estimate only: no customer identity, credit balance or reservation writes. */
@@ -58,7 +59,7 @@ export async function previewCommerce(raw: CommercePreviewRequest) {
       .from(shippingZones)
       .orderBy(shippingZones.sortOrder, shippingZones.id);
     const areas = await tx
-      .select({ id: deliveryAreas.id })
+      .select()
       .from(deliveryAreas)
       .where(eq(deliveryAreas.isActive, true));
     const methods = availableFulfillment(policy, {
@@ -169,15 +170,38 @@ export async function previewCommerce(raw: CommercePreviewRequest) {
     ) {
       evaluation.shipping.remainingCents = null;
       evaluation.shipping.pending = !context.fulfillmentType;
-    } else if (
-      evaluation.shipping.freeThresholdCents !== null &&
-      evaluation.merchandiseSubtotalCents !== null
-    ) {
-      evaluation.shipping.remainingCents = Math.max(
-        0,
-        evaluation.shipping.freeThresholdCents -
-          evaluation.merchandiseSubtotalCents,
-      );
+    } else {
+      evaluation.shipping.remainingCents = null;
+      if (!context.country || !context.postalCode) {
+        evaluation.shipping.pending = true;
+      } else {
+        const matching = areas.filter((area) =>
+          matchesDeliveryDestination(
+            area,
+            context.country!,
+            context.postalCode!,
+          ),
+        );
+        if (!matching.length)
+          throw new InvariantViolationError(
+            "Local delivery is not available to this destination.",
+          );
+        // Checkout chooses an area explicitly; do not guess between overlapping areas.
+        evaluation.shipping.pending =
+          evaluation.shipping.pending ||
+          matching.length !== 1 ||
+          evaluation.merchandiseSubtotalCents === null;
+        if (!evaluation.shipping.pending) {
+          const threshold = evaluation.shipping.ruleId
+            ? evaluation.shipping.freeThresholdCents
+            : matching[0]!.freeThresholdCents;
+          evaluation.shipping.freeThresholdCents = threshold;
+          evaluation.shipping.remainingCents =
+            threshold === null
+              ? null
+              : Math.max(0, threshold - evaluation.merchandiseSubtotalCents!);
+        }
+      }
     }
     return parseCommercePreview({
       currency: store.currency,

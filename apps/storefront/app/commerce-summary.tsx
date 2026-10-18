@@ -60,12 +60,20 @@ export function CommerceSummary({
               : "Free-shipping minimum reached."}
         </p>
       )}
-      {!e.promotion.eligible && (
+      {e.promotion.pending ? (
         <p>
           {zh
-            ? "优惠码不适用于当前配送方式或目的地。"
-            : "This promotion is not eligible for the selected options."}
+            ? "请补全目的地或自提地点以检查此优惠码。"
+            : "Complete your destination or pickup location to check this promotion."}
         </p>
+      ) : (
+        !e.promotion.eligible && (
+          <p>
+            {zh
+              ? "优惠码不适用于当前配送方式或目的地。"
+              : "This promotion is not eligible for the selected options."}
+          </p>
+        )
       )}
       <p className="text-xs text-muted-foreground">
         {zh

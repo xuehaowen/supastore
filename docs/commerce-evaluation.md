@@ -34,6 +34,11 @@ allowlist for their code, including their activation windows. Disabling the last
 restriction removes that additional condition; the promotion's own activation,
 minimum and redemption limits still apply.
 
+Renaming a promotion through the Promotions editor moves its enabled and disabled
+eligibility rules to the new code in the same transaction. The settings revision
+advances and the change is audited. Reusing the old code for another promotion
+does not inherit those rules.
+
 Store currency/precision remain shared. Amounts use integer minor units and
 reward rates use basis points: 500 means 5%. Rules do not convert currencies.
 
@@ -59,6 +64,10 @@ private/no-store estimate. Caller-selected prices, reward rates, customer IDs an
 credit amounts are not authoritative inputs. Unpublished product details and raw
 rules are not returned. Reward rates are estimates, not a promise that a guest
 has earned credit. Scheduling and final funding remain checkout responsibilities.
+Missing promotion context is shown as pending eligibility, rather than rejection.
+Local-delivery qualification requires a supported country/postal destination and
+one matching active delivery area. Missing details or overlapping areas keep
+qualification pending until checkout; unsupported destinations are rejected.
 
 ## Calculation and acceptance
 

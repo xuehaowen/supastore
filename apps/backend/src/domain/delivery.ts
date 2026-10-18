@@ -118,6 +118,23 @@ export function validateDeliveryArea(input: Omit<DeliveryArea, "id">) {
     slotCapacity,
   };
 }
+export function matchesDeliveryDestination(
+  area: DeliveryArea | undefined,
+  country: string,
+  postalCode: string,
+) {
+  const countryCode = country.trim().toUpperCase();
+  const postal = normalizePostal(postalCode);
+  return Boolean(
+    area?.isActive &&
+    area.countryCodes.includes(countryCode) &&
+    /^[A-Z0-9]{1,12}$/.test(postal) &&
+    (!area.postalPrefixes.length ||
+      area.postalPrefixes.some((prefix) =>
+        postal.startsWith(normalizePostal(prefix)),
+      )),
+  );
+}
 export function quoteDelivery(
   area: DeliveryArea | undefined,
   country: string,
@@ -126,16 +143,7 @@ export function quoteDelivery(
 ) {
   const countryCode = country.trim().toUpperCase();
   const postal = normalizePostal(postalCode);
-  if (
-    !area?.isActive ||
-    !area.countryCodes.includes(countryCode) ||
-    !postal ||
-    !/^[A-Z0-9]{1,12}$/.test(postal) ||
-    (area.postalPrefixes.length &&
-      !area.postalPrefixes.some((prefix) =>
-        postal.startsWith(normalizePostal(prefix)),
-      ))
-  )
+  if (!area || !matchesDeliveryDestination(area, country, postalCode))
     throw new InvariantViolationError(
       "Local delivery is not available to this destination.",
     );
