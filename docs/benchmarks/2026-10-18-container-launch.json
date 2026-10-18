@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-18",
+  "timezone": "America/Los_Angeles",
+  "applicationCommit": "ee9777ecdf27da51679183f7cdca1eee2c57fe95",
+  "command": "node scripts/test-container-acceptance.mjs",
+  "runnerExitCode": 0,
+  "freshImageBuilds": true,
+  "environment": "local Linux containers on Docker Desktop",
+  "dockerEngine": "29.7.2",
+  "nodeVersion": "v22.23.3",
+  "composeProject": "supastore-codex-smoke",
+  "syntheticDataOnly": true,
+  "workerEnabled": false,
+  "status": "pass",
+  "smokeFlows": [
+    "readiness",
+    "catalog",
+    "api-keepalive",
+    "cart-cookie",
+    "quote",
+    "order-idempotency",
+    "private-order-cookie",
+    "ownership",
+    "csrf",
+    "admin-assets"
+  ],
+  "upgrade": {
+    "baselineMigrationIndex": 28,
+    "latestAppliedCount": 42,
+    "latestMigration": "0041_promotion_limits",
+    "restoredBeforeUpgrade": true,
+    "preserved": ["catalog", "variants", "store", "payment-accounts"]
+  },
+  "databaseRestore": {
+    "fingerprintsMatch": true,
+    "tables": ["orders", "order_items", "guest_order_sessions"],
+    "migrationRetry": "pass",
+    "productionShellProcedureExercised": false,
+    "objectStorageRestored": false
+  },
+  "backendOutage": {
+    "readinessStatus": 502,
+    "recoveredWithin30Seconds": true,
+    "recoveryElapsedMs": 975.396200000001,
+    "recoveryAttempts": 1,
+    "deadlineMs": 30000,
+    "measurementStartsAfterDockerStartReturns": true
+  },
+  "readSmoke": {
+    "durationSeconds": 120,
+    "concurrency": 8,
+    "requests": 30884,
+    "failures": 0,
+    "representativeCapacityClaim": false
+  },
+  "images": {
+    "backend": "sha256:1dfcf2b54bd1e9c6c285da0e7b6d15c9bbd47c358f0026847f2e09d5647e0fda",
+    "storefront": "sha256:950690c479eb20cbaad76b431cc24a97188571729ea182e903943f0430edebe5",
+    "migrations": "sha256:b99455b711a748996abd3061ddb7f459c1a3fc58022d3ed2ece44a77ca9cc657"
+  },
+  "runtimeUser": "nextjs",
+  "fixtureCleanupConfirmed": true,
+  "independentCleanupInventory": {
+    "projectContainers": 0,
+    "projectNetworks": 0,
+    "projectLabeledVolumes": 0
+  },
+  "productionAccepted": false,
+  "realPaymentOrNotificationSent": false
+}

@@ -1,6 +1,8 @@
 # Store selling readiness
 
-Updated October 17, 2026. Release priorities are usability, fixed storefront design and reliability before performance optimization. This record distinguishes completed local development from merchant and deployment acceptance.
+Updated October 18, 2026. Release priorities are usability, fixed storefront design and reliability before performance optimization. This record distinguishes completed local development from merchant and deployment acceptance.
+
+The latest [Docker launch rehearsal](reliability-acceptance-2026-10-18.md) passes fresh image builds, all 42 migrations through `0041_promotion_limits`, synthetic order creation/retry, database restore and backend-outage recovery. Its 120-second read smoke completes 30,884 requests with zero failures; fixture cleanup is confirmed. The separate [giveaway acceptance](benchmarks/2026-10-18-giveaway-launch.json) records the latest 1,211 unit/library, 163 integration and 52 browser results. Earlier counts below are historical observations. Real store configuration, delivery and target-environment acceptance remain required.
 
 The optional [two-instance recipe](independent-store-instances.md) records independent pickup-only and shipping-only configurations, data separation and both passing manual-payment mobile sales rehearsals. A single store can also enable both methods. These are supported configuration choices, not mandatory launch defaults. Profile acceptance recorded 1,181 unit/library and 45 default browser tests; later dated results below extend that evidence.
 
