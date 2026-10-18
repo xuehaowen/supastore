@@ -18,6 +18,7 @@ export function VariantPicker({
   initialSelected,
   multiple = false,
   initialSelections = [],
+  required = true,
 }: {
   name: string;
   label: string;
@@ -26,6 +27,7 @@ export function VariantPicker({
   initialSelected?: Option | undefined;
   multiple?: boolean;
   initialSelections?: Option[];
+  required?: boolean;
 }) {
   const id = useId();
   const [options, setOptions] = useState(initialOptions);
@@ -118,7 +120,7 @@ export function VariantPicker({
       <NativeSelect
         id={`${id}-variant`}
         name={name}
-        required
+        required={required}
         multiple={multiple}
         className={multiple ? "h-36" : undefined}
         value={

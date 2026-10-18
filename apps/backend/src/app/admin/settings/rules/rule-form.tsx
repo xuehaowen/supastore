@@ -71,6 +71,7 @@ export function RuleForm({
           label="Target variant"
           initialOptions={variants}
           multiple
+          required={kind === "price"}
           initialSelections={variants.filter((variant) =>
             rule?.variantIds.includes(variant.id),
           )}
@@ -94,7 +95,7 @@ export function RuleForm({
             {kind === "reward"
               ? "Basis points: 500 = 5%; 0 disables rewards for matching purchases. The reward program must also be enabled."
               : kind === "availability"
-                ? "0 = not offered; 1 = offered. Stock, publication and fulfillment checks still apply."
+                ? "0 = not offered; 1 = offered. Leave target variants empty to apply to all variants. Stock, publication and fulfillment checks still apply."
                 : "Amount in the store currency's minor units. For USD, 1250 = $12.50. Zero is a valid override."}
           </p>
         </>
