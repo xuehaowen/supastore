@@ -31,7 +31,7 @@ The owner's **“keep location private”** decision still applies. No LocalBusi
 - Owners can pause new orders from Overview while retaining existing order/payment/fulfillment access. The pause section now explains this behavior.
 - Required email templates, verification and failed notifications retain their existing checks and queues. Configuration completion is explicitly distinct from an actual controlled order/payment and backup restore.
 - Existing backup/restore guards refuse overwrite, incomplete/corrupt evidence and active restore targets; recovery suppresses outbound delivery. Their regression tests are included in unit acceptance. See [disaster recovery](playbooks/disaster-recovery.md) and [outbox reconciliation](playbooks/outbox-reconciliation.md).
-- The earlier Docker-engine limitation is resolved. A [fresh Linux container rehearsal](reliability-acceptance-2026-10-17.md) passes current builds, migration upgrade, synthetic database restore and backend-outage recovery. The production shell procedure and a matching merchant database/assets backup still require separate acceptance; local database-copy checks do not certify those.
+- The earlier Docker-engine limitation is resolved. A [fresh Linux container rehearsal](reliability-acceptance-2026-10-17.md) passes current builds, migration upgrade, synthetic database restore and backend-outage recovery. The later real PostgreSQL shell rehearsal also passes custom/plain restores and overwrite, active-session and checksum guards after correcting Alpine checksum compatibility. A matching merchant database/assets backup still requires separate acceptance.
 
 ## Local acceptance record
 
@@ -63,6 +63,8 @@ pnpm run bench:storefront
 The bundle command needs the production build directory; for an isolated build, set `STOREFRONT_DIST_DIR=.next-cuj/<fixture-id>`. Existing Windows runtime/temp requirements remain in [baseline evidence](platform-quality-baseline.md).
 
 ## Owner and deployment acceptance still required
+
+The latest local service probe authenticated the configured OAuth2 SMTP connection without sending a message. This confirms local connectivity/authentication only; real transactional delivery and connectivity from KVM 2 remain unverified. The shell-recovery follow-up passes **1,183 unit/library tests**; earlier application/browser evidence remains separate.
 
 1. **Real catalog and fixed storefront approval:** supply/review actual names, prices, stock, photographs, translations and public policies. Confirm the available theme at 375px and desktop. No real store data was changed by local fixtures.
 2. **Configured selling path:** use the intended fulfillment and payment methods; check preparation/collection instructions and customer totals. Complete an authorized controlled order, actual payment, transactional email, fulfillment and refund in the designated environment. Fixture receipts are never production settlement evidence.

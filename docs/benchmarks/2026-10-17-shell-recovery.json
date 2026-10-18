@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-17",
+  "scope": "isolated synthetic PostgreSQL 18 Alpine shell-procedure acceptance",
+  "redCommit": "3cd6737",
+  "greenCommit": "f7f1236",
+  "scripts": ["scripts/backup.sh", "scripts/restore.sh"],
+  "results": {
+    "customDumpRestore": "passed",
+    "plainSqlRestore": "passed",
+    "existingBackupOverwriteRefused": true,
+    "realActiveTargetSessionRefused": true,
+    "corruptedDumpRefused": true,
+    "catalogSettingsPaymentZonesFingerprintsMatch": true,
+    "restoredMigrationCount": 40,
+    "outboundDeliveryDisabled": true,
+    "outboxWorkerDisabled": true,
+    "unitLibraryTestsPassed": 1183,
+    "recoveryScriptTestsPassed": 7,
+    "ownedFixtureRemoved": true
+  },
+  "serviceProbe": {
+    "smtp": "OAuth2 authenticated locally",
+    "emailSent": false
+  },
+  "limitations": [
+    "Synthetic fixture, not a merchant backup",
+    "No object-storage restore in this run",
+    "No live payment or transactional-email delivery",
+    "No KVM 2 deployment or ingress validation",
+    "Windows shell copies normalized to LF in helper, as specified by .gitattributes"
+  ]
+}

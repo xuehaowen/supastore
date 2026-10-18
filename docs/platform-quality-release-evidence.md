@@ -55,6 +55,13 @@ deferred or skipped for this release.
 
 ## Required evidence before cutover
 
+The latest [actual shell recovery rehearsal](reliability-acceptance-2026-10-17.md#actual-shell-procedure-follow-up)
+passes custom/plain PostgreSQL restores plus overwrite, active-session and
+corruption guards after the Alpine checksum compatibility fix. All 1,183
+unit/library tests pass. Local OAuth2 SMTP authentication also passes without
+sending mail. These checks leave the real recipient, merchant backup/assets and
+target-host acceptance below open.
+
 - Owner approval of the real catalog, intended fulfillment/payment path and fixed
   storefront, including mobile and EN/ZH content.
 - Controlled authorized order/payment, transactional email, fulfillment and refund

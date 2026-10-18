@@ -503,3 +503,16 @@ verified image set, forward-compatible migrations and schema-compatible app
 rollback without reverting financial data. Five deployment regressions and
 1,182 unit/library tests pass; types/lint/format pass. Existing 45-browser and
 143-integration results are retained because application code did not change.
+
+Shell recovery follow-up, October 17: actual PostgreSQL 18 Alpine execution
+exposes GNU-only checksum verification in restore.sh. RED `3cd6737` / GREEN
+`f7f1236` changes it to portable `-c`, preserving corruption refusal. Real
+custom/plain backups restore exact synthetic catalog/settings/payment/zone row
+fingerprints and 40 migrations; existing-directory overwrite, real active target
+sessions and corrupt dumps are refused. Outbound delivery/worker stay disabled;
+the owned fixture is removed. Seven recovery regressions and all 1,183
+unit/library tests pass. No merchant database/assets or live funds are used.
+Local OAuth2 SMTP authentication also passes without sending email. Remaining
+launch acceptance needs real catalog/design approval, actual payment/receipt and
+email delivery, KVM 2 host/domains/ingress, and matching merchant database/assets
+recovery. Performance optimization remains deferred.

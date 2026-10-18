@@ -26,6 +26,12 @@ cold-maintenance confirmation and refuses a target with active sessions.
 New backup directories contain SHA256SUMS; verify and retain that file alongside
 the dumps. A database backup is separate from the object-storage backup.
 
+Run the scripts with Bash and LF line endings (enforced by `.gitattributes` in
+fresh checkouts). Install compatible PostgreSQL clients, Node and `sha256sum`;
+checksum verification supports GNU and Alpine BusyBox via `-c`. See the
+[synthetic shell rehearsal](../reliability-acceptance-2026-10-17.md#actual-shell-procedure-follow-up)
+for tested guards and the remaining merchant database/assets acceptance.
+
 ```bash
 # Set outbound delivery suppression
 export DISABLE_OUTBOUND_DELIVERY=true
