@@ -5,6 +5,35 @@ vi.mock("../../apps/backend/src/app/admin/settings/rules/actions", () => ({
 }));
 import { RuleForm } from "../../apps/backend/src/app/admin/settings/rules/rule-form";
 import { commerceRules } from "@/domain/commerce-evaluation";
+it("preserves a missing availability target instead of silently making the rule global", () => {
+  const target = crypto.randomUUID();
+  const rule = commerceRules([
+    {
+      id: crypto.randomUUID(),
+      name: "Missing target",
+      kind: "availability",
+      value: 0,
+      priority: 10,
+      variantIds: [target],
+      conditions: {},
+    },
+  ])[0]!;
+  const html = renderToStaticMarkup(
+    <RuleForm
+      id={rule.id}
+      rule={rule}
+      version={1}
+      variants={[]}
+      locations={[]}
+    />,
+  );
+  const selector = html.match(
+    /<select\b[^>]*name="variantIds"[^>]*>([\s\S]*?)<\/select>/,
+  )![1]!;
+  expect(selector).toContain(`value="${target}"`);
+  expect(selector).toContain('selected=""');
+  expect(html).toContain("Some targeted variants no longer exist");
+});
 it("round-trips every selected variant and fulfillment method in the owner editor", () => {
   const ids = [
     "10000000-0000-4000-8000-000000000001",

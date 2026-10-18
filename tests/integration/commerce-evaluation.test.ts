@@ -27,6 +27,8 @@ import { commerceRules, type CommerceRule } from "@/domain/commerce-evaluation";
 import { customerAccount } from "@/application/use-cases/customers/customer-ownership";
 import { previewCommerce } from "@/application/use-cases/commerce/preview-commerce";
 import { savePromotion } from "@/application/use-cases/promotions/manage-promotions";
+import { removeProductVariant } from "@/application/use-cases/catalog/manage-catalog";
+import { updateCartItem } from "@/application/use-cases/cart/update-cart-item";
 import {
   saveCommerceRule,
   deleteCommerceRule,
@@ -495,6 +497,202 @@ describe.skipIf(!server)("contextual commerce PostgreSQL", () => {
         await client`delete from delivery_areas where id=${area.id}`;
       await client`update store_settings set commerce_policy=commerce_policy || '{"deliveryEnabled":false}'::jsonb`;
     }
+  });
+  it("archives variants referenced by commerce rules and retains exclusion targets through edits", async () => {
+    const created = await createProduct({
+      staffUserId: owner,
+      title: "Removal fixture",
+      handle: randomUUID(),
+      variants: [
+        { sku: randomUUID(), title: "Target", priceCents: 1000 },
+        { sku: randomUUID(), title: "Other", priceCents: 1000 },
+      ],
+    });
+    const target = created.variants[0]!.id;
+    const restriction = rule("availability", 0, { variantIds: [target] });
+    await save([restriction]);
+    expect(
+      await removeProductVariant({
+        staffUserId: owner,
+        productId: created.product.id,
+        variantId: target,
+        reason: "Remove option",
+      }),
+    ).toBe("archived");
+    const [settings] = await client`select quote_version from store_settings`;
+    await saveCommerceRule({
+      staffUserId: owner,
+      expectedVersion: settings!.quote_version,
+      rule: { ...restriction, name: "Renamed exclusion" },
+    });
+    const [stored] = await client`select commerce_rules from store_settings`;
+    expect(stored!.commerce_rules[0].variantIds).toEqual([target]);
+    const result = await previewCommerce({
+      items: [{ variantId: created.variants[1]!.id, quantity: 1 }],
+      context: { fulfillmentType: "shipping", country: "US" },
+    });
+    expect(result.evaluation.items[0]!.available).toBe(true);
+  });
+  it.each(["shipping", "local_delivery"] as const)(
+    "keeps %s qualification pending until promotion eligibility resolves",
+    async (method) => {
+      const code = "PENDING_" + randomUUID().slice(0, 8).toUpperCase();
+      await savePromotion({
+        staffUserId: owner,
+        code,
+        name: "Pending discount",
+        discountType: "percentage",
+        discountValue: 5000,
+        minimumSubtotalCents: 0,
+        isActive: true,
+      });
+      await save([
+        rule("promotion", 0, {
+          promotionCode: code,
+          conditions: { countries: ["US"], regions: ["CA"] },
+        }),
+        rule("free_shipping", 15000),
+      ]);
+      await client`update store_settings set commerce_policy=commerce_policy || '{"deliveryEnabled":true}'::jsonb`;
+      const [area] =
+        await client`insert into delivery_areas(name,country_codes,postal_prefixes,rate_cents,free_threshold_cents) values('Pending fixture','["US"]'::jsonb,'["981"]'::jsonb,800,15000) returning id`;
+      const input = {
+        items: [{ variantId: variant, quantity: 20 }],
+        context: {
+          fulfillmentType: method,
+          country: "US",
+          postalCode: "98101",
+        },
+        promotionCode: code,
+      };
+      try {
+        const pending = await previewCommerce(input);
+        expect(pending.evaluation.promotion.pending).toBe(true);
+        expect(pending.evaluation.shipping).toMatchObject({
+          pending: true,
+          remainingCents: null,
+        });
+        expect(pending.evaluation.merchandiseSubtotalCents).toBeNull();
+        const eligible = await previewCommerce({
+          ...input,
+          context: { ...input.context, region: "CA" },
+        });
+        expect(eligible.evaluation.shipping).toMatchObject({
+          pending: false,
+          remainingCents: 5000,
+        });
+        expect(eligible.evaluation.merchandiseSubtotalCents).toBe(10000);
+        const ineligible = await previewCommerce({
+          ...input,
+          context: { ...input.context, region: "WA" },
+        });
+        expect(ineligible.evaluation.promotion).toMatchObject({
+          pending: false,
+          eligible: false,
+        });
+        expect(ineligible.evaluation.shipping).toMatchObject({
+          pending: false,
+          remainingCents: 0,
+        });
+      } finally {
+        await client`delete from delivery_areas where id=${area!.id}`;
+        await client`update store_settings set commerce_policy=commerce_policy || '{"deliveryEnabled":false}'::jsonb`;
+      }
+    },
+  );
+  async function largeCart(count: number) {
+    const ids: string[] = [];
+    for (let group = 0; group < 2; group++) {
+      const created = await createProduct({
+        staffUserId: owner,
+        title: "Cart limit fixture",
+        handle: randomUUID(),
+        variants: Array.from({ length: 50 }, () => ({
+          sku: randomUUID(),
+          title: randomUUID(),
+          priceCents: 1000,
+        })),
+      });
+      ids.push(...created.variants.map((item) => item.id));
+    }
+    ids.push(variant);
+    const guestSessionId = randomUUID();
+    const cart = await addToCart({
+      guestSessionId,
+      variantId: ids[0]!,
+      quantity: 1,
+    });
+    await client`insert into cart_items(cart_id,variant_id,quantity) select ${cart.id},value::uuid,1 from jsonb_array_elements_text(${JSON.stringify(ids.slice(1, count))}::jsonb)`;
+    return { cart, ids, guestSessionId };
+  }
+  it("enforces the preview line limit when concurrent additions compete and permits existing-line edits", async () => {
+    const { cart, ids, guestSessionId } = await largeCart(99);
+    const attempts = await Promise.allSettled(
+      ids
+        .slice(99)
+        .map((variantId) =>
+          addToCart({ guestSessionId, variantId, quantity: 1 }),
+        ),
+    );
+    expect(
+      attempts.filter((attempt) => attempt.status === "fulfilled"),
+    ).toHaveLength(1);
+    const rejected = attempts.find((attempt) => attempt.status === "rejected");
+    expect(rejected?.status === "rejected" && rejected.reason.message).toMatch(
+      /100 different items/i,
+    );
+    expect(
+      (
+        await client`select count(*)::int as count from cart_items where cart_id=${cart.id}`
+      )[0]!.count,
+    ).toBe(100);
+    const edited = await addToCart({
+      guestSessionId,
+      variantId: ids[0]!,
+      quantity: 1,
+    });
+    expect(
+      edited.items.find((item) => item.variantId === ids[0])!.quantity,
+    ).toBe(2);
+    const request = {
+      items: edited.items.map((item) => ({
+        variantId: item.variantId,
+        quantity: item.quantity,
+      })),
+      context: { fulfillmentType: "shipping" as const, country: "US" },
+    };
+    expect((await previewCommerce(request)).evaluation.items).toHaveLength(100);
+    expect(
+      (
+        await getQuote({
+          cartId: cart.id,
+          guestSessionId,
+          fulfillmentType: "shipping",
+          shippingAddress: { country: "US", address: "1 Fixture St" },
+          paymentAccountId: bank,
+        })
+      ).merchandiseSubtotalCents,
+    ).toBe(101000);
+  });
+  it("explains the limit for legacy oversized carts and allows removal before checkout", async () => {
+    const { cart, guestSessionId } = await largeCart(101);
+    const input = {
+      cartId: cart.id,
+      guestSessionId,
+      fulfillmentType: "shipping" as const,
+      shippingAddress: { country: "US", address: "1 Fixture St" },
+      paymentAccountId: bank,
+    };
+    await expect(getQuote(input)).rejects.toThrow(/100 different items/i);
+    const [item] =
+      await client`select id from cart_items where cart_id=${cart.id} limit 1`;
+    const updated = await updateCartItem({
+      guestSessionId,
+      itemId: item!.id,
+      quantity: 0,
+    });
+    expect(updated.items).toHaveLength(100);
+    expect((await getQuote(input)).merchandiseSubtotalCents).toBe(100000);
   });
   it("edits individual rules with revision fencing, reference validation and owner authorization", async () => {
     const [before] = await client`select quote_version from store_settings`;
