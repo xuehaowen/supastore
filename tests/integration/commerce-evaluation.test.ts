@@ -26,7 +26,10 @@ import { updateStoreSettings } from "@/application/use-cases/store/update-store-
 import { commerceRules, type CommerceRule } from "@/domain/commerce-evaluation";
 import { customerAccount } from "@/application/use-cases/customers/customer-ownership";
 import { previewCommerce } from "@/application/use-cases/commerce/preview-commerce";
-import { savePromotion } from "@/application/use-cases/promotions/manage-promotions";
+import {
+  savePromotion,
+  setPromotionActive,
+} from "@/application/use-cases/promotions/manage-promotions";
 import { removeProductVariant } from "@/application/use-cases/catalog/manage-catalog";
 import { updateCartItem } from "@/application/use-cases/cart/update-cart-item";
 import {
@@ -693,6 +696,157 @@ describe.skipIf(!server)("contextual commerce PostgreSQL", () => {
     });
     expect(updated.items).toHaveLength(100);
     expect((await getQuote(input)).merchandiseSubtotalCents).toBe(100000);
+  });
+  function giveaway(code: string) {
+    return {
+      staffUserId: owner,
+      code,
+      name: "Bounded giveaway",
+      discountType: "percentage" as const,
+      discountValue: 10000,
+      minimumSubtotalCents: 0,
+      maximumOriginalSubtotalCents: 1000,
+      maximumQuantity: 1,
+      usageLimit: 1,
+      endsAt: new Date(Date.now() + 86400000),
+      isActive: true,
+    };
+  }
+  it("requires value, quantity, expiry and redemption limits before a full-discount campaign can activate", async () => {
+    const input = giveaway("GIFT_" + randomUUID().slice(0, 8).toUpperCase());
+    for (const missing of [
+      "maximumOriginalSubtotalCents",
+      "maximumQuantity",
+      "usageLimit",
+      "endsAt",
+    ] as const) {
+      const incomplete = { ...input, [missing]: undefined };
+      await expect(savePromotion(incomplete)).rejects.toThrow(
+        /giveaway.*(limit|expiry)/i,
+      );
+    }
+    const draft = await savePromotion({
+      ...input,
+      maximumOriginalSubtotalCents: undefined,
+      maximumQuantity: undefined,
+      usageLimit: undefined,
+      endsAt: undefined,
+      isActive: false,
+    });
+    await expect(
+      setPromotionActive({ staffUserId: owner, id: draft!.id, isActive: true }),
+    ).rejects.toThrow(/giveaway.*(limit|expiry)/i);
+    await client`update promotions set is_active=true where id=${draft!.id}`;
+    const preview = await previewCommerce({
+      items: [{ variantId: variant, quantity: 1 }],
+      context: { fulfillmentType: "pickup", pickupLocationId: pickup },
+      promotionCode: input.code,
+    });
+    expect(preview.evaluation.promotion.eligible).toBe(false);
+    await expect(
+      quote({
+        fulfillmentType: "pickup",
+        pickupLocationId: pickup,
+        shippingAddress: { country: "", address: "" },
+        promotionCode: input.code,
+      }),
+    ).rejects.toThrow(/giveaway.*(limit|expiry)/i);
+  });
+  it("checks giveaway limits against base catalog value and total units before overrides or discounts", async () => {
+    const input = giveaway("VALUE_" + randomUUID().slice(0, 8).toUpperCase());
+    const promotion = await savePromotion({
+      ...input,
+      maximumOriginalSubtotalCents: 500,
+    });
+    await save([
+      rule("price", 100, {
+        variantIds: [variant],
+        conditions: { fulfillmentMethods: ["pickup"] },
+      }),
+    ]);
+    const request = {
+      items: [{ variantId: variant, quantity: 1 }],
+      context: { fulfillmentType: "pickup" as const, pickupLocationId: pickup },
+      promotionCode: input.code,
+    };
+    expect((await previewCommerce(request)).evaluation.promotion.eligible).toBe(
+      false,
+    );
+    await expect(
+      quote({
+        fulfillmentType: "pickup",
+        pickupLocationId: pickup,
+        shippingAddress: { country: "", address: "" },
+        promotionCode: input.code,
+      }),
+    ).rejects.toThrow(/maximum.*(value|subtotal)/i);
+    await savePromotion({
+      ...input,
+      id: promotion!.id,
+      maximumOriginalSubtotalCents: 2000,
+    });
+    expect(
+      (
+        await previewCommerce({
+          ...request,
+          items: [{ variantId: variant, quantity: 2 }],
+        })
+      ).evaluation.promotion.eligible,
+    ).toBe(false);
+    await expect(
+      quote(
+        {
+          fulfillmentType: "pickup",
+          pickupLocationId: pickup,
+          shippingAddress: { country: "", address: "" },
+          promotionCode: input.code,
+        },
+        2,
+      ),
+    ).rejects.toThrow(/maximum.*quantity/i);
+    const accepted = await quote({
+      fulfillmentType: "pickup",
+      pickupLocationId: pickup,
+      shippingAddress: { country: "", address: "" },
+      paymentAccountId: undefined,
+      promotionCode: input.code,
+    });
+    expect(accepted.q.totalPayableCents).toBe(0);
+    await savePromotion({
+      ...input,
+      id: promotion!.id,
+      maximumOriginalSubtotalCents: 500,
+    });
+    await expect(place(accepted)).rejects.toThrow(/maximum.*(value|subtotal)/i);
+    expect(
+      (
+        await client`select count(*)::int as count from promotion_redemptions where promotion_id=${promotion!.id}`
+      )[0]!.count,
+    ).toBe(0);
+  });
+  it("confirms bounded free orders without payment and serializes the final giveaway redemption", async () => {
+    const input = giveaway("LAST_" + randomUUID().slice(0, 8).toUpperCase());
+    await savePromotion(input);
+    const details = {
+      fulfillmentType: "pickup" as const,
+      pickupLocationId: pickup,
+      shippingAddress: { country: "", address: "" },
+      paymentAccountId: undefined,
+      promotionCode: input.code,
+    };
+    const one = await quote(details),
+      two = await quote(details);
+    const attempts = await Promise.allSettled([place(one), place(two)]);
+    expect(
+      attempts.filter((result) => result.status === "fulfilled"),
+    ).toHaveLength(1);
+    const confirmed = attempts.find((result) => result.status === "fulfilled");
+    if (confirmed?.status === "fulfilled")
+      expect(confirmed.value).toMatchObject({
+        lifecycleStatus: "confirmed",
+        purchaseTotalCents: 0,
+        rewardSnapshot: null,
+      });
   });
   it("edits individual rules with revision fencing, reference validation and owner authorization", async () => {
     const [before] = await client`select quote_version from store_settings`;
