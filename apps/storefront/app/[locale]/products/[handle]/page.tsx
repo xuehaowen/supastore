@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { ProductPurchase } from "../../../product-purchase";
 import { getTranslations } from "next-intl/server";
 import { variantCanBePurchased } from "../../../../lib/product-availability";
+import { countryOptions, stateOptions } from "@supastore/shipping/destination";
 export default async function Product({
   params,
 }: {
@@ -54,6 +55,14 @@ export default async function Product({
       <ProductPurchase
         product={purchasable}
         hasContextualRules={store?.hasContextualRules ?? false}
+        destinations={
+          store?.hasContextualRules
+            ? {
+                countries: countryOptions(locale),
+                states: stateOptions(locale),
+              }
+            : { countries: [], states: [] }
+        }
         availableQuantities={availableQuantities}
         locale={locale}
         currency={store?.currency || "USD"}

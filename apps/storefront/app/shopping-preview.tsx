@@ -17,16 +17,21 @@ import { CommerceSummary } from "./commerce-summary";
 import { Button } from "@supastore/ui/button";
 import { Input } from "@supastore/ui/input";
 import { NativeSelect } from "@supastore/ui/native-select";
-import { countryOptions, stateOptions } from "@supastore/shipping/destination";
+export type DestinationOptions = {
+  countries: { code: string; name: string }[];
+  states: (readonly [string, string])[];
+};
 
 export function ShoppingPreview({
   items,
   locale,
   onEvaluation,
+  destinations = { countries: [], states: [] },
 }: {
   items: { variantId: string; quantity: number }[];
   locale: string;
   onEvaluation?: ((preview: CommercePreview | null) => void) | undefined;
+  destinations?: DestinationOptions | undefined;
 }) {
   const zh = locale === "zh";
   const [preview, setPreview] = useState<CommercePreview | null>(null);
@@ -199,7 +204,7 @@ export function ShoppingPreview({
                 onChange={(event) => setCountry(event.target.value)}
               >
                 <option value="">{zh ? "请选择国家" : "Choose country"}</option>
-                {countryOptions(locale).map((option) => (
+                {destinations.countries.map((option) => (
                   <option key={option.code} value={option.code}>
                     {option.name}
                   </option>
@@ -215,7 +220,7 @@ export function ShoppingPreview({
                   defaultValue=""
                 >
                   <option value="">{zh ? "请选择州" : "Choose state"}</option>
-                  {stateOptions(locale).map(([code, name]) => (
+                  {destinations.states.map(([code, name]) => (
                     <option key={code} value={code}>
                       {name}
                     </option>

@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import Image from "next/image";
 import type { ProductDetail, CommercePreview } from "@supastore/contracts";
 import dynamic from "next/dynamic";
+import type { DestinationOptions } from "./shopping-preview";
 const ShoppingPreview = dynamic(() =>
   import("./shopping-preview").then((module) => module.ShoppingPreview),
 );
@@ -22,6 +23,7 @@ export function ProductPurchase({
   precision,
   labels,
   hasContextualRules = false,
+  destinations,
 }: {
   product: ProductDetail;
   availableQuantities?: Record<string, number>;
@@ -30,6 +32,7 @@ export function ProductPurchase({
   precision: number;
   labels: { quantity: string; add: string; unavailable: string };
   hasContextualRules?: boolean;
+  destinations?: DestinationOptions;
 }) {
   const initial =
     product.variants.find((v) =>
@@ -165,6 +168,7 @@ export function ProductPurchase({
           <ShoppingPreview
             items={[{ variantId, quantity: selectedQuantity }]}
             locale={locale}
+            destinations={destinations}
             onEvaluation={setShopping}
           />
         )}

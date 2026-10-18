@@ -5,6 +5,10 @@ it("lets customers choose country names instead of memorizing country codes", ()
   const html = renderToStaticMarkup(
     <ShoppingPreview
       locale="en"
+      destinations={{
+        countries: [{ code: "US", name: "United States" }],
+        states: [],
+      }}
       items={[
         { variantId: "10000000-0000-4000-8000-000000000001", quantity: 1 },
       ]}

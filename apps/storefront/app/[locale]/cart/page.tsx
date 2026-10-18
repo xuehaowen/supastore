@@ -13,6 +13,7 @@ import { Input } from "@supastore/ui/input";
 import { Label } from "@supastore/ui/label";
 import { ShoppingBag } from "lucide-react";
 import { ShoppingPreview } from "../../shopping-preview";
+import { countryOptions, stateOptions } from "@supastore/shipping/destination";
 export const metadata = { robots: { index: false, follow: false } };
 export default async function Cart({
   params,
@@ -46,6 +47,10 @@ export default async function Cart({
           {store?.hasContextualRules && (
             <ShoppingPreview
               locale={locale}
+              destinations={{
+                countries: countryOptions(locale),
+                states: stateOptions(locale),
+              }}
               items={cart.items.map((item) => ({
                 variantId: item.variantId,
                 quantity: item.quantity,
