@@ -190,3 +190,18 @@ of already-missing rule targets. Static checks and unchanged bundle budgets pass
 the final code review found no remaining confirmed issues in these fixes. No
 additional migration is required. See the
 [boundary-fix acceptance record](benchmarks/2026-10-18-commerce-boundary-fixes.json).
+
+### Bounded giveaways and zero-payment checkout (2026-10-18)
+
+Zero-payment checkout and bounded giveaway campaigns passed 1,211 unit/library
+tests, 163 PostgreSQL integration tests and all 52 production-build browser cases,
+including the responsive/accessibility audit. Type checking, lint, formatting and
+unchanged bundle budgets pass. Promotion helper coverage exceeds the unchanged
+90% threshold. Code review found no remaining confirmed issues in these changes.
+
+Migration `0041_promotion_limits` is required before deployment. Existing 100%
+promotion codes must have both basket caps, an expiry and a redemption limit
+configured before they can be used. The browser runner reported a Windows EPERM
+during temporary-directory cleanup after all assertions and budgets passed;
+services stopped successfully and a verified manual cleanup succeeded. See the
+[giveaway acceptance record](benchmarks/2026-10-18-giveaway-launch.json).

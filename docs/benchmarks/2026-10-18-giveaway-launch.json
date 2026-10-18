@@ -1,0 +1,58 @@
+{
+  "date": "2026-10-18",
+  "timezone": "America/Los_Angeles",
+  "applicationCommit": "ee8a2efa515ed2de513ce79ffa04c09b7f970adf",
+  "redCheckpoint": "b07373b",
+  "syntheticDataOnly": true,
+  "productionAccepted": false,
+  "requiredMigration": "0041_promotion_limits",
+  "totalMigrations": 42,
+  "rules": {
+    "percentage100Requires": [
+      "maximum original merchandise subtotal",
+      "maximum total item quantity",
+      "expiry",
+      "total redemption limit"
+    ],
+    "valueCapBasis": "Whole basket base catalog value before contextual overrides, discounts, shipping and tax; not merchant cost or margin.",
+    "globalFreeOrderCap": null,
+    "creditFundingSeparate": true,
+    "intentionalZeroPricesUnchanged": true,
+    "legacyUnboundedPercentage100": "fails closed until configured"
+  },
+  "unitAndLibrary": { "filesPassed": 145, "testsPassed": 1211 },
+  "postgresIntegration": { "filesPassed": 21, "testsPassed": 163 },
+  "browser": {
+    "command": "node scripts/test-storefront.mjs --measure",
+    "testsPassed": 52,
+    "freshProductionBuilds": true,
+    "responsiveAccessibilityAudit": "pass",
+    "runnerExitCode": 1,
+    "cleanup": {
+      "initialResult": "Windows EPERM deleting temporary PostgreSQL directory after tests and bundle checks passed",
+      "servicesStopped": true,
+      "manualRetry": "pass; verified exact workspace fixture path, no reparse points and no fixture listeners before deletion",
+      "fixtureCleanupConfirmed": true
+    }
+  },
+  "staticChecks": { "typecheck": "pass", "eslint": "pass", "prettier": "pass" },
+  "promotionHelperCoverage": {
+    "minimumPercentUnchanged": 90,
+    "statementsPercent": 93.75,
+    "branchesPercent": 97.14,
+    "functionsPercent": 100,
+    "linesPercent": 93.75
+  },
+  "bundle": {
+    "status": "pass",
+    "unchangedMaximumBytesPerRoute": 204800,
+    "unchangedMaximumIncreasePercent": 10,
+    "gzipBytes": {
+      "home": 161179,
+      "product": 163811,
+      "cart": 168658,
+      "checkout": 173194
+    }
+  },
+  "codeReview": "no remaining confirmed monetary, security, concurrency or backward-compatibility findings in these changes"
+}
