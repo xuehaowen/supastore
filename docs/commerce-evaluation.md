@@ -144,3 +144,13 @@ production-build browser cases. Type checking, lint, formatting and unchanged
 bundle budgets pass. The shared delivery-domain validation exceeds the unchanged
 90% coverage threshold. No additional database migration is required. See the
 [review-fix acceptance record](benchmarks/2026-10-17-commerce-review-fixes.json).
+
+### Target lifecycle and cart-boundary follow-up (2026-10-18)
+
+Variant-target retention, pending discounted shipping qualification and the shared
+cart limit passed 1,207 unit/library tests, 160 PostgreSQL integration tests and
+all 50 production-build browser cases. The browser checks include safe handling
+of already-missing rule targets. Static checks and unchanged bundle budgets pass;
+the final code review found no remaining confirmed issues in these fixes. No
+additional migration is required. See the
+[boundary-fix acceptance record](benchmarks/2026-10-18-commerce-boundary-fixes.json).
