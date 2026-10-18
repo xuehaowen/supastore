@@ -14,14 +14,12 @@ test("owner configures a regional price and customers preview it before acceptin
   try {
     await admin.goto("/admin/settings/rules");
     await admin.getByLabel("Rule name", { exact: true }).fill(name);
-    await admin.getByLabel("Rule kind", { exact: true }).selectOption("price");
+    await admin.getByRole("combobox", { name: "Rule kind", exact: true }).selectOption("price");
     await admin
       .getByLabel("Target variant", { exact: true })
       .selectOption(variant!.id);
     await admin.getByLabel("Value", { exact: true }).fill("1250");
-    await admin
-      .getByLabel("Fulfillment method", { exact: true })
-      .selectOption("shipping");
+    await admin.getByRole("checkbox", { name: "Shipping", exact: true }).check();
     await admin.getByLabel("Countries", { exact: true }).fill("US");
     await admin.getByLabel("States or regions", { exact: true }).fill("CA");
     await clickAction(
@@ -29,6 +27,16 @@ test("owner configures a regional price and customers preview it before acceptin
       admin.getByRole("button", { name: "Save rule", exact: true }),
     );
     await expect(admin.getByText(name, { exact: true })).toBeVisible();
+    const addRule = admin.locator("section").filter({ has: admin.getByRole("heading", { name: "Add rule", exact: true }) });
+    await addRule.getByLabel("Rule name", { exact: true }).fill("Preserve this draft");
+    await addRule.getByLabel("Target variant", { exact: true }).selectOption(variant!.id);
+    await addRule.getByLabel("Value", { exact: true }).fill("1400");
+    await addRule.getByLabel("Countries", { exact: true }).fill("US");
+    await clickAction(admin, addRule.getByRole("button", { name: "Save rule", exact: true }));
+    await expect(addRule.getByRole("alert")).toBeVisible();
+    await expect(addRule.getByLabel("Rule name", { exact: true })).toHaveValue("Preserve this draft");
+    await expect(addRule.getByLabel("Value", { exact: true })).toHaveValue("1400");
+    await expect(addRule.getByLabel("Countries", { exact: true })).toHaveValue("US");
     await page.goto("/en/products/studio-cup");
     const preview = page.getByRole("region", {
       name: "Shopping options",
@@ -64,4 +72,16 @@ test("owner configures a regional price and customers preview it before acceptin
   } finally {
     await sql`update store_settings set commerce_rules=${sql.json(original!.commerce_rules)},quote_version=quote_version+1`;
   }
+});
+
+test("disabled rules preserve the base storefront price and structured offers", async ({ page, sql }) => {
+  const [original] = await sql`select commerce_rules from store_settings limit 1`;
+  const rule = { id: randomUUID(), name: "Disabled fixture", kind: "reward", enabled: false, value: 0, priority: 10, conditions: {} };
+  try {
+    await sql`update store_settings set commerce_rules=${sql.json([rule])},quote_version=quote_version+1`;
+    await page.goto("/en/products/studio-cup");
+    await expect(page.getByRole("region", { name: "Shopping options", exact: true })).toHaveCount(0);
+    const structured = JSON.parse(await page.locator('script[type="application/ld+json"]').innerText());
+    expect(structured.offers.length).toBeGreaterThan(0);
+  } finally { await sql`update store_settings set commerce_rules=${sql.json(original!.commerce_rules)},quote_version=quote_version+1`; }
 });
