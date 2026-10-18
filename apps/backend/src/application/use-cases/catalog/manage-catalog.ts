@@ -1,4 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
+import { commerceRules } from "@/domain/commerce-evaluation";
 import { db } from "@/infrastructure/db";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import {
@@ -225,7 +226,11 @@ export async function removeProductVariant(input: {
       .select()
       .from(variantStock)
       .where(eq(variantStock.variantId, variantId));
-    const retain = referenced || stock;
+    const [settings] = await tx.select().from(storeSettings).limit(1);
+    const ruleReferenced = commerceRules(settings?.commerceRules).some((rule) =>
+      rule.variantIds.includes(variantId),
+    );
+    const retain = referenced || stock || ruleReferenced;
     const action = retain ? "archived" : "deleted";
     if (retain)
       await tx

@@ -22,6 +22,16 @@ export function RuleForm({
 }) {
   const [kind, setKind] = useState(rule?.kind ?? "price");
   const [state, action, pending] = useActionState(submitCommerceRule, {});
+  const targets = (rule?.variantIds ?? []).map(
+    (id) =>
+      variants.find((variant) => variant.id === id) ?? {
+        id,
+        label: `Unavailable variant · ${id}`,
+      },
+  );
+  const missingTargets = targets.some(
+    (target) => !variants.some((variant) => variant.id === target.id),
+  );
   return (
     <form
       action={action}
@@ -65,6 +75,12 @@ export function RuleForm({
         type="number"
         value={rule?.priority ?? 10}
       />
+      {missingTargets && (kind === "price" || kind === "availability") && (
+        <p role="alert">
+          Some targeted variants no longer exist. Select replacement targets or
+          delete this rule.
+        </p>
+      )}
       {(kind === "price" || kind === "availability") && (
         <VariantPicker
           name="variantIds"
@@ -72,9 +88,7 @@ export function RuleForm({
           initialOptions={variants}
           multiple
           required={kind === "price"}
-          initialSelections={variants.filter((variant) =>
-            rule?.variantIds.includes(variant.id),
-          )}
+          initialSelections={targets}
         />
       )}
       {kind === "promotion" ? (

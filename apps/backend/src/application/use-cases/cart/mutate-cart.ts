@@ -1,5 +1,6 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import * as v from "valibot";
+import { MAX_CART_LINES, CART_LINE_LIMIT_MESSAGE } from "@supastore/contracts";
 import { db } from "@/infrastructure/db";
 import {
   carts,
@@ -69,6 +70,14 @@ export async function mutateCart(
       .limit(1);
     if (mode === "set" && !item)
       throw new NotFoundError("Cart item not found.");
+    if (!item && mode === "add") {
+      const [lines] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(cartItems)
+        .where(eq(cartItems.cartId, cart.id));
+      if (lines!.count >= MAX_CART_LINES)
+        throw new InvariantViolationError(CART_LINE_LIMIT_MESSAGE);
+    }
     const quantity =
       mode === "add" ? (item?.quantity ?? 0) + input.quantity : input.quantity;
     if (quantity > 999)

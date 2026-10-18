@@ -143,6 +143,7 @@
     "returned": "Returned"
   },
   "errors": {
+    "cartLineLimit": "Your bag can contain up to 100 different items. Remove an item before adding another or checking out.",
     "generic": "Unable to save. Check your entries and try again.",
     "quantityMinimumZero": "Quantity must be at least 0.",
     "quantityMinimumOne": "Quantity must be at least 1.",

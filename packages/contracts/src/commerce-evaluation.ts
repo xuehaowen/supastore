@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { MAX_CART_LINES, CART_LINE_LIMIT_MESSAGE } from "./checkout";
 const amount = v.pipe(
   v.number(),
   v.safeInteger(),
@@ -28,7 +29,7 @@ const requestSchema = v.object({
       }),
     ),
     v.minLength(1),
-    v.maxLength(100),
+    v.maxLength(MAX_CART_LINES, CART_LINE_LIMIT_MESSAGE),
     v.check(
       (items) =>
         new Set(items.map((item) => item.variantId)).size === items.length,

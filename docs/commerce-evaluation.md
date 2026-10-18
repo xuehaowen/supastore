@@ -51,6 +51,11 @@ reference validation and audit records. Failed validation retains the draft.
 There are at most 100 rules and 100 entries in each target/condition list.
 Ordinary commerce-policy saves do not erase rules.
 
+Variants referenced by commerce rules are archived when removed, including
+references from disabled rules. Existing missing targets remain selected in the
+editor and must be replaced or the rule deleted; saving cannot silently broaden
+a targeted availability rule to all variants.
+
 The owner preview evaluates saved rules without reserving stock, spending credit,
 redeeming promotions or issuing rewards. Customers can check product/cart options
 and preview their checkout form. Messages distinguish missing context, exclusions
@@ -68,6 +73,13 @@ Missing promotion context is shown as pending eligibility, rather than rejection
 Local-delivery qualification requires a supported country/postal destination and
 one matching active delivery area. Missing details or overlapping areas keep
 qualification pending until checkout; unsupported destinations are rejected.
+Pending promotion eligibility also leaves the adjusted merchandise subtotal and
+free-shipping qualification pending until the discount can be resolved.
+
+Carts, previews and checkout share a limit of 100 distinct variants, with up to
+999 units of each. Adding a new line at the limit is rejected; quantity changes
+and removals remain available. Existing oversized carts must be reduced to 100
+lines before preview or checkout, with instructions shown in English or Chinese.
 
 ## Calculation and acceptance
 

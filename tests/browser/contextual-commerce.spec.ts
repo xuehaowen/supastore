@@ -45,6 +45,11 @@ test("customers can complete a pending promotion destination without seeing a re
         "This promotion is not eligible for the selected options.",
       ),
     ).toHaveCount(0);
+    await expect(
+      preview.getByText(
+        /qualify for free shipping|Free-shipping minimum reached/,
+      ),
+    ).toHaveCount(0);
     await preview
       .getByRole("combobox", { name: "State / region", exact: true })
       .selectOption("WA");
@@ -65,6 +70,59 @@ test("customers can complete a pending promotion destination without seeing a re
   } finally {
     await sql`update store_settings set commerce_rules=${sql.json(original!.commerce_rules)},quote_version=quote_version+1`;
     await sql`delete from promotions where code=${code}`;
+  }
+});
+
+test("owner cannot accidentally broaden an exclusion whose target is missing", async ({
+  admin,
+  sql,
+}) => {
+  admin.setDefaultTimeout(15000);
+  const [original] =
+    await sql`select commerce_rules from store_settings limit 1`;
+  const rule = {
+    id: randomUUID(),
+    name: "Missing target fixture",
+    kind: "availability",
+    enabled: true,
+    value: 0,
+    priority: 10,
+    variantIds: [randomUUID()],
+    conditions: {},
+  };
+  try {
+    await sql`update store_settings set commerce_rules=${sql.json([rule])},quote_version=quote_version+1`;
+    await admin.goto("/admin/settings/rules");
+    await admin.getByText(rule.name, { exact: true }).click();
+    const editor = admin.locator("details").filter({ hasText: rule.name });
+    await expect(
+      editor.getByText(/Some targeted variants no longer exist/),
+    ).toBeVisible();
+    await editor
+      .getByLabel("Rule name", { exact: true })
+      .fill("Rename missing target");
+    await clickAction(
+      admin,
+      editor.getByRole("button", { name: "Save rule", exact: true }),
+    );
+    await expect(
+      editor
+        .getByRole("alert")
+        .filter({ hasText: "Choose existing variants." }),
+    ).toBeVisible();
+    expect(
+      (await sql`select commerce_rules from store_settings`)[0]!
+        .commerce_rules[0].variantIds,
+    ).toEqual(rule.variantIds);
+    await clickAction(
+      admin,
+      editor.getByRole("button", { name: "Delete rule", exact: true }),
+    );
+    expect(
+      (await sql`select commerce_rules from store_settings`)[0]!.commerce_rules,
+    ).toEqual([]);
+  } finally {
+    await sql`update store_settings set commerce_rules=${sql.json(original!.commerce_rules)},quote_version=quote_version+1`;
   }
 });
 

@@ -8,6 +8,7 @@ import {
 } from "react";
 import {
   parseCommercePreview,
+  MAX_CART_LINES,
   type CommercePreview,
   type CommercePreviewRequest,
 } from "@supastore/contracts";
@@ -17,6 +18,7 @@ import { CommerceSummary } from "./commerce-summary";
 import { Button } from "@supastore/ui/button";
 import { Input } from "@supastore/ui/input";
 import { NativeSelect } from "@supastore/ui/native-select";
+import { textFor } from "@supastore/i18n/messages";
 export type DestinationOptions = {
   countries: { code: string; name: string }[];
   states: (readonly [string, string])[];
@@ -138,6 +140,8 @@ export function ShoppingPreview({
       if (sequence.current === current) setBusy(false);
     }
   }
+  if (items.length > MAX_CART_LINES)
+    return <p role="alert">{textFor(locale).errors.cartLineLimit}</p>;
   return (
     <section
       aria-label={zh ? "购物选项" : "Shopping options"}

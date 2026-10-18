@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   parseCommercePreview,
+  MAX_CART_LINES,
   type CommercePreview,
   type CommercePreviewRequest,
 } from "@supastore/contracts";
@@ -9,6 +10,7 @@ import { fetchJson } from "../lib/fetch-json";
 import { responseData, responseMessage } from "../lib/response";
 import { CommerceSummary } from "./commerce-summary";
 import { Button } from "@supastore/ui/button";
+import { textFor } from "@supastore/i18n/messages";
 export function CheckoutPreview({
   items,
   locale,
@@ -27,6 +29,8 @@ export function CheckoutPreview({
     },
     [],
   );
+  if (items.length > MAX_CART_LINES)
+    return <p role="alert">{textFor(locale).errors.cartLineLimit}</p>;
   return (
     <div className="rounded-xl border bg-muted/30 p-4">
       <Button

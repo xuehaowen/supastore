@@ -143,6 +143,7 @@
     "returned": "已退回"
   },
   "errors": {
+    "cartLineLimit": "购物袋最多可包含 100 种不同商品。请先移除一种商品，再添加其他商品或结账。",
     "generic": "无法完成操作，请检查填写的信息后重试，或联系商店。",
     "quantityMinimumZero": "数量不得小于 0。",
     "quantityMinimumOne": "数量不得小于 1。",

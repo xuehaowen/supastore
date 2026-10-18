@@ -1,3 +1,7 @@
+export const MAX_CART_LINES = 100;
+export const CART_LINE_LIMIT_MESSAGE =
+  "Your bag can contain up to 100 different items. Remove an item before adding another or checking out.";
+
 export interface QuoteDto {
   id: string;
   cartId: string;

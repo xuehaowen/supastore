@@ -38,6 +38,7 @@ import {
 } from "@/infrastructure/db/schema";
 import { stripeConfiguredFor } from "@/infrastructure/payments/configuration";
 import { eq, inArray, sql } from "drizzle-orm";
+import { MAX_CART_LINES, CART_LINE_LIMIT_MESSAGE } from "@supastore/contracts";
 export interface GetQuoteInput {
   cartId: string;
   guestSessionId: string;
@@ -82,6 +83,8 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
     .from(cartItems)
     .where(eq(cartItems.cartId, cart.id));
   if (!items.length) throw new InvariantViolationError("Your cart is empty.");
+  if (items.length > MAX_CART_LINES)
+    throw new InvariantViolationError(CART_LINE_LIMIT_MESSAGE);
   const rows = await tx
     .select()
     .from(productVariants)

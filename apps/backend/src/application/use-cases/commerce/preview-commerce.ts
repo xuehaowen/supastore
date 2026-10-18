@@ -134,6 +134,12 @@ export async function previewCommerce(raw: CommercePreviewRequest) {
         );
       }
     }
+    if (evaluation.promotion.pending) {
+      // A pending discount makes the adjusted subtotal and qualification unknown.
+      evaluation.merchandiseSubtotalCents = null;
+      evaluation.shipping.pending = true;
+      evaluation.shipping.remainingCents = null;
+    }
     const context = evaluation.context;
     if (context.fulfillmentType === "shipping") {
       const required = shippingRequiredFields(zones, context.country ?? "");
