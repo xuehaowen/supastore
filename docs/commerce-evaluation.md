@@ -102,12 +102,48 @@ aligns it with the existing adjusted-subtotal transaction contract. Qualificatio
 therefore changes for discounted baskets even without contextual rules. Credit
 is funding, not a discount, and does not reduce the free-shipping qualifying sum.
 
+## Giveaway campaigns and zero-payment checkout
+
+Checkout can review an authoritative quote before a payment method is selected.
+A zero total can proceed without payment. Positive totals require an accepted
+payment method, available online payment or sufficient verified, reconciled store
+credit before placement; the backend checks funding again when accepting the
+order. Unfunded paid quotes are rejected with a payment instruction; an already
+visible unfunded quote cannot be placed and links back to checkout details.
+
+Promotion codes support optional maximum base merchandise value and maximum total
+item quantity. The value limit uses the entire basket at current base catalog
+prices **before contextual price overrides or discounts**, excluding shipping and
+tax. The quantity limit counts all units, not distinct lines. For a USD store,
+1000 minor units means a $10 maximum; there is no platform-wide $10 cutoff.
+These are retail-value limits, not product-cost or margin calculations.
+
+A 100% merchandise promotion is a giveaway and must have both maximums, an expiry
+and a total redemption limit before it can activate or be redeemed. An incomplete
+campaign may be saved inactive. Existing unbounded 100% codes fail closed until
+an owner configures the missing safeguards. Other percentage/fixed promotions
+retain their existing behavior and may optionally use the new limits. Fixed
+discounts can still cover a small basket completely.
+
+Owners configure these fields in **Promotions**. Caps are checked during preview,
+quote creation and order acceptance, and changes are audited. Existing store and
+promotion locks serialize redemption limits. Zero-discount redemptions are
+rejected rather than creating invalid ledger entries. Shipping and any remaining
+tax must still be paid; a merchandise giveaway alone does not waive them.
+
+Intentional $0 catalog/contextual prices remain pricing choices, without campaign
+redemption counters. Use a bounded promotion code for controlled giveaways.
+Store-credit payments are funding and are never limited by giveaway caps.
+
 ## Deployment and limits
 
 Apply migration `0040_contextual_commerce` before deploying code that reads
 `store_settings.commerce_rules`. Existing rows receive an empty array. Accepted
 orders are unchanged; older outstanding quotes may need fresh review after the
 upgrade. Rollback requires schema-compatible images and preserved financial data.
+The giveaway limits additionally require migration `0041_promotion_limits` before
+deploying the new code. It adds nullable caps to existing promotions; ordinary
+promotions retain their defaults. Accepted orders are not changed.
 
 This version supports contextual overrides and the existing single-code
 merchandise promotions. Customer-group pricing, quantity tiers, multi-currency,

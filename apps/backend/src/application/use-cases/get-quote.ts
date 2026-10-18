@@ -11,7 +11,10 @@ import {
 } from "@/domain/commerce-policy";
 import { quoteDelivery } from "@/domain/delivery";
 import { calculatePurchaseTotal } from "@/domain/money/calculations";
-import { calculateDiscountCents } from "@/domain/promotions";
+import {
+  calculateDiscountCents,
+  promotionLimitIssue,
+} from "@/domain/promotions";
 import { allocateRewardFunding } from "@/domain/rewards";
 import { stripeCurrencyIssue } from "@/domain/stripe-currency";
 import { db } from "@/infrastructure/db";
@@ -335,6 +338,19 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
       throw new InvariantViolationError(
         "Your order does not meet this promotion's minimum subtotal.",
       );
+    const limitIssue = promotionLimitIssue(
+      candidate,
+      items.reduce(
+        (sum, item) =>
+          sum +
+          rows.find((row) => row.product_variants.id === item.variantId)!
+            .product_variants.priceCents *
+            item.quantity,
+        0,
+      ),
+      items.reduce((sum, item) => sum + item.quantity, 0),
+    );
+    if (limitIssue) throw new InvariantViolationError(limitIssue);
     if (candidate.usageLimit !== null) {
       const [usage] = await tx
         .select({ count: sql<number>`count(*)::int` })
@@ -345,15 +361,20 @@ export async function calculateQuote(tx: Transaction, input: GetQuoteInput) {
           "This promotion has reached its usage limit.",
         );
     }
+    const discountCents = calculateDiscountCents(
+      candidate.discountType,
+      candidate.discountValue,
+      subtotal,
+    );
+    if (!discountCents)
+      throw new InvariantViolationError(
+        "This promotion does not discount any merchandise.",
+      );
     promotion = {
       id: candidate.id,
       code: candidate.code,
       name: candidate.name,
-      discountCents: calculateDiscountCents(
-        candidate.discountType,
-        candidate.discountValue,
-        subtotal,
-      ),
+      discountCents,
     };
   }
   if (promotion?.discountCents) {

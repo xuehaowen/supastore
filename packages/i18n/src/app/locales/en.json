@@ -71,6 +71,8 @@
     "creditOrFree": "Store credit in full or free order",
     "onlinePayment": "Online card payment",
     "choosePayment": "Choose a payment method",
+    "reviewBeforePayment": "Review total first; no payment needed for free orders",
+    "paymentNeeded": "This order has an amount to pay. Choose a payment method or use enough store credit before placing it.",
     "credit": "Store credit",
     "available": "Available",
     "creditToApply": "Credit to apply",

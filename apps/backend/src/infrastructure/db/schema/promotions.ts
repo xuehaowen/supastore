@@ -26,6 +26,8 @@ export const promotions = pgTable(
       .notNull()
       .default(0),
     usageLimit: integer("usage_limit"),
+    maximumOriginalSubtotalCents: integer("maximum_original_subtotal_cents"),
+    maximumQuantity: integer("maximum_quantity"),
     isActive: boolean("is_active").notNull().default(true),
     startsAt: timestamp("starts_at", { withTimezone: true }),
     endsAt: timestamp("ends_at", { withTimezone: true }),
@@ -37,6 +39,14 @@ export const promotions = pgTable(
       .notNull(),
   },
   (table) => [
+    check(
+      "promotions_maximum_original_subtotal_positive",
+      sql`${table.maximumOriginalSubtotalCents} IS NULL OR ${table.maximumOriginalSubtotalCents} > 0`,
+    ),
+    check(
+      "promotions_maximum_quantity_valid",
+      sql`${table.maximumQuantity} IS NULL OR ${table.maximumQuantity} BETWEEN 1 AND 99900`,
+    ),
     check("promotions_value_positive", sql`${table.discountValue} > 0`),
     check(
       "promotions_minimum_nonnegative",

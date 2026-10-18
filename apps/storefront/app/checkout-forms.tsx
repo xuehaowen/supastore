@@ -46,8 +46,6 @@ export function CheckoutDetailsForm({
   addresses,
   accounts,
   initial = {},
-  canUseCredit,
-  canBeFree,
   onlinePayment,
   shippingRules,
   methods,
@@ -61,8 +59,6 @@ export function CheckoutDetailsForm({
   addresses: { id: string; label: string; address: Record<string, string> }[];
   accounts: { id: string; name: string }[];
   initial?: CheckoutDefaults | undefined;
-  canUseCredit: boolean;
-  canBeFree: boolean;
   onlinePayment: boolean;
   shippingRules: ShippingDestinationRule[];
   methods: FulfillmentMethod[];
@@ -76,7 +72,6 @@ export function CheckoutDetailsForm({
   );
   const t = textFor(locale);
   const m = t.checkoutDetails;
-  const allowEmpty = onlinePayment || canUseCredit || canBeFree;
   const [previewRevision, setPreviewRevision] = useState(0);
   return (
     <form
@@ -111,16 +106,11 @@ export function CheckoutDetailsForm({
         {t.payment}
         <NativeSelect
           name="paymentAccountId"
-          required={!allowEmpty}
           value={payment}
           onChange={(event) => setPayment(event.target.value)}
         >
-          <option value="" disabled={!allowEmpty}>
-            {onlinePayment
-              ? m.onlinePayment
-              : allowEmpty
-                ? m.creditOrFree
-                : m.choosePayment}
+          <option value="">
+            {onlinePayment ? m.onlinePayment : m.reviewBeforePayment}
           </option>
           {accounts.map((account) => (
             <option key={account.id} value={account.id}>

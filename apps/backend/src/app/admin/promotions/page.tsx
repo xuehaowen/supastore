@@ -95,6 +95,28 @@ export default async function PromotionsPage({
           required={false}
         />
       </div>
+      <div className="two-col">
+        <Field
+          name="maximumOriginalSubtotal"
+          label="Maximum base merchandise value (minor units)"
+          type="number"
+          value={promotion?.maximumOriginalSubtotalCents ?? ""}
+          required={false}
+        />
+        <Field
+          name="maximumQuantity"
+          label="Maximum total item quantity"
+          type="number"
+          value={promotion?.maximumQuantity ?? ""}
+          required={false}
+        />
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Limits cover the entire basket at base catalog prices before contextual
+        prices or discounts, excluding shipping and tax. A 100% promotion
+        requires both maximums, an end time and a total usage limit. These
+        limits do not restrict store-credit payments.
+      </p>
       <Field
         name="endsAt"
         label="Ends at"

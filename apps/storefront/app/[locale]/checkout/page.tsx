@@ -16,6 +16,8 @@ import {
   CardTitle,
 } from "@supastore/ui/card";
 import { availableFulfillment } from "@supastore/shipping/destination";
+import { canPlaceQuotedOrder } from "../../../lib/checkout-payment";
+import Link from "next/link";
 export const metadata = { robots: { index: false, follow: false } };
 export default async function Checkout({
   params,
@@ -209,28 +211,52 @@ export default async function Checkout({
           </Card>
           <Card>
             <CardContent>
-              <CheckoutOrderForm
-                key={quote.id}
-                quoteId={quote.id}
-                locale={locale}
-                customerName={customer?.customer.name}
-                customerEmail={customer?.customer.email}
-                credit={
-                  customer?.credit?.reconciled
-                    ? {
-                        availableCents:
-                          customer.credit.account.balanceCents -
-                          customer.credit.account.reservedCents,
-                        purchaseCents: quote.totalPayableCents,
-                        currency: customer.credit.account.currency,
-                        precision: customer.credit.account.precision,
-                        payInFull:
-                          !(quote.termsSnapshot as QuoteTerms).payment &&
-                          !(quote.termsSnapshot as QuoteTerms).onlinePayment,
-                      }
-                    : undefined
-                }
-              />
+              {!canPlaceQuotedOrder({
+                totalPayableCents: quote.totalPayableCents,
+                hasPayment: Boolean(
+                  (quote.termsSnapshot as QuoteTerms).payment,
+                ),
+                onlinePayment: Boolean(
+                  (quote.termsSnapshot as QuoteTerms).onlinePayment,
+                ),
+                availableCreditCents: customer?.credit?.reconciled
+                  ? customer.credit.account.balanceCents -
+                    customer.credit.account.reservedCents
+                  : 0,
+              }) ? (
+                <div role="alert">
+                  <p>{t("checkoutDetails.paymentNeeded")}</p>
+                  <Link
+                    className="underline"
+                    href={`/${locale}/checkout?quote=${quote.id}&edit=1`}
+                  >
+                    {t("checkoutDetails.choosePayment")}
+                  </Link>
+                </div>
+              ) : (
+                <CheckoutOrderForm
+                  key={quote.id}
+                  quoteId={quote.id}
+                  locale={locale}
+                  customerName={customer?.customer.name}
+                  customerEmail={customer?.customer.email}
+                  credit={
+                    customer?.credit?.reconciled
+                      ? {
+                          availableCents:
+                            customer.credit.account.balanceCents -
+                            customer.credit.account.reservedCents,
+                          purchaseCents: quote.totalPayableCents,
+                          currency: customer.credit.account.currency,
+                          precision: customer.credit.account.precision,
+                          payInFull:
+                            !(quote.termsSnapshot as QuoteTerms).payment &&
+                            !(quote.termsSnapshot as QuoteTerms).onlinePayment,
+                        }
+                      : undefined
+                  }
+                />
+              )}
             </CardContent>
           </Card>
         </div>
@@ -268,12 +294,6 @@ export default async function Checkout({
                 }))}
                 accounts={accounts}
                 onlinePayment={onlinePayment}
-                canBeFree={cart.subtotalCents === 0}
-                canUseCredit={Boolean(
-                  customer?.credit?.reconciled &&
-                  customer.credit.account.balanceCents >
-                    customer.credit.account.reservedCents,
-                )}
                 initial={
                   initial
                     ? {

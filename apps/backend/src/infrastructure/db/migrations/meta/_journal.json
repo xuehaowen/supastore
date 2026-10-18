@@ -288,6 +288,13 @@
       "when": 1791167400018,
       "tag": "0040_contextual_commerce",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791167400019,
+      "tag": "0041_promotion_limits",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,12 @@
 # Data model
 
+Migration `0041_promotion_limits` adds nullable
+`promotions.maximum_original_subtotal_cents` and `promotions.maximum_quantity`.
+Both caps are positive when set; quantity is bounded by the supported basket
+size. A 100% campaign additionally requires an expiry and total redemption limit
+in the application. Base merchandise value is measured before contextual prices
+or discounts. Existing accepted order and credit records are unchanged.
+
 This is a conceptual model, not executable SQL. Add Drizzle schemas and migrations with each vertical slice; do not generate the entire planned schema as a foundation milestone. [Workflows](business-workflows.md) own behavior and [transaction contracts](transaction-contracts.md) own accounting.
 
 ## Conventions

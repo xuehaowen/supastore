@@ -143,6 +143,10 @@
     "returned": "Returned"
   },
   "errors": {
+    "promotionMaximumValue": "This basket exceeds the promotion's maximum qualifying value.",
+    "promotionMaximumQuantity": "This basket exceeds the promotion's maximum quantity.",
+    "giveawayConfiguration": "Giveaway campaigns require value and quantity limits, an expiry and a total usage limit.",
+    "promotionNoMerchandise": "This promotion does not discount any merchandise.",
     "cartLineLimit": "Your bag can contain up to 100 different items. Remove an item before adding another or checking out.",
     "generic": "Unable to save. Check your entries and try again.",
     "quantityMinimumZero": "Quantity must be at least 0.",

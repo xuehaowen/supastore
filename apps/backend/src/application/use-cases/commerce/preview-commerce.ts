@@ -25,7 +25,10 @@ import {
 } from "@supastore/shipping/destination";
 import { shippingQuote } from "@/domain/checkout";
 import { matchesDeliveryDestination } from "@/domain/delivery";
-import { calculateDiscountCents } from "@/domain/promotions";
+import {
+  calculateDiscountCents,
+  promotionLimitIssue,
+} from "@/domain/promotions";
 
 /** Public estimate only: no customer identity, credit balance or reservation writes. */
 export async function previewCommerce(raw: CommercePreviewRequest) {
@@ -116,6 +119,18 @@ export async function previewCommerce(raw: CommercePreviewRequest) {
           : [];
       if (
         !promotion?.isActive ||
+        promotionLimitIssue(
+          promotion,
+          input.items.reduce(
+            (sum, item) =>
+              sum +
+              rows.find((row) => row.variant.id === item.variantId)!.variant
+                .priceCents *
+                item.quantity,
+            0,
+          ),
+          input.items.reduce((sum, item) => sum + item.quantity, 0),
+        ) ||
         (promotion.startsAt && promotion.startsAt > now) ||
         (promotion.endsAt && promotion.endsAt <= now) ||
         (evaluation.merchandiseSubtotalCents !== null &&
@@ -127,11 +142,15 @@ export async function previewCommerce(raw: CommercePreviewRequest) {
         evaluation.promotion.eligible = false;
         evaluation.promotion.reason = "PROMOTION_INELIGIBLE";
       } else if (evaluation.merchandiseSubtotalCents !== null) {
-        evaluation.merchandiseSubtotalCents -= calculateDiscountCents(
+        const discount = calculateDiscountCents(
           promotion.discountType,
           promotion.discountValue,
           evaluation.merchandiseSubtotalCents,
         );
+        if (!discount) {
+          evaluation.promotion.eligible = false;
+          evaluation.promotion.reason = "PROMOTION_INELIGIBLE";
+        } else evaluation.merchandiseSubtotalCents -= discount;
       }
     }
     if (evaluation.promotion.pending) {

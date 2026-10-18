@@ -71,6 +71,8 @@
     "creditOrFree": "全额使用余额或免费订单",
     "onlinePayment": "在线银行卡付款",
     "choosePayment": "请选择付款方式",
+    "reviewBeforePayment": "先查看总额；免费订单无需付款",
+    "paymentNeeded": "此订单仍有应付金额。请先选择付款方式或使用足够的商店余额，再提交订单。",
     "credit": "商店余额",
     "available": "可用余额",
     "creditToApply": "使用余额",

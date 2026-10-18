@@ -302,6 +302,26 @@ export async function upsertPromotion(form: FormData) {
         0,
         2147483647,
       ),
+      ...(field(form, "maximumOriginalSubtotal")
+        ? {
+            maximumOriginalSubtotalCents: parseActionInteger(
+              field(form, "maximumOriginalSubtotal"),
+              "Maximum qualifying value",
+              1,
+              2147483647,
+            ),
+          }
+        : {}),
+      ...(field(form, "maximumQuantity")
+        ? {
+            maximumQuantity: parseActionInteger(
+              field(form, "maximumQuantity"),
+              "Maximum quantity",
+              1,
+              99900,
+            ),
+          }
+        : {}),
       ...(usageLimit
         ? {
             usageLimit: parseActionInteger(

@@ -1,5 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { commerceRules } from "@/domain/commerce-evaluation";
+import { giveawayLimitsConfigured } from "@/domain/promotions";
 import { db } from "@/infrastructure/db";
 import {
   auditRecords,
@@ -26,10 +27,12 @@ type PromotionInput = {
   discountType: "percentage" | "fixed";
   discountValue: number;
   minimumSubtotalCents: number;
-  usageLimit?: number;
+  usageLimit?: number | undefined;
+  maximumOriginalSubtotalCents?: number | undefined;
+  maximumQuantity?: number | undefined;
   isActive: boolean;
   startsAt?: Date;
-  endsAt?: Date;
+  endsAt?: Date | undefined;
 };
 
 export async function savePromotion(input: PromotionInput) {
@@ -60,6 +63,31 @@ export async function savePromotion(input: PromotionInput) {
     input.usageLimit === undefined
       ? null
       : parseActionInteger(input.usageLimit, "Usage limit", 1, 2147483647);
+  const maximumOriginalSubtotalCents =
+    input.maximumOriginalSubtotalCents === undefined
+      ? null
+      : parseActionInteger(
+          input.maximumOriginalSubtotalCents,
+          "Maximum qualifying value",
+          1,
+          2147483647,
+        );
+  const maximumQuantity =
+    input.maximumQuantity === undefined
+      ? null
+      : parseActionInteger(input.maximumQuantity, "Maximum quantity", 1, 99900);
+  if (
+    input.isActive &&
+    !giveawayLimitsConfigured({
+      ...input,
+      maximumOriginalSubtotalCents,
+      maximumQuantity,
+      usageLimit,
+    })
+  )
+    throw new DomainError(
+      "Giveaway campaigns require value and quantity limits, an expiry and a total usage limit.",
+    );
   if (input.startsAt && input.endsAt && input.startsAt >= input.endsAt)
     throw new DomainError("Promotion end must be after its start.");
   return db.transaction(async (tx) => {
@@ -82,6 +110,8 @@ export async function savePromotion(input: PromotionInput) {
       discountValue,
       minimumSubtotalCents,
       usageLimit,
+      maximumOriginalSubtotalCents,
+      maximumQuantity,
       isActive: input.isActive,
       startsAt: input.startsAt ?? null,
       endsAt: input.endsAt ?? null,
@@ -131,7 +161,17 @@ export async function savePromotion(input: PromotionInput) {
       entityId: saved.id,
       actorId: input.staffUserId,
       action: id ? "updated" : "created",
-      details: { code, discountType: input.discountType, discountValue },
+      details: {
+        code,
+        discountType: input.discountType,
+        discountValue,
+        minimumSubtotalCents,
+        maximumOriginalSubtotalCents,
+        maximumQuantity,
+        usageLimit,
+        startsAt: input.startsAt ?? null,
+        endsAt: input.endsAt ?? null,
+      },
     });
     return saved;
   });
@@ -145,6 +185,16 @@ export async function setPromotionActive(input: {
   const id = parseActionUuid(input.id, "Promotion");
   return db.transaction(async (tx) => {
     await verifyStaffInTransaction(tx, input.staffUserId, "owner");
+    await tx.select().from(storeSettings).for("update");
+    const [current] = await tx
+      .select()
+      .from(promotions)
+      .where(eq(promotions.id, id));
+    if (!current) throw new NotFoundError("Promotion not found.");
+    if (input.isActive && !giveawayLimitsConfigured(current))
+      throw new DomainError(
+        "Giveaway campaigns require value and quantity limits, an expiry and a total usage limit.",
+      );
     const [saved] = await tx
       .update(promotions)
       .set({ isActive: input.isActive, updatedAt: new Date() })

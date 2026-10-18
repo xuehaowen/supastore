@@ -808,7 +808,7 @@ describe.skipIf(!server)("contextual commerce PostgreSQL", () => {
       fulfillmentType: "pickup",
       pickupLocationId: pickup,
       shippingAddress: { country: "", address: "" },
-      paymentAccountId: undefined,
+      paymentAccountId: "",
       promotionCode: input.code,
     });
     expect(accepted.q.totalPayableCents).toBe(0);
@@ -831,7 +831,7 @@ describe.skipIf(!server)("contextual commerce PostgreSQL", () => {
       fulfillmentType: "pickup" as const,
       pickupLocationId: pickup,
       shippingAddress: { country: "", address: "" },
-      paymentAccountId: undefined,
+      paymentAccountId: "",
       promotionCode: input.code,
     };
     const one = await quote(details),
