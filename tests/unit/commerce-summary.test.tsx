@@ -59,3 +59,26 @@ it("asks for missing context without displaying a fabricated price and supports 
     renderToStaticMarkup(<CommerceSummary preview={preview()} locale="zh" />),
   ).toContain("积分");
 });
+it("asks for missing promotion context instead of rejecting the promotion", () => {
+  const pending = preview();
+  pending.evaluation.promotion = {
+    eligible: false,
+    pending: true,
+    reason: "PROMOTION_INELIGIBLE",
+    ruleId: null,
+  };
+  const html = renderToStaticMarkup(
+    <CommerceSummary preview={pending} locale="en" />,
+  );
+  expect(html).toContain(
+    "Complete your destination or pickup location to check this promotion.",
+  );
+  expect(html).not.toContain("This promotion is not eligible");
+  expect(
+    renderToStaticMarkup(<CommerceSummary preview={pending} locale="zh" />),
+  ).toContain("补全目的地或自提地点");
+  pending.evaluation.promotion.pending = false;
+  expect(
+    renderToStaticMarkup(<CommerceSummary preview={pending} locale="en" />),
+  ).toContain("This promotion is not eligible");
+});

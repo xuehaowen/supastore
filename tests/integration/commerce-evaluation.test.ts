@@ -26,6 +26,7 @@ import { updateStoreSettings } from "@/application/use-cases/store/update-store-
 import { commerceRules, type CommerceRule } from "@/domain/commerce-evaluation";
 import { customerAccount } from "@/application/use-cases/customers/customer-ownership";
 import { previewCommerce } from "@/application/use-cases/commerce/preview-commerce";
+import { savePromotion } from "@/application/use-cases/promotions/manage-promotions";
 import {
   saveCommerceRule,
   deleteCommerceRule,
@@ -320,6 +321,180 @@ describe.skipIf(!server)("contextual commerce PostgreSQL", () => {
       promotionCode: "DOESNOTEXIST",
     });
     expect(invalid.evaluation.promotion.eligible).toBe(false);
+  });
+  it("keeps promotion restrictions and revision fencing when a code is renamed or reused", async () => {
+    const code = "CODE_" + randomUUID().slice(0, 8).toUpperCase();
+    const renamed = code + "_NEW";
+    const input = {
+      staffUserId: owner,
+      code,
+      name: "Restricted promotion",
+      discountType: "fixed" as const,
+      discountValue: 100,
+      minimumSubtotalCents: 0,
+      isActive: true,
+    };
+    const promotion = await savePromotion(input);
+    const restriction = rule("promotion", 0, {
+      promotionCode: code,
+      conditions: { fulfillmentMethods: ["pickup"] },
+    });
+    const disabled = {
+      ...restriction,
+      id: randomUUID(),
+      priority: 20,
+      enabled: false,
+    };
+    await save([restriction, disabled]);
+    const [before] = await client`select quote_version from store_settings`;
+    await savePromotion({ ...input, id: promotion!.id, code: renamed });
+    const [after] =
+      await client`select quote_version,commerce_rules from store_settings`;
+    expect(after!.commerce_rules).toEqual([
+      { ...restriction, promotionCode: renamed },
+      { ...disabled, promotionCode: renamed },
+    ]);
+    expect(after!.quote_version).toBe(before!.quote_version + 1);
+    await expect(
+      saveCommerceRule({
+        staffUserId: owner,
+        expectedVersion: before!.quote_version,
+        rule: restriction,
+      }),
+    ).rejects.toThrow(/changed|refresh/i);
+    await expect(quote({ promotionCode: renamed })).rejects.toThrow(
+      /promotion.*eligible/i,
+    );
+    expect(
+      (
+        await quote({
+          promotionCode: renamed,
+          fulfillmentType: "pickup",
+          pickupLocationId: pickup,
+          shippingAddress: { country: "", address: "" },
+        })
+      ).q.discountCents,
+    ).toBe(100);
+    await savePromotion({ ...input, name: "Reused code" });
+    expect((await quote({ promotionCode: code })).q.discountCents).toBe(100);
+  });
+  it("validates local delivery destinations before estimating free delivery and matches checkout", async () => {
+    await client`update store_settings set commerce_policy=commerce_policy || '{"deliveryEnabled":true}'::jsonb`;
+    const [area] =
+      await client`insert into delivery_areas(name,country_codes,postal_prefixes,rate_cents,free_threshold_cents) values('Preview fixture','["US"]'::jsonb,'["981"]'::jsonb,800,2000) returning id`;
+    const threshold = rule("free_shipping", 1500, {
+      conditions: { fulfillmentMethods: ["local_delivery"] },
+    });
+    try {
+      await save([threshold]);
+      const input = {
+        items: [{ variantId: variant, quantity: 2 }],
+        context: {
+          fulfillmentType: "local_delivery" as const,
+          country: "US",
+          postalCode: "10001",
+        },
+      };
+      await expect(previewCommerce(input)).rejects.toThrow(
+        /delivery.*destination/i,
+      );
+      await expect(
+        previewCommerce({
+          ...input,
+          context: { ...input.context, country: "CA", postalCode: "M5V1A1" },
+        }),
+      ).rejects.toThrow(/delivery.*destination/i);
+      const missing = await previewCommerce({
+        ...input,
+        context: { fulfillmentType: "local_delivery", country: "US" },
+      });
+      expect(missing.evaluation.shipping).toMatchObject({
+        pending: true,
+        remainingCents: null,
+      });
+      const valid = {
+        ...input,
+        context: { ...input.context, postalCode: "98101" },
+        promotionCode: "SAVE",
+      };
+      const preview = await previewCommerce(valid);
+      expect(preview.evaluation.shipping).toMatchObject({
+        pending: false,
+        freeThresholdCents: 1500,
+        remainingCents: 0,
+      });
+      expect(
+        (
+          await quote(
+            {
+              fulfillmentType: "local_delivery",
+              deliveryAreaId: area!.id,
+              shippingAddress: {
+                country: "US",
+                postalCode: "98101",
+                address: "1 Fixture St",
+              },
+              promotionCode: "SAVE",
+            },
+            2,
+          )
+        ).q.shippingCents,
+      ).toBe(0);
+      await save([{ ...threshold, value: 1600 }]);
+      expect((await previewCommerce(valid)).evaluation.shipping).toMatchObject({
+        pending: false,
+        freeThresholdCents: 1600,
+        remainingCents: 100,
+      });
+      expect(
+        (
+          await quote(
+            {
+              fulfillmentType: "local_delivery",
+              deliveryAreaId: area!.id,
+              shippingAddress: {
+                country: "US",
+                postalCode: "98101",
+                address: "1 Fixture St",
+              },
+              promotionCode: "SAVE",
+            },
+            2,
+          )
+        ).q.shippingCents,
+      ).toBe(800);
+    } finally {
+      await client`delete from delivery_areas where id=${area!.id}`;
+      await client`update store_settings set commerce_policy=commerce_policy || '{"deliveryEnabled":false}'::jsonb`;
+    }
+  });
+  it("keeps delivery qualification pending when multiple delivery areas could apply", async () => {
+    await client`update store_settings set commerce_policy=commerce_policy || '{"deliveryEnabled":true}'::jsonb`;
+    const areas =
+      await client`insert into delivery_areas(name,country_codes,postal_prefixes,rate_cents,free_threshold_cents) values('Ambiguous one','["US"]'::jsonb,'["981"]'::jsonb,800,1500),('Ambiguous two','["US"]'::jsonb,'["981"]'::jsonb,900,3000) returning id`;
+    try {
+      await save([
+        rule("free_shipping", 1500, {
+          conditions: { fulfillmentMethods: ["local_delivery"] },
+        }),
+      ]);
+      const result = await previewCommerce({
+        items: [{ variantId: variant, quantity: 2 }],
+        context: {
+          fulfillmentType: "local_delivery",
+          country: "US",
+          postalCode: "98101",
+        },
+      });
+      expect(result.evaluation.shipping).toMatchObject({
+        pending: true,
+        remainingCents: null,
+      });
+    } finally {
+      for (const area of areas)
+        await client`delete from delivery_areas where id=${area.id}`;
+      await client`update store_settings set commerce_policy=commerce_policy || '{"deliveryEnabled":false}'::jsonb`;
+    }
   });
   it("edits individual rules with revision fencing, reference validation and owner authorization", async () => {
     const [before] = await client`select quote_version from store_settings`;
