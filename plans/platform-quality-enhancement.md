@@ -516,3 +516,15 @@ Local OAuth2 SMTP authentication also passes without sending email. Remaining
 launch acceptance needs real catalog/design approval, actual payment/receipt and
 email delivery, KVM 2 host/domains/ingress, and matching merchant database/assets
 recovery. Performance optimization remains deferred.
+
+Owner deployment clarification, October 17: KVM 2 is a Hostinger VPS. The planned
+public domain is `milkybakery.store`, potentially `/pickup` and `/shipping`.
+Private Docker verification locally or on the VPS comes first; public DNS is
+not required for that stage. SSH host/alias remains unavailable. The current
+two-instance deployment assumes distinct hostnames and does not support
+independent path-prefixed stores without routing/session work. One instance
+already supports both fulfillment methods with shared stock/accounts/orders;
+the owner's choice between that and independent stores is pending. See
+[the deployment clarification](../docs/milky-bakery-two-instances.md#owner-clarification-verification-and-domain-layout).
+Do not mark public TLS, canonical origins or ingress accepted from private
+Docker results, or add path-prefix architecture before the topology is chosen.

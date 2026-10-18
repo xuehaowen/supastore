@@ -2,6 +2,41 @@
 
 Launch direction confirmed by the owner on October 17, 2026: likely two separate instances, one for pickup and one for shipping, with manual payment initially. The configuration below supports that direction without adding multi-tenancy, a theme system or card-payment requirements. No live store was configured by this work.
 
+## Owner clarification: verification and domain layout
+
+The owner identifies KVM 2 as a Hostinger VPS and plans to use
+`milkybakery.store`, possibly `/pickup` and `/shipping`. Final application
+verification will use Docker locally or on that VPS without connecting the
+public domain. No SSH host/alias or deployment configuration path has been
+provided. Public DNS is not a prerequisite for the local rehearsal.
+
+The two-instance commands below assume separate hostnames, not path prefixes.
+Neither Next.js application currently configures `basePath`; storefront admin
+rewrites and asset paths start at the origin root. A reverse proxy that only
+strips `/pickup` or `/shipping` does not establish working links, assets,
+authentication, guest-order cookies or SEO for independent stores. Do not treat
+that proposed public layout as supported or accepted yet.
+
+One instance already supports enabling pickup and shipping together, sharing
+catalog, inventory, customer accounts and orders. This is the recommended
+launch configuration if both methods serve the same business and stock pool.
+If independent stores are required, separate hostnames match the existing
+deployment model; using the proposed paths instead requires explicit routing,
+cookie/session isolation and acceptance work. The owner's topology choice is
+pending; no application topology was changed by this clarification.
+
+For two-instance browser verification, use distinct test hostnames resolving to
+the Docker host rather than two ports on `localhost`, since ports do not isolate
+cookies. VPS verification can use SSH tunnels to loopback-bound storefront
+ports and locally resolved test hostnames. It still needs the actual SSH alias
+and an agreed test configuration. Use separate test data and keep outbound
+delivery suppressed until an approved recipient is available.
+
+Passing this private Docker stage establishes application behavior only. Real
+domain HTTPS, secure cookies, canonical/sitemap origins and ingress remain a
+separate acceptance stage before public selling; they do not block private
+Docker verification.
+
 ## Isolation and public origins
 
 Use one complete backend/storefront/database/storage stack per store, with a distinct Compose project name, environment file, public hostname and secrets. Store settings are database-wide: pointing both backends at one database would share fulfillment configuration rather than create two independent stores.
