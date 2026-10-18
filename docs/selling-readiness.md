@@ -1,8 +1,8 @@
-# Milky Bakery selling readiness
+# Store selling readiness
 
-Updated October 17, 2026 (America/Los_Angeles). Work follows the owner's selling-first priority: usability, fixed storefront design and reliability before performance optimization. This record distinguishes completed local development from store-owner and deployment acceptance.
+Updated October 17, 2026. Release priorities are usability, fixed storefront design and reliability before performance optimization. This record distinguishes completed local development from merchant and deployment acceptance.
 
-The owner's working launch direction is now two independent instances—pickup-only and shipping-only—with manual payment on both. [The two-instance recipe](milky-bakery-two-instances.md) records configuration, data separation and both passing mobile sales rehearsals. Latest acceptance is 1,181 unit/library and 45 default browser tests; earlier dated results below remain part of the evidence trail.
+The optional [two-instance recipe](independent-store-instances.md) records independent pickup-only and shipping-only configurations, data separation and both passing manual-payment mobile sales rehearsals. A single store can also enable both methods. These are supported configuration choices, not mandatory launch defaults. Profile acceptance recorded 1,181 unit/library and 45 default browser tests; later dated results below extend that evidence.
 
 ## Usability findings and changes
 
@@ -23,7 +23,7 @@ Existing setup and daily-operation screens already provide product publishing, p
 
 The fixed visual direction retains the current cream/green palette and serif typography, with a simpler merchant-led hero, real catalog photography when supplied, responsive spacing, visible keyboard focus and reduced-motion support. It adds no invented photography, marketing claims, address, hours or phone number. Product, cart and checkout retain the existing presentation and transaction controls; the responsive/accessibility audit checks their rendered states alongside the administrative screens.
 
-The owner's **“keep location private”** decision still applies. No LocalBusiness/Bakery markup or public pickup address is added. Existing private operational instructions are not repurposed as marketing content.
+Only merchant-approved information belongs in public content. No LocalBusiness markup or public pickup address is added by these changes. Existing private operational instructions are not repurposed as marketing content.
 
 ## Reliability and recovery
 
@@ -64,11 +64,11 @@ The bundle command needs the production build directory; for an isolated build, 
 
 ## Owner and deployment acceptance still required
 
-The latest local service probe authenticated the configured OAuth2 SMTP connection without sending a message. This confirms local connectivity/authentication only; real transactional delivery and connectivity from KVM 2 remain unverified. The shell-recovery follow-up passes **1,183 unit/library tests**; earlier application/browser evidence remains separate.
+The latest local service probe authenticated the configured OAuth2 SMTP connection without sending a message. This confirms local connectivity/authentication only; real transactional delivery and connectivity from the target host remain unverified. The shell-recovery follow-up passes **1,183 unit/library tests**; earlier application/browser evidence remains separate.
 
 1. **Real catalog and fixed storefront approval:** supply/review actual names, prices, stock, photographs, translations and public policies. Confirm the available theme at 375px and desktop. No real store data was changed by local fixtures.
 2. **Configured selling path:** use the intended fulfillment and payment methods; check preparation/collection instructions and customer totals. Complete an authorized controlled order, actual payment, transactional email, fulfillment and refund in the designated environment. Fixture receipts are never production settlement evidence.
-3. **KVM 2 cutover:** verify real DNS/HTTPS, cookies, trusted ingress, required providers, worker supervision and ordinary resource headroom. Inspect actual production sitemap/canonicals and private-page indexing exclusions.
+3. **Target-host cutover:** verify real DNS/HTTPS, cookies, trusted ingress, required providers, worker supervision and ordinary resource headroom. Inspect actual production sitemap/canonicals and private-page indexing exclusions.
 4. **Recovery:** verify a matching database/assets backup, isolated restore with sends disabled, reconciliation, compatible-image rollback and pause/resume procedure. Do not roll back financial history to reverse real transfers.
 5. **First sales cycle:** inspect failed notifications, unpaid/evidence-review orders, pickup/dispatch work and stock discrepancies. Keep a short owner friction log for the next small fix.
 

@@ -6,7 +6,7 @@ The backend also runs the outbox worker when explicitly enabled. No Redis or
 external cache is required.
 
 For the pickup-only and shipping-only manual-payment launch, use the
-[two-instance recipe](milky-bakery-two-instances.md). It covers explicit project
+[two-instance recipe](independent-store-instances.md). It covers explicit project
 names, separate data/secrets/origins, non-conflicting host ports and independent
 inventory/backup operations.
 
@@ -22,7 +22,7 @@ configuration, PostgreSQL upgrades, public origins and trusted ingress.
    For independent store releases, set `BACKEND_IMAGE`, `STOREFRONT_IMAGE` and
    `MIGRATION_IMAGE` to versioned tags before building, or use verified prebuilt
    registry digests. Do not build to digest references. See the
-   [release and rollback procedure](milky-bakery-two-instances.md#independent-releases-and-rollback).
+   [release and rollback procedure](independent-store-instances.md#independent-releases-and-rollback).
 3. Start PostgreSQL and object storage with
    `docker compose up -d postgres rustfs`.
 4. Back up an existing installation and rehearse recovery before applying

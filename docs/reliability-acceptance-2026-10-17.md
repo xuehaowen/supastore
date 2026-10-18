@@ -41,7 +41,7 @@ The exact default CI command passes **43 browser tests**, including the 109-scre
 
 ## Remaining production recovery acceptance
 
-This rehearsal uses the container runner's `pg_dump`/SQL restore/migration path. It does not execute the production shell backup/restore procedure against a merchant backup, restore object storage, verify a paid ledger with provider evidence, test scheduled backup retention/alert delivery or exercise KVM 2's actual ingress and supervision. Shell-script guard regressions and earlier evidence remain separate.
+This rehearsal uses the container runner's `pg_dump`/SQL restore/migration path. It does not execute the production shell backup/restore procedure against a merchant backup, restore object storage, verify a paid ledger with provider evidence, test scheduled backup retention/alert delivery or exercise target host's actual ingress and supervision. Shell-script guard regressions and earlier evidence remain separate.
 
 ## Actual shell-procedure follow-up
 

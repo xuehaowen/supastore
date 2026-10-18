@@ -26,7 +26,7 @@
     "Synthetic fixture, not a merchant backup",
     "No object-storage restore in this run",
     "No live payment or transactional-email delivery",
-    "No KVM 2 deployment or ingress validation",
+    "No target host deployment or ingress validation",
     "Windows shell copies normalized to LF in helper, as specified by .gitattributes"
   ]
 }

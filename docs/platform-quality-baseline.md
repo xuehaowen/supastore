@@ -60,7 +60,7 @@ The PostgreSQL runner used only its dedicated `supastore_test` fixture plus owne
 
 ## Remaining boundaries
 
-These results are a local development baseline. They do not certify KVM 2 capacity, real-provider payment/email acceptance, a representative catalog/load envelope, disaster recovery on the target host or manual accessibility acceptance. Those remain separate plan steps. Historical evidence is not substituted for checks still pending in this run.
+These results are a local development baseline. They do not certify target host capacity, real-provider payment/email acceptance, a representative catalog/load envelope, disaster recovery on the target host or manual accessibility acceptance. Those remain separate plan steps. Historical evidence is not substituted for checks still pending in this run.
 
 ## Resource snapshot from the successful production run
 
@@ -71,7 +71,7 @@ Runtime: Windows Next CLI, Node 24.12.0. Both apps were freshly built. The workl
 | Backend    |      655,081,472 |      624.7 |    678,105,088 |    646.7 |
 | Storefront |      402,993,152 |      384.3 |    409,407,488 |    390.4 |
 
-Sampled application-process memory totals about 1,009 MiB, excluding PostgreSQL, asset/mail fixtures, browser, OS and other services. Measure Linux/KVM 2 separately before sizing; this run does not establish a memory limit or improvement over differently measured historical runs.
+Sampled application-process memory totals about 1,009 MiB, excluding PostgreSQL, asset/mail fixtures, browser, OS and other services. Measure Linux target host separately before sizing; this run does not establish a memory limit or improvement over differently measured historical runs.
 
 | Initial route JavaScript | Chunks | Raw bytes | Sum of gzip chunk bytes |   KiB |
 | ------------------------ | -----: | --------: | ----------------------: | ----: |

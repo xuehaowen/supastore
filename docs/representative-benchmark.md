@@ -221,7 +221,7 @@ pnpm exec vitest run tests/unit/representative-benchmark.test.ts tests/unit/benc
   synthetic artifacts are retained in the guide below.
 - Memory stability is an open Step 4 issue. Diagnose growth and rerun the same
   standard profile after fixes; do not relax limits to accept this baseline.
-- Larger-profile capacity and KVM 2 host acceptance remain unclaimed. Fixture
+- Larger-profile capacity and target host host acceptance remain unclaimed. Fixture
   generation covers all sizes; the full HTTP measurement covers 1,000 products.
 
 The [clean 35-minute baseline and calibrated limits](representative-http-benchmark.md#clean-standard-baseline-and-memory-acceptance)
@@ -229,7 +229,7 @@ retain all three 360-sample memory series. The deliberate-growth control fails
 even with peak headroom. General `analyzeMemory(..., null)` still reports
 uncalibrated, while the versioned CLI now applies each frozen service limit.
 
-No live store, customer information, provider credentials or KVM 2 deployment is
+No live store, customer information, provider credentials or target host deployment is
 used by this tooling change. Steps 3 and 4 remain open.
 
 Memory follow-up: [numeric heap/private-memory diagnosis and compact runtime trial](memory-diagnosis.md).

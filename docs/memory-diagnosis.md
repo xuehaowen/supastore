@@ -112,7 +112,7 @@ servers without loading heap probes or forcing GC. `manifest.options.runtimeMemo
 records the changed configuration; the same frozen local RSS limits apply.
 `default` remains the standard behavior, and combining this option with a heap
 diagnostic is rejected to avoid mixing experiments. Confirmation results are
-recorded after the run; no short trial establishes memory or KVM 2 acceptance.
+recorded after the run; no short trial establishes memory or target host acceptance.
 
 Run `supastore_cuj_1792241570654` completed the full standard workload from clean
 `022f92f`. There are 154,168 measured requests, 7,704 measured orders and 8,767
@@ -151,7 +151,7 @@ flag's CPU cost. The fixed-duration compact run also completed fewer mutations;
 it does not establish equal-work retention or throughput parity. Keep the option
 explicit and do not change production defaults based on this Windows trial.
 Repeat controlled comparisons and target-host/standalone/export/worker workloads
-before adopting it for KVM 2.
+before adopting it for the target host.
 
 ### Sampling-boundary correction
 

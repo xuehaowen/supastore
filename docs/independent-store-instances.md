@@ -1,14 +1,13 @@
-# Milky Bakery: two manual-payment instances
+# Independent store instances
 
-Launch direction confirmed by the owner on October 17, 2026: likely two separate instances, one for pickup and one for shipping, with manual payment initially. The configuration below supports that direction without adding multi-tenancy, a theme system or card-payment requirements. No live store was configured by this work.
+This optional deployment recipe uses two independent stores: one pickup-only and one shipping-only, with manual payment. It does not add multi-tenancy or require card payments. Choose this topology only when separate catalog, inventory, customer accounts and order histories are appropriate.
 
-## Owner clarification: verification and domain layout
+## Private verification and domain layout
 
-The owner identifies KVM 2 as a Hostinger VPS and plans to use
-`milkybakery.store`, possibly `/pickup` and `/shipping`. Final application
-verification will use Docker locally or on that VPS without connecting the
-public domain. No SSH host/alias or deployment configuration path has been
-provided. Public DNS is not a prerequisite for the local rehearsal.
+Application verification can use Docker locally or on a private server before
+connecting a public domain. Public DNS is not a prerequisite for that stage.
+Use operator-supplied hostnames and deployment configuration; the examples below
+use reserved example domains rather than a merchant's actual domain.
 
 The two-instance commands below assume separate hostnames, not path prefixes.
 Neither Next.js application currently configures `basePath`; storefront admin
@@ -22,8 +21,9 @@ catalog, inventory, customer accounts and orders. This is the recommended
 launch configuration if both methods serve the same business and stock pool.
 If independent stores are required, separate hostnames match the existing
 deployment model; using the proposed paths instead requires explicit routing,
-cookie/session isolation and acceptance work. The owner's topology choice is
-pending; no application topology was changed by this clarification.
+cookie/session isolation and acceptance work. Each variant currently has one
+price; enabling both methods does not provide fulfillment-specific product
+prices or availability rules.
 
 For two-instance browser verification, use distinct test hostnames resolving to
 the Docker host rather than two ports on `localhost`, since ports do not isolate
@@ -47,9 +47,9 @@ Example values for **new installations**:
 
 | Setting                            | Pickup instance              | Shipping instance              |
 | ---------------------------------- | ---------------------------- | ------------------------------ |
-| Compose project (`-p`)             | `milky-pickup`               | `milky-shipping`               |
+| Compose project (`-p`)             | `store-pickup`               | `store-shipping`               |
 | Secret environment file            | `/etc/supastore/pickup.env`  | `/etc/supastore/shipping.env`  |
-| `POSTGRES_DB`                      | `milky_pickup`               | `milky_shipping`               |
+| `POSTGRES_DB`                      | `store_pickup`               | `store_shipping`               |
 | `POSTGRES_PORT`                    | `5432`                       | `5433`                         |
 | `S3_API_PORT`                      | `9000`                       | `9100`                         |
 | `S3_CONSOLE_PORT`                  | `9001`                       | `9101`                         |
@@ -68,17 +68,17 @@ For an existing installation, retain its current project name and inspect actual
 From the repository, use the explicit environment file and project for **every** operation:
 
 ```sh
-docker compose --env-file /etc/supastore/pickup.env -p milky-pickup -f docker-compose.yml config --quiet
-docker compose --env-file /etc/supastore/shipping.env -p milky-shipping -f docker-compose.yml config --quiet
+docker compose --env-file /etc/supastore/pickup.env -p store-pickup -f docker-compose.yml config --quiet
+docker compose --env-file /etc/supastore/shipping.env -p store-shipping -f docker-compose.yml config --quiet
 
-docker compose --env-file /etc/supastore/pickup.env -p milky-pickup -f docker-compose.yml up -d postgres rustfs
-docker compose --env-file /etc/supastore/shipping.env -p milky-shipping -f docker-compose.yml up -d postgres rustfs
+docker compose --env-file /etc/supastore/pickup.env -p store-pickup -f docker-compose.yml up -d postgres rustfs
+docker compose --env-file /etc/supastore/shipping.env -p store-shipping -f docker-compose.yml up -d postgres rustfs
 
-docker compose --env-file /etc/supastore/pickup.env -p milky-pickup -f docker-compose.yml --profile migration run --rm migrate
-docker compose --env-file /etc/supastore/shipping.env -p milky-shipping -f docker-compose.yml --profile migration run --rm migrate
+docker compose --env-file /etc/supastore/pickup.env -p store-pickup -f docker-compose.yml --profile migration run --rm migrate
+docker compose --env-file /etc/supastore/shipping.env -p store-shipping -f docker-compose.yml --profile migration run --rm migrate
 
-docker compose --env-file /etc/supastore/pickup.env -p milky-pickup -f docker-compose.yml up -d backend storefront
-docker compose --env-file /etc/supastore/shipping.env -p milky-shipping -f docker-compose.yml up -d backend storefront
+docker compose --env-file /etc/supastore/pickup.env -p store-pickup -f docker-compose.yml up -d backend storefront
+docker compose --env-file /etc/supastore/shipping.env -p store-shipping -f docker-compose.yml up -d backend storefront
 ```
 
 Build the application and migration targets before these startup commands using the [deployment recipe](deployment-recipes.md). Select `BACKEND_IMAGE`, `STOREFRONT_IMAGE` and `MIGRATION_IMAGE` independently in each instance's environment file. Empty application references preserve the local `latest` defaults; an empty migration reference preserves the project-specific migration tag. For releases, use versioned tags that are never overwritten or verified registry digests. Project isolation alone does not pin versions.
@@ -96,21 +96,21 @@ MIGRATION_IMAGE=supastore-migrate:release-20261017-a
 Building from a chosen checkout requires writable tag names, not digest references:
 
 ```sh
-docker compose --env-file /etc/supastore/pickup.env -p milky-pickup -f docker-compose.yml --profile migration build backend storefront migrate
+docker compose --env-file /etc/supastore/pickup.env -p store-pickup -f docker-compose.yml --profile migration build backend storefront migrate
 ```
 
 When using prebuilt registry images, pull and verify the approved digests instead. Before changing running services, inspect the effective selection without printing environment secrets:
 
 ```sh
-docker compose --env-file /etc/supastore/pickup.env -p milky-pickup -f docker-compose.yml --profile migration config --images
+docker compose --env-file /etc/supastore/pickup.env -p store-pickup -f docker-compose.yml --profile migration config --images
 ```
 
 Confirm each selected image is already present locally and matches the approved release, and record its immutable image ID/registry digest plus the previous release and database schema version. Stop if any selected image is missing or unverified. Back up and rehearse on an isolated copy before migrating an existing store. Apply only the approved forward-compatible migration image, then replace backend before storefront:
 
 ```sh
-docker compose --env-file /etc/supastore/pickup.env -p milky-pickup -f docker-compose.yml --profile migration run --rm --pull never migrate
-docker compose --env-file /etc/supastore/pickup.env -p milky-pickup -f docker-compose.yml up -d --wait --no-deps --no-build --pull never backend
-docker compose --env-file /etc/supastore/pickup.env -p milky-pickup -f docker-compose.yml up -d --wait --no-deps --no-build --pull never storefront
+docker compose --env-file /etc/supastore/pickup.env -p store-pickup -f docker-compose.yml --profile migration run --rm --pull never migrate
+docker compose --env-file /etc/supastore/pickup.env -p store-pickup -f docker-compose.yml up -d --wait --no-deps --no-build --pull never backend
+docker compose --env-file /etc/supastore/pickup.env -p store-pickup -f docker-compose.yml up -d --wait --no-deps --no-build --pull never storefront
 ```
 
 The shipping environment file and project are not part of those commands. It can continue selecting the previous release. Do not overwrite its version tags while building the pickup candidate. Do not use `--build` during service replacement or rollback.
@@ -130,7 +130,7 @@ Provision the owner separately for each store using the existing trusted termina
 
 For the chosen manual-payment launch, leave `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` empty in both effective backend environments; the current application enables online payment from valid provider credentials rather than a separate manual-only switch. Do not enable Stripe accounts or offer card checkout until separately configured and accepted. Manual payment still requires checking actual funds before recording a receipt; an uploaded image is evidence rather than settlement. Transactional email and order recovery remain necessary.
 
-Keep the location private in public copy and structured data. This work adds no public street address or LocalBusiness/Bakery markup. Review existing customer-facing pickup instructions as part of owner acceptance; no real location was supplied or changed.
+Publish only merchant-approved business details. Private operational addresses must not be reused in public copy or structured data. Review customer-facing pickup instructions separately; the current implementation adds no LocalBusiness markup.
 
 ## Stock and operations
 
@@ -146,6 +146,6 @@ The root Compose recipe was rendered for two explicitly named synthetic projects
 
 `tests/browser/manual-launch-profiles.spec.ts` rehearses pickup-only and shipping-only configurations in disposable services at 375px: exactly one fulfillment choice, only relevant address/location fields, manual payment instructions, unpaid order placement, one exact synthetic receipt, confirmation and completed pickup/shipment delivery. The test restores configuration afterward. It does not transfer real money. Both profiles pass and are included in the normal CI browser selection.
 
-This verifies same-host dependency isolation and each configured sales workflow separately. It is not a simultaneous two-store application load test or proof of KVM 2 capacity. Actual domains, secrets, receiving instructions, pickup rules, shipping rates, real catalog/photographs, email delivery, provider reconciliation and matching backups still require owner/target acceptance. Performance optimization remains deferred.
+This verifies same-host dependency isolation and each configured sales workflow separately. It is not a simultaneous two-store application load test or proof of target host capacity. Actual domains, secrets, receiving instructions, pickup rules, shipping rates, real catalog/photographs, email delivery, provider reconciliation and matching backups still require owner/target acceptance. Performance optimization remains deferred.
 
 Release-selection follow-up: Docker Compose's actual parser resolves all three explicit image references independently for pickup and shipping, including the migration profile and default fallback. Changing the pickup candidate and selecting its previous release leaves shipping image references and pickup volume definitions unchanged. This is a configuration-only check with illustrative references; no sample release image was built, pulled or deployed, and no live rollback was performed. Five deployment regressions and the full 1,182-test unit/library suite pass; canonical types, lint and formatting pass. Existing 45-test browser acceptance is retained because this follow-up changes no application code. [Release-selection evidence](benchmarks/2026-10-17-instance-releases.json).

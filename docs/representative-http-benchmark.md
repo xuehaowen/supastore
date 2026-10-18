@@ -140,7 +140,7 @@ was subsequently committed as `d12fad8`.
 | Order     |     35 |     56 |               273 |
 
 The observed 185.1 admitted requests/second belongs to this short local diagnostic.
-It does not predict throughput on KVM 2 or over a mobile network.
+It does not predict throughput on the target host or over a mobile network.
 
 Verification after integration: 1,102 unit/storefront-library tests, 143 PostgreSQL
 integration tests and all 34 default production browser journeys pass. Both apps
@@ -194,7 +194,7 @@ application optimization, `33bf3bd` freezes the following local regression limit
 Peak caps round above observed peaks with roughly 24–32% headroom. Stability
 limits allow at most 15 MiB of linear app drift over 30 minutes, with a separate
 16 MiB median check; PostgreSQL uses 30/32 MiB. These are strict local regression
-rules, not KVM 2 sizing or proof of a leak. Gross database RSS repeats shared
+rules, not target host sizing or proof of a leak. Gross database RSS repeats shared
 pages; target-host physical memory/connection/cache measurements remain necessary.
 
 | Service              | Peak MiB | Slope MiB/min | First median MiB | Last median MiB | Growth MiB |
@@ -223,7 +223,7 @@ This expected failing analysis is an open Step 4 issue, not a completed memory
 acceptance. Diagnose app heap/native/cache retention and database shared-page
 accounting, then repeat the same profile. Do not raise growth limits to pass it.
 HTTP success does not certify the whole benchmark or production readiness.
-Independent reproduction, larger-profile HTTP capacity and KVM 2/provider checks
+Independent reproduction, larger-profile HTTP capacity and target host/provider checks
 remain pending. Final tooling regression: 1,118 unit/library tests pass; root/apps
 types, repository lint and focused formatting pass. Environment-scope regressions
 add seven cases; see the final verification record in the plan.

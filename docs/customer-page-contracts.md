@@ -73,7 +73,7 @@ previous response fields through the supported rollout/rollback window.
   dependency vulnerability scan is implied by those reviews.
 
 Existing [Step 1 resource evidence](platform-quality-baseline.md) remains a
-separate baseline. The final measured run recorded identical initial raw client JavaScript sizes: catalog 506,558 bytes and product 510,814 bytes. Sum-of-chunk gzip sizes were 159,836 and 161,260 bytes (156.1/157.5 KiB); the two-byte gzip differences are not a performance improvement. The dedicated schema entry point did not grow those client bundles. KVM 2 and real payment/email
+separate baseline. The final measured run recorded identical initial raw client JavaScript sizes: catalog 506,558 bytes and product 510,814 bytes. Sum-of-chunk gzip sizes were 159,836 and 161,260 bytes (156.1/157.5 KiB); the two-byte gzip differences are not a performance improvement. The dedicated schema entry point did not grow those client bundles. target host and real payment/email
 acceptance remain separate release gates.
 
 Final post-journey Windows Next CLI working sets: backend 653,692,928 bytes

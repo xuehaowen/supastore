@@ -18,11 +18,11 @@ returns, within its enforced 30-second polling deadline. See [current recovery
 evidence](reliability-acceptance-2026-10-17.md) for source/image identifiers and
 the separate production shell/asset-backup limitations.
 
-Working launch direction: separate pickup-only and shipping-only instances,
-manual payment on both. [Configuration and profile acceptance](milky-bakery-two-instances.md)
+Optional deployment profiles: separate pickup-only and shipping-only instances,
+manual payment on both. [Configuration and profile acceptance](independent-store-instances.md)
 cover isolated names/ports/data, the relevant mobile checkout fields, manual
 receipt confirmation and fulfillment. Card credentials/provider acceptance are
-not required for this manual-payment launch; verified transactional email and
+not required for these manual-payment profiles; verified transactional email and
 actual manual-payment reconciliation remain required.
 
 Each store can now select its backend/storefront/migration release images
@@ -48,8 +48,8 @@ Existing correctness and route-budget checks remain required. Failed purchases,
 privacy/financial errors, unavailable recovery and resource exhaustion are not
 waived by the performance deferral. The compact runtime remains optional.
 
-The owner requested that the location stay private. No address, phone, opening
-hours or LocalBusiness/Bakery markup is introduced. Theme configuration, external
+Public business details require merchant approval. No address, phone, opening
+hours or LocalBusiness markup is introduced. Theme configuration, external
 merchant recruitment, generic onboarding and unrelated workflow refactors are
 deferred or skipped for this release.
 
@@ -67,7 +67,7 @@ target-host acceptance below open.
 - Controlled authorized order/payment, transactional email, fulfillment and refund
   in the designated environment. No synthetic entries in production ledgers.
 - Real domain/TLS, origin/cookie/ingress behavior, worker supervision and basic
-  KVM 2 resource headroom.
+  target host resource headroom.
 - Matching database/assets backup, isolated recovery with outbound sends disabled,
   reconciliation and compatible-image rollback/pause procedure.
 

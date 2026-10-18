@@ -1,22 +1,17 @@
 # Supastore platform quality enhancement plan
 
-Prepared: 2026-10-16; priorities revised 2026-10-17, America/Los_Angeles. Status: implementation in progress; foundations, discovery/budgets and identified selling-path fixes implemented locally. Store usability, fixed-theme design and reliability acceptance are recorded in [selling readiness](../docs/selling-readiness.md). Owner/store, provider, recovery and KVM 2 acceptance remain open. Performance optimization is deferred.
+Prepared: 2026-10-16; priorities revised 2026-10-17, America/Los_Angeles. Status: implementation in progress; foundations, discovery/budgets and identified selling-path fixes implemented locally. Store usability, fixed-theme design and reliability acceptance are recorded in [selling readiness](../docs/selling-readiness.md). Owner/store, provider, recovery and target host acceptance remain open. Performance optimization is deferred.
 Working branch: `codex/platform-quality`. Baseline: `ec68e0f`.
 
 ## Outcome
 
-The immediate milestone is Milky Bakery V2 taking real orders on KVM 2. This is a solo, part-time business delivery plan first. Success means the owner can publish the real catalog, accept payment, fulfill orders and reconcile refunds reliably, while nearby customers can discover the bakery and complete mobile checkout. Reusable platform capabilities follow demonstrated store needs.
+The immediate milestone is a reliable store release that can take real orders on the selected deployment host. Success means merchants can publish their catalog, accept payment, fulfill orders and reconcile refunds, while customers can discover products and complete mobile checkout. Prioritize demonstrated merchant needs and changes that a small team or solo maintainer can deliver.
 
 Preserve the existing two-app deployment, PostgreSQL, transactional outbox, exact money arithmetic and HTTP separation. Prefer small improvements to established workflows over framework replacement. This plan implements the current product direction; it does not supersede the authoritative [product scope](../docs/product-scope.md), [transaction contracts](../docs/transaction-contracts.md), [business workflows](../docs/business-workflows.md) or [journey catalog](../docs/critical-user-journeys.md). Update an owning document explicitly when a step changes its contract.
 
-No general plugin system, theme marketplace, configurable theme framework, multi-tenancy or database abstraction rewrite is included before V2 launch. Deploy the existing architecture to KVM 2. Optional rewards, credit and scheduled fulfillment remain supported; simplify their presentation where Milky Bakery needs it. Keep bakery branding/content in presentation or deployment configuration rather than adding bakery-specific rules to generic financial/domain logic.
+No general plugin system, theme marketplace, configurable theme framework, multi-tenancy or database abstraction rewrite is included before V2 launch. Deploy the existing architecture to the selected host. Optional rewards, credit and scheduled fulfillment remain supported. Read merchant branding and content from existing settings or deployment configuration; keep merchant-specific rules out of generic financial/domain logic.
 
-Working launch direction, clarified October 17: likely two independent instances,
-one pickup-only and one shipping-only, with manual payment on both. Use separate
-databases/storage, project names, origins and secrets; do not share the database
-to obtain different fulfillment settings. Stock/catalog/accounts are not
-automatically synchronized. Card integration is not a launch prerequisite for
-this choice. See [two-instance configuration and acceptance](../docs/milky-bakery-two-instances.md).
+Deployment options include one store with multiple fulfillment methods or separate independent stores. The optional [two-instance recipe](../docs/independent-store-instances.md) covers pickup-only and shipping-only manual-payment profiles with separate databases, storage, project names, origins and secrets. Those instances do not synchronize stock, catalog or accounts. Choose payment providers and topology per deployment rather than treating an individual merchant configuration as a platform default.
 
 ## Baseline and evidence limits
 
@@ -29,34 +24,34 @@ this choice. See [two-instance configuration and acceptance](../docs/milky-baker
 - Retained load evidence uses a one-product fixture. It does not establish realistic catalog capacity or concurrent-purchase throughput.
 - Review-time unit run: 930 passed, four failed across three files. One fulfillment-validation expectation failed; one junction operation was denied; two recovery subprocess checks exited unsuccessfully. These are observations to investigate, not four established product defects.
 - This plan does not certify rendered visual quality, current CI, real payment delivery, production capacity or accessibility with assistive technology.
-- Existing discovery foundations include `app/robots.ts`, streamed `app/sitemap.xml/route.ts` and child sitemaps, `lib/customer-sitemap.ts`, product metadata/canonicals and Product/Offer JSON-LD. Their launch acceptance was missing from this plan. No Bakery/LocalBusiness implementation was identified in the inspected storefront; root metadata still defaults to SupaStore and needs review for Milky Bakery.
+- Existing discovery foundations include `app/robots.ts`, streamed `app/sitemap.xml/route.ts` and child sitemaps, `lib/customer-sitemap.ts`, product metadata/canonicals and Product/Offer JSON-LD. Their launch acceptance was missing from this plan. No LocalBusiness implementation was identified in the inspected storefront; root metadata still defaults to SupaStore and needs review for the store.
 
 ## Delivery sequence
 
 Each numbered step is a reviewable change, split further if its acceptance work would make one PR unwieldy. Continue on this branch with focused commits; future PR creation, publishing and deployment are separate actions. No history reset is required.
 
-| Step                                          | Priority                  | Dependency                            | Solo delivery scope                                    |
-| --------------------------------------------- | ------------------------- | ------------------------------------- | ------------------------------------------------------ |
-| D. Owner dogfooding                           | Continuous, non-blocking  | None                                  | Use actual bakery operations to choose improvements    |
-| 1. Reproducible baseline                      | Launch core               | None                                  | Reproduce failures and establish trusted checks        |
-| 2. Runtime API contracts                      | Launch core               | 1                                     | Customer-page validation and compatibility             |
-| 3. Representative benchmarks                  | Retained; expansion later | 1                                     | Preserve evidence; defer further capacity work         |
-| 4. Performance and discovery                  | Split priority            | 2; existing budget/discovery checks   | Keep discovery/budgets; defer performance optimization |
-| 5. Bakery setup                               | Active: selling first     | 1, 2                                  | Publish catalog and configure the intended sales path  |
-| 6. Bakery daily operations                    | Active: selling first     | 1, 2                                  | Checkout, payment review and fulfillment usability     |
-| 7. One fixed premium theme                    | Active: selling first     | Existing budget/discovery checks      | Mobile storefront polish without theme machinery       |
-| 9. KVM 2 deployment/recovery                  | Active: reliability       | 1, 2; intended store workflow         | Safe deployment, backup/restore and required providers |
-| 8. Workflow boundaries                        | Conditional               | 1, 2                                  | Refactor only for a demonstrated need                  |
-| 10. V2 launch acceptance                      | Release gate              | 1, 2, 5–7, 9; discovery/budget checks | Owner acceptance on KVM 2; record deferred performance |
-| Later: theme configuration/friendly merchants | Post-launch               | Stable V2                             | Validate demand before platform investment             |
+| Step                                          | Priority                  | Dependency                            | Solo delivery scope                                              |
+| --------------------------------------------- | ------------------------- | ------------------------------------- | ---------------------------------------------------------------- |
+| D. Owner dogfooding                           | Continuous, non-blocking  | None                                  | Use actual store operations to choose improvements               |
+| 1. Reproducible baseline                      | Launch core               | None                                  | Reproduce failures and establish trusted checks                  |
+| 2. Runtime API contracts                      | Launch core               | 1                                     | Customer-page validation and compatibility                       |
+| 3. Representative benchmarks                  | Retained; expansion later | 1                                     | Preserve evidence; defer further capacity work                   |
+| 4. Performance and discovery                  | Split priority            | 2; existing budget/discovery checks   | Keep discovery/budgets; defer performance optimization           |
+| 5. Store setup                                | Active: selling first     | 1, 2                                  | Publish catalog and configure the intended sales path            |
+| 6. Store daily operations                     | Active: selling first     | 1, 2                                  | Checkout, payment review and fulfillment usability               |
+| 7. One fixed premium theme                    | Active: selling first     | Existing budget/discovery checks      | Mobile storefront polish without theme machinery                 |
+| 9. Target-host deployment/recovery            | Active: reliability       | 1, 2; intended store workflow         | Safe deployment, backup/restore and required providers           |
+| 8. Workflow boundaries                        | Conditional               | 1, 2                                  | Refactor only for a demonstrated need                            |
+| 10. V2 launch acceptance                      | Release gate              | 1, 2, 5–7, 9; discovery/budget checks | Owner acceptance on the target host; record deferred performance |
+| Later: theme configuration/friendly merchants | Post-launch               | Stable V2                             | Validate demand before platform investment                       |
 
-The previous 27–43 engineer-day / six-to-nine-week estimate is withdrawn: it assumed team-style roles and over-scoped platform work. One owner performs these responsibilities in part-time sessions. Split work into changes that fit one or two available sessions, record active hours after step 1 and forecast from the actual pace. Engineer-days are not calendar days; no launch-date promise without capacity and host evidence.
+The previous 27–43 engineer-day / six-to-nine-week estimate is withdrawn: it assumed team-style roles and over-scoped platform work. A solo maintainer may perform these responsibilities in part-time sessions. Split work into changes that fit one or two available sessions, record active hours after step 1 and forecast from the actual pace. Engineer-days are not calendar days; no launch-date promise without capacity and host evidence.
 
-Execution order, revised by the owner on October 17: completed foundations -> 5/6 store usability -> 7 fixed-theme design, with 9 reliability work alongside the affected workflows -> 10 sales acceptance. Performance optimization and further load/memory investigation follow these priorities. Preserve existing measurements, budgets and correctness regressions; do not change thresholds or report unresolved performance targets as passed. An observed crash, failed checkout or resource exhaustion that prevents selling is a reliability blocker and takes priority. Basic target-host health/headroom still needs checking before cutover, without making the full standard benchmark or optional compact-runtime decision a prerequisite to usability work. External merchant availability never blocks work or launch. Step 8 may be skipped with a recorded reason. Step 6 does not require completing step 5.
+Delivery priority, revised October 17: completed foundations -> 5/6 store usability -> 7 fixed-theme design, with 9 reliability work alongside the affected workflows -> 10 sales acceptance. Performance optimization and further load/memory investigation follow these priorities. Preserve existing measurements, budgets and correctness regressions; do not change thresholds or report unresolved performance targets as passed. An observed crash, failed checkout or resource exhaustion that prevents selling is a reliability blocker and takes priority. Basic target-host health/headroom still needs checking before cutover, without making the full standard benchmark or optional compact-runtime decision a prerequisite to usability work. External merchant availability never blocks work or launch. Step 8 may be skipped with a recorded reason. Step 6 does not require completing step 5.
 
 ### Next delivery batches
 
-1. **Store usability (5/6):** inspect the existing setup, product publishing, mobile cart/checkout and merchant order queue against the intended bakery sales path. Record concrete friction and deliver the highest-impact small fix first. Check omitted settings persist, checkout inputs survive recoverable failures, duplicate submissions reconcile safely, and the owner can identify payment/pickup work. Existing passing journeys are evidence of behavior, not proof of a friction-free UI.
+1. **Store usability (5/6):** inspect the existing setup, product publishing, mobile cart/checkout and merchant order queue against the intended store sales path. Record concrete friction and deliver the highest-impact small fix first. Check omitted settings persist, checkout inputs survive recoverable failures, duplicate submissions reconcile safely, and the owner can identify payment/pickup work. Existing passing journeys are evidence of behavior, not proof of a friction-free UI.
 2. **Fixed storefront design (7):** polish home/product first, then cart/checkout as one coherent shopping flow. Use 375px and 1440px, EN/ZH, available/sold-out variants, long names and empty/error states. Prioritize readable prices, photography, variant selection, touch targets and clear next actions. Use approved assets/content; do not invent business details or add theme configuration.
 3. **Sales reliability (9):** verify the intended payment/fulfillment path, lost-response recovery, failed notification visibility, pause-new-orders behavior and continued access to existing orders. Rehearse database/assets restore and document rollback. Keep fixture verification separate from real provider/domain/host acceptance.
 4. **Launch rehearsal (10):** owner completes catalog -> checkout -> payment -> preparation -> pickup/delivery -> refund on the intended configuration. Retain evidence and fix actual blockers. No location-specific markup: the owner's location remains private.
@@ -64,7 +59,7 @@ Execution order, revised by the owner on October 17: completed foundations -> 5/
 
 Each batch ends with affected functional regressions, production build/bundle checks for storefront changes, and visual review for UI changes. Do not rerun a 35-minute load benchmark for routine presentation edits without a specific performance concern.
 
-## D. Dogfood Milky Bakery; seek friendly merchants after launch
+## D. Dogfood a configured store; seek friendly merchants after launch
 
 **Context and ownership:** The owner is the first merchant. Actual catalog maintenance, payment reconciliation, pickup/delivery operations and customer problems are the primary discovery source. This is continuous input, never a prerequisite gate for 5/6/7.
 
@@ -149,8 +144,8 @@ Tasks:
 
 - Add `/robots.txt`, `/sitemap.xml`, child sitemaps, localized home, product, category/collection and contact/policy pages to the acceptance route list. XML/text routes need status/content/indexing checks, not JS budgets. Keep cart/checkout in performance coverage; exclude private account/order/admin/recovery pages from sitemaps and indexing. Robots rules do not replace access control.
 - Verify canonical URLs, hreflang, redirects and sitemap entries use the actual HTTPS production domain rather than localhost/staging. Include only published public records. Check unpublished/removed products, sitemap paging, crawler-accessible images and backend-outage behavior.
-- Replace generic SupaStore metadata where it reaches bakery customers/search results. Provide clear home/collection/product titles and descriptions, factual service area, ordering lead times, pickup/delivery instructions, contact details and hours using existing content surfaces. Do not invent a city, street address, opening hours or ratings.
-- Add safely serialized JSON-LD using the most specific accurate LocalBusiness subtype (`Bakery`) on the public business-information page/home when required facts are available. Match visible content and current Google requirements. The owner confirms which contact/location details may be public. Do not expose a private home/pickup address to satisfy schema requirements; if necessary public facts are unavailable, record the eligibility limitation and omit unsupported rich-result claims. Verify existing Product/Offer prices, currency and availability agree with current product/stock presentation.
+- Replace generic SupaStore metadata where it reaches store customers/search results. Provide clear home/collection/product titles and descriptions, factual service area, ordering lead times, pickup/delivery instructions, contact details and hours using existing content surfaces. Do not invent a city, street address, opening hours or ratings.
+- Add safely serialized JSON-LD using the most specific accurate LocalBusiness subtype for the merchant's business type on the public business-information page/home when required facts are available. Match visible content and current Google requirements. The owner confirms which contact/location details may be public. Do not expose a private home/pickup address to satisfy schema requirements; if necessary public facts are unavailable, record the eligibility limitation and omit unsupported rich-result claims. Verify existing Product/Offer prices, currency and availability agree with current product/stock presentation.
 - Owner verifies/connects Google Search Console, submits the existing sitemap and inspects important URLs after DNS/HTTPS cutover. Check an existing Google Business Profile's website/name/service area/hours for consistency; create one only if eligible and authorized. Track manual account actions separately from code readiness.
 - Start discovery measurement with Search Console impressions/clicks/index coverage and aggregate owner order/referral observations. No new tracking SDK is required. Record baseline status and revisit after two/four weeks. Rankings, rich results, Google approval and minimum traffic counts are not launch gates.
 
@@ -164,7 +159,7 @@ Tasks:
 
 **Rollback:** Revert individual optimizations. Budget changes require a recorded reason and before/after evidence.
 
-## 5. Remove Milky Bakery setup blockers
+## 5. Remove the store setup blockers
 
 **Context and ownership:** Own `apps/backend/src/app/admin/setup`, setup/settings presentation, `application/use-cases/store/get-launch-readiness.ts`, localization and merchant guide. Reuse the existing readiness calculation and saved settings.
 
@@ -174,17 +169,17 @@ Tasks:
 - Show one recommended next action and actionable missing requirements. Keep advanced tax, rewards, credit, schedules and notification-template editing available through clearly named optional sections.
 - Render only fields needed by the selected fulfillment/payment configuration. Preserve existing settings when controls are hidden or omitted.
 - Keep provider secrets server-side. A configuration-presence check is not evidence of working payment/email delivery.
-- Reuse existing disposable fixture tooling to rehearse Milky Bakery's configured fulfillment/payment path. Isolate synthetic database, assets, credentials and sessions from production; suppress outbound delivery and use fake payment adapters. A new persistent human-facing demo, embedded sandbox and coverage of unused merchant configurations are deferred unless a demonstrated bakery blocker requires them. Never create fixture receipts in production or copy customer records into the rehearsal.
+- Reuse existing disposable fixture tooling to rehearse the store's configured fulfillment/payment path. Isolate synthetic database, assets, credentials and sessions from production; suppress outbound delivery and use fake payment adapters. A new persistent human-facing demo, embedded sandbox and coverage of unused merchant configurations are deferred unless a demonstrated store blocker requires them. Never create fixture receipts in production or copy customer records into the rehearsal.
 
-**Exit:** Owner completes actual bakery setup and a controlled fixture rehearsal without database edits. Changed forms retain omitted values, persist after refresh and preserve authorization. Verify the rehearsal cannot change production inventory, reporting or financial records. Skip unrelated setup redesign and unused fulfillment modes with a recorded reason. Actual configured-store payment/email acceptance remains in steps 9/10; no external merchant timing target gates V2.
+**Exit:** Owner completes actual store setup and a controlled fixture rehearsal without database edits. Changed forms retain omitted values, persist after refresh and preserve authorization. Verify the rehearsal cannot change production inventory, reporting or financial records. Skip unrelated setup redesign and unused fulfillment modes with a recorded reason. Actual configured-store payment/email acceptance remains in steps 9/10; no external merchant timing target gates V2.
 
 **Verification:** Readiness unit tests, settings persistence/authorization integration checks and owner/staff production setup journeys, including English/Chinese and mobile.
 
 **Rollback:** Restore previous presentation without deleting settings. Any needed fields are additive with safe defaults.
 
-## 6. Fix daily bakery and customer workflow friction
+## 6. Fix daily store and customer workflow friction
 
-**Context and ownership:** Own admin navigation, daily queue, order workspace, checkout presentation and related UI components. Preserve workflow authorization in application use cases. Prioritize issues observed in Milky Bakery operations; do not redesign every admin page. Refine existing queues instead of building a competing dashboard.
+**Context and ownership:** Own admin navigation, daily queue, order workspace, checkout presentation and related UI components. Preserve workflow authorization in application use cases. Prioritize issues observed in the store operations; do not redesign every admin page. Refine existing queues instead of building a competing dashboard.
 
 Tasks:
 
@@ -201,15 +196,15 @@ Tasks:
 
 **Rollback:** Revert presentation/component changes; keep backend transaction behavior stable.
 
-## 7. Polish one fixed premium Milky Bakery theme
+## 7. Polish one fixed premium storefront theme
 
 **Context and ownership:** Own existing storefront `catalog.tsx`, `globals.css`, product cards/detail and shared presentation where needed. Preserve the separate admin visual system. This is bounded store polish, not theme-platform development.
 
-- Use owner-approved real product photography, bakery copy and one coherent typography/color direction. Check home, product, cart and checkout at 375px/1440px, EN/ZH, short/long names and empty/error states.
+- Use owner-approved real product photography, store copy and one coherent typography/color direction. Check home, product, cart and checkout at 375px/1440px, EN/ZH, short/long names and empty/error states.
 - Prioritize product/price hierarchy, image sizing, variant/stock feedback, clear pickup/delivery/payment instructions, tap targets and fast checkout. Prefer server-rendered presentation and existing components.
-- Bakery branding may be fixed in storefront source or deployment configuration. Keep provider credentials and transaction rules out of presentation code. Reuse existing content settings; no theme tables, preset library, draft storage, publication system or visual editor before launch.
+- Merchant branding must use existing content settings or deployment configuration; the shared storefront source stays generic. Keep provider credentials and transaction rules out of presentation code. Reuse existing content settings; no theme tables, preset library, draft storage, publication system or visual editor before launch.
 
-**Exit:** Owner accepts the fixed storefront for selling the bakery catalog; core mobile shopping works, focus/keyboard and reduced-motion behavior remain usable, automated accessibility checks pass, and existing bundle/discovery checks remain green. Deferred Step 4 performance targets stay recorded as unresolved. Cosmetic breadth is a backlog item, not a financial/core launch blocker.
+**Exit:** Owner accepts the fixed storefront for selling the store catalog; core mobile shopping works, focus/keyboard and reduced-motion behavior remain usable, automated accessibility checks pass, and existing bundle/discovery checks remain green. Deferred Step 4 performance targets stay recorded as unresolved. Cosmetic breadth is a backlog item, not a financial/core launch blocker.
 
 **Verification:** Existing storefront journeys and UI audit, targeted screenshots, keyboard/screen-reader smoke checks and bundle budgets. No snapshot-only tests for incidental CSS details.
 
@@ -233,45 +228,45 @@ Tasks:
 
 **Rollback:** Revert one extraction at a time. No financial data migration or workflow-state changes in this step.
 
-## 9. Deploy and rehearse recovery on KVM 2
+## 9. Deploy and rehearse recovery on the target host
 
 **Context and ownership:** Own deployment/maintenance docs, health/diagnostic presentation, ingress configuration checks and container acceptance scripts. Reuse `instrumentation.ts`, worker health, existing durable leases and restore tooling.
 
 Tasks:
 
-- Inventory actual KVM 2 CPU/RAM/disk, OS, current services, free space, backup location, expected traffic, public domain and TLS. Do not infer specifications from the plan name. Measure the standard and bakery-shaped workloads in an isolated target-host deployment, protecting existing services/data. Record CPU, per-service RSS, total host memory, disk, database connections and headroom.
+- Inventory actual target host CPU/RAM/disk, OS, current services, free space, backup location, expected traffic, public domain and TLS. Do not infer specifications from the plan name. Measure the standard and representative store workloads in an isolated target-host deployment, protecting existing services/data. Record CPU, per-service RSS, total host memory, disk, database connections and headroom.
 - Document the recommended small-store topology: long-running backend with worker enabled, storefront, PostgreSQL and configured asset/email services. Record cold/warm footprint and backup requirements together.
 - Explain process-local rate limits and trusted-edge IP handling. Verify spoofed headers are stripped and mutation-origin rules still hold. Require shared ingress enforcement before claiming multi-replica abuse protection; do not add Redis automatically.
 - Document backend/storefront mixed-version rollout and rollback from step 2. Keep worker startup, graceful shutdown, leases and multiple-worker coordination explicit.
 - Surface existing worker progress, failed/exhausted notification work and payment review through actionable diagnostics. Never expose secrets or private order details publicly.
 - Rehearse upgrade, database/assets restore with outbound delivery disabled, backend outage, worker failure and corrected recovery. Confirm readiness alone does not imply successful external delivery.
 
-**Exit:** Owner reproduces deployment from a clean checkout, verifies measured KVM 2 headroom and rehearses upgrade/restore before cutover. Real-domain HTTPS, origins/cookies/proxy behavior, readiness and worker checks pass. Confirm an authorized controlled payment and transactional email, not credential presence alone. Missing host/domain/provider access leaves that production gate open while local work continues. Multiple worker instances do not double-post financial effects. Recommended hosting constraints and scaling limitations are stated with evidence.
+**Exit:** Owner reproduces deployment from a clean checkout, verifies measured target host headroom and rehearses upgrade/restore before cutover. Real-domain HTTPS, origins/cookies/proxy behavior, readiness and worker checks pass. Confirm an authorized controlled payment and transactional email, not credential presence alone. Missing host/domain/provider access leaves that production gate open while local work continues. Multiple worker instances do not double-post financial effects. Recommended hosting constraints and scaling limitations are stated with evidence.
 
 **Verification:** `pnpm run test:containers`, worker coordination integration tests, proxy/header regressions, restore rehearsal and `pnpm run check:services` for configuration presence. Real provider acceptance requires a designated authorized environment and separate evidence.
 
 **Rollback:** Revert diagnostics/configuration additions; retain previous compatible deployment settings. Restore rehearsal uses isolated fixtures.
 
-## 10. Accept V2 for real sales on KVM 2
+## 10. Accept V2 for real sales on the target host
 
 **Context and ownership:** The owner makes the launch decision. No external merchant recruitment or configurable theme is required. Use existing journey IDs; retain evidence in `docs/platform-quality-release-evidence.md`.
 
-- Complete the applicable usability, fixed-theme and reliability acceptance in 1/2/5/6/7/9 and retain passing bundle/discovery checks from 4. Preserve Step 3 evidence; expanded capacity testing and unresolved performance optimization are deferred by the owner's October 17 priority decision. Fix money, privacy, inventory, order-access, unusable mobile checkout and operational blockers before launch; defer generic onboarding and cosmetic breadth. Record a justified skip for step 8 when unnecessary.
+- Complete the applicable usability, fixed-theme and reliability acceptance in 1/2/5/6/7/9 and retain passing bundle/discovery checks from 4. Preserve Step 3 evidence; expanded capacity testing and unresolved performance optimization are deferred by the October 17 release priorities. Fix money, privacy, inventory, order-access, unusable mobile checkout and operational blockers before launch; defer generic onboarding and cosmetic breadth. Record a justified skip for step 8 when unnecessary.
 - Rehearse on isolated services with the intended catalog/fulfillment configuration: browse -> cart -> quote -> order -> payment -> preparation -> pickup/delivery -> refund. Include changed price, last-unit contention, lost submission response, failed notification and existing-order access while new orders are paused.
 - Before cutover, back up and rehearse restore; retain compatible image IDs. Verify public DNS/HTTPS, merchant content and private-page indexing exclusions. Validate an owner-authorized controlled transaction and email in the designated environment/recipient. Production smoke purchases are real audited transactions with explicit reconciliation/refund, never fixture receipts.
 - Document basic target-host resource headroom, failed requests and invariant checks, using retained steps 3/4 evidence where applicable. Required correctness checks must pass. Record the owner-directed performance deferral and remaining risks in release evidence; it does not waive actual crashes, order failures or resource exhaustion. Missing payment, access or recovery acceptance prevents declaring production ready.
 - At launch, retain an owner smoke-check record and pause/rollback procedure. During the first sales cycle, review payment/order/fulfillment failures, stock discrepancies, worker backlog, memory and customer questions. Existing order operations remain available if new sales are paused.
 - Record Search Console status, sitemap submission and factual business listing configuration when account access is available. Review discovery/traffic and actual order outcomes after two and four weeks. Indexing delays, rankings and friendly merchant availability do not block technically ready sales.
 
-**Exit:** V2 serves the intended catalog on the real HTTPS domain on KVM 2, accepts an authorized controlled order/payment, delivers its transactional email and supports owner fulfillment/refund. No unresolved critical/high issue affects money, privacy, stock, order access or core task completion. Retain automated/owner acceptance, host measurements and restore/rollback evidence. Pending external account actions are explicitly recorded, not presented as completed.
+**Exit:** V2 serves the intended catalog on the real HTTPS domain on the target host, accepts an authorized controlled order/payment, delivers its transactional email and supports owner fulfillment/refund. No unresolved critical/high issue affects money, privacy, stock, order access or core task completion. Retain automated/owner acceptance, host measurements and restore/rollback evidence. Pending external account actions are explicitly recorded, not presented as completed.
 
-**Verification:** Final relevant suites, both production builds, budgets/discovery artifacts, KVM 2 smoke checks, provider evidence and restore/upgrade rehearsal. Rerun affected checks after fixes. Synthetic fixture and real-store data remain separate.
+**Verification:** Final relevant suites, both production builds, budgets/discovery artifacts, target host smoke checks, provider evidence and restore/upgrade rehearsal. Rerun affected checks after fixes. Synthetic fixture and real-store data remain separate.
 
 **Rollback:** Pause new orders if needed while preserving existing order work; restore compatible app images without rolling back financial data. Reconcile uncertain external operations before resuming them. DNS cutover, live transactions and provider/account changes require their specific authorized execution context; this plan does not execute them.
 
 ## Post-launch platform backlog
 
-- Seek feedback from one or two friendly merchants after Milky Bakery V2 is operating. No signup/response quota.
+- Seek feedback from one or two friendly merchants after the next store release is operating. No signup/response quota.
 - Only if demand warrants it, design theme configuration, draft/preview/publication and presets as separate changes. Presentation configuration must be isolated from currency, tax, rewards, pause/order controls and quote versions. Publish/rollback cannot restore commerce settings. Preserve revision checks, draft privacy, compatibility and cache-consistency requirements from the previous design.
 - Consider generalized onboarding, wider UX research and conversion telemetry after an operational baseline exists. Do not install a tracking SDK just to measure search discovery. Record scope and a new solo-effort estimate before deferred work starts.
 
@@ -281,11 +276,11 @@ Tasks:
 - [x] 2. Runtime contracts and mixed-version behavior verified locally ([evidence](../docs/customer-page-contracts.md))
 - [ ] 3. Representative read/mutation benchmarks retained
 - [ ] 4. Budgets enforced; robots/sitemaps/metadata and local discovery verified
-- [ ] 9. KVM 2 host, deployment, providers and recovery acceptance verified
+- [ ] 9. Target-host, deployment, providers and recovery acceptance verified
 - [x] 5/6 local development: actionable setup, sold-out selection, payment-copy recovery and current storefront identity implemented; existing workflow regressions retained
-- [ ] 5/6 owner acceptance: actual catalog/configuration and bakery operations rehearsal
+- [ ] 5/6 owner acceptance: actual catalog/configuration and store operations rehearsal
 - [x] 7 local development: fixed merchant-led responsive storefront; no configuration machinery
-- [ ] 7 owner acceptance: approved real bakery photography/content, fixed design and human usability review
+- [ ] 7 owner acceptance: approved real store photography/content, fixed design and human usability review
 - [x] 8. Skip recorded: no domain/workflow extraction justified by these presentation fixes
 - [ ] 10. Owner launch acceptance and first-sales monitoring recorded
 
@@ -300,9 +295,9 @@ acceptance rather than an unrelated platform refactor.
 
 D is continuous and non-blocking. Append commit IDs, commands, results and evidence links for completed work. Change workloads/thresholds through versioned decisions, not silent relaxation. Friendly merchants and theme configuration are post-launch improvements. Host/payment/access/recovery failures remain genuine launch blockers. Distinguish local readiness from production acceptance and external account actions.
 
-Review revision: accepted solo-project priorities. Replaced research gating with owner dogfooding; withdrew team-based calendar estimates; retained 1/2/3/4/9 as engineering core; scoped 5/6 to bakery needs; replaced 7a–7c with one fixed theme and deferred configuration; added existing SEO foundations plus local discovery and KVM 2 acceptance.
+Review revision: accepted solo-project priorities. Replaced research gating with owner dogfooding; withdrew team-based calendar estimates; retained 1/2/3/4/9 as engineering core; scoped 5/6 to store needs; replaced 7a–7c with one fixed theme and deferred configuration; added existing SEO foundations plus local discovery and target host acceptance.
 
-Execution started 2026-10-16: [Step 1 baseline evidence](../docs/platform-quality-baseline.md). Commit `02c0e2b` replaces stale delivery/queue expectations with authorized PostgreSQL regressions; full unit, integration, type/lint and coverage checks pass. Both production builds and all 34 default browser journeys pass after correcting async-mail and report-label test assumptions. Process RSS and route JS samples are retained in the evidence document. Step 1 local baseline is complete; KVM 2/provider/representative-load acceptance remains in later steps. No production business logic changed.
+Execution started 2026-10-16: [Step 1 baseline evidence](../docs/platform-quality-baseline.md). Commit `02c0e2b` replaces stale delivery/queue expectations with authorized PostgreSQL regressions; full unit, integration, type/lint and coverage checks pass. Both production builds and all 34 default browser journeys pass after correcting async-mail and report-label test assumptions. Process RSS and route JS samples are retained in the evidence document. Step 1 local baseline is complete; target host/provider/representative-load acceptance remains in later steps. No production business logic changed.
 
 Step 2 local acceptance completed: [customer-page contracts](../docs/customer-page-contracts.md).
 RED checkpoints `b7b81ac` and `f664c71` capture absent nested decoding and the legacy
@@ -402,9 +397,9 @@ passing. Public metadata uses the merchant's name/content, paginated listings
 retain their own canonicals, locale alternates resolve published policy content,
 and public image crawling retains backend authorization. Homepage query handling
 was corrected so page 2 renders the corresponding data. Private and search/filter
-indexing rules remain explicit. The owner requested “keep location private”:
-no address, hours, phone or LocalBusiness/Bakery markup is added; this is not a
-launch gate. Full unit/library suite: 1,159 pass; types/lint pass; fresh production
+indexing rules remain explicit. Private operational details are not published:
+no address, hours, phone or LocalBusiness markup is added. Merchant-approved
+business details are required before any future local-business markup. Full unit/library suite: 1,159 pass; types/lint pass; fresh production
 browser suite: 36 pass, with disposable-service cleanup complete. Reviewer found
 no confirmed issues. Real HTTPS-origin/Search Console setup, mobile/target-host
 performance and the existing database-memory/runtime tradeoffs remain open.
@@ -432,7 +427,7 @@ Catalog/product/cart/checkout budgets pass at 156.8/158.2/155.5/161.4 KiB gzip
 against unchanged limits. Local fixture services shut down cleanly.
 
 Remaining acceptance is explicit: owner-approved real catalog/photography and
-fixed design, actual configured payment/email/fulfillment/refund, real HTTPS/KVM 2
+fixed design, actual configured payment/email/fulfillment/refund, real HTTPS/target host
 and matching database/assets backup recovery. A fresh container restore rehearsal
 could not run because the local Docker engine was unavailable; prior rehearsal
 evidence is retained without being relabeled as current acceptance. Performance
@@ -514,17 +509,16 @@ the owned fixture is removed. Seven recovery regressions and all 1,183
 unit/library tests pass. No merchant database/assets or live funds are used.
 Local OAuth2 SMTP authentication also passes without sending email. Remaining
 launch acceptance needs real catalog/design approval, actual payment/receipt and
-email delivery, KVM 2 host/domains/ingress, and matching merchant database/assets
+email delivery, target host/domains/ingress, and matching merchant database/assets
 recovery. Performance optimization remains deferred.
 
-Owner deployment clarification, October 17: KVM 2 is a Hostinger VPS. The planned
-public domain is `milkybakery.store`, potentially `/pickup` and `/shipping`.
-Private Docker verification locally or on the VPS comes first; public DNS is
-not required for that stage. SSH host/alias remains unavailable. The current
+Deployment stages: verify Docker locally or on a private server before public
+cutover; public DNS is not required for private verification. The current
 two-instance deployment assumes distinct hostnames and does not support
 independent path-prefixed stores without routing/session work. One instance
-already supports both fulfillment methods with shared stock/accounts/orders;
-the owner's choice between that and independent stores is pending. See
-[the deployment clarification](../docs/milky-bakery-two-instances.md#owner-clarification-verification-and-domain-layout).
+supports both fulfillment methods with shared stock/accounts/orders, but each
+variant currently has one price; method-specific prices and availability need
+additional implementation. See [private verification and domain layout](../docs/independent-store-instances.md#private-verification-and-domain-layout).
 Do not mark public TLS, canonical origins or ingress accepted from private
-Docker results, or add path-prefix architecture before the topology is chosen.
+Docker results. Select topology from merchant requirements before adding
+path-prefix architecture.
