@@ -39,6 +39,11 @@ export default async function CommerceSettings({
       <AdminNav />
       <main tabIndex={-1} id="admin-content" className="admin">
         <h1>Commerce policies</h1>
+        <p>
+          <a href="/admin/settings/rules">
+            Manage contextual prices, availability, rewards and promotion rules
+          </a>
+        </p>
         <Notice error={query.error} />
         {query.saved && (
           <Alert>

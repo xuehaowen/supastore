@@ -83,6 +83,7 @@ async function publicStore() {
       pauseMessage: storeSettings.pauseMessage,
       isOrderingEnabled: storeSettings.isOrderingEnabled,
       commercePolicy: storeSettings.commercePolicy,
+      hasContextualRules: sql<boolean>`jsonb_array_length(${storeSettings.commerceRules}) > 0`,
     })
     .from(storeSettings)
     .limit(1);

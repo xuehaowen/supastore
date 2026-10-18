@@ -170,7 +170,14 @@ function matches(
   )
     return "miss";
   const checks: Match[] = [];
-  if (!context.fulfillmentType && (c.countries.length || c.regions.length || c.postalPrefixes.length || c.pickupLocationIds.length)) checks.push("pending");
+  if (
+    !context.fulfillmentType &&
+    (c.countries.length ||
+      c.regions.length ||
+      c.postalPrefixes.length ||
+      c.pickupLocationIds.length)
+  )
+    checks.push("pending");
   function check(values: readonly string[], actual?: string, prefix = false) {
     if (values.length)
       checks.push(
@@ -306,7 +313,8 @@ export function evaluateCommerce(input: {
   const shipping = select("free_shipping");
   const code = input.promotionCode?.trim().toUpperCase() ?? "";
   const restrictions = ordered.filter(
-    (rule) => rule.enabled && rule.kind === "promotion" && rule.promotionCode === code,
+    (rule) =>
+      rule.enabled && rule.kind === "promotion" && rule.promotionCode === code,
   );
   const promotionMatches = restrictions.map((rule) => ({
     rule,

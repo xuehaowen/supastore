@@ -219,6 +219,7 @@ export default async function Catalog({
             <ProductCard
               key={product.id}
               product={product}
+              hasContextualRules={store?.hasContextualRules ?? false}
               locale={locale}
               currency={store?.currency}
               precision={store?.precision}

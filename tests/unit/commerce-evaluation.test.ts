@@ -50,8 +50,25 @@ function evaluate(input: Partial<Parameters<typeof evaluateCommerce>[0]> = {}) {
 }
 describe("contextual commerce evaluation", () => {
   it("ignores disabled promotion restrictions and waits for fulfillment before applying destination rules", () => {
-    expect(evaluate({ promotionCode: "SAVE", rules: rules([rule("promotion", 0, { enabled: false, promotionCode: "SAVE" })]) }).promotion.eligible).toBe(true);
-    expect(evaluate({ context: shoppingContext({ country: "US", region: "CA" }), rules: rules([rule("price", 1200, { variantIds: [variant], conditions: { countries: ["US"], regions: ["CA"] } })]) }).items[0]?.pending).toBe(true);
+    expect(
+      evaluate({
+        promotionCode: "SAVE",
+        rules: rules([
+          rule("promotion", 0, { enabled: false, promotionCode: "SAVE" }),
+        ]),
+      }).promotion.eligible,
+    ).toBe(true);
+    expect(
+      evaluate({
+        context: shoppingContext({ country: "US", region: "CA" }),
+        rules: rules([
+          rule("price", 1200, {
+            variantIds: [variant],
+            conditions: { countries: ["US"], regions: ["CA"] },
+          }),
+        ]),
+      }).items[0]?.pending,
+    ).toBe(true);
   });
   it("preserves base prices and stock without configured rules and never reserves", () => {
     const result = evaluate();

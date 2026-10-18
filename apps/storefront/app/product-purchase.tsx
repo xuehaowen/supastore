@@ -3,7 +3,11 @@ import { textFor } from "@supastore/i18n/messages";
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import Image from "next/image";
-import type { ProductDetail } from "@supastore/contracts";
+import type { ProductDetail, CommercePreview } from "@supastore/contracts";
+import dynamic from "next/dynamic";
+const ShoppingPreview = dynamic(() =>
+  import("./shopping-preview").then((module) => module.ShoppingPreview),
+);
 import { addItem } from "./actions";
 import { Button } from "@supastore/ui/button";
 import { Input } from "@supastore/ui/input";
@@ -17,6 +21,7 @@ export function ProductPurchase({
   currency,
   precision,
   labels,
+  hasContextualRules = false,
 }: {
   product: ProductDetail;
   availableQuantities?: Record<string, number>;
@@ -24,6 +29,7 @@ export function ProductPurchase({
   currency: string;
   precision: number;
   labels: { quantity: string; add: string; unavailable: string };
+  hasContextualRules?: boolean;
 }) {
   const initial =
     product.variants.find((v) =>
@@ -32,8 +38,14 @@ export function ProductPurchase({
   const [variantId, setVariantId] = useState(initial?.id || "");
   const [activeImageKey, setActiveImageKey] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [shopping, setShopping] = useState<CommercePreview | null>(null);
   const current = product.variants.find((v) => v.id === variantId);
-  const canPurchase = variantCanBePurchased(current, availableQuantities);
+  const evaluated = shopping?.evaluation.items.find(
+    (item) => item.variantId === variantId && item.quantity === quantity,
+  );
+  const canPurchase =
+    variantCanBePurchased(current, availableQuantities) &&
+    (!evaluated || evaluated.available);
   const axes = [
     ...new Map(
       product.variants.flatMap((v) =>
@@ -57,14 +69,20 @@ export function ProductPurchase({
     (activeImageKey
       ? product.images.find((i) => i.s3Key === activeImageKey)
       : null) || variantImage;
-  const price = current
-    ? new Intl.NumberFormat(locale, {
-        style: "currency",
-        currency,
-        minimumFractionDigits: precision,
-        maximumFractionDigits: precision,
-      }).format(current.priceCents / 10 ** precision)
-    : "";
+  const effectivePrice = hasContextualRules
+    ? evaluated?.unitPriceCents
+    : current?.priceCents;
+  const price =
+    effectivePrice !== null && effectivePrice !== undefined
+      ? new Intl.NumberFormat(locale, {
+          style: "currency",
+          currency,
+          minimumFractionDigits: precision,
+          maximumFractionDigits: precision,
+        }).format(effectivePrice / 10 ** precision)
+      : locale === "zh"
+        ? "请选择购物选项以查看价格"
+        : "Choose shopping options to see price";
   const maxQty = Math.max(
     1,
     Math.min(999, availableQuantities[variantId] ?? 999),
@@ -142,6 +160,13 @@ export function ProductPurchase({
         <p className="mb-6 whitespace-pre-line leading-7 text-muted-foreground">
           {product.description}
         </p>
+        {hasContextualRules && current && (
+          <ShoppingPreview
+            items={[{ variantId, quantity: selectedQuantity }]}
+            locale={locale}
+            onEvaluation={setShopping}
+          />
+        )}
         <form className="grid gap-6" action={addItem}>
           <input type="hidden" name="locale" value={locale} />
           {normalized ? (

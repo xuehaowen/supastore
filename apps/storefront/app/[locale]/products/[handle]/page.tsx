@@ -30,16 +30,18 @@ export default async function Product({
     image: p.images.map(
       (i) => `${base}/api/assets?key=${encodeURIComponent(i.s3Key)}`,
     ),
-    offers: purchasable.variants.map((v) => ({
-      "@type": "Offer",
-      sku: v.sku,
-      priceCurrency: store?.currency || "USD",
-      price: (v.priceCents / 10 ** (store?.precision ?? 2)).toFixed(
-        store?.precision ?? 2,
-      ),
-      availability: `https://schema.org/${variantCanBePurchased(v, availableQuantities) ? "InStock" : "OutOfStock"}`,
-      url: `${base}/${locale}/products/${encodeURIComponent(handle)}`,
-    })),
+    offers: store?.hasContextualRules
+      ? undefined
+      : purchasable.variants.map((v) => ({
+          "@type": "Offer",
+          sku: v.sku,
+          priceCurrency: store?.currency || "USD",
+          price: (v.priceCents / 10 ** (store?.precision ?? 2)).toFixed(
+            store?.precision ?? 2,
+          ),
+          availability: `https://schema.org/${variantCanBePurchased(v, availableQuantities) ? "InStock" : "OutOfStock"}`,
+          url: `${base}/${locale}/products/${encodeURIComponent(handle)}`,
+        })),
   };
   return (
     <section className="grid gap-10 py-10 md:grid-cols-[1.1fr_1fr] md:gap-14 md:py-14">
@@ -51,6 +53,7 @@ export default async function Product({
       />
       <ProductPurchase
         product={purchasable}
+        hasContextualRules={store?.hasContextualRules ?? false}
         availableQuantities={availableQuantities}
         locale={locale}
         currency={store?.currency || "USD"}

@@ -26,7 +26,10 @@ import { updateStoreSettings } from "@/application/use-cases/store/update-store-
 import { commerceRules, type CommerceRule } from "@/domain/commerce-evaluation";
 import { customerAccount } from "@/application/use-cases/customers/customer-ownership";
 import { previewCommerce } from "@/application/use-cases/commerce/preview-commerce";
-import { saveCommerceRule, deleteCommerceRule } from "@/application/use-cases/commerce/manage-commerce-rules";
+import {
+  saveCommerceRule,
+  deleteCommerceRule,
+} from "@/application/use-cases/commerce/manage-commerce-rules";
 
 const server = process.env.TRANSLATION_TEST_DATABASE_URL;
 describe.skipIf(!server)("contextual commerce PostgreSQL", () => {
@@ -215,7 +218,11 @@ describe.skipIf(!server)("contextual commerce PostgreSQL", () => {
       }),
     ]);
     expect((await quote({ promotionCode: "SAVE" }, 2)).q.shippingCents).toBe(0);
-    await save([rule("free_shipping", 3000, { conditions: { countries: ["US"], regions: ["CA"] } })]);
+    await save([
+      rule("free_shipping", 3000, {
+        conditions: { countries: ["US"], regions: ["CA"] },
+      }),
+    ]);
     expect((await quote({}, 2)).q.shippingCents).toBe(800);
     await save([
       rule("promotion", 0, {
@@ -272,23 +279,68 @@ describe.skipIf(!server)("contextual commerce PostgreSQL", () => {
     ).toBe(1);
   });
   it("previews current public prices and stock without exposing rules or reserving", async () => {
-    await save([rule("price", 1250, { variantIds: [variant], conditions: { countries: ["US"], regions: ["CA"] } })]);
-    const result = await previewCommerce({ items: [{ variantId: variant, quantity: 2 }], context: { fulfillmentType: "shipping", country: "US", region: "CA" } });
-    expect(result.evaluation.items[0]).toMatchObject({ unitPriceCents: 1250, available: true });
+    await save([
+      rule("price", 1250, {
+        variantIds: [variant],
+        conditions: { countries: ["US"], regions: ["CA"] },
+      }),
+    ]);
+    const result = await previewCommerce({
+      items: [{ variantId: variant, quantity: 2 }],
+      context: { fulfillmentType: "shipping", country: "US", region: "CA" },
+    });
+    expect(result.evaluation.items[0]).toMatchObject({
+      unitPriceCents: 1250,
+      available: true,
+    });
     expect(result.evaluation.merchandiseSubtotalCents).toBe(2500);
     expect(JSON.stringify(result)).not.toContain("Private fixture location");
     expect(result).not.toHaveProperty("rules");
-    await expect(previewCommerce({ items: [{ variantId: randomUUID(), quantity: 1 }], context: {} })).rejects.toThrow(/unavailable/i);
+    await expect(
+      previewCommerce({
+        items: [{ variantId: randomUUID(), quantity: 1 }],
+        context: {},
+      }),
+    ).rejects.toThrow(/unavailable/i);
   });
   it("edits individual rules with revision fencing, reference validation and owner authorization", async () => {
     const [before] = await client`select quote_version from store_settings`;
     const first = rule("price", 1200, { variantIds: [variant] });
-    await saveCommerceRule({ staffUserId: owner, expectedVersion: before!.quote_version, rule: first });
-    await expect(saveCommerceRule({ staffUserId: owner, expectedVersion: before!.quote_version, rule: { ...first, value: 1300 } })).rejects.toThrow(/changed|refresh/i);
+    await saveCommerceRule({
+      staffUserId: owner,
+      expectedVersion: before!.quote_version,
+      rule: first,
+    });
+    await expect(
+      saveCommerceRule({
+        staffUserId: owner,
+        expectedVersion: before!.quote_version,
+        rule: { ...first, value: 1300 },
+      }),
+    ).rejects.toThrow(/changed|refresh/i);
     const [current] = await client`select quote_version from store_settings`;
-    await expect(saveCommerceRule({ staffUserId: "evaluation-staff", expectedVersion: current!.quote_version, rule: first })).rejects.toThrow();
-    await expect(saveCommerceRule({ staffUserId: owner, expectedVersion: current!.quote_version, rule: { ...first, variantIds: [randomUUID()] } })).rejects.toThrow(/variant/i);
-    await deleteCommerceRule({ staffUserId: owner, expectedVersion: current!.quote_version, id: first.id });
-    expect((await client`select commerce_rules from store_settings`)[0]!.commerce_rules).toEqual([]);
+    await expect(
+      saveCommerceRule({
+        staffUserId: "evaluation-staff",
+        expectedVersion: current!.quote_version,
+        rule: first,
+      }),
+    ).rejects.toThrow();
+    await expect(
+      saveCommerceRule({
+        staffUserId: owner,
+        expectedVersion: current!.quote_version,
+        rule: { ...first, variantIds: [randomUUID()] },
+      }),
+    ).rejects.toThrow(/variant/i);
+    await deleteCommerceRule({
+      staffUserId: owner,
+      expectedVersion: current!.quote_version,
+      id: first.id,
+    });
+    expect(
+      (await client`select commerce_rules from store_settings`)[0]!
+        .commerce_rules,
+    ).toEqual([]);
   });
 });

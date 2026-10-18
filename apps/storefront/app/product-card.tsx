@@ -9,6 +9,7 @@ export function ProductCard({
   locale,
   currency,
   precision,
+  hasContextualRules = false,
 }: {
   product: {
     id: string;
@@ -20,6 +21,7 @@ export function ProductCard({
   locale: string;
   currency?: string | undefined;
   precision?: number | undefined;
+  hasContextualRules?: boolean;
 }) {
   return (
     <article className="storefront-product-card group">
@@ -49,6 +51,13 @@ export function ProductCard({
         <div className="storefront-product-meta">
           <h3>{product.title}</h3>
           <span>
+            {hasContextualRules && (
+              <small className="block text-xs text-muted-foreground">
+                {locale === "zh"
+                  ? "基础价格，选项可能影响售价"
+                  : "Base price; options may change price"}
+              </small>
+            )}
             {product.lowestPriceCents === null
               ? "—"
               : money(product.lowestPriceCents, currency, precision, locale)}

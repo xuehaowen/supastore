@@ -15,15 +15,19 @@ export function VariantPicker({
   label,
   initialOptions,
   scope = "sale",
+  initialSelected,
 }: {
   name: string;
   label: string;
   initialOptions: Option[];
   scope?: "sale" | "quota";
+  initialSelected?: Option | undefined;
 }) {
   const id = useId();
   const [options, setOptions] = useState(initialOptions);
-  const [selected, setSelected] = useState<Option | null>(null);
+  const [selected, setSelected] = useState<Option | null>(
+    initialSelected ?? null,
+  );
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");

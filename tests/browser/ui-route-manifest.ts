@@ -35,6 +35,7 @@ export const backendPageRoutes = [
   "/admin/returns",
   "/admin/returns/[id]",
   "/admin/settings/commerce",
+  "/admin/settings/rules",
   "/admin/settings/content",
   "/admin/settings/delivery",
   "/admin/settings/notifications",

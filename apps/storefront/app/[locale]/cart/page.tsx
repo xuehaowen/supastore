@@ -12,6 +12,7 @@ import { Card, CardContent } from "@supastore/ui/card";
 import { Input } from "@supastore/ui/input";
 import { Label } from "@supastore/ui/label";
 import { ShoppingBag } from "lucide-react";
+import { ShoppingPreview } from "../../shopping-preview";
 export const metadata = { robots: { index: false, follow: false } };
 export default async function Cart({
   params,
@@ -33,8 +34,24 @@ export default async function Cart({
         {t("cart")}
       </h1>
       <Notice error={error} locale={locale} requestId={requestId} />
+      {store?.hasContextualRules && (
+        <p className="mb-4 text-sm text-muted-foreground">
+          {locale === "zh"
+            ? "下方购物袋显示基础价格。请选择购物选项并在结账时确认最终价格。"
+            : "Bag amounts below use base prices. Check shopping options and confirm the final prices at checkout."}
+        </p>
+      )}
       {cart?.items.length ? (
         <>
+          {store?.hasContextualRules && (
+            <ShoppingPreview
+              locale={locale}
+              items={cart.items.map((item) => ({
+                variantId: item.variantId,
+                quantity: item.quantity,
+              }))}
+            />
+          )}
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
             <div className="space-y-4">
               {cart.items.map((item) => (

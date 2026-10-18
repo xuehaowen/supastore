@@ -190,6 +190,20 @@ export default async function Checkout({
               </dl>
               <p className="mt-5 text-sm text-muted-foreground">
                 {t("finalTotalNotice")}
+                {(quote.termsSnapshot as QuoteTerms).evaluation && (
+                  <span className="block mt-3">
+                    {locale === "zh"
+                      ? "本订单适用积分比例"
+                      : "Reward rate for this order"}
+                    :{" "}
+                    {(quote.termsSnapshot as QuoteTerms).evaluation!
+                      .rewardRateBasisPoints / 100}
+                    %.{" "}
+                    {locale === "zh"
+                      ? "需使用已验证账户；实际积分取决于符合条件的外部付款金额，并在履约后发放。"
+                      : "Requires a verified account. Actual rewards depend on eligible external funding and are released after fulfillment."}
+                  </span>
+                )}
               </p>
             </CardContent>
           </Card>
@@ -233,6 +247,14 @@ export default async function Checkout({
               <CheckoutDetailsForm
                 key={savedQuote?.id ?? cart.id}
                 cartId={cart.id}
+                {...(store?.hasContextualRules
+                  ? {
+                      evaluationItems: cart.items.map((item) => ({
+                        variantId: item.variantId,
+                        quantity: item.quantity,
+                      })),
+                    }
+                  : {})}
                 locale={locale}
                 shippingRules={shippingRules}
                 methods={methods}

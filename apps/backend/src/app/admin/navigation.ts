@@ -110,6 +110,7 @@ export const adminNavigation: { label: string; sections: AdminSection[] }[] = [
         children: [
           { href: "/admin/setup", label: "Store setup" },
           { href: "/admin/settings/commerce", label: "Checkout & rewards" },
+          { href: "/admin/settings/rules", label: "Commerce rules" },
           { href: "/admin/settings/delivery", label: "Local delivery areas" },
           {
             href: "/admin/settings/content",

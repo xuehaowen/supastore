@@ -24,6 +24,7 @@ import type {
   ShippingDestinationRule,
   FulfillmentMethod,
 } from "@supastore/shipping/destination";
+import { CheckoutPreview } from "./checkout-preview";
 
 const emptyState: CheckoutActionState = {};
 
@@ -51,6 +52,7 @@ export function CheckoutDetailsForm({
   shippingRules,
   methods,
   deliveryAreas,
+  evaluationItems,
 }: {
   cartId: string;
   locale: string;
@@ -65,6 +67,7 @@ export function CheckoutDetailsForm({
   shippingRules: ShippingDestinationRule[];
   methods: FulfillmentMethod[];
   deliveryAreas: DeliveryOption[];
+  evaluationItems?: { variantId: string; quantity: number }[];
 }) {
   const [state, action, pending] = useActionState(quoteCheckout, emptyState);
   const [promotion, setPromotion] = useState(initial.promotionCode ?? "");
@@ -74,11 +77,13 @@ export function CheckoutDetailsForm({
   const t = textFor(locale);
   const m = t.checkoutDetails;
   const allowEmpty = onlinePayment || canUseCredit || canBeFree;
+  const [previewRevision, setPreviewRevision] = useState(0);
   return (
     <form
       className="grid gap-5"
       action={action}
       onSubmit={(event) => submitCheckout(event, action)}
+      onChange={() => setPreviewRevision((value) => value + 1)}
     >
       <Notice error={state.error} locale={locale} requestId={state.requestId} />
       <Hidden name="locale" value={locale} />
@@ -124,6 +129,13 @@ export function CheckoutDetailsForm({
           ))}
         </NativeSelect>
       </Label>
+      {evaluationItems && (
+        <CheckoutPreview
+          key={previewRevision}
+          items={evaluationItems}
+          locale={locale}
+        />
+      )}
       <Button type="submit" size="lg" disabled={pending || !methods.length}>
         {t.review} →
       </Button>

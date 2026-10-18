@@ -1,5 +1,6 @@
 import * as v from "valibot";
 import type { CustomerPageModels } from "./customer-pages";
+import { shoppingContextSchema } from "./commerce-evaluation";
 
 const text = v.string();
 const id = v.pipe(text, v.minLength(1));
@@ -36,6 +37,13 @@ const delivery = v.object({
   endTime: v.exactOptional(text),
 });
 const terms = v.object({
+  evaluation: v.exactOptional(
+    v.object({
+      context: shoppingContextSchema,
+      matchedRuleIds: v.array(id),
+      rewardRateBasisPoints: v.pipe(amount, v.maxValue(10000)),
+    }),
+  ),
   rewardProgramActive: v.boolean(),
   settingsVersion: amount,
   currency,
@@ -69,6 +77,7 @@ const publicContent = v.object({
 const store = v.exactOptional(
   v.object({
     storeName: text,
+    hasContextualRules: v.exactOptional(v.boolean()),
     logoKey: v.nullable(text),
     supportEmail: text,
     publicContent: v.object({

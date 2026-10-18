@@ -1,4 +1,5 @@
 export type CustomerStore = {
+  hasContextualRules?: boolean;
   storeName: string;
   logoKey: null | string;
   supportEmail: string;
@@ -432,6 +433,11 @@ export interface CustomerPageModels {
   };
 }
 export type QuoteTerms = {
+  evaluation?: {
+    context: import("./commerce-evaluation").CommercePreviewRequest["context"];
+    matchedRuleIds: string[];
+    rewardRateBasisPoints: number;
+  };
   rewardProgramActive: boolean;
   settingsVersion: number;
   currency: string;
