@@ -85,7 +85,7 @@
   },
   "account": {
     "title": "Your account",
-    "eyebrow": "YOUR SUPASTORE",
+    "eyebrow": "Your {platform}",
     "welcome": "Good to see you.",
     "guestIntro": "A calmer way to check out.",
     "sessionActive": "Your account is signed in on this device.",

@@ -1,3 +1,4 @@
+import { PLATFORM_NAME } from "@supastore/contracts";
 import { readRequestPage } from "../../lib/page-data";
 import { textFor } from "@supastore/i18n/messages";
 import { LanguageLink } from "../interactive";
@@ -57,7 +58,7 @@ export default async function ShopLayout({
               unoptimized
             />
           )}
-          {store?.storeName ?? "SupaStore"}
+          {store?.storeName ?? PLATFORM_NAME}
           <span className="mt-1 block font-sans text-[9px] tracking-[0.16em]">
             {textFor(locale).common.storeTagline}
           </span>
@@ -143,7 +144,7 @@ export default async function ShopLayout({
         </nav>
         <div>
           <p className="font-medium text-foreground">
-            {store?.storeName ?? "SupaStore"}
+            {store?.storeName ?? PLATFORM_NAME}
           </p>
           <p className="mt-1">{t("support")}</p>
         </div>

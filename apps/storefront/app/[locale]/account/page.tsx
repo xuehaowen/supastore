@@ -1,4 +1,5 @@
 import { readPage } from "../../../lib/page-data";
+import { PLATFORM_NAME } from "@supastore/contracts";
 import { statusLabel, activityLabel } from "@supastore/i18n/customer";
 import { textFor } from "@supastore/i18n/messages";
 import Link from "next/link";
@@ -52,7 +53,9 @@ export default async function Account({
     <section className="account-shell">
       <Notice error={query.error} locale={locale} requestId={query.requestId} />
       <div className="account-heading">
-        <p className="eyebrow">{t("account.eyebrow")}</p>
+        <p className="eyebrow">
+          {t("account.eyebrow", { platform: PLATFORM_NAME })}
+        </p>
         <h1>{session ? t("account.welcome") : t("account.guestIntro")}</h1>
         <p>
           {session ? t("account.sessionActive") : t("account.sessionInactive")}

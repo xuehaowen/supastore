@@ -15,7 +15,7 @@ Specifications describe intended rules; code establishes what is implemented; te
 
 ## System summary
 
-SupaStore is a self-hosted physical-goods commerce system for one merchant business, one currency, and one stock pool per variant. It provides customer shopping, merchant administration, financial reconciliation, fulfillment, and durable notifications without Redis or an external message broker.
+Supastore is a self-hosted physical-goods commerce system for one merchant business, one currency, and one stock pool per variant. It provides customer shopping, merchant administration, financial reconciliation, fulfillment, and durable notifications without Redis or an external message broker.
 
 There are two independently buildable Next.js applications. Backend implementation lives in `apps/backend/src/` and owns admin, authentication, APIs, PostgreSQL transactions, storage access, provider secrets, and the worker. `apps/storefront` renders customer pages through backend HTTP APIs and proxies browser API traffic. The original customer pages live in `apps/storefront`; the backend route tree contains admin and APIs. This source-location correction was checked on 2026-10-15; it does not refresh the dated test results below.
 

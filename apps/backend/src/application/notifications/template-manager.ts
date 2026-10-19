@@ -1,3 +1,4 @@
+import { PLATFORM_NAME } from "@supastore/contracts";
 import { resolvePublicOrigin } from "../../../../../packages/config/public-origin.mjs";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
@@ -407,7 +408,7 @@ export async function notificationValues(
         ? p.totalCents
         : order?.purchaseTotalCents || 0;
   return {
-    "store.name": store?.storeName || "Store",
+    "store.name": store?.storeName || PLATFORM_NAME,
     "support.email":
       store?.supportEmail ||
       (zh

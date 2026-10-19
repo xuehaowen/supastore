@@ -1,3 +1,4 @@
+import { PLATFORM_NAME } from "@supastore/contracts";
 import { db } from "@/infrastructure/db";
 import { eq } from "drizzle-orm";
 import {
@@ -110,7 +111,7 @@ export default async function PackingSlipPage({
         {/* Store Header */}
         <div className="border-b border-dashed border-black pb-2 text-center">
           <h1 className="text-sm font-bold uppercase tracking-wider">
-            {store?.storeName || "SupaStore"}
+            {store?.storeName || PLATFORM_NAME}
           </h1>
           <p className="text-[10px] text-neutral-600">
             PACKING SLIP / DISPATCH

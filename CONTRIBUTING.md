@@ -1,6 +1,6 @@
 # Contributing
 
-SupaStore is an implemented, self-hosted commerce application. Start with [scope](docs/product-scope.md), [architecture](docs/architecture-overview.md) and the [vertical-slice roadmap](docs/production-tasks-roadmap.md).
+Supastore is an implemented, self-hosted commerce application. Start with [scope](docs/product-scope.md), [architecture](docs/architecture-overview.md) and the [vertical-slice roadmap](docs/production-tasks-roadmap.md).
 
 Use issues for reproducible problems or bounded proposals grounded in merchant needs. Keep proposals aligned with the current capabilities and documented transaction contracts.
 

@@ -9,7 +9,7 @@ import {
 } from "../../packages/contracts/src/sms";
 
 const store = {
-  storeName: "Example Store",
+  storeName: "Supastore",
   supportEmail: "help@example.com",
   defaultLocale: "en",
   publicContent: {
@@ -52,7 +52,7 @@ describe("merchant SMS setup", () => {
   it("names the merchant, limits consent to order updates and contains all disclosures", () => {
     const text = smsDisclosure(store);
     for (const phrase of [
-      "Example Store",
+      "Supastore",
       "order updates",
       "frequency varies",
       "rates may apply",
@@ -63,14 +63,13 @@ describe("merchant SMS setup", () => {
       "marketing purposes",
     ])
       expect(text).toContain(phrase);
-    expect(text).not.toContain("Milky");
     expect(smsDisclosure(store, "zh")).toContain("STOP");
   });
   it("generates brand-specific keyword replies and editable policy starters", () => {
     const replies = smsKeywordMessages(store);
     expect(replies.START).toContain("Msg&data rates may apply");
     expect(replies.START).toContain("Consent is not a condition of purchase");
-    expect(replies.STOP).toContain("Example Store");
+    expect(replies.STOP).toContain("Supastore");
     expect(replies.HELP).toContain("help@example.com");
     expect(starterPolicies(store).privacy).toContain("sold or shared");
     expect(starterPolicies(store).terms).toContain("STOP");

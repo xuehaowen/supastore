@@ -119,29 +119,29 @@ test("public metadata uses store content and correct locale canonicals", async (
     await sql`select store_name,public_content from store_settings limit 1`;
   const handle = "seo-" + randomUUID();
   try {
-    await sql`update store_settings set store_name='Milky Bakery fixture', public_content=${sql.json({ en: { about: "Fresh bread for our bakery customers", shipping: "Pickup and shipping details" }, zh: { about: "每日手作麵包" } })}`;
-    await sql`insert into product_collections(handle,title,description,is_published) values(${handle},'Morning bakes','Fresh morning collection',true)`;
+    await sql`update store_settings set store_name='Supastore fixture', public_content=${sql.json({ en: { about: "Curated goods for our customers", shipping: "Pickup and shipping details" }, zh: { about: "精选日用好物" } })}`;
+    await sql`insert into product_collections(handle,title,description,is_published) values(${handle},'Everyday essentials','Everyday collection',true)`;
     await page.goto("/en");
-    await expect(page).toHaveTitle("Milky Bakery fixture");
+    await expect(page).toHaveTitle("Supastore fixture");
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
       "http://localhost:3103/en",
     );
     await expect(page.locator('meta[name="description"]')).toHaveAttribute(
       "content",
-      "Fresh bread for our bakery customers",
+      "Curated goods for our customers",
     );
     await page.goto("/zh/pages/about");
-    await expect(page).toHaveTitle(/Milky Bakery fixture/);
+    await expect(page).toHaveTitle(/Supastore fixture/);
     await expect(page.locator('meta[name="description"]')).toHaveAttribute(
       "content",
-      "每日手作麵包",
+      "精选日用好物",
     );
     await expect(
       page.locator('link[rel="alternate"][hreflang="en"]'),
     ).toHaveAttribute("href", "http://localhost:3103/en/pages/about");
     await page.goto("/en/collections/" + handle + "?page=2");
-    await expect(page).toHaveTitle("Morning bakes | Milky Bakery fixture");
+    await expect(page).toHaveTitle("Everyday essentials | Supastore fixture");
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
       "http://localhost:3103/en/collections/" + handle + "?page=2",

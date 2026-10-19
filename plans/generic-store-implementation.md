@@ -1,4 +1,4 @@
-# SupaStore generic online-store implementation plan
+# Supastore generic online-store implementation plan
 
 Status: core implementation completed locally; production acceptance and the deferred items below remain open.
 Prepared: 2026-10-04, America/Los_Angeles.
@@ -15,7 +15,7 @@ Live provider/email validation, a restored production upgrade rehearsal, sustain
 
 ## Objective
 
-Deliver reusable online-store capabilities: customer authentication/profile management, configurable purchase rewards (including 5%), inventory per variant and optional fulfillment slot, shipping/pickup/local delivery, and two independently deployable services: backend and storefront. Extend SupaStore's existing financial and inventory mechanisms. Merchant use cases inform the plan without imposing platform-wide defaults or restrictions.
+Deliver reusable online-store capabilities: customer authentication/profile management, configurable purchase rewards (including 5%), inventory per variant and optional fulfillment slot, shipping/pickup/local delivery, and two independently deployable services: backend and storefront. Extend Supastore's existing financial and inventory mechanisms. Merchant use cases inform the plan without imposing platform-wide defaults or restrictions.
 
 ## Generic product boundary
 
@@ -381,4 +381,4 @@ Resolve source/spec disagreements explicitly; neither stale docs nor current sho
 
 ## Plan maintenance and review
 
-Track implementation status, revision and evidence per step. Split oversized milestones, document new dependency edges, and revise the affected acceptance criteria before implementation. Do not mark a requirement done based only on docs, route existence or a mock-only happy path. This plan assumes SupaStore remains the chosen base; reassess only if measured constraints or a concrete missing business requirement justify migration.
+Track implementation status, revision and evidence per step. Split oversized milestones, document new dependency edges, and revise the affected acceptance criteria before implementation. Do not mark a requirement done based only on docs, route existence or a mock-only happy path. This plan assumes Supastore remains the chosen base; reassess only if measured constraints or a concrete missing business requirement justify migration.

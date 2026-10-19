@@ -1,4 +1,5 @@
 /** Serializable HTTP DTOs and pure validation. No server or database dependencies. */
+export * from "./branding";
 export * from "./checkout";
 export * from "./auth";
 export * from "./responses";

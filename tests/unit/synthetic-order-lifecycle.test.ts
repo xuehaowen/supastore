@@ -16,7 +16,7 @@ describe("Milestone M0: Synthetic domain lifecycle simulation", () => {
 
     // Step 1: Owner Bootstrap & Store Configuration
     const storeSettings = {
-      storeName: "SupaStore Demo",
+      storeName: "Supastore",
       currency: "USD",
       precision: 2,
       isBootstrapCompleted: true,

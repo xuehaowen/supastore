@@ -1,3 +1,4 @@
+import { PLATFORM_NAME } from "@supastore/contracts";
 import Link from "next/link";
 import { AuthForm } from "@/app/interactive";
 import { Card, CardContent } from "@supastore/ui/card";
@@ -19,7 +20,7 @@ export default async function Login({
     <main id="admin-content" tabIndex={-1} className="auth-shell">
       <section className="auth-intro">
         <Link href="/" className="auth-brand">
-          SupaStore
+          {PLATFORM_NAME}
         </Link>
         <div>
           <p className="eyebrow">MERCHANT WORKSPACE</p>

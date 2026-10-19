@@ -1,3 +1,4 @@
+import { PLATFORM_NAME } from "@supastore/contracts";
 import defaults from "./default-templates.json";
 import { emailLayout } from "./email-layout";
 import { DomainError } from "@/application/common/errors";
@@ -282,7 +283,7 @@ export function renderTemplate(
 }
 export function previewValues(): Record<string, string> {
   return {
-    "store.name": "Example Store",
+    "store.name": PLATFORM_NAME,
     "support.email": "support@example.test",
     "order.reference": "SP-PREVIEW",
     "order.url": "https://store.example/en/recover",

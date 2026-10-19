@@ -4,6 +4,13 @@ Supastore supplies shared policy pages, disclosure text and opt-in controls.
 Each store publishes its own reviewed content and registers its own brand and
 campaign with its messaging provider. No merchant identity is hard-coded.
 
+Platform branding comes from `PLATFORM_NAME` (`Supastore`) in the shared
+contracts package. Generic navigation, previews and fallback titles use that
+name, and the synthetic demo store is named Supastore. A deployed merchant's
+configured `storeName` supplies its storefront name, policy starters, consent
+disclosures and keyword responses. Editing platform branding does not rename
+existing merchant records or change the business registered with Telnyx.
+
 ## Configure a store
 
 1. Set the business name, support email and default language in store settings.

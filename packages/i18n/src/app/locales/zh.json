@@ -85,7 +85,7 @@
   },
   "account": {
     "title": "账户",
-    "eyebrow": "您的 SUPASTORE",
+    "eyebrow": "您的 {platform}",
     "welcome": "欢迎回来。",
     "guestIntro": "更安心的结账体验。",
     "sessionActive": "您的账户已在此设备登录。",

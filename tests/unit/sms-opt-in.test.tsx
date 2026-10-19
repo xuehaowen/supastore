@@ -5,7 +5,7 @@ describe("SMS consent form", () => {
   it("renders an optional, unchecked consent control, phone field and live policy URLs", () => {
     const html = renderToStaticMarkup(
       <SmsOptIn
-        storeName="Example Store"
+        storeName="Supastore"
         locale="en"
         available
         source="checkout"
@@ -17,14 +17,14 @@ describe("SMS consent form", () => {
     expect(html).not.toContain('required=""');
     expect(html).toContain("/en/pages/privacy");
     expect(html).toContain("/en/pages/terms");
-    expect(html).toContain("Example Store");
+    expect(html).toContain("Supastore");
     expect(html).toContain('name="smsPreferenceId" value=""');
     expect(html).not.toContain("<form");
   });
   it("explains unavailable verification without requiring SMS for purchasing", () => {
     const html = renderToStaticMarkup(
       <SmsOptIn
-        storeName="Example Store"
+        storeName="Supastore"
         locale="en"
         available={false}
         source="sms-page"

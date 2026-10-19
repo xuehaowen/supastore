@@ -1,5 +1,5 @@
 /**
- * Pure integer minor-unit arithmetic and calculations for SupaStore.
+ * Pure integer minor-unit arithmetic and calculations for Supastore.
  * All amounts are integer minor units (e.g., cents) unless explicitly identified.
  * No binary floating-point calculations for currency totals.
  */

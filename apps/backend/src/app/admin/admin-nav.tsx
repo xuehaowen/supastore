@@ -1,4 +1,5 @@
 "use client";
+import { PLATFORM_NAME } from "@supastore/contracts";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -62,7 +63,8 @@ export function AdminNav() {
               <Store size={20} aria-hidden="true" />
             </span>
             <span>
-              SupaStore<small>Management console</small>
+              {PLATFORM_NAME}
+              <small>Management console</small>
             </span>
           </Link>
           <Button
@@ -127,7 +129,7 @@ export function AdminNav() {
             View shop
             <ArrowUpRight size={15} aria-hidden="true" />
           </Link>
-          <small>SupaStore · Admin workspace</small>
+          <small>{PLATFORM_NAME} · Admin workspace</small>
         </div>
       </nav>
       <header className="workspace-topbar">

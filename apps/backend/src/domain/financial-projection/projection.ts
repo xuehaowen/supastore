@@ -1,5 +1,5 @@
 /**
- * Canonical Financial Projection Engine for SupaStore.
+ * Canonical Financial Projection Engine for Supastore.
  * Implements the 10 canonical accounting rules from transaction-contracts.md.
  * All amounts are integer minor units (cents).
  */

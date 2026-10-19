@@ -1,3 +1,4 @@
+import { PLATFORM_NAME } from "@supastore/contracts";
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@supastore/ui/sonner";
@@ -7,7 +8,7 @@ import { textFor } from "@supastore/i18n/messages";
 export async function generateMetadata(): Promise<Metadata> {
   const locale = (await headers()).get("x-store-locale") ?? "en";
   return {
-    title: "SupaStore",
+    title: PLATFORM_NAME,
     description: textFor(locale).common.storeDescription,
   };
 }
