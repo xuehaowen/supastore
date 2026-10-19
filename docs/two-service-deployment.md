@@ -1,5 +1,9 @@
 # Backend and storefront deployment
 
+Use the [operator cookbook](operator-cookbook.md) for fresh-store provisioning,
+upgrades and recovery, and the [command reference](commands.md) for command
+arguments and environment loading.
+
 See [local performance and recovery evidence](local-performance-recovery.md)
 for the verified 30-minute synthetic load and restore/upgrade gates.
 

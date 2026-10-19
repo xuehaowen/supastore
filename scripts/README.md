@@ -2,6 +2,10 @@
 
 Test fixtures, builds/migrations, seeds, benchmarks, release checks and backup/recovery tooling.
 
+Use the [complete command reference](../docs/commands.md) for arguments, effects
+and prerequisites, and the [operator cookbook](../docs/operator-cookbook.md) for
+copyable setup, deployment and recovery recipes.
+
 ## When working here
 
 Inspect target database, Compose project and outbound suppression before mutation. Synthetic runners are not production provider acceptance.

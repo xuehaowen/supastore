@@ -4,7 +4,7 @@ This is the merchant task guide. The [journey index](critical-user-journeys.md) 
 
 ## Setup
 
-1. Create admin users through trusted commands in a terminal, establishing their authentication identity and active owner/staff membership. Then sign in and complete protected store setup. The admin UI has no user creation/invitation flow; Settings manages only existing memberships. Customer registration does not grant admin access. Demo seeding is not a general production staff-provisioning procedure.
+1. Follow the [first-owner provisioning recipe](operator-cookbook.md#provision-the-first-owner) from a trusted terminal, then complete protected store setup. The admin UI has no user creation/invitation flow; Settings manages only existing memberships. Customer registration does not grant admin access. Demo seeding is not a general production staff-provisioning procedure.
 2. Set branding, support/policy pages, locale, timezone and currency.
 3. Configure shipping, optional pickup, tax, a manual payment account or cash drawer, and email. Send a test message.
 4. Add products, variants, images and translations, or preview a product CSV import.

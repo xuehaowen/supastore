@@ -2,7 +2,7 @@
 
 A self-hosted commerce application for independent merchants, with catalog options, collections, stock tracking, customer accounts, store credit and rewards, manual and Stripe payments, refunds, and physical returns. Backend and storefront are independently deployable applications; the backend owns merchant admin, APIs, authentication, and the outbox worker. Combined local development remains available.
 
-Start with [Current System Capabilities](docs/system-capabilities.md) for implemented features and limits, and the [Maintenance Guide](docs/system-maintenance.md) for operational workflows. Directory READMEs explain the code beside each module; the navigation index below links their entry points.
+Start with [Current System Capabilities](docs/system-capabilities.md) for implemented features and limits, the [Operator Cookbook](docs/operator-cookbook.md) for task recipes, and the [Command Reference](docs/commands.md) for commands and prerequisites. Directory READMEs explain the code beside each module; the navigation index below links their entry points.
 
 The workspace contains `apps/backend` for admin, APIs and workers, `apps/storefront` for the original customer pages, and `packages/{ui,i18n,shipping,contracts}` for shared presentation and public contracts. Root scripts coordinate development, database setup and testing. The backend reads the existing root `.env`; the storefront communicates through HTTP.
 
@@ -26,16 +26,16 @@ Licensed under MIT.
 
 ### Prerequisites
 
-- Node.js 22 LTS or newer
-- pnpm 9+
-- PostgreSQL 16+ (or Docker)
+- Node.js >=22.13.0
+- pnpm 11.0.9 (the repository's `packageManager` version)
+- Docker Compose for the supplied PostgreSQL 18/RustFS stack, or separately configured services
 
 ### 1. Clone and Install
 
 ```bash
 git clone https://github.com/xuehaowen/supastore.git
 cd supastore
-pnpm install
+pnpm install --frozen-lockfile
 ```
 
 ### 2. Configure Environment
@@ -52,15 +52,30 @@ uses the PostgreSQL administrator password. Migrations provision the application
 role when `APP_DATABASE_USER` and `APP_DATABASE_PASSWORD` are set. See the
 [deployment guide](docs/two-service-deployment.md) for generation and existing-volume recovery.
 
-### 3. Run Migrations & Seed Demo Store
+### 3. Start Dependencies, Migrate & Seed a Local Demo
+
+Use a dedicated local database. Before starting the application, set
+`DISABLE_OUTBOUND_DELIVERY=true` and `ENABLE_OUTBOX_WORKER=false` in the demo `.env`.
 
 ```bash
+docker compose up -d postgres rustfs
+
 # Apply database migrations
 pnpm db:migrate
 
 # Seed synthetic demo catalog & owner (owner@example.test / AdminSetupSecret123!)
-M1_DEMO=true DEMO_OWNER_PASSWORD=AdminSetupSecret123! pnpm db:seed
+node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx --input-type=module -e "process.env.DEMO_SEED='true'; process.env.DATABASE_URL=process.env.MIGRATION_DATABASE_URL; await import('./scripts/seed-demo.ts')"
 ```
+
+The seed command requires the configured `MIGRATION_DATABASE_URL` and uses it
+only in its child process because the seed also runs migrations. It uses the
+synthetic default password; set `DEMO_OWNER_PASSWORD`
+in the demo environment to override it. It works in Bash and PowerShell. Never
+seed a real merchant database. In the RustFS console at `http://localhost:9001`,
+create the buckets named by `S3_BUCKET_PUBLIC` and `S3_BUCKET_PRIVATE` before
+testing uploads. See the [local demo recipe](docs/operator-cookbook.md#local-demo-store)
+for expected results and storage checks. A real store uses the separate
+[first-owner recipe](docs/operator-cookbook.md#provision-the-first-owner).
 
 ### 4. Start Development Server
 
@@ -68,13 +83,15 @@ M1_DEMO=true DEMO_OWNER_PASSWORD=AdminSetupSecret123! pnpm db:seed
 pnpm dev
 ```
 
-This starts the backend on port 3000 and the original customer storefront on port 3001. To run them in separate terminals, use `pnpm dev:backend` and `pnpm dev:storefront`. Development launchers set the public origin to port 3001 without changing `.env`.
+This starts the backend on port 3000 and the original customer storefront on port 3001. To run them in separate terminals, use `pnpm dev:backend` and `pnpm dev:storefront`. Development launchers default the public origin to port 3001 when none is configured, without changing `.env`.
 
 `pnpm build` builds both apps, and `pnpm start` runs both production servers.
 Use `build:backend`, `build:storefront`, `start:backend` and `start:storefront`
 for individual services. `BACKEND_PORT` and `STOREFRONT_PORT` select their ports.
-For production commands, set `APP_URL`, `BETTER_AUTH_URL` and `STOREFRONT_ORIGIN` in the shell environment to the
-public storefront origin. `pnpm test:all` runs each verification suite once.
+Production requires an explicit public origin; use `STOREFRONT_ORIGIN` and keep
+any `APP_URL`/`BETTER_AUTH_URL` aliases consistent. See the command reference for
+environment-file precedence. `pnpm test:all` runs the main verification chain;
+the error-coverage and container checks are separate commands.
 
 - Storefront: [http://localhost:3001](http://localhost:3001)
 - Admin Portal: [http://localhost:3001/admin](http://localhost:3001/admin)
@@ -90,13 +107,22 @@ Checkout shows a final total before placing the order. Pickup requires a locatio
 
 ## Docker & Deployment
 
-Run Supastore and PostgreSQL via Docker Compose:
+Build the services, start dependencies, and run the explicit migration job before
+starting the applications:
 
 ```bash
-docker compose up -d
+docker compose build backend storefront migrate
+docker compose up -d postgres rustfs
+docker compose --profile migration run --rm migrate
+docker compose up -d backend storefront
 ```
 
-See [Deployment Recipes](docs/deployment-recipes.md) for Coolify, Railway, Fly.io, and managed cloud databases.
+Configure secrets, storage buckets, the public origin and ingress first. For an
+existing installation, back up and rehearse the upgrade before migrations. See
+the [deployment cookbook](docs/operator-cookbook.md#deploy-or-upgrade-with-compose)
+and [Deployment Recipes](docs/deployment-recipes.md). Other container platforms
+have general configuration guidance; provider-specific deployment acceptance is
+separate.
 
 ---
 
@@ -144,6 +170,8 @@ Each module README explains its responsibility, maintenance constraints, and whe
 | Document                                                          | Description                                                         |
 | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
 | [Current System Capabilities](docs/system-capabilities.md)        | Implemented capabilities, boundaries, workflows and evidence limits |
+| [Command Reference](docs/commands.md)                             | Every package command, prerequisites, effects and outputs           |
+| [Operator Cookbook](docs/operator-cookbook.md)                    | Local setup, owner provisioning, deployment, recovery and diagnosis |
 | [System Maintenance Guide](docs/system-maintenance.md)            | Configuration, verification, diagnosis, upgrades and recovery       |
 | [Product Scope](docs/product-scope.md)                            | Audience, release boundary and document ownership                   |
 | [Business Workflows](docs/business-workflows.md)                  | User operations and state transitions                               |
