@@ -1,3 +1,4 @@
+import { MAX_ITEM_QUANTITY } from "@supastore/contracts";
 import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
@@ -79,7 +80,12 @@ export async function createManualOrder(input: {
     throw new DomainError("A manual order must have between 1 and 25 items.");
   const items = input.items.map((item) => ({
     variantId: parseActionUuid(item.variantId, "Product variant"),
-    quantity: parseActionInteger(item.quantity, "Quantity", 1, 999),
+    quantity: parseActionInteger(
+      item.quantity,
+      "Quantity",
+      1,
+      MAX_ITEM_QUANTITY,
+    ),
   }));
   if (new Set(items.map((item) => item.variantId)).size !== items.length)
     throw new DomainError("Combine duplicate product variants into one line.");

@@ -1,4 +1,5 @@
 "use server";
+import { MAX_ITEM_QUANTITY } from "@supastore/contracts";
 import { actionError } from "@/infrastructure/http/failure";
 import { redirect } from "next/navigation";
 import { revalidatePath, revalidateTag } from "next/cache";
@@ -58,13 +59,13 @@ export async function receiveReturnAction(form: FormData) {
             text(form, `restock.${value}`),
             "Restockable quantity",
             0,
-            999,
+            MAX_ITEM_QUANTITY,
           ),
           damaged: parseActionInteger(
             text(form, `damaged.${value}`),
             "Damaged quantity",
             0,
-            999,
+            MAX_ITEM_QUANTITY,
           ),
         })),
       });

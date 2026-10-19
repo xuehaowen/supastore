@@ -1,3 +1,4 @@
+import { MAX_ITEM_QUANTITY } from "@supastore/contracts";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
@@ -40,7 +41,7 @@ export async function requestGoodsReturn(input: {
     throw new DomainError("Choose between one and 50 distinct order items.");
   for (const item of input.items) {
     parseActionUuid(item.orderItemId, "Order item");
-    parseActionInteger(item.quantity, "Return quantity", 1, 999);
+    parseActionInteger(item.quantity, "Return quantity", 1, MAX_ITEM_QUANTITY);
   }
   return db.transaction(async (tx) => {
     const [order] = await tx
@@ -201,8 +202,8 @@ export async function receiveGoodsReturn(input: {
   if (input.items.length > 50) throw new DomainError("Too many return items.");
   for (const item of input.items) {
     parseActionUuid(item.returnItemId, "Return item");
-    parseActionInteger(item.restock, "Restock quantity", 0, 999);
-    parseActionInteger(item.damaged, "Damaged quantity", 0, 999);
+    parseActionInteger(item.restock, "Restock quantity", 0, MAX_ITEM_QUANTITY);
+    parseActionInteger(item.damaged, "Damaged quantity", 0, MAX_ITEM_QUANTITY);
   }
   return db.transaction(async (tx) => {
     await verifyStaffInTransaction(tx, input.staffUserId);

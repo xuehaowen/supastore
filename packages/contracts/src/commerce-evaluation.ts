@@ -1,5 +1,9 @@
 import * as v from "valibot";
-import { MAX_CART_LINES, CART_LINE_LIMIT_MESSAGE } from "./checkout";
+import {
+  MAX_CART_LINES,
+  CART_LINE_LIMIT_MESSAGE,
+  MAX_ITEM_QUANTITY,
+} from "./checkout";
 const amount = v.pipe(
   v.number(),
   v.safeInteger(),
@@ -24,7 +28,7 @@ const requestSchema = v.object({
           v.number(),
           v.integer(),
           v.minValue(1),
-          v.maxValue(999),
+          v.maxValue(MAX_ITEM_QUANTITY),
         ),
       }),
     ),

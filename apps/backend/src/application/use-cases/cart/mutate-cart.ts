@@ -1,6 +1,10 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import * as v from "valibot";
-import { MAX_CART_LINES, CART_LINE_LIMIT_MESSAGE } from "@supastore/contracts";
+import {
+  MAX_CART_LINES,
+  CART_LINE_LIMIT_MESSAGE,
+  MAX_ITEM_QUANTITY,
+} from "@supastore/contracts";
 import { db } from "@/infrastructure/db";
 import {
   carts,
@@ -28,7 +32,7 @@ export async function mutateCart(
       v.number(),
       v.integer(),
       v.minValue(mode === "add" ? 1 : 0),
-      v.maxValue(999),
+      v.maxValue(MAX_ITEM_QUANTITY),
     ),
     input.quantity,
   );
@@ -80,8 +84,10 @@ export async function mutateCart(
     }
     const quantity =
       mode === "add" ? (item?.quantity ?? 0) + input.quantity : input.quantity;
-    if (quantity > 999)
-      throw new InvariantViolationError("Maximum quantity is 999.");
+    if (quantity > MAX_ITEM_QUANTITY)
+      throw new InvariantViolationError(
+        `Maximum quantity is ${MAX_ITEM_QUANTITY}.`,
+      );
     if (quantity > 0) {
       const [variant] = await tx
         .select()

@@ -1,3 +1,4 @@
+import { MAX_ITEM_QUANTITY } from "@supastore/contracts";
 import { parseActionInteger } from "@/application/common/request-validation";
 import { field } from "@/app/actions/common";
 
@@ -27,7 +28,7 @@ export function parseManualOrderForm(form: FormData) {
         field(form, `quantity-${index}`),
         "Quantity",
         1,
-        999,
+        MAX_ITEM_QUANTITY,
       ),
     })),
   };

@@ -1,3 +1,4 @@
+import { MAX_ITEM_QUANTITY } from "@supastore/contracts";
 import { readPage } from "../../../lib/page-data";
 import { textFor } from "@supastore/i18n/messages";
 import Link from "next/link";
@@ -106,14 +107,16 @@ export default async function Cart({
                         <Hidden name="itemId" value={item.id} />
                         <Hidden
                           name="quantity"
-                          value={String(Math.min(999, item.quantity + 1))}
+                          value={String(
+                            Math.min(MAX_ITEM_QUANTITY, item.quantity + 1),
+                          )}
                         />
                         <Button
                           type="submit"
                           variant="ghost"
                           size="sm"
                           className="size-7 p-0"
-                          disabled={item.quantity >= 999}
+                          disabled={item.quantity >= MAX_ITEM_QUANTITY}
                           aria-label={textFor(
                             locale,
                           ).common.increaseQuantityFor.replace(

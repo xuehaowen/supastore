@@ -3,6 +3,19 @@ import {
   parseCommercePreviewRequest,
   parseCommercePreview,
 } from "@supastore/contracts";
+it("accepts the per-item quantity boundary and rejects an overflow", () => {
+  const variantId = crypto.randomUUID();
+  expect(
+    parseCommercePreviewRequest({
+      items: [{ variantId, quantity: 999 }],
+    }).items[0]?.quantity,
+  ).toBe(999);
+  expect(() =>
+    parseCommercePreviewRequest({
+      items: [{ variantId, quantity: 1000 }],
+    }),
+  ).toThrow();
+});
 it("bounds preview input and strips caller-selected prices, rewards and identity", () => {
   const input = {
     items: [{ variantId: crypto.randomUUID(), quantity: 1, unitPriceCents: 0 }],

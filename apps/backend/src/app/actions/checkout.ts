@@ -1,4 +1,5 @@
 "use server";
+import { MAX_ITEM_QUANTITY } from "@supastore/contracts";
 import { parseQuoteRequest } from "@/application/common/quote-request";
 import { DomainError } from "@/application/common/errors";
 import { allowRequest } from "@/application/common/rate-limit";
@@ -40,7 +41,12 @@ export async function addItem(form: FormData) {
     await addToCart({
       guestSessionId: await guestIdentity(true),
       variantId: parseActionUuid(field(form, "variantId"), "Product variant"),
-      quantity: parseActionInteger(field(form, "quantity"), "Quantity", 1, 999),
+      quantity: parseActionInteger(
+        field(form, "quantity"),
+        "Quantity",
+        1,
+        MAX_ITEM_QUANTITY,
+      ),
       locale,
     });
   });
@@ -51,7 +57,12 @@ export async function changeItem(form: FormData) {
     await updateCartItem({
       guestSessionId: await guestIdentity(),
       itemId: parseActionUuid(field(form, "itemId"), "Cart item"),
-      quantity: parseActionInteger(field(form, "quantity"), "Quantity", 0, 999),
+      quantity: parseActionInteger(
+        field(form, "quantity"),
+        "Quantity",
+        0,
+        MAX_ITEM_QUANTITY,
+      ),
       locale,
     });
   });

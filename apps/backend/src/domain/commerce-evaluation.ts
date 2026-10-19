@@ -1,3 +1,4 @@
+import { MAX_ITEM_QUANTITY } from "@supastore/contracts";
 import * as v from "valibot";
 import { validShippingRegion } from "@supastore/shipping/destination";
 import { InvariantViolationError } from "@/domain/errors";
@@ -255,7 +256,7 @@ export function evaluateCommerce(input: {
     if (
       !Number.isSafeInteger(item.quantity) ||
       item.quantity < 1 ||
-      item.quantity > 999 ||
+      item.quantity > MAX_ITEM_QUANTITY ||
       !Number.isSafeInteger(item.unitPriceCents) ||
       item.unitPriceCents < 0 ||
       item.unitPriceCents > 2147483647 ||

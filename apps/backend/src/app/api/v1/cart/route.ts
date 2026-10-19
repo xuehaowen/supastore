@@ -1,3 +1,4 @@
+import { MAX_ITEM_QUANTITY } from "@supastore/contracts";
 import type { CartDto } from "@supastore/contracts";
 import {
   apiResponse,
@@ -37,7 +38,14 @@ export async function POST(request: Request) {
       guestSessionId: await guestIdentity(true),
       locale,
       variantId: parseActionUuid(apiText(body, "variantId"), "Variant"),
-      quantity: apiInteger(body, "quantity", 1, 999, undefined, "Quantity"),
+      quantity: apiInteger(
+        body,
+        "quantity",
+        1,
+        MAX_ITEM_QUANTITY,
+        undefined,
+        "Quantity",
+      ),
     });
     return cart(locale);
   });
@@ -50,7 +58,14 @@ export async function PATCH(request: Request) {
       guestSessionId: await guestIdentity(),
       locale,
       itemId: parseActionUuid(apiText(body, "itemId"), "Item"),
-      quantity: apiInteger(body, "quantity", 0, 999, undefined, "Quantity"),
+      quantity: apiInteger(
+        body,
+        "quantity",
+        0,
+        MAX_ITEM_QUANTITY,
+        undefined,
+        "Quantity",
+      ),
     });
     return cart(locale);
   });

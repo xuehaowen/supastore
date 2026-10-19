@@ -1,3 +1,4 @@
+import { MAX_ITEM_QUANTITY } from "@supastore/contracts";
 import { requestGoodsReturn } from "@/application/use-cases/returns/manage-returns";
 import { orderToken } from "@/infrastructure/web";
 import {
@@ -31,7 +32,7 @@ export async function POST(
           apiText(value, "orderItemId"),
           "Order item",
         ),
-        quantity: apiInteger(value, "quantity", 1, 999),
+        quantity: apiInteger(value, "quantity", 1, MAX_ITEM_QUANTITY),
       };
     });
     const id = await requestGoodsReturn({

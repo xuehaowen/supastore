@@ -1,4 +1,5 @@
 "use client";
+import { MAX_ITEM_QUANTITY } from "@supastore/contracts";
 import { textFor } from "@supastore/i18n/messages";
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
@@ -89,13 +90,23 @@ export function ProductPurchase({
         : "Choose shopping options to see price";
   const maxQty = Math.max(
     1,
-    Math.min(999, availableQuantities[variantId] ?? 999),
+    Math.min(
+      MAX_ITEM_QUANTITY,
+      availableQuantities[variantId] ?? MAX_ITEM_QUANTITY,
+    ),
   );
   const selectedQuantity = Math.min(quantity, maxQty);
   function selectVariant(id: string) {
     setVariantId(id);
     setQuantity((q) =>
-      Math.max(1, Math.min(q, 999, availableQuantities[id] ?? 999)),
+      Math.max(
+        1,
+        Math.min(
+          q,
+          MAX_ITEM_QUANTITY,
+          availableQuantities[id] ?? MAX_ITEM_QUANTITY,
+        ),
+      ),
     );
     setActiveImageKey(null);
   }
