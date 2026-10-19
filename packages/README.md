@@ -8,6 +8,7 @@ Share data/rules that can safely cross the service boundary, not backend credent
 
 ## Where to start
 
+- [Shared server configuration](config/README.md): Public origin resolution for both services.
 - [HTTP contracts](contracts/README.md): serializable backend/storefront response types.
 - [Shared UI](ui/README.md): Components, utility functions and base styles used by both applications.
 

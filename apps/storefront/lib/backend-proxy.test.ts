@@ -6,6 +6,15 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 describe("fixed backend API proxy", () => {
+  it("rejects invalid backend configuration before sending a request", async () => {
+    vi.stubEnv("BACKEND_URL", "https://user:secret@backend.example.test/path");
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    await expect(
+      proxyBackendApi(new Request("https://shop.example/api/v1/store")),
+    ).rejects.toThrow("BACKEND_URL must be an HTTP origin");
+    expect(fetcher).not.toHaveBeenCalled();
+  });
   it("forwards a client IP only from the authenticated edge and never forwards its credentials", async () => {
     const secret = "synthetic-edge-secret-at-least-32-characters";
     vi.stubEnv("EDGE_PROXY_SECRET", secret);

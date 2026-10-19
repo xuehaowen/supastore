@@ -1,19 +1,7 @@
 import { fileURLToPath } from "node:url";
 import createNextIntlPlugin from "next-intl/plugin";
-const backend = (process.env.BACKEND_URL || "http://127.0.0.1:3000").replace(
-  /\/$/,
-  "",
-);
-const backendOrigin = new URL(backend);
-if (
-  !["http:", "https:"].includes(backendOrigin.protocol) ||
-  backendOrigin.username ||
-  backendOrigin.password ||
-  backendOrigin.pathname !== "/" ||
-  backendOrigin.search ||
-  backendOrigin.hash
-)
-  throw new Error("BACKEND_URL must be an HTTP origin");
+import { resolveBackendOrigin } from "../../packages/config/backend-origin.mjs";
+const backend = resolveBackendOrigin(process.env);
 const nextConfig = {
   transpilePackages: [
     "@supastore/ui",
