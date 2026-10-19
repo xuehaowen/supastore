@@ -11,7 +11,7 @@ Secrets stay on backend. Implement application ports at this edge instead of imp
 - [web.ts](web.ts): Resolves browser sessions, guest cart identity and private order cookies for server entry points.
 
 - [adapter-registry.ts](adapter-registry.ts): Typed adapter registration and lookup.
-- [config.ts](config.ts): Validates core backend environment configuration.
+- [Shared configuration helpers](../../../../packages/config/README.md): Validates public and internal service origins. Database and authentication modules validate their own configuration.
 - [storage.ts](storage.ts): S3-compatible object access and upload helpers.
 - [Authentication and staff checks](auth/README.md): Better Auth configuration/client integration and active staff verification.
 - [Provider composition](bootstrap/README.md): Validates configuration and constructs process-wide notification adapters.

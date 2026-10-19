@@ -11,7 +11,7 @@ import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { eq } from "drizzle-orm";
 import { db, queryClient } from "../apps/backend/src/infrastructure/db/index";
 import { auth } from "../apps/backend/src/infrastructure/auth/index";
-import { loadConfig } from "../apps/backend/src/infrastructure/config";
+import { demoSeedPassword } from "./demo-seed-config";
 import {
   user,
   staffMemberships,
@@ -106,16 +106,7 @@ interface ProductEntry {
 // Guards & Configuration Precheck
 // ============================================================================
 
-loadConfig();
-
-if (process.env.M1_DEMO !== "true" && process.env.DEMO_SEED !== "true")
-  throw new Error(
-    "Set DEMO_SEED=true (or M1_DEMO=true) only against an isolated synthetic demo database.",
-  );
-
-const password = process.env.DEMO_OWNER_PASSWORD ?? "AdminSetupSecret123!";
-if (password.length < 12)
-  throw new Error("DEMO_OWNER_PASSWORD must be 12+ characters.");
+const password = demoSeedPassword(process.env);
 
 // ============================================================================
 // Load YAML seed data
