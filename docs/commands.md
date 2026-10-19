@@ -83,7 +83,7 @@ storefront: changing it requires a rebuild. Browser consent still gates sending.
 For focused selection, for example:
 
 ```bash
-pnpm run test:unit tests/unit/public-origin.test.ts
+pnpm exec vitest run tests/unit/public-origin.test.ts
 pnpm run test:integration tests/integration/auth-session-isolation.test.ts
 pnpm run test:storefront tests/browser/session-isolation.spec.ts
 ```
@@ -95,6 +95,9 @@ Unfiltered `test:watch` includes integration files under the Vitest configuratio
 use `pnpm run test:watch tests/unit` for a database-free unit watch session.
 `test:browser`, `test:e2e` and `test:storefront` currently share the same
 two-service fixture runner; they are not three independent acceptance suites.
+Use `pnpm exec vitest run <file>` for a focused unit test. Adding a file to
+`test:unit` retains its existing `tests/unit` positional filter and therefore
+still selects the entire unit directory.
 
 ## Database and owner operations
 
