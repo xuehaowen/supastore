@@ -3,6 +3,7 @@ import { redeemOwnerRecovery } from "@/application/use-cases/staff/redeem-owner-
 import { staffAuth } from "@/infrastructure/auth";
 import { makeSignature } from "better-auth/crypto";
 import { UnauthorizedError } from "@/application/common/errors";
+import { resolvePublicOrigin } from "../../../../../../../../packages/config/public-origin.mjs";
 
 function sameSite(value?: string): "strict" | "lax" | "none" {
   switch (value?.toLowerCase()) {
@@ -16,6 +17,7 @@ function sameSite(value?: string): "strict" | "lax" | "none" {
 }
 
 export async function GET(request: NextRequest) {
+  const publicOrigin = resolvePublicOrigin(process.env);
   const token = request.nextUrl.searchParams.get("token") || "";
 
   try {
@@ -23,7 +25,7 @@ export async function GET(request: NextRequest) {
     const { sessionToken, expiresAt } = await redeemOwnerRecovery(token);
     const signedToken = `${sessionToken}.${await makeSignature(sessionToken, context.secret)}`;
 
-    const redirectUrl = new URL("/admin", request.url);
+    const redirectUrl = new URL("/admin", publicOrigin);
     const response = NextResponse.redirect(redirectUrl);
 
     const cookie = context.authCookies.sessionToken;
@@ -49,7 +51,7 @@ export async function GET(request: NextRequest) {
 
     return response;
   } catch (error: unknown) {
-    const loginUrl = new URL("/admin/login", request.url);
+    const loginUrl = new URL("/admin/login", publicOrigin);
     loginUrl.searchParams.set(
       "error",
       error instanceof UnauthorizedError

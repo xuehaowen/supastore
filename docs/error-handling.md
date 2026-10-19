@@ -114,6 +114,12 @@ The backend mutation guard uses the same normalized public origin. Unit
 trailing slashes, and rejection of missing/foreign/cross-site origins before
 upload authentication or body parsing.
 
+Owner-recovery redemption uses that public origin for both successful admin
+redirects and invalid/expired-token sign-in redirects. Internal backend request
+hosts must not escape in browser `Location` headers. Integration `owner-recovery`
+covers both outcomes behind an internal request origin and verifies the signed
+staff cookie, separate customer realm and rejection of unsigned cookies.
+
 Customer-page reads also validate nested response contracts before rendering.
 Malformed consumed fields produce the existing safe 502 (`Invalid API response.`)
 with the backend request ID, without exposing schema issues or payload contents.

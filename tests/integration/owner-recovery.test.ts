@@ -77,22 +77,31 @@ describe.skipIf(!process.env.DATABASE_URL?.endsWith("/supastore_test"))(
         redeemOwnerRecovery(await token(new Date(Date.now() - 1000))),
       ).rejects.toThrow("invalid or has expired");
     });
-    it("authenticates the actual recovery cookie through Better Auth", async () => {
+    it("uses the public redirect origin and authenticates the actual recovery cookie", async () => {
       vi.stubEnv(
         "BETTER_AUTH_SECRET",
         "SyntheticRecoveryIntegrationSecret123456789!",
       );
       vi.stubEnv("BETTER_AUTH_URL", "https://recovery.example.test");
+      vi.stubEnv("STOREFRONT_ORIGIN", "https://recovery.example.test");
       const { GET } = await import("@/app/api/auth/recover-owner/redeem/route");
       const { staffAuth, auth } = await import("@/infrastructure/auth");
       const response = await GET(
         new NextRequest(
-          `https://recovery.example.test/api/auth/recover-owner/redeem?token=${await token()}`,
+          `http://0.0.0.0:3000/api/auth/recover-owner/redeem?token=${await token()}`,
         ),
       );
-      expect(new URL(response.headers.get("location")!).pathname).toBe(
-        "/admin",
+      expect(response.headers.get("location")).toBe(
+        "https://recovery.example.test/admin",
       );
+      const rejected = await GET(
+        new NextRequest(
+          "http://0.0.0.0:3000/api/auth/recover-owner/redeem?token=invalid",
+        ),
+      );
+      const rejectedLocation = new URL(rejected.headers.get("location")!);
+      expect(rejectedLocation.origin).toBe("https://recovery.example.test");
+      expect(rejectedLocation.pathname).toBe("/admin/login");
       const context = await staffAuth.$context;
       const cookie = response.cookies.get(
         context.authCookies.sessionToken.name,
