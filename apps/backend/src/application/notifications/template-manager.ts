@@ -1,3 +1,4 @@
+import { resolvePublicOrigin } from "../../../../../packages/config/public-origin.mjs";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { db } from "@/infrastructure/db";
@@ -307,19 +308,7 @@ export async function prepareNotification(
 }
 
 function publicOrigin() {
-  const origin = new URL(
-    process.env.STOREFRONT_ORIGIN ||
-      process.env.APP_URL ||
-      process.env.BETTER_AUTH_URL ||
-      "http://localhost:3000",
-  );
-  if (
-    !["http:", "https:"].includes(origin.protocol) ||
-    origin.username ||
-    origin.password
-  )
-    throw new DomainError("Public storefront URL is invalid.");
-  return origin.origin;
+  return resolvePublicOrigin(process.env);
 }
 export async function notificationValues(
   tx: Transaction | typeof db,

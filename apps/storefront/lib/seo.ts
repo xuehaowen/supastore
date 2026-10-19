@@ -1,16 +1,6 @@
+import { resolvePublicOrigin } from "../../../packages/config/public-origin.mjs";
 export function publicOrigin() {
-  const url = new URL(
-    process.env.STOREFRONT_ORIGIN ||
-      process.env.APP_URL ||
-      "http://localhost:3001",
-  );
-  if (
-    !["http:", "https:"].includes(url.protocol) ||
-    url.username ||
-    url.password
-  )
-    throw new Error("Invalid public storefront origin");
-  return url.origin;
+  return resolvePublicOrigin(process.env);
 }
 export function alternateLinks(
   path: string,

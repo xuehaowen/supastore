@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { serverRequest } from "./server-request";
 import * as requests from "./server-request";
 const { proxy, setCookie } = vi.hoisted(() => ({
@@ -14,11 +14,21 @@ vi.mock("next/headers", () => ({
   cookies: async () => ({ set: setCookie }),
 }));
 vi.mock("./backend-proxy", () => ({ proxyBackendApi: proxy }));
+afterEach(() => vi.unstubAllEnvs());
 beforeEach(() => {
   proxy.mockReset();
   setCookie.mockReset();
 });
 describe("original customer server actions across services", () => {
+  it("uses the configured public APP_URL when STOREFRONT_ORIGIN is absent", async () => {
+    vi.stubEnv("STOREFRONT_ORIGIN", undefined);
+    vi.stubEnv("APP_URL", "https://shop.example.test/");
+    proxy.mockResolvedValue(Response.json({ data: { id: "new-order" } }));
+    await serverRequest("orders", {});
+    const request = proxy.mock.calls[0]![0] as Request;
+    expect(request.url).toBe("https://shop.example.test/api/v1/orders");
+    expect(request.headers.get("origin")).toBe("https://shop.example.test");
+  });
   it("preserves backend failure references across the storefront boundary", async () => {
     const requestId = "11111111-1111-4111-8111-111111111111";
     proxy.mockResolvedValue(

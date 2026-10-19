@@ -23,6 +23,27 @@ describe("Auth Module Configuration and Callbacks", () => {
       );
     }
   });
+  it.each(["STOREFRONT_ORIGIN", "APP_URL"])(
+    "uses %s for standalone authentication without BETTER_AUTH_URL",
+    async (key) => {
+      vi.stubEnv("BETTER_AUTH_URL", undefined);
+      vi.stubEnv("STOREFRONT_ORIGIN", undefined);
+      vi.stubEnv("APP_URL", undefined);
+      vi.stubEnv(key, "https://shop.example.test");
+      try {
+        vi.resetModules();
+        const identities = await import("@/infrastructure/auth");
+        expect(identities.auth.options.baseURL).toBe(
+          "https://shop.example.test",
+        );
+        expect(identities.staffAuth.options.baseURL).toBe(
+          "https://shop.example.test",
+        );
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    },
+  );
   it("uses separate staff and customer cookie namespaces and disables staff registration", () => {
     expect(auth.options.advanced?.cookiePrefix).toBe("supastore-customer");
     expect(staffAuth.options.advanced?.cookiePrefix).toBe("supastore-staff");

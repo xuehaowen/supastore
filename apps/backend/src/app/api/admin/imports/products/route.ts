@@ -9,11 +9,15 @@ import { db } from "@/infrastructure/db";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { ForbiddenError, DomainError } from "@/application/common/errors";
 import { revalidateTag, revalidatePath } from "next/cache";
+import { assertMutationOrigin } from "@/infrastructure/http/commerce-api";
 
 export async function POST(request: NextRequest) {
-  const expectedOrigin = new URL(process.env.APP_URL || request.url).origin;
-  if (request.headers.get("origin") !== expectedOrigin) {
-    return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
+  try {
+    assertMutationOrigin(request);
+  } catch (error) {
+    if (error instanceof ForbiddenError)
+      return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
+    throw error;
   }
   const session = await staffAuth.api.getSession({ headers: await headers() });
   if (!session) {

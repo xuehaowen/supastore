@@ -2,11 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag, revalidatePath } from "next/cache";
 import { staffIdentity } from "@/infrastructure/web";
 import { uploadCatalogImage } from "@/application/use-cases/catalog/upload-catalog-image";
-import { DomainError } from "@/application/common/errors";
+import { DomainError, ForbiddenError } from "@/application/common/errors";
+import { assertMutationOrigin } from "@/infrastructure/http/commerce-api";
 export async function POST(request: NextRequest) {
-  const expected = new URL(process.env.APP_URL || request.url).origin;
-  if (request.headers.get("origin") !== expected)
-    return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
+  try {
+    assertMutationOrigin(request);
+  } catch (error) {
+    if (error instanceof ForbiddenError)
+      return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
+    throw error;
+  }
   if (Number(request.headers.get("content-length")) > 6 * 1024 * 1024)
     return NextResponse.json(
       { error: "Image must be smaller than 5 MB." },

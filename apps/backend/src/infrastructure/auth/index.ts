@@ -1,4 +1,5 @@
 import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "@supastore/contracts";
+import { resolvePublicOrigin } from "../../../../../packages/config/public-origin.mjs";
 import { betterAuth } from "better-auth";
 import { createHmac } from "node:crypto";
 import { APIError } from "better-auth/api";
@@ -23,7 +24,7 @@ function createAuth(audience: "customer" | "staff") {
     authSecretFromEnvironment() ??
     "supastore-development-auth-secret-change-before-production";
   return betterAuth({
-    baseURL: process.env.BETTER_AUTH_URL,
+    baseURL: resolvePublicOrigin(process.env),
     basePath: staff ? "/api/admin-auth" : "/api/auth",
     secret: createHmac("sha256", rootSecret)
       .update(`supastore:${audience}`)

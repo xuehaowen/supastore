@@ -2,14 +2,14 @@ import { DomainError, ForbiddenError } from "@/application/common/errors";
 import { describeFailure } from "./failure";
 export { describeFailure } from "./failure";
 import { parseActionInteger } from "@/application/common/request-validation";
+import { resolvePublicOrigin } from "../../../../../packages/config/public-origin.mjs";
 
 export function assertMutationOrigin(request: Request) {
   const origin = request.headers.get("origin");
   const allowed = [
     new URL(request.url).origin,
-    process.env.STOREFRONT_ORIGIN,
-    process.env.BETTER_AUTH_URL,
-  ].filter(Boolean);
+    resolvePublicOrigin(process.env),
+  ];
   if (
     !origin ||
     !allowed.includes(origin) ||

@@ -1,3 +1,4 @@
+import { resolvePublicOrigin } from "../../../../../packages/config/public-origin.mjs";
 import {
   sitemapResources,
   sitemapPageCount,
@@ -8,8 +9,7 @@ export {
   sitemapPageCount,
   type SitemapResource,
 } from "@/application/common/sitemap";
-const origin = () =>
-  (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
+const origin = () => resolvePublicOrigin(process.env).replace(/\/$/, "");
 const xml = (value: string) =>
   value.replace(
     /[&<>"']/g,

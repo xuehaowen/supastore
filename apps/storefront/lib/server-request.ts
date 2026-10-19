@@ -1,3 +1,4 @@
+import { resolvePublicOrigin } from "../../../packages/config/public-origin.mjs";
 import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { proxyBackendApi } from "./backend-proxy";
@@ -35,7 +36,7 @@ export async function serverRequest(
   method = "POST",
 ) {
   const incoming = await headers();
-  const origin = process.env.STOREFRONT_ORIGIN || "http://localhost:3001";
+  const origin = resolvePublicOrigin(process.env);
   const forwarded = new Headers({
     "content-type": "application/json",
     origin,

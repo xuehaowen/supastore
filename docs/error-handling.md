@@ -105,6 +105,15 @@ Storefront server actions retain backend request IDs and render validated refere
 on checkout and redirect error notices. Unit tests `server-request` and `notice`
 cover correlation/privacy; browser `error-handling` covers the visible reference.
 
+Public notification and storefront links share public-origin resolution. Invalid origins
+(including credential-bearing URLs) and missing production origins fail before link
+generation; development defaults to storefront port 3001. Unit `public-origin`
+and storefront `server-request` cover precedence, validation and forwarded origins.
+The backend mutation guard uses the same normalized public origin. Unit
+`commerce-api` and `admin-upload-origin` cover single-variable configuration,
+trailing slashes, and rejection of missing/foreign/cross-site origins before
+upload authentication or body parsing.
+
 Customer-page reads also validate nested response contracts before rendering.
 Malformed consumed fields produce the existing safe 502 (`Invalid API response.`)
 with the backend request ID, without exposing schema issues or payload contents.

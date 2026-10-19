@@ -1,3 +1,4 @@
+import { resolvePublicOrigin } from "../../../../../../packages/config/public-origin.mjs";
 import { allowRequest } from "@/application/common/rate-limit";
 import { randomBytes } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
@@ -49,7 +50,7 @@ export async function requestTrackingLink(input: {
       {
         orderId: order.id,
         referenceCode: order.referenceCode,
-        recoveryUrl: `${process.env.BETTER_AUTH_URL ?? "http://localhost:3000"}/recover/exchange?token=${token}&locale=${input.locale === "zh" ? "zh" : "en"}`,
+        recoveryUrl: `${resolvePublicOrigin(process.env)}/recover/exchange?token=${token}&locale=${input.locale === "zh" ? "zh" : "en"}`,
         expiresAt: expiresAt.toISOString(),
         locale: input.locale === "zh" ? "zh" : "en",
       },

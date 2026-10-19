@@ -1,3 +1,4 @@
+import { resolvePublicOrigin } from "../../../../../../packages/config/public-origin.mjs";
 import { randomBytes, randomUUID } from "node:crypto";
 import { and, eq, gt } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
@@ -35,7 +36,7 @@ export async function requestEmailVerification(
         locale: "en",
         payload: {
           verificationUrl:
-            (process.env.BETTER_AUTH_URL ?? "http://localhost:3000") +
+            resolvePublicOrigin(process.env) +
             "/admin/setup/verify-email?token=" +
             token,
         },

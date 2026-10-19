@@ -8,7 +8,30 @@ import {
 } from "@/infrastructure/http/commerce-api";
 import { UnauthorizedError, ConflictError } from "@/application/common/errors";
 describe("commerce API boundary", () => {
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+  });
+  it.each(["APP_URL", "STOREFRONT_ORIGIN", "BETTER_AUTH_URL"])(
+    "accepts a proxied mutation with only %s configured, including trailing slashes",
+    (key) => {
+      for (const name of ["APP_URL", "STOREFRONT_ORIGIN", "BETTER_AUTH_URL"])
+        vi.stubEnv(name, undefined);
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv(key, "https://shop.example.test/");
+      const request = new Request("http://backend:3000/api/v1/cart", {
+        method: "POST",
+        headers: {
+          origin: "https://shop.example.test",
+          "content-type": "application/json",
+        },
+        body: "{}",
+      });
+      expect(() => assertMutationOrigin(request)).not.toThrow();
+      request.headers.set("sec-fetch-site", "cross-site");
+      expect(() => assertMutationOrigin(request)).toThrow("Untrusted");
+    },
+  );
   it("correlates unexpected failures through the structured logger without exposing details", async () => {
     const logError = vi.fn();
     const child = vi
