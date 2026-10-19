@@ -3,6 +3,7 @@ import {
   authenticate as authenticateAdmin,
   downloadAdminExport,
   importProductsCsv,
+  signOutStaff,
 } from "@/app/client-requests";
 import {
   authenticate,
@@ -37,6 +38,18 @@ const importFile = (sizes: number[]) =>
   );
 
 describe("frontend backend request contracts", () => {
+  it("signs out only the merchant realm and exposes failures for retry", async () => {
+    const fetcher = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(Response.json({ success: true }))
+      .mockResolvedValueOnce(Response.json({}, { status: 503 }));
+    await expect(signOutStaff()).resolves.toBeUndefined();
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/admin-auth/sign-out",
+      expect.objectContaining({ method: "POST", body: "{}" }),
+    );
+    await expect(signOutStaff()).rejects.toThrow("Unable to sign out");
+  });
   beforeEach(() => {
     vi.restoreAllMocks();
   });

@@ -57,6 +57,15 @@ export async function authenticate(payload: AuthPayload) {
   return data;
 }
 
+export async function signOutStaff() {
+  const response = await fetch("/api/admin-auth/sign-out", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  });
+  if (!response.ok) throw new Error("Unable to sign out. Please retry.");
+}
+
 export async function importProductsCsv(
   file: File,
 ): Promise<ProductImportResult> {

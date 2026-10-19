@@ -293,5 +293,10 @@
     "orderReference": "Order reference",
     "searchOrders": "Search orders",
     "bagBasePriceNotice": "Bag amounts below use base prices. Check shopping options and confirm the final prices at checkout."
+  },
+  "staffSession": {
+    "signOut": "Sign out",
+    "signingOut": "Signing out…",
+    "signOutFailed": "Unable to sign out. Please retry."
   }
 }

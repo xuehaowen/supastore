@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useWorkspace } from "./workspace-context";
 import { QuickNavigation } from "./quick-navigation";
+import { StaffSignOut } from "./staff-sign-out";
 import { currentAdminLocation, visibleAdminNavigation } from "./navigation";
 
 const sectionIcons = {
@@ -120,6 +121,7 @@ export function AdminNav() {
             })}
         </div>
         <div className="workspace-footer">
+          <StaffSignOut />
           <Link href="/">
             <Store size={17} aria-hidden="true" />
             View shop

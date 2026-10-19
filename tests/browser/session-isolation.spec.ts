@@ -6,6 +6,7 @@ test("staff and customer logins and logouts remain independent in one browser", 
   sql,
 }) => {
   await login(page);
+  const authHeaders = { origin: new URL(page.url()).origin };
   const staff = await (
     await page.request.get("/api/admin-auth/get-session")
   ).json();
@@ -20,13 +21,15 @@ test("staff and customer logins and logouts remain independent in one browser", 
   const email = `session-${randomUUID()}@example.test`;
   const password = "SessionIsolationPassword123!";
   const created = await page.request.post("/api/auth/sign-up/email", {
+    headers: authHeaders,
     data: { email, password, name: "Separate customer" },
   });
-  expect(created.ok()).toBe(true);
+  expect(created.ok(), await created.text()).toBe(true);
   await sql`update "user" set email_verified=true where email=${email}`;
   expect(
     (
       await page.request.post("/api/auth/sign-in/email", {
+        headers: authHeaders,
         data: { email, password },
       })
     ).ok(),
@@ -39,7 +42,12 @@ test("staff and customer logins and logouts remain independent in one browser", 
       .email,
   ).toBe("owner@example.test");
   expect(
-    (await page.request.post("/api/auth/sign-out", { data: {} })).ok(),
+    (
+      await page.request.post("/api/auth/sign-out", {
+        data: {},
+        headers: authHeaders,
+      })
+    ).ok(),
   ).toBe(true);
   expect(
     await (await page.request.get("/api/auth/get-session")).json(),
@@ -51,13 +59,33 @@ test("staff and customer logins and logouts remain independent in one browser", 
   expect(
     (
       await page.request.post("/api/auth/sign-in/email", {
+        headers: authHeaders,
         data: { email, password },
       })
     ).ok(),
   ).toBe(true);
+  await page.goto("/admin");
+  let failed = false;
+  await page.route("**/api/admin-auth/sign-out", async (route) => {
+    if (!failed) {
+      failed = true;
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: "{}",
+      });
+    } else await route.continue();
+  });
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Unable to sign out" }),
+  ).toBeVisible();
   expect(
-    (await page.request.post("/api/admin-auth/sign-out", { data: {} })).ok(),
-  ).toBe(true);
+    (await (await page.request.get("/api/admin-auth/get-session")).json()).user
+      .email,
+  ).toBe("owner@example.test");
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/login/);
   expect(
     await (await page.request.get("/api/admin-auth/get-session")).json(),
   ).toBeNull();
