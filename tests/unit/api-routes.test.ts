@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { UnauthorizedError } from "@/application/common/errors";
 import { createHmac } from "node:crypto";
@@ -69,6 +69,8 @@ function request(
 }
 
 describe("API route boundaries", () => {
+  beforeEach(() => vi.stubEnv("STOREFRONT_ORIGIN", "https://shop.test"));
+  afterEach(() => vi.unstubAllEnvs());
   it("serves bounded image bytes only for published assets", async () => {
     const chain = (rows: unknown[]) => ({
       from: () => ({
@@ -135,7 +137,7 @@ describe("API route boundaries", () => {
     });
 
     const response = await redeem(
-      request("https://shop.test/api/auth/recover-owner/redeem?token=token", {
+      request("http://0.0.0.0:3000/api/auth/recover-owner/redeem?token=token", {
         headers: {
           cookie: "__Secure-supastore-staff.session_data.0=stale-cache",
         },
@@ -175,7 +177,9 @@ describe("API route boundaries", () => {
     );
 
     const response = await redeem(
-      request("https://shop.test/api/auth/recover-owner/redeem?token=expired"),
+      request(
+        "http://0.0.0.0:3000/api/auth/recover-owner/redeem?token=expired",
+      ),
     );
 
     expect(response.status).toBe(307);
@@ -189,7 +193,7 @@ describe("API route boundaries", () => {
       new Error("private database details"),
     );
     const response = await redeem(
-      request("https://shop.test/api/auth/recover-owner/redeem?token=token"),
+      request("http://0.0.0.0:3000/api/auth/recover-owner/redeem?token=token"),
     );
     expect(response.headers.get("location")).toBe(
       "https://shop.test/admin/login?error=Failed+to+redeem+recovery+link.",
