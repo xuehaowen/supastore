@@ -21,6 +21,13 @@ describe("optional SMS safety contracts", () => {
     expect(validSmsPhone("2025550123")).toBe(false);
     expect(validSmsPhone("+0bad")).toBe(false);
   });
+  it("requires an explicit deployment authorization flag and honors outbound suppression", () => {
+    vi.stubEnv("SMS_LIVE_AUTHORIZED", "true");
+    vi.stubEnv("DISABLE_OUTBOUND_DELIVERY", "false");
+    expect(liveSmsAuthorized()).toBe(true);
+    vi.stubEnv("DISABLE_OUTBOUND_DELIVERY", "true");
+    expect(liveSmsAuthorized()).toBe(false);
+  });
   it("retires the old provider callback without processing customer data", async () => {
     expect((await retiredTwilioCallback()).status).toBe(410);
   });
