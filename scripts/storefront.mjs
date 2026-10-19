@@ -1,20 +1,15 @@
 import { resolve } from "node:path";
 import { spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { parseEnv } from "node:util";
+import {
+  launcherSettings,
+  storefrontProcessEnvironment,
+} from "./launcher-settings.mjs";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../", import.meta.url));
 export function startStorefront(command = "dev") {
   if (!["dev", "build", "start"].includes(command))
     throw new Error("Expected dev, build or start");
-  let settings = {};
-  try {
-    settings = parseEnv(
-      readFileSync(new URL("../.env", import.meta.url), "utf8"),
-    );
-  } catch (error) {
-    if (error.code !== "ENOENT") throw error;
-  }
+  const { publicOrigin, backendUrl } = launcherSettings(command);
   const child = spawn(
     process.execPath,
     [
@@ -32,15 +27,10 @@ export function startStorefront(command = "dev") {
       stdio: "inherit",
       windowsHide: true,
       env: {
-        ...process.env,
-        BACKEND_URL:
-          process.env.BACKEND_URL ||
-          settings.BACKEND_URL ||
-          `http://127.0.0.1:${process.env.BACKEND_PORT || "3000"}`,
-        STOREFRONT_ORIGIN:
-          process.env.STOREFRONT_ORIGIN ||
-          process.env.APP_URL ||
-          `http://localhost:${process.env.STOREFRONT_PORT || "3001"}`,
+        ...storefrontProcessEnvironment(process.env),
+        ...(command !== "dev" ? { NODE_ENV: "production" } : {}),
+        BACKEND_URL: backendUrl,
+        STOREFRONT_ORIGIN: publicOrigin,
       },
     },
   );

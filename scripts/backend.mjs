@@ -1,14 +1,13 @@
 import { resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { launcherSettings } from "./launcher-settings.mjs";
 const root = fileURLToPath(new URL("../", import.meta.url));
 export function startBackend(command = "dev") {
-  const publicOrigin =
-    process.env.STOREFRONT_ORIGIN ||
-    process.env.APP_URL ||
-    `http://localhost:${process.env.STOREFRONT_PORT || "3001"}`;
   if (!["dev", "build", "start"].includes(command))
     throw new Error("Expected dev, build or start");
+  const publicOrigin =
+    command === "build" ? undefined : launcherSettings(command).publicOrigin;
   const child = spawn(
     process.execPath,
     [
@@ -27,6 +26,7 @@ export function startBackend(command = "dev") {
       windowsHide: true,
       env: {
         ...process.env,
+        ...(command !== "dev" ? { NODE_ENV: "production" } : {}),
         ...(command !== "build"
           ? {
               APP_URL: process.env.APP_URL || publicOrigin,

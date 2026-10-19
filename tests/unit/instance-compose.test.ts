@@ -57,3 +57,11 @@ it("passes recovery delivery-suppression and worker settings into the actual bac
     "DISABLE_OUTBOUND_DELIVERY=${DISABLE_OUTBOUND_DELIVERY:-false}",
   );
 });
+it("requires an explicit public origin for both production services", () => {
+  for (const name of ["backend", "storefront"]) {
+    const env = compose.services[name]!.environment;
+    const serialized = JSON.stringify(env);
+    expect(serialized).toContain("STOREFRONT_ORIGIN:?");
+    expect(serialized).not.toContain("localhost:3000");
+  }
+});

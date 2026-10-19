@@ -65,9 +65,9 @@ services:
       - NODE_OPTIONS=${BACKEND_NODE_OPTIONS:---max-old-space-size=256}
       - ADMIN_SETUP_SECRET=${ADMIN_SETUP_SECRET:?Set ADMIN_SETUP_SECRET}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET}
-      - BETTER_AUTH_URL=${STOREFRONT_ORIGIN:-http://localhost:3000}
-      - APP_URL=${APP_URL:-http://localhost:3000}
-      - STOREFRONT_ORIGIN=${STOREFRONT_ORIGIN:-http://localhost:3000}
+      - BETTER_AUTH_URL=${STOREFRONT_ORIGIN:?Set STOREFRONT_ORIGIN to the public storefront origin}
+      - APP_URL=${STOREFRONT_ORIGIN:?Set STOREFRONT_ORIGIN to the public storefront origin}
+      - STOREFRONT_ORIGIN=${STOREFRONT_ORIGIN:?Set STOREFRONT_ORIGIN to the public storefront origin}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
       - S3_ENDPOINT=http://rustfs:9000
@@ -126,7 +126,7 @@ services:
       NODE_ENV: production
       NODE_OPTIONS: ${STOREFRONT_NODE_OPTIONS:---max-old-space-size=256}
       BACKEND_URL: http://backend:3000
-      STOREFRONT_ORIGIN: ${STOREFRONT_ORIGIN:-http://localhost:3000}
+      STOREFRONT_ORIGIN: ${STOREFRONT_ORIGIN:?Set STOREFRONT_ORIGIN to the public storefront origin}
       EDGE_PROXY_SECRET: ${EDGE_PROXY_SECRET:-}
     depends_on:
       backend:
