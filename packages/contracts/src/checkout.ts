@@ -39,6 +39,7 @@ export interface CreatedOrderDto {
 }
 
 export interface CreateOrderRequestDto {
+  smsPreferenceId?: string;
   locale: "en" | "zh";
   quoteId: string;
   name: string;

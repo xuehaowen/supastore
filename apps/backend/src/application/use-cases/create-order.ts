@@ -22,9 +22,11 @@ import {
   promotionRedemptions,
   quotes,
   storeSettings,
+  smsPreferences,
 } from "@/infrastructure/db/schema";
 import { stripeConfiguredFor } from "@/infrastructure/payments/configuration";
 import { eq } from "drizzle-orm";
+import { smsConsentCurrent } from "@supastore/contracts";
 import { isDeepStrictEqual } from "node:util";
 import * as v from "valibot";
 import { verifiedCustomer } from "./customers/customer-ownership";
@@ -51,6 +53,7 @@ export interface CreateOrderInput {
   customerUserId?: string;
   creditAppliedCents?: number;
   locale?: "en" | "zh";
+  smsPreferenceId?: string;
 }
 export async function createOrder(input: CreateOrderInput) {
   return db.transaction((tx) => createOrderInTransaction(tx, input));
@@ -229,6 +232,21 @@ export async function createOrderInTransaction(
           components: rewardComponents,
         })
       : null;
+  let smsPreferenceId: string | null = null;
+  if (input.smsPreferenceId) {
+    const [smsStore] = await tx.select().from(storeSettings).limit(1);
+    const [preference] = await tx
+      .select()
+      .from(smsPreferences)
+      .where(eq(smsPreferences.id, input.smsPreferenceId));
+    if (
+      smsConsentCurrent(smsStore, preference) &&
+      preference?.optedIn &&
+      preference.verifiedAt &&
+      preference.consentAt
+    )
+      smsPreferenceId = preference.id;
+  }
   for (let attempt = 0; attempt < 10 && !order; attempt++) {
     [order] = await tx
       .insert(orders)
@@ -245,6 +263,7 @@ export async function createOrderInTransaction(
         discountCents: quote.discountCents,
         guestEmail: email,
         guestName: name,
+        smsPreferenceId,
         notificationLocale: input.locale === "zh" ? "zh" : "en",
         customerId: customer?.id ?? null,
         fulfillmentType: terms.fulfillmentType,

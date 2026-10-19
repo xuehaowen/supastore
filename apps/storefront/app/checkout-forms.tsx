@@ -25,6 +25,7 @@ import type {
   FulfillmentMethod,
 } from "@supastore/shipping/destination";
 import { CheckoutPreview } from "./checkout-preview";
+import { SmsOptIn } from "./sms-opt-in";
 
 const emptyState: CheckoutActionState = {};
 
@@ -139,11 +140,13 @@ export function CheckoutOrderForm({
   customerName = "",
   customerEmail = "",
   credit,
+  sms,
 }: {
   quoteId: string;
   locale: string;
   customerName?: string | undefined;
   customerEmail?: string | undefined;
+  sms?: { storeName: string; available: boolean } | undefined;
   credit?:
     | {
         availableCents: number;
@@ -189,6 +192,14 @@ export function CheckoutOrderForm({
           onChange={(event) => setEmail(event.target.value)}
         />
       </Label>
+      {sms && (
+        <SmsOptIn
+          storeName={sms.storeName}
+          available={sms.available}
+          locale={locale}
+          source="checkout"
+        />
+      )}
       {credit && (
         <CheckoutCredit
           {...credit}

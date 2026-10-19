@@ -14,6 +14,7 @@ import { quotes } from "./quotes";
 import { productVariants } from "./catalog";
 import { pickupTimeSlots, fulfillmentSlots } from "./shipping";
 import { customers } from "./customers";
+import { smsPreferences } from "./sms";
 import { sql } from "drizzle-orm";
 
 export const orders = pgTable(
@@ -38,6 +39,9 @@ export const orders = pgTable(
     creditAppliedCents: integer("credit_applied_cents").notNull().default(0),
     guestEmail: text("guest_email").notNull(),
     guestName: text("guest_name").notNull(),
+    smsPreferenceId: uuid("sms_preference_id").references(
+      () => smsPreferences.id,
+    ),
     notificationLocale: text("notification_locale", { enum: ["en", "zh"] })
       .notNull()
       .default("en"),

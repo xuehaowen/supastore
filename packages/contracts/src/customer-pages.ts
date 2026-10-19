@@ -1,5 +1,6 @@
 export type CustomerStore = {
   hasContextualRules?: boolean;
+  sms?: { enabled: boolean; available: boolean };
   storeName: string;
   logoKey: null | string;
   supportEmail: string;
@@ -9,12 +10,14 @@ export type CustomerStore = {
       shipping?: string;
       returns?: string;
       privacy?: string;
+      terms?: string;
     };
     zh?: {
       about?: string;
       shipping?: string;
       returns?: string;
       privacy?: string;
+      terms?: string;
     };
   };
   currency: string;

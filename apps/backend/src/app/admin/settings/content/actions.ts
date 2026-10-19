@@ -30,6 +30,7 @@ export async function saveStoreContentAction(form: FormData) {
           "shipping",
           "returns",
           "privacy",
+          "terms",
         ] as const) {
           const value = String(form.get(`${locale}.${key}`) ?? "").trim();
           if (value.length > 10000)
@@ -43,6 +44,15 @@ export async function saveStoreContentAction(form: FormData) {
         .update(storeSettings)
         .set({
           publicContent: content,
+          ...((["en", "zh"] as const).some((locale) =>
+            (["privacy", "terms"] as const).some(
+              (key) =>
+                (store.publicContent[locale]?.[key] || "") !==
+                (content[locale]?.[key] || ""),
+            ),
+          )
+            ? { smsPolicy: { enabled: false, reviewed: false } }
+            : {}),
           quoteVersion: store.quoteVersion + 1,
           updatedAt: new Date(),
         })

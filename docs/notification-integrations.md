@@ -131,8 +131,10 @@ required. STOP suppresses pending sends without erasing already accepted facts.
 
 Selected configuration fails fast if invalid. Provider identity uses nonsecret
 endpoint/sender/profile fields; credential rotation preserves that identity.
-Restart the backend when changing configuration. Live SMS authorization remains
-off in the composition root independently of selected provider configuration.
+Restart the backend when changing configuration. Live SMS authorization defaults
+off independently of provider selection; `SMS_LIVE_AUTHORIZED=true` explicitly
+authorizes the deployment. Merchant policy readiness also gates enrollment and
+delivery. See [merchant SMS consent](sms-consent.md).
 
 ## Adding another provider
 

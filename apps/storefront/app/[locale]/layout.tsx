@@ -114,7 +114,7 @@ export default async function ShopLayout({
           aria-label={textFor(locale).ui.storeInformation}
           className="flex flex-wrap gap-4"
         >
-          {(["about", "shipping", "returns", "privacy"] as const)
+          {(["about", "shipping", "returns", "privacy", "terms"] as const)
             .filter(
               (key) =>
                 store?.publicContent[locale as "en" | "zh"]?.[key] ||
@@ -130,12 +130,16 @@ export default async function ShopLayout({
                         shipping: "shippingPolicy",
                         returns: "returnsPolicy",
                         privacy: "privacyPolicy",
+                        terms: "termsOfService",
                       } as const
                     )[key]
                   ]
                 }
               </Link>
             ))}
+          {store?.sms?.enabled && (
+            <Link href={`/${locale}/sms`}>{textFor(locale).sms.title}</Link>
+          )}
         </nav>
         <div>
           <p className="font-medium text-foreground">

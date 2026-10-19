@@ -238,6 +238,14 @@ export default async function Checkout({
                   locale={locale}
                   customerName={customer?.customer.name}
                   customerEmail={customer?.customer.email}
+                  sms={
+                    store?.sms?.enabled
+                      ? {
+                          storeName: store.storeName,
+                          available: store.sms.available,
+                        }
+                      : undefined
+                  }
                   credit={
                     customer?.credit?.reconciled
                       ? {

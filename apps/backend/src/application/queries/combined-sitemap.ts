@@ -65,7 +65,13 @@ export async function getCombinedSitemapStatic(): Promise<SitemapEntry[]> {
     .from(storeSettings)
     .limit(1);
   const entries: SitemapEntry[] = [{ path: "" }];
-  for (const key of ["about", "shipping", "returns", "privacy"] as const) {
+  for (const key of [
+    "about",
+    "shipping",
+    "returns",
+    "privacy",
+    "terms",
+  ] as const) {
     const locales = (["en", "zh"] as const).filter(
       (locale) =>
         store?.publicContent[locale]?.[key] ||

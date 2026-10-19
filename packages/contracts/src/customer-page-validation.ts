@@ -73,10 +73,14 @@ const publicContent = v.object({
   shipping: v.exactOptional(text),
   returns: v.exactOptional(text),
   privacy: v.exactOptional(text),
+  terms: v.exactOptional(text),
 });
 const store = v.exactOptional(
   v.object({
     storeName: text,
+    sms: v.exactOptional(
+      v.object({ enabled: v.boolean(), available: v.boolean() }),
+    ),
     hasContextualRules: v.exactOptional(v.boolean()),
     logoKey: v.nullable(text),
     supportEmail: text,

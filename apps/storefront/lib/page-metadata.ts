@@ -9,6 +9,7 @@ const policyTitles = {
   shipping: "shippingPolicy",
   returns: "returnsPolicy",
   privacy: "privacyPolicy",
+  terms: "termsOfService",
 } as const;
 export function policyPresentation(store: Store, locale: string, slug: string) {
   if (

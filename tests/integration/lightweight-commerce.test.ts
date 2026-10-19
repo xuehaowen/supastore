@@ -26,6 +26,19 @@ import { createProduct } from "@/application/use-cases/catalog/create-product";
 import { addToCart } from "@/application/use-cases/cart/add-to-cart";
 import { getQuote } from "@/application/use-cases/get-quote";
 import { createOrder } from "@/application/use-cases/create-order";
+import {
+  updateCustomerSms,
+  applyPhoneOptOut,
+} from "@/application/use-cases/customers/sms-preferences";
+import { smsDisclosure } from "@supastore/contracts";
+import {
+  FakePhoneVerifier,
+  FakeSmsSender,
+} from "@/infrastructure/notifications/fake-senders";
+import {
+  enqueueSmsNotifications,
+  processNotificationBatch,
+} from "@/application/notifications/process-delivery";
 import { createManualOrder } from "@/application/use-cases/create-manual-order";
 import { cancelOrder } from "@/application/use-cases/orders/cancel-order";
 import { adjustStock } from "@/application/use-cases/inventory/stock-operations";
@@ -164,6 +177,62 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
       (select count(*)::int from quotes where cart_id=${first.sourceCartId}) as quotes,
       (select count(*)::int from audit_records where entity_id=${first.id} and action='manual_order.created') as audits`;
     expect(counts).toMatchObject({ orders: 1, quotes: 1, audits: 1 });
+  });
+  it("links verified guest consent to an order, delivers its update and honors STOP for later checkout", async () => {
+    const [original] = await client`select * from store_settings`;
+    const offset = new Date().getUTCHours() - 12;
+    const timezone = `Etc/GMT${offset >= 0 ? "+" : ""}${offset}`;
+    await client`update store_settings set sms_policy='{"enabled":true,"reviewed":true}',support_email='help@example.test',public_content='{"en":{"privacy":"Privacy","terms":"Terms"}}',timezone=${timezone}`;
+    try {
+      const verifier = new FakePhoneVerifier();
+      const claim = await updateCustomerSms(
+        null,
+        {
+          operation: "start",
+          phone: "+12025550777",
+          consent: true,
+          disclosure: smsDisclosure({ storeName: original!.store_name }),
+          source: "checkout",
+        },
+        verifier,
+        true,
+      );
+      await updateCustomerSms(
+        null,
+        {
+          operation: "confirm",
+          preferenceId: claim!.preferenceId,
+          code: "123456",
+        },
+        verifier,
+        true,
+      );
+      const variant = await product(0);
+      const order = await createOrder({
+        ...(await prepare(variant.id)),
+        smsPreferenceId: claim!.preferenceId,
+      });
+      expect(order.customerId).toBeNull();
+      expect(order.smsPreferenceId).toBe(claim!.preferenceId);
+      await enqueueSmsNotifications();
+      const sender = new FakeSmsSender();
+      await processNotificationBatch("sms", { providers: { sms: sender } });
+      expect(sender.messages).toHaveLength(1);
+      expect(sender.messages[0]!.to).toBe("+12025550777");
+      await (
+        active.db as ReturnType<typeof drizzle<typeof schema>>
+      ).transaction((tx) => applyPhoneOptOut(tx, "+12025550777"));
+      const next = await createOrder({
+        ...(await prepare(variant.id)),
+        smsPreferenceId: claim!.preferenceId,
+      });
+      expect(next.smsPreferenceId).toBeNull();
+      await enqueueSmsNotifications();
+      await processNotificationBatch("sms", { providers: { sms: sender } });
+      expect(sender.messages).toHaveLength(1);
+    } finally {
+      await client`update store_settings set sms_policy=${JSON.stringify(original!.sms_policy)}::jsonb,support_email=${original!.support_email},public_content=${JSON.stringify(original!.public_content)}::jsonb,timezone=${original!.timezone}`;
+    }
   });
   it("creates scheduled manual pickup without an address and preserves capacity and retry identity", async () => {
     const variant = await product();

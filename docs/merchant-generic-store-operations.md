@@ -66,6 +66,7 @@ and SMTP connectivity without creating payments or messages. Local Stripe
 credentials are absent and the SMTP probe failed. Supply the deployment target,
 fix credentials and designate test recipients before live acceptance.
 
-SMS sending remains hard-disabled pending specific authorization of Twilio
-customer-data transfer; reward-detail emails also remain disabled. Order and
-credit operations continue through the authenticated storefront.
+SMS sending defaults off. Merchant policies, consent readiness, provider
+configuration and explicit deployment authorization are described in
+[merchant SMS consent](sms-consent.md). Reward-detail emails remain disabled.
+Order and credit operations continue through the authenticated storefront.

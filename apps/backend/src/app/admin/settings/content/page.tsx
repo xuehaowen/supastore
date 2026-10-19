@@ -7,7 +7,8 @@ import { staffIdentity } from "@/infrastructure/web";
 import { AdminNav } from "@/app/admin/admin-nav";
 import { Hidden, Notice } from "@/app/components";
 import { Button } from "@supastore/ui/button";
-import { Textarea } from "@supastore/ui/textarea";
+import { PolicyField } from "./policy-field";
+import { starterPolicies } from "@supastore/contracts";
 import { saveStoreContentAction } from "@/app/admin/settings/content/actions";
 import { Alert, AlertDescription } from "@supastore/ui/alert";
 export default async function Content({
@@ -29,7 +30,9 @@ export default async function Content({
         <h1>Store information & policies</h1>
         <p>
           Write plain text for customers. Blank pages remain hidden.
-          Translations fall back to the default store language.
+          Translations fall back to the default store language. Policy starters
+          must be completed and reviewed for your business before publication.
+          Saving policy changes turns SMS opt-in off until reviewed again.
         </p>
         <Notice error={query.error} />
         {query.saved && (
@@ -43,19 +46,26 @@ export default async function Content({
             {(["en", "zh"] as const).map((locale) => (
               <fieldset key={locale}>
                 <legend>{locale === "en" ? "English" : "中文"}</legend>
-                {(["about", "shipping", "returns", "privacy"] as const).map(
-                  (key) => (
-                    <label key={key} className="mb-5 grid gap-2">
+                {(
+                  ["about", "shipping", "returns", "privacy", "terms"] as const
+                ).map((key) => (
+                  <div key={key} className="mb-5 grid gap-2">
+                    <label htmlFor={`${locale}.${key}`}>
                       {key.charAt(0).toUpperCase() + key.slice(1)}
-                      <Textarea
-                        name={`${locale}.${key}`}
-                        rows={7}
-                        maxLength={10000}
-                        defaultValue={store?.publicContent[locale]?.[key] ?? ""}
-                      />
                     </label>
-                  ),
-                )}
+                    <PolicyField
+                      name={`${locale}.${key}`}
+                      initial={store?.publicContent[locale]?.[key] ?? ""}
+                      starter={
+                        store &&
+                        locale === "en" &&
+                        (key === "privacy" || key === "terms")
+                          ? starterPolicies(store)[key]
+                          : undefined
+                      }
+                    />
+                  </div>
+                ))}
               </fieldset>
             ))}
             <Button type="submit">Save store content</Button>

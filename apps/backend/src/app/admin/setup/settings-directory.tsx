@@ -10,6 +10,11 @@ import {
 
 const settings = [
   [
+    "/admin/settings/sms",
+    "SMS consent & readiness",
+    "SMS opt-in, policy readiness and campaign keyword responses.",
+  ],
+  [
     "#store-profile",
     "Store profile & taxes",
     "Name, support email, logo, currency, language, timezone, and tax settings.",

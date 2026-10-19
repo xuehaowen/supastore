@@ -39,6 +39,8 @@ import { commercePolicy } from "@/domain/commerce-policy";
 import { pickupAvailability } from "@/domain/pickup-availability";
 import { parseActionUuid } from "@/application/common/request-validation";
 import type { CustomerPageModels } from "@supastore/contracts";
+import { smsReadiness } from "@supastore/contracts";
+import { smsEnrollmentAvailable } from "@/infrastructure/bootstrap/notification-providers";
 
 type Serialized<T> = T extends Date
   ? string
@@ -72,6 +74,7 @@ async function publicStore() {
   const [store] = await db
     .select({
       storeName: storeSettings.storeName,
+      smsPolicy: storeSettings.smsPolicy,
       logoKey: storeSettings.logoKey,
       supportEmail: storeSettings.supportEmail,
       publicContent: storeSettings.publicContent,
@@ -88,7 +91,14 @@ async function publicStore() {
     .from(storeSettings)
     .limit(1);
   return store
-    ? { ...store, commercePolicy: commercePolicy(store.commercePolicy) }
+    ? {
+        ...store,
+        sms: {
+          enabled: smsReadiness(store).enabled,
+          available: smsReadiness(store).enabled && smsEnrollmentAvailable(),
+        },
+        commercePolicy: commercePolicy(store.commercePolicy),
+      }
     : undefined;
 }
 async function verifiedSession() {

@@ -209,5 +209,20 @@
     "account": "账户",
     "storeInformation": "商店信息",
     "specifications": "商品规格"
+  },
+  "sms": {
+    "title": "短信订单更新",
+    "legend": "短信订单更新（可选）",
+    "phone": "手机号码（含国家代码）",
+    "privacy": "隐私政策",
+    "terms": "服务条款",
+    "unavailable": "短信订阅暂不可用，您仍可正常下单。",
+    "code": "验证码",
+    "verified": "手机号码已验证。您已同意接收订单更新短信。",
+    "pending": "请稍候…",
+    "confirm": "验证并订阅",
+    "send": "发送验证码",
+    "change": "更换号码",
+    "error": "暂时无法订阅短信，请重试。"
   }
 }

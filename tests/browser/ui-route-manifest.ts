@@ -37,6 +37,7 @@ export const backendPageRoutes = [
   "/admin/settings/commerce",
   "/admin/settings/rules",
   "/admin/settings/content",
+  "/admin/settings/sms",
   "/admin/settings/delivery",
   "/admin/settings/notifications",
   "/admin/settings/notifications/[id]",
@@ -61,6 +62,10 @@ export const storefrontPageRoutes = [
   "/[locale]/products/[handle]",
   "/[locale]/recover",
   "/[locale]/search",
+  "/[locale]/sms",
+  "/privacy",
+  "/terms",
+  "/sms",
   "/recover",
   "/recover/exchange",
 ] as const;

@@ -29,6 +29,14 @@ export async function POST(request: Request) {
       guestSessionId,
       guestName: apiText(body, "name", 200),
       guestEmail: apiText(body, "email", 254),
+      ...(body.smsPreferenceId
+        ? {
+            smsPreferenceId: parseActionUuid(
+              apiText(body, "smsPreferenceId"),
+              "SMS subscription",
+            ),
+          }
+        : {}),
       ...(customerUserId ? { customerUserId } : {}),
       creditAppliedCents: apiInteger(
         body,

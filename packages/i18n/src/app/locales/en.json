@@ -209,5 +209,20 @@
     "account": "Account",
     "storeInformation": "Store information",
     "specifications": "Specifications"
+  },
+  "sms": {
+    "title": "SMS order updates",
+    "legend": "SMS order updates (optional)",
+    "phone": "Phone number (including country code)",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "unavailable": "SMS enrollment is currently unavailable. You can still place an order without SMS.",
+    "code": "Verification code",
+    "verified": "Phone verified. You have opted in to SMS order updates.",
+    "pending": "Please wait…",
+    "confirm": "Verify and subscribe",
+    "send": "Send verification code",
+    "change": "Use another number",
+    "error": "Unable to subscribe. Please retry."
   }
 }

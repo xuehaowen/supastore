@@ -108,6 +108,14 @@ export async function updateStoreSettings(input: UpdateStoreSettingsInput) {
       .update(storeSettings)
       .set({
         ...parsed,
+        ...(["storeName", "supportEmail", "defaultLocale"].some(
+          (key) =>
+            key in parsed &&
+            parsed[key as keyof typeof parsed] !==
+              settings[key as keyof typeof settings],
+        )
+          ? { smsPolicy: { enabled: false, reviewed: false } }
+          : {}),
         quoteVersion: [
           "currency",
           "precision",

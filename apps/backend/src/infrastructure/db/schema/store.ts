@@ -11,6 +11,10 @@ import {
 export const storeSettings = pgTable("store_settings", {
   id: uuid("id").primaryKey().defaultRandom(),
   storeName: text("store_name").notNull(),
+  smsPolicy: jsonb("sms_policy")
+    .$type<import("@supastore/contracts").SmsPolicy>()
+    .notNull()
+    .default({ enabled: false, reviewed: false }),
   commerceRules: jsonb("commerce_rules")
     .$type<import("@/domain/commerce-evaluation").CommerceRule[]>()
     .notNull()
@@ -38,7 +42,12 @@ export const storeSettings = pgTable("store_settings", {
       Partial<
         Record<
           "en" | "zh",
-          Partial<Record<"about" | "shipping" | "returns" | "privacy", string>>
+          Partial<
+            Record<
+              "about" | "shipping" | "returns" | "privacy" | "terms",
+              string
+            >
+          >
         >
       >
     >()

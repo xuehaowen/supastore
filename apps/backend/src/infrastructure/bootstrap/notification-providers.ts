@@ -18,9 +18,17 @@ import {
 } from "../notifications/provider-config";
 export { notificationConfigFromEnvironment } from "../notifications/provider-config";
 export type { NotificationProviderConfig } from "../notifications/provider-config";
-// Live external SMS/verification remains disabled pending explicit authorization.
+// Deployment operators explicitly authorize external SMS/verification; default off.
 export function liveSmsAuthorized() {
-  return false;
+  return (
+    process.env.SMS_LIVE_AUTHORIZED === "true" &&
+    process.env.DISABLE_OUTBOUND_DELIVERY !== "true"
+  );
+}
+export function smsEnrollmentAvailable() {
+  if (!liveSmsAuthorized()) return false;
+  const providers = getNotificationProviders();
+  return Boolean(providers.sms && providers.phone);
 }
 export interface NotificationProviderDependencies {
   emailTransportFactory?: EmailTransportFactory;
@@ -70,7 +78,8 @@ export function getNotificationProviders(): NotificationProviders {
   if (process.env.DISABLE_OUTBOUND_DELIVERY === "true" || isShuttingDown())
     return Object.freeze({});
   const config = notificationConfigFromEnvironment();
-  const current = notificationConfigurationFingerprint(config);
+  const current =
+    notificationConfigurationFingerprint(config) + ":" + liveSmsAuthorized();
   if (state.singleton && state.fingerprint !== current)
     throw new NotificationConfigurationError(
       "provider profile changed; restart required",

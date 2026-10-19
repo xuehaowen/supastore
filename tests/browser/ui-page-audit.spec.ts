@@ -38,19 +38,20 @@ test("every page source has a usable responsive and accessible screen", async ({
     await sql`select id from notification_templates limit 1`;
   const [goodsReturn] =
     await sql`insert into order_returns(order_id,reason,request_key) values(${order.id},'Page audit return',${run}) returning id`;
-  const [store] = await sql`select public_content from store_settings`;
+  const [store] =
+    await sql`select public_content,sms_policy from store_settings`;
   const policies = Object.fromEntries(
     ["en", "zh"].map((locale) => [
       locale,
       Object.fromEntries(
-        ["about", "shipping", "returns", "privacy"].map((key) => [
+        ["about", "shipping", "returns", "privacy", "terms"].map((key) => [
           key,
           locale === "zh" ? "商店政策说明。" : "Store policy information.",
         ]),
       ),
     ]),
   );
-  await sql`update store_settings set public_content=${JSON.stringify(policies)}::jsonb`;
+  await sql`update store_settings set public_content=${JSON.stringify(policies)}::jsonb,sms_policy='{"enabled":true,"reviewed":true}'`;
   const records: {
     screen: string;
     url: string;
@@ -195,7 +196,7 @@ test("every page source has a usable responsive and accessible screen", async ({
       const locales = route.includes("[locale]") ? ["en", "zh"] : ["en"];
       for (const locale of locales) {
         const slugs = route.includes("/pages/")
-          ? ["about", "shipping", "returns", "privacy"]
+          ? ["about", "shipping", "returns", "privacy", "terms"]
           : [category!.slug];
         for (const slug of slugs) {
           const path = route
@@ -350,7 +351,7 @@ test("every page source has a usable responsive and accessible screen", async ({
     });
     expect(accessibilityIssues).toEqual([]);
   } finally {
-    await sql`update store_settings set public_content=${JSON.stringify(store!.public_content)}::jsonb,is_bootstrap_completed=true`;
+    await sql`update store_settings set public_content=${JSON.stringify(store!.public_content)}::jsonb,sms_policy=${JSON.stringify(store!.sms_policy)}::jsonb,is_bootstrap_completed=true`;
   }
 });
 

@@ -6,6 +6,7 @@ import {
   notificationAttempts,
   notificationAttemptResults,
   smsPreferences,
+  storeSettings,
 } from "@/infrastructure/db/schema";
 import type {
   EmailMessage,
@@ -19,6 +20,7 @@ import { prepareNotification } from "./template-manager";
 import { SMS_EVENTS, smsDeliveryAllowed, smsQuietUntil } from "./sms-policy";
 import { deliveryOutcome } from "./delivery-policy";
 import { logFailure, safeFailureCode } from "@/infrastructure/http/failure";
+import { smsConsentCurrent } from "@supastore/contracts";
 import {
   processNotificationInboxBatch,
   wakeNotificationInbox,
@@ -38,6 +40,7 @@ interface Claim {
   attempts: number;
   firstSubmittedAt: Date;
   customerId: string | null;
+  smsPreferenceId: string | null;
   eventCreatedAt: Date;
   recipient: string;
 }
@@ -46,7 +49,7 @@ export async function enqueueSmsNotifications() {
   await db.execute(sql`INSERT INTO event_deliveries(event_id,recipient,channel)
     SELECT e.id,p.phone,'sms' FROM outbox_events e
     JOIN orders o ON e.aggregate_id=o.id AND e.aggregate_type='order'
-    JOIN sms_preferences p ON p.customer_id=o.customer_id
+    JOIN sms_preferences p ON (p.id=o.sms_preference_id OR (o.sms_preference_id IS NULL AND p.customer_id=o.customer_id))
     WHERE p.opted_in AND p.verified_at IS NOT NULL AND p.consent_at IS NOT NULL AND e.created_at >= p.consent_at
       AND e.created_at > now()-interval '2 days'
       AND e.event_type IN (${sql.join(
@@ -146,7 +149,7 @@ async function processSingleNotification(
   let handled = 0;
   const claims = await db.transaction(async (tx) => {
     const rows = await tx.execute(sql`
-      SELECT d.*,e.event_type,e.payload,e.created_at AS event_created_at,o.customer_id,o.id AS order_id,o.notification_locale
+      SELECT d.*,e.event_type,e.payload,e.created_at AS event_created_at,o.customer_id,o.sms_preference_id,o.id AS order_id,o.notification_locale
       FROM event_deliveries d JOIN outbox_events e ON e.id=d.event_id
       LEFT JOIN orders o ON e.aggregate_type='order' AND o.id=e.aggregate_id
       WHERE d.channel=${channel} AND d.status IN ('pending','retrying') AND d.retry_after <= now()
@@ -207,12 +210,20 @@ async function processSingleNotification(
       }
       let preference: typeof smsPreferences.$inferSelect | undefined;
       if (channel === "sms") {
-        if (row.customer_id)
+        const [store] = await tx.select().from(storeSettings).limit(1);
+        if (row.sms_preference_id || row.customer_id)
           [preference] = await tx
             .select()
             .from(smsPreferences)
-            .where(eq(smsPreferences.customerId, String(row.customer_id)));
-        if (!smsDeliveryAllowed(preference, recipient, eventCreatedAt)) {
+            .where(
+              row.sms_preference_id
+                ? eq(smsPreferences.id, String(row.sms_preference_id))
+                : eq(smsPreferences.customerId, String(row.customer_id)),
+            );
+        if (
+          !smsConsentCurrent(store, preference) ||
+          !smsDeliveryAllowed(preference, recipient, eventCreatedAt)
+        ) {
           await tx
             .update(eventDeliveries)
             .set({
@@ -328,6 +339,9 @@ async function processSingleNotification(
         attempts,
         firstSubmittedAt,
         customerId: row.customer_id ? String(row.customer_id) : null,
+        smsPreferenceId: row.sms_preference_id
+          ? String(row.sms_preference_id)
+          : null,
         eventCreatedAt,
         recipient,
       });
@@ -368,13 +382,20 @@ async function processSingleNotification(
         return false;
       }
       if (channel === "sms") {
-        const [preference] = claim.customerId
-          ? await tx
-              .select()
-              .from(smsPreferences)
-              .where(eq(smsPreferences.customerId, claim.customerId))
-          : [];
+        const [store] = await tx.select().from(storeSettings).limit(1);
+        const [preference] =
+          claim.smsPreferenceId || claim.customerId
+            ? await tx
+                .select()
+                .from(smsPreferences)
+                .where(
+                  claim.smsPreferenceId
+                    ? eq(smsPreferences.id, claim.smsPreferenceId)
+                    : eq(smsPreferences.customerId, claim.customerId!),
+                )
+            : [];
         if (
+          !smsConsentCurrent(store, preference) ||
           !smsDeliveryAllowed(preference, claim.recipient, claim.eventCreatedAt)
         ) {
           await tx

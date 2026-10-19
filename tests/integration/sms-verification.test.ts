@@ -1,4 +1,12 @@
-import { beforeAll, afterAll, describe, it, expect, vi } from "vitest";
+import {
+  beforeAll,
+  beforeEach,
+  afterAll,
+  describe,
+  it,
+  expect,
+  vi,
+} from "vitest";
 import { randomUUID } from "node:crypto";
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -10,7 +18,11 @@ vi.mock("@/infrastructure/db", () => ({
   },
 }));
 import * as schema from "@/infrastructure/db/schema";
-import { updateCustomerSms } from "@/application/use-cases/customers/sms-preferences";
+import { smsDisclosure } from "@supastore/contracts";
+import {
+  updateCustomerSms,
+  applyPhoneOptOut,
+} from "@/application/use-cases/customers/sms-preferences";
 import type {
   PhoneVerifier,
   VerificationStartResult,
@@ -32,7 +44,7 @@ describe.skipIf(!server)("provider-neutral phone consent claims", () => {
     await migrate(active.db as ReturnType<typeof drizzle>, {
       migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
     });
-    await client`insert into store_settings(store_name) values('SMS tests')`;
+    await client`insert into store_settings(store_name,support_email,public_content,sms_policy) values('SMS tests','help@example.test','{"en":{"privacy":"Privacy","terms":"Terms"}}','{"enabled":true,"reviewed":true}')`;
   }, 30000);
   afterAll(async () => {
     if (client) await client.end();
@@ -40,6 +52,10 @@ describe.skipIf(!server)("provider-neutral phone consent claims", () => {
       await admin.unsafe(`DROP DATABASE IF EXISTS "${name}" WITH(FORCE)`);
       await admin.end();
     }
+  });
+  beforeEach(async () => {
+    await client`delete from sms_consent_events`;
+    await client`delete from sms_preferences`;
   });
   async function user() {
     const id = randomUUID();
@@ -52,6 +68,92 @@ describe.skipIf(!server)("provider-neutral phone consent claims", () => {
       .fn()
       .mockResolvedValue({ status: "pending", verificationId: "fake-id" }),
     check: vi.fn().mockResolvedValue("approved"),
+  });
+  it("records public consent and verification snapshots and preserves them after STOP", async () => {
+    const verifier = fake();
+    const disclosure = smsDisclosure({ storeName: "SMS tests" });
+    const claim = await updateCustomerSms(
+      null,
+      {
+        operation: "start",
+        phone: "+12025550888",
+        consent: true,
+        disclosure,
+        source: "checkout",
+      },
+      verifier,
+      true,
+    );
+    expect(claim?.verified).toBe(false);
+    expect(
+      (
+        await client`select opted_in from sms_preferences where id=${claim!.preferenceId}`
+      )[0]!.opted_in,
+    ).toBe(false);
+    await updateCustomerSms(
+      null,
+      {
+        operation: "confirm",
+        preferenceId: claim!.preferenceId,
+        code: "123456",
+      },
+      verifier,
+      true,
+    );
+    await (active.db as ReturnType<typeof drizzle<typeof schema>>).transaction(
+      (tx) => applyPhoneOptOut(tx, "+12025550888"),
+    );
+    const events =
+      await client`select action,wording,source from sms_consent_events where preference_id=${claim!.preferenceId} order by created_at`;
+    expect(events.map((e) => e.action)).toEqual([
+      "requested",
+      "verified",
+      "withdrawn",
+    ]);
+    expect(events[0]).toMatchObject({
+      wording: disclosure,
+      source: "checkout",
+    });
+    expect(
+      (
+        await client`select opted_in,consent_at from sms_preferences where id=${claim!.preferenceId}`
+      )[0],
+    ).toMatchObject({ opted_in: false, consent_at: null });
+  });
+  it("rejects missing consent, stale disclosures and unready merchants before provider IO", async () => {
+    const verifier = fake();
+    await expect(
+      updateCustomerSms(
+        null,
+        { operation: "start", phone: "+12025550889", consent: false },
+        verifier,
+        true,
+      ),
+    ).rejects.toThrow("Consent");
+    await expect(
+      updateCustomerSms(
+        null,
+        {
+          operation: "start",
+          phone: "+12025550889",
+          consent: true,
+          disclosure: "old text",
+        },
+        verifier,
+        true,
+      ),
+    ).rejects.toThrow("terms changed");
+    await client`update store_settings set sms_policy='{"enabled":false,"reviewed":true}'`;
+    await expect(
+      updateCustomerSms(
+        null,
+        { operation: "start", phone: "+12025550889", consent: true },
+        verifier,
+        true,
+      ),
+    ).rejects.toThrow("incomplete or disabled");
+    await client`update store_settings set sms_policy='{"enabled":true,"reviewed":true}'`;
+    expect(verifier.start).not.toHaveBeenCalled();
   });
   it("never calls providers by default and never permits unverified customer identity", async () => {
     const verifier = fake(),
