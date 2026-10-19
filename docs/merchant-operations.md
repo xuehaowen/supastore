@@ -2,6 +2,10 @@
 
 This is the merchant task guide. The [journey index](critical-user-journeys.md) tracks acceptance outcomes and coverage; [business workflows](business-workflows.md) define the complete rules; [current capabilities](system-capabilities.md) records implemented features and limitations.
 
+Use the [human pilot script](merchant-pilot.md) to observe a merchant completing
+these tasks, and the [production acceptance worksheet](launch-acceptance.md) to
+record real deployment, provider and recovery evidence.
+
 ## Setup
 
 1. Follow the [first-owner provisioning recipe](operator-cookbook.md#provision-the-first-owner) from a trusted terminal, then complete protected store setup. The admin UI has no user creation/invitation flow; Settings manages only existing memberships. Customer registration does not grant admin access. Demo seeding is not a general production staff-provisioning procedure.

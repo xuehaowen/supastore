@@ -385,6 +385,7 @@ Contract: [Receipt corrections](business-workflows.md#7-receipt-corrections) and
   - _Details:_ Finalize comprehensive [README.md](../README.md), [merchant operations](merchant-operations.md), and [development and deployment](development-deployment.md). Include synthetic demo seed script (`pnpm db:seed`) creating demo store with sample products and orders.
   - _Verification:_ A new developer follows the documented install, service startup, migration, seed and application startup steps from a clean checkout. Record elapsed time and prerequisites; commands become supported only after this rehearsal passes.
 - [ ] **Merchant pilot testing**
+  - _Session kit:_ Use the [human pilot script and results sheet](merchant-pilot.md); record actual participant evidence before closing this item. The [production acceptance worksheet](launch-acceptance.md) owns real-host/provider and recovery results.
   - _Details:_ Supervise pilot deployment with a real test merchant executing the end-to-end flow: Store Onboarding $\to$ Product Listing $\to$ Customer Order $\to$ Payment Receipt Recording $\to$ Packing Slip Printing $\to$ Fulfillment Completion $\to$ Refund Resolution.
   - _Verification:_ Merchant completes all tasks without manual database intervention or unhandled application errors. Synthetic acceptance is supporting evidence; an observed human merchant pilot remains pending.
 

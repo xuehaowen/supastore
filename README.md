@@ -172,6 +172,8 @@ Each module README explains its responsibility, maintenance constraints, and whe
 | [Current System Capabilities](docs/system-capabilities.md)        | Implemented capabilities, boundaries, workflows and evidence limits |
 | [Command Reference](docs/commands.md)                             | Every package command, prerequisites, effects and outputs           |
 | [Operator Cookbook](docs/operator-cookbook.md)                    | Local setup, owner provisioning, deployment, recovery and diagnosis |
+| [Production Acceptance](docs/launch-acceptance.md)                | Target, HTTPS, live providers, recovery and release evidence        |
+| [Human Merchant Pilot](docs/merchant-pilot.md)                    | Participant task script, observation sheet and acceptance criteria  |
 | [System Maintenance Guide](docs/system-maintenance.md)            | Configuration, verification, diagnosis, upgrades and recovery       |
 | [Product Scope](docs/product-scope.md)                            | Audience, release boundary and document ownership                   |
 | [Business Workflows](docs/business-workflows.md)                  | User operations and state transitions                               |
