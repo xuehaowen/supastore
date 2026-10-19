@@ -1,3 +1,4 @@
+import { resolvePublicOrigin } from "../../../../../../packages/config/public-origin.mjs";
 import { eq, sql } from "drizzle-orm";
 import { randomBytes, randomUUID } from "node:crypto";
 import * as v from "valibot";
@@ -37,11 +38,10 @@ export async function recoverOwner(
   input: RecoverOwnerInput,
 ): Promise<RecoverOwnerOutput> {
   const email = v.parse(EmailSchema, input.email.trim().toLowerCase());
-  const baseUrl = (
-    input.baseUrl ||
-    process.env.BETTER_AUTH_URL ||
-    "http://localhost:3000"
-  ).replace(/\/$/, "");
+  const baseUrl = (input.baseUrl || resolvePublicOrigin(process.env)).replace(
+    /\/$/,
+    "",
+  );
 
   return await db.transaction(async (tx) => {
     // Acquire advisory transaction lock for staff governance

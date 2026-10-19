@@ -65,7 +65,6 @@ export function AuthForm({ locale = "en" }: { locale?: string }) {
           id="auth-password"
           type="password"
           name="password"
-          minLength={12}
           required
           autoComplete="current-password"
         />

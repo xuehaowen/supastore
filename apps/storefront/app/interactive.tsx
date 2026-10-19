@@ -1,4 +1,5 @@
 "use client";
+import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "@supastore/contracts";
 import { textFor } from "@supastore/i18n/messages";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -248,9 +249,12 @@ export function AuthForm({
           id="auth-password"
           type="password"
           name="password"
-          minLength={12}
+          minLength={mode === "sign-up" ? MIN_PASSWORD_LENGTH : undefined}
+          maxLength={mode === "sign-up" ? MAX_PASSWORD_LENGTH : undefined}
           required
-          autoComplete="current-password"
+          autoComplete={
+            mode === "sign-up" ? "new-password" : "current-password"
+          }
         />
       </div>
       <Button type="submit" size="lg" disabled={busy}>

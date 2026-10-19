@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { auth, staffAuth } from "@/infrastructure/auth";
 import * as smtpAdapter from "@/infrastructure/notifications/smtp";
+import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "@supastore/contracts";
 
 const queries = vi.hoisted(() => ({ limit: vi.fn() }));
 vi.mock("@/infrastructure/db", () => ({
@@ -12,6 +13,16 @@ vi.mock("@/infrastructure/db", () => ({
 }));
 
 describe("Auth Module Configuration and Callbacks", () => {
+  it("applies the shared password creation policy in both identity realms", () => {
+    for (const identity of [auth, staffAuth]) {
+      expect(identity.options.emailAndPassword?.minPasswordLength).toBe(
+        MIN_PASSWORD_LENGTH,
+      );
+      expect(identity.options.emailAndPassword?.maxPasswordLength).toBe(
+        MAX_PASSWORD_LENGTH,
+      );
+    }
+  });
   it("uses separate staff and customer cookie namespaces and disables staff registration", () => {
     expect(auth.options.advanced?.cookiePrefix).toBe("supastore-customer");
     expect(staffAuth.options.advanced?.cookiePrefix).toBe("supastore-staff");

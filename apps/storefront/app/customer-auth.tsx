@@ -1,4 +1,5 @@
 "use client";
+import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "@supastore/contracts";
 import { textFor } from "@supastore/i18n/messages";
 import { useState } from "react";
 import Link from "next/link";
@@ -88,8 +89,8 @@ export function CustomerAuthTools({
         <Input
           name="password"
           type="password"
-          minLength={12}
-          maxLength={128}
+          minLength={MIN_PASSWORD_LENGTH}
+          maxLength={MAX_PASSWORD_LENGTH}
           required
           autoComplete="new-password"
         />
@@ -99,8 +100,8 @@ export function CustomerAuthTools({
         <Input
           name="confirmation"
           type="password"
-          minLength={12}
-          maxLength={128}
+          minLength={MIN_PASSWORD_LENGTH}
+          maxLength={MAX_PASSWORD_LENGTH}
           required
           autoComplete="new-password"
         />

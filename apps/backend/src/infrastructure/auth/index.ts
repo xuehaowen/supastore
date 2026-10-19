@@ -1,3 +1,4 @@
+import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "@supastore/contracts";
 import { betterAuth } from "better-auth";
 import { createHmac } from "node:crypto";
 import { APIError } from "better-auth/api";
@@ -46,6 +47,8 @@ function createAuth(audience: "customer" | "staff") {
     }),
     emailAndPassword: {
       enabled: true,
+      minPasswordLength: MIN_PASSWORD_LENGTH,
+      maxPasswordLength: MAX_PASSWORD_LENGTH,
       revokeSessionsOnPasswordReset: true,
       requireEmailVerification: false,
       autoSignIn: false,
