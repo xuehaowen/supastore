@@ -35,6 +35,7 @@ export function ProductPurchase({
   hasContextualRules?: boolean;
   destinations?: DestinationOptions;
 }) {
+  const m = textFor(locale).commercePreview;
   const initial =
     product.variants.find((v) =>
       variantCanBePurchased(v, availableQuantities),
@@ -85,9 +86,7 @@ export function ProductPurchase({
           minimumFractionDigits: precision,
           maximumFractionDigits: precision,
         }).format(effectivePrice / 10 ** precision)
-      : locale === "zh"
-        ? "请选择购物选项以查看价格"
-        : "Choose shopping options to see price";
+      : m.chooseOptionsForPrice;
   const maxQty = Math.max(
     1,
     Math.min(
@@ -287,9 +286,7 @@ export function ProductPurchase({
           <p role="status" aria-live="polite" className="text-lg font-medium">
             {hasContextualRules && !evaluated && (
               <small className="block text-xs text-muted-foreground">
-                {locale === "zh"
-                  ? "基础价格，选项可能影响售价"
-                  : "Base price; options may change price"}
+                {m.basePriceNotice}
               </small>
             )}
             {current?.title} · {price}

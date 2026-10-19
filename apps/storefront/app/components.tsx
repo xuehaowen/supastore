@@ -25,7 +25,7 @@ export function Notice({
             requestId,
           ) && (
             <span className="block">
-              {locale === "zh" ? "参考编号" : "Reference"}: {requestId}
+              {textFor(locale ?? "en").customerCopy.errorReference}: {requestId}
             </span>
           )}
       </AlertDescription>

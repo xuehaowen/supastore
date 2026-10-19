@@ -110,6 +110,17 @@ describe("complete customer locale resources", () => {
         );
       function visit(node: ts.Node) {
         if (
+          ts.isConditionalExpression(node) &&
+          node.condition.getText(tree).includes('locale === "zh"') &&
+          ts.isStringLiteral(node.whenTrue) &&
+          ts.isStringLiteral(node.whenFalse) &&
+          /[A-Za-z\u4e00-\u9fff]{3}/.test(node.whenFalse.text) &&
+          !node.whenFalse.text.startsWith("/")
+        )
+          violations.push(
+            `${file}: inline bilingual copy ${node.getText(tree)}`,
+          );
+        if (
           ts.isFunctionDeclaration(node) &&
           node.name?.text === "VariantFields"
         )

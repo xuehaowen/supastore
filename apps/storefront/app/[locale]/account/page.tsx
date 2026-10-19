@@ -142,9 +142,7 @@ export default async function Account({
                   <h3>{textFor(locale).ui.recentActivity}</h3>
                   {!account.credit.entries.length && (
                     <p className="text-sm text-muted-foreground">
-                      {locale === "zh"
-                        ? "暂无余额变动记录。"
-                        : "No credit activity yet."}
+                      {textFor(locale ?? "en").customerCopy.noCreditActivity}
                     </p>
                   )}
                   {account.credit.entries.map((entry) => (
@@ -191,7 +189,7 @@ export default async function Account({
               <h2>{t("account.orderHistory")}</h2>
               <form method="get">
                 <label>
-                  {locale === "zh" ? "订单编号" : "Order reference"}
+                  {textFor(locale ?? "en").customerCopy.orderReference}
                   <input
                     name="reference"
                     defaultValue={reference}
@@ -199,7 +197,7 @@ export default async function Account({
                   />
                 </label>
                 <Button type="submit">
-                  {locale === "zh" ? "查找订单" : "Search orders"}
+                  {textFor(locale ?? "en").customerCopy.searchOrders}
                 </Button>
               </form>
               {!account.orders.length && <p>{t("account.noOrders")}</p>}

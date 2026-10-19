@@ -23,6 +23,7 @@ export function ProductCard({
   precision?: number | undefined;
   hasContextualRules?: boolean;
 }) {
+  const m = textFor(locale).commercePreview;
   return (
     <article className="storefront-product-card group">
       <Link
@@ -53,9 +54,7 @@ export function ProductCard({
           <span>
             {hasContextualRules && (
               <small className="block text-xs text-muted-foreground">
-                {locale === "zh"
-                  ? "基础价格，选项可能影响售价"
-                  : "Base price; options may change price"}
+                {m.basePriceNotice}
               </small>
             )}
             {product.lowestPriceCents === null

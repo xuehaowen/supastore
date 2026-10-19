@@ -18,6 +18,7 @@ export function CheckoutPreview({
   items: CommercePreviewRequest["items"];
   locale: string;
 }) {
+  const m = textFor(locale).commercePreview;
   const [preview, setPreview] = useState<CommercePreview | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -80,26 +81,24 @@ export function CheckoutPreview({
               },
             );
             if (!response.ok)
-              throw new Error(
-                responseMessage(result, "Unable to check options."),
-              );
+              throw new Error(responseMessage(result, m.checkFailed));
             if (current.current === active)
               setPreview(parseCommercePreview(responseData(result, true)));
           } catch (failure) {
             if (current.current === active)
               setError(
                 locale === "zh"
-                  ? "无法检查，请确认输入后重试。"
+                  ? m.checkoutCheckFailed
                   : failure instanceof Error
                     ? failure.message
-                    : "Unable to check options. Please retry.",
+                    : m.checkFailed,
               );
           } finally {
             if (current.current === active) setBusy(false);
           }
         }}
       >
-        {locale === "zh" ? "预览价格与积分" : "Preview prices and rewards"}
+        {m.previewPrices}
       </Button>
       {error && <p role="alert">{error}</p>}
       {preview && <CommerceSummary preview={preview} locale={locale} />}

@@ -38,9 +38,7 @@ export default async function Cart({
       <Notice error={error} locale={locale} requestId={requestId} />
       {store?.hasContextualRules && (
         <p className="mb-4 text-sm text-muted-foreground">
-          {locale === "zh"
-            ? "下方购物袋显示基础价格。请选择购物选项并在结账时确认最终价格。"
-            : "Bag amounts below use base prices. Check shopping options and confirm the final prices at checkout."}
+          {textFor(locale ?? "en").customerCopy.bagBasePriceNotice}
         </p>
       )}
       {cart?.items.length ? (

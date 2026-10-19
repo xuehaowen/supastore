@@ -35,7 +35,7 @@ export function ShoppingPreview({
   onEvaluation?: ((preview: CommercePreview | null) => void) | undefined;
   destinations?: DestinationOptions | undefined;
 }) {
-  const zh = locale === "zh";
+  const m = textFor(locale).commercePreview;
   const [preview, setPreview] = useState<CommercePreview | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -113,15 +113,7 @@ export function ShoppingPreview({
         cache: "no-store",
         signal: active.signal,
       });
-      if (!response.ok)
-        throw new Error(
-          responseMessage(
-            data,
-            zh
-              ? "暂时无法检查，请重试。"
-              : "Unable to check options. Please retry.",
-          ),
-        );
+      if (!response.ok) throw new Error(responseMessage(data, m.checkFailed));
       const result = parseCommercePreview(responseData(data, true));
       if (sequence.current !== current) return;
       setPreview(result);
@@ -130,11 +122,11 @@ export function ShoppingPreview({
     } catch (error) {
       if (sequence.current === current)
         setMessage(
-          zh
-            ? "无法检查所选选项。请检查输入后重试。"
+          locale === "zh"
+            ? m.shoppingCheckFailed
             : error instanceof Error
               ? error.message
-              : "Unable to check options. Please retry.",
+              : m.checkFailed,
         );
     } finally {
       if (sequence.current === current) setBusy(false);
@@ -144,38 +136,30 @@ export function ShoppingPreview({
     return <p role="alert">{textFor(locale).errors.cartLineLimit}</p>;
   return (
     <section
-      aria-label={zh ? "购物选项" : "Shopping options"}
+      aria-label={m.shoppingOptions}
       className="my-5 rounded-xl border bg-muted/30 p-4"
     >
-      <h2 className="mb-3 text-base font-medium">
-        {zh ? "查看价格与购买条件" : "Check prices and shopping options"}
-      </h2>
+      <h2 className="mb-3 text-base font-medium">{m.shoppingTitle}</h2>
       <form
         onSubmit={check}
         onChange={invalidate}
         className="grid gap-3 sm:grid-cols-2"
       >
         <label className="grid gap-1 text-sm">
-          {zh ? "配送方式" : "Fulfillment method"}
+          {m.fulfillment}
           <NativeSelect
             value={method}
             onChange={(event) => setMethod(event.target.value)}
           >
-            <option value="">{zh ? "请选择" : "Choose method"}</option>
+            <option value="">{m.chooseMethod}</option>
             {(options?.methods ?? ["shipping", "pickup", "local_delivery"]).map(
               (value) => (
                 <option key={value} value={value}>
                   {value === "pickup"
-                    ? zh
-                      ? "自提"
-                      : "Pickup"
+                    ? m.pickup
                     : value === "shipping"
-                      ? zh
-                        ? "邮寄"
-                        : "Shipping"
-                      : zh
-                        ? "本地配送"
-                        : "Local delivery"}
+                      ? m.shipping
+                      : m.localDelivery}
                 </option>
               ),
             )}
@@ -183,13 +167,9 @@ export function ShoppingPreview({
         </label>
         {method === "pickup" ? (
           <label className="grid gap-1 text-sm">
-            {zh ? "自提地点" : "Pickup location"}
+            {m.pickupLocation}
             <NativeSelect name="pickupLocationId">
-              <option value="">
-                {zh
-                  ? "请选择地点（先检查以载入）"
-                  : "Choose location (check to load)"}
-              </option>
+              <option value="">{m.chooseLocation}</option>
               {options?.locations.map((location) => (
                 <option key={location.id} value={location.id}>
                   {location.name}
@@ -200,14 +180,14 @@ export function ShoppingPreview({
         ) : (
           <>
             <label className="grid gap-1 text-sm">
-              {zh ? "国家" : "Country"}
+              {m.country}
               <NativeSelect
                 name="country"
-                aria-label={zh ? "国家" : "Country"}
+                aria-label={m.country}
                 value={country}
                 onChange={(event) => setCountry(event.target.value)}
               >
-                <option value="">{zh ? "请选择国家" : "Choose country"}</option>
+                <option value="">{m.chooseCountry}</option>
                 {destinations.countries.map((option) => (
                   <option key={option.code} value={option.code}>
                     {option.name}
@@ -216,14 +196,14 @@ export function ShoppingPreview({
               </NativeSelect>
             </label>
             <label className="grid gap-1 text-sm">
-              {zh ? "州 / 地区" : "State / region"}
+              {m.region}
               {country === "US" ? (
                 <NativeSelect
                   name="region"
-                  aria-label={zh ? "州 / 地区" : "State / region"}
+                  aria-label={m.region}
                   defaultValue=""
                 >
-                  <option value="">{zh ? "请选择州" : "Choose state"}</option>
+                  <option value="">{m.chooseRegion}</option>
                   {destinations.states.map(([code, name]) => (
                     <option key={code} value={code}>
                       {name}
@@ -235,24 +215,18 @@ export function ShoppingPreview({
               )}
             </label>
             <label className="grid gap-1 text-sm">
-              {zh ? "邮政编码" : "ZIP or postal code"}
+              {m.postalCode}
               <Input name="postalCode" maxLength={24} />
             </label>
           </>
         )}
         <label className="grid gap-1 text-sm">
-          {zh ? "优惠码（可选）" : "Promotion code (optional)"}
+          {m.promotionCode}
           <Input name="promotionCode" maxLength={40} />
         </label>
         <div className="sm:col-span-2">
           <Button type="submit" variant="outline" disabled={busy}>
-            {busy
-              ? zh
-                ? "检查中…"
-                : "Checking…"
-              : zh
-                ? "检查选项"
-                : "Check options"}
+            {busy ? m.checking : m.checkOptions}
           </Button>
         </div>
       </form>

@@ -194,16 +194,14 @@ export default async function Checkout({
                 {t("finalTotalNotice")}
                 {(quote.termsSnapshot as QuoteTerms).evaluation && (
                   <span className="block mt-3">
-                    {locale === "zh"
-                      ? "本订单适用积分比例"
-                      : "Reward rate for this order"}
-                    :{" "}
+                    {textFor(locale ?? "en").customerCopy.orderRewardRate}:{" "}
                     {(quote.termsSnapshot as QuoteTerms).evaluation!
                       .rewardRateBasisPoints / 100}
                     %.{" "}
-                    {locale === "zh"
-                      ? "需使用已验证账户；实际积分取决于符合条件的外部付款金额，并在履约后发放。"
-                      : "Requires a verified account. Actual rewards depend on eligible external funding and are released after fulfillment."}
+                    {
+                      textFor(locale ?? "en").customerCopy
+                        .orderRewardRequirements
+                    }
                   </span>
                 )}
               </p>
