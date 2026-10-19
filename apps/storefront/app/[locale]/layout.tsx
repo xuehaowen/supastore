@@ -8,6 +8,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Alert, AlertDescription } from "@supastore/ui/alert";
+import { AnalyticsPreference } from "../analytics";
 export const dynamic = "force-dynamic";
 export async function generateMetadata({
   params,
@@ -152,6 +153,7 @@ export default async function ShopLayout({
           </a>
         )}
       </footer>
+      <AnalyticsPreference locale={locale} />
     </div>
   );
 }

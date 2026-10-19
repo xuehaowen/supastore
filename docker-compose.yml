@@ -118,6 +118,7 @@ services:
       target: storefront
       args:
         BACKEND_URL: http://backend:3000
+        NEXT_PUBLIC_ANALYTICS_ENDPOINT: ${NEXT_PUBLIC_ANALYTICS_ENDPOINT:-}
     image: ${STOREFRONT_IMAGE:-supastore-storefront:latest}
     restart: unless-stopped
     ports:

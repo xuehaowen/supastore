@@ -6,6 +6,10 @@ import {
   analyticsEndpoint,
   analyticsPayload,
   sendAnalytics,
+  analyticsConsent,
+  ANALYTICS_CONSENT_KEY,
+  ANALYTICS_CONSENT_EVENT,
+  trackPurchase,
 } from "../lib/analytics";
 import type { StorefrontMessages } from "../lib/i18n";
 export function AnalyticsPreference({
@@ -19,58 +23,38 @@ export function AnalyticsPreference({
   const [choice, setChoice] = useState<string | null>(null);
   const m = messages ?? getStorefrontMessages(locale).analytics;
   useEffect(() => {
-    try {
-      setChoice(localStorage.getItem("store-analytics-consent") || "pending");
-    } catch {
-      setChoice("no");
-    }
+    const update = () => setChoice(analyticsConsent());
+    update();
+    window.addEventListener("storage", update);
+    return () => window.removeEventListener("storage", update);
   }, []);
   useEffect(() => {
     if (choice === "yes") {
       const payload = analyticsPayload(path);
-      if (payload) sendAnalytics(payload);
+      if (payload) void sendAnalytics(payload);
     }
   }, [path, choice]);
-  if (!analyticsEndpoint()) return null;
+  if (!analyticsEndpoint() || choice === null) return null;
+  function choose(value: "yes" | "no" | "pending") {
+    try {
+      if (value === "pending") localStorage.removeItem(ANALYTICS_CONSENT_KEY);
+      else localStorage.setItem(ANALYTICS_CONSENT_KEY, value);
+      setChoice(value);
+      window.dispatchEvent(new Event(ANALYTICS_CONSENT_EVENT));
+    } catch {
+      setChoice("no");
+    }
+  }
   return (
-    <aside>
+    <aside aria-label={m.changePreference} className="border-t py-4 text-sm">
       <p>{m.notice}</p>
       {choice === "pending" ? (
         <>
-          <button
-            onClick={() => {
-              try {
-                localStorage.setItem("store-analytics-consent", "yes");
-                setChoice("yes");
-              } catch {
-                setChoice("no");
-              }
-            }}
-          >
-            {m.allow}
-          </button>
-          <button
-            onClick={() => {
-              try {
-                localStorage.setItem("store-analytics-consent", "no");
-              } catch {}
-              setChoice("no");
-            }}
-          >
-            {m.decline}
-          </button>
+          <button onClick={() => choose("yes")}>{m.allow}</button>
+          <button onClick={() => choose("no")}>{m.decline}</button>
         </>
       ) : (
-        <button
-          onClick={() => {
-            try {
-              localStorage.removeItem("store-analytics-consent");
-            } catch {}
-            setChoice("pending");
-          }}
-        >
-          {m.changePreference}
-        </button>
+        <button onClick={() => choose("pending")}>{m.changePreference}</button>
       )}
     </aside>
   );
@@ -85,14 +69,16 @@ export function PurchaseAnalytics({
   currency: string;
 }) {
   useEffect(() => {
-    if (!analyticsEndpoint()) return;
-    try {
-      if (localStorage.getItem("store-analytics-consent") !== "yes") return;
-      const key = `store-purchase-analytics:${orderId}`;
-      if (localStorage.getItem(key)) return;
-      localStorage.setItem(key, "sent");
-      sendAnalytics({ event: "purchase", amount: total, currency });
-    } catch {}
+    const track = () => {
+      void trackPurchase(orderId, total, currency);
+    };
+    track();
+    window.addEventListener(ANALYTICS_CONSENT_EVENT, track);
+    window.addEventListener("storage", track);
+    return () => {
+      window.removeEventListener(ANALYTICS_CONSENT_EVENT, track);
+      window.removeEventListener("storage", track);
+    };
   }, [orderId, total, currency]);
   return null;
 }

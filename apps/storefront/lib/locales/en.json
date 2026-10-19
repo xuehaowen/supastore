@@ -183,7 +183,7 @@
     "pleaseRetry": "Please retry"
   },
   "analytics": {
-    "notice": "Optional store analytics records public page visits and purchase amounts without names, emails or order references.",
+    "notice": "Optional store analytics records public page visits, shopping stages and confirmed purchase amounts without names, emails or order references.",
     "allow": "Allow analytics",
     "decline": "Decline",
     "changePreference": "Change analytics preference"

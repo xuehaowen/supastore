@@ -30,7 +30,9 @@ CMD ["node", "apps/backend/server.js"]
 FROM deps AS storefront-builder
 COPY . .
 ARG BACKEND_URL=http://backend:3000
+ARG NEXT_PUBLIC_ANALYTICS_ENDPOINT=
 ENV NEXT_TELEMETRY_DISABLED=1 STANDALONE=true NODE_ENV=production BACKEND_URL=$BACKEND_URL
+ENV NEXT_PUBLIC_ANALYTICS_ENDPOINT=$NEXT_PUBLIC_ANALYTICS_ENDPOINT
 RUN node node_modules/next/dist/bin/next build apps/storefront
 FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS storefront
 WORKDIR /app

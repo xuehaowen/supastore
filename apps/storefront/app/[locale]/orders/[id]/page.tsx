@@ -21,6 +21,7 @@ export const metadata = { robots: { index: false, follow: false } };
 
 import { OrderPayment } from "../../../order-payment";
 import { getStorefrontMessages } from "../../../../lib/i18n";
+import { PurchaseAnalytics } from "../../../analytics";
 export default async function OrderPage({
   params,
   searchParams,
@@ -71,6 +72,13 @@ export default async function OrderPage({
   const support = getStorefrontMessages(locale).order;
   return (
     <section className="mx-auto my-12 min-h-[50vh] max-w-3xl">
+      {["confirmed", "completed"].includes(order.lifecycleStatus) && (
+        <PurchaseAnalytics
+          orderId={id}
+          total={order.purchaseTotalCents / 10 ** terms.precision}
+          currency={terms.currency}
+        />
+      )}
       <p className="mb-6 text-[10px] font-bold tracking-[0.2em]">
         {t("order.saved")}
       </p>
