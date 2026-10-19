@@ -10,6 +10,10 @@ intended configuration. Deployment-specific credentials stay outside Git.
 The [isolated rehearsal](cookbook-acceptance-2026-10-18.md) records first-owner
 provisioning, password setup and demo browser/storage checks, including the
 internal-origin redirect correction and the limits of that evidence.
+The later [clean-install and console checks](installation-storage-acceptance-2026-10-19.md)
+verify a cache-free Linux dependency install and the pinned RustFS console steps.
+Use the [production worksheet](launch-acceptance.md) and
+[human pilot script](merchant-pilot.md) for the remaining real-world gates.
 
 ## Local demo store
 
@@ -33,11 +37,10 @@ docker compose up -d postgres rustfs
 pnpm run db:migrate
 ```
 
-5. In the RustFS console at `http://localhost:9001`, sign in with the configured
-   storage credentials and create `S3_BUCKET_PUBLIC` and `S3_BUCKET_PRIVATE`
-   (defaults `supastore-public` and `supastore-private`). Keep private evidence
-   inaccessible anonymously. Browser storage needs appropriate CORS for
-   `http://localhost:3001`; see [storage access](two-service-deployment.md#storage-access).
+5. Follow [RustFS console setup](#rustfs-console-setup) below to create the
+   configured buckets and browser CORS rule. Keep private evidence inaccessible
+   anonymously. See [storage access](two-service-deployment.md#storage-access)
+   for browser-reachable signed endpoints.
 6. Seed the dedicated demo database. This explicit Node invocation works in
    Bash and PowerShell. It requires `MIGRATION_DATABASE_URL` and uses that
    migration-capable connection only in its child because the seed also runs
@@ -62,6 +65,50 @@ Alternative: `pnpm run db:init supastore_dev` creates/preserves, migrates and
 seeds a named local database using administrator credentials. It does not change
 the URLs in `.env` or create storage buckets. Point the app at that database
 before starting it. Neither demo tool belongs in real merchant provisioning.
+
+## RustFS console setup
+
+With the supplied Compose configuration, open `http://localhost:9001` (or
+`S3_CONSOLE_PORT`) from the operator machine. Sign in using **Account** =
+`S3_ACCESS_KEY_ID` and **Key** = `S3_SECRET_ACCESS_KEY`. These are the existing
+storage credentials, not a new console account.
+
+1. Select **Browser**, then **Create Bucket**. Enter the value of
+   `S3_BUCKET_PUBLIC` (default `supastore-public`) and select **Create**.
+2. Repeat for `S3_BUCKET_PRIVATE` (default `supastore-private`). Verify both
+   names appear in the bucket list with **Access Policy: Private**. The word
+   "public" in the catalog bucket's name does not require anonymous access;
+   catalog images are served through the application's asset endpoint.
+3. Open **Settings** for the evidence bucket. Under **Access & Sharing**, choose
+   **Edit Bucket CORS**, enable **Bucket CORS**, and replace the default wildcard
+   origins with the actual storefront origin. For the local demo use:
+
+```json
+{
+  "CORSRules": [
+    {
+      "AllowedOrigins": ["http://localhost:3001"],
+      "AllowedMethods": ["GET", "PUT", "HEAD"],
+      "AllowedHeaders": ["*"],
+      "ExposeHeaders": ["ETag"],
+      "MaxAgeSeconds": 300
+    }
+  ]
+}
+```
+
+4. Select **Save CORS**. Confirm the settings show **Configured**, the exact
+   allowed origin and `GET, PUT, HEAD`. For deployment, replace the local origin
+   with the intended public HTTPS storefront origin before saving.
+5. Verify a catalog image and private evidence upload through the app. A signed
+   evidence request should work, while an unsigned request for the private
+   object must fail. CORS controls browser origins; it does not replace object
+   authorization or make the bucket public.
+
+The [console rehearsal](installation-storage-acceptance-2026-10-19.md#rustfs-console-and-access)
+includes screenshots and verifies a permitted preflight and rejection of an
+unlisted origin. Keep the console on loopback/private networking; public
+storage API access, if needed, uses the separately configured HTTPS endpoint.
 
 ## Provision the first owner
 

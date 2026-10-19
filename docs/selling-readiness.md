@@ -1,5 +1,11 @@
 # Store selling readiness
 
+The [clean-install and storage-console rehearsal](installation-storage-acceptance-2026-10-19.md)
+adds a cache-free Linux install, 1,268 unit/library checks, all service type checks
+and console-created private buckets with restricted CORS. The
+[production worksheet](launch-acceptance.md) and [human pilot script](merchant-pilot.md)
+are prepared; their target-specific and participant outcomes remain open.
+
 Updated October 18, 2026. Release priorities are usability, fixed storefront design and reliability before performance optimization. This record distinguishes completed local development from merchant and deployment acceptance.
 
 The latest [Docker launch rehearsal](reliability-acceptance-2026-10-18.md) passes fresh image builds, all 42 migrations through `0041_promotion_limits`, synthetic order creation/retry, database restore and backend-outage recovery. Its 120-second read smoke completes 30,884 requests with zero failures; fixture cleanup is confirmed. The separate [giveaway acceptance](benchmarks/2026-10-18-giveaway-launch.json) records the latest 1,211 unit/library, 163 integration and 52 browser results. Earlier counts below are historical observations. Real store configuration, delivery and target-environment acceptance remain required.

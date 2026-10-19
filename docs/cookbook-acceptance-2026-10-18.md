@@ -16,6 +16,9 @@ image were reused. The backend was rebuilt as a separately tagged Linux fixture
 image after the redirect correction below. This does not establish a fresh
 dependency install, native Windows development build, RustFS console UI procedure,
 or deployment-host acceptance. Buckets were initialized through the S3 API.
+The later [clean-install and console rehearsal](installation-storage-acceptance-2026-10-19.md)
+separately closes the Linux dependency-install and RustFS console-procedure gaps;
+it does not expand the scope of this earlier run.
 Package commands were invoked through their underlying Node/tsx entry points;
 the documented explicit Node demo-seed command was executed as written with
 fixture environment values.
