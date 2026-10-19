@@ -337,8 +337,8 @@ Contract: [Receipt corrections](business-workflows.md#7-receipt-corrections) and
   - _Details:_ Benchmark application container under load simulating 50 concurrent storefront visitors and 5 admin operations on a 1 vCPU, 1GB RAM virtual machine.
   - _Verification:_ Record steady and peak container memory, test duration and errors under the current setup; original memory ceilings are relaxed. Include worker load and document database/storage memory separately before selecting a production capacity budget.
 - [x] **Graceful process termination (`SIGTERM`/`SIGINT`)**
-  - _Details:_ Implement graceful shutdown handler in server entrypoint that stops accepting new HTTP connections, waits for in-flight database transactions to complete (up to 15s timeout), and releases active worker advisory locks.
-  - _Verification:_ Configure the container stop grace period longer than the 15-second drain budget. Verify completed transactions remain committed, interrupted transactions roll back and unacknowledged deliveries recover after lease expiry.
+  - _Details:_ Backend instrumentation installs a 35-second graceful shutdown drain for tracked in-flight work and provider calls before closing transports. Stop scheduling worker jobs during shutdown; database transaction locks end with their transactions.
+  - _Verification:_ Compose allows a 45-second stop grace period, longer than the 35-second drain budget. Verify completed transactions remain committed, interrupted transactions roll back and unacknowledged deliveries recover after lease expiry.
 - [x] **Platform deployment verification**
   - _Details:_ Test and verify deployment recipes for Docker Compose, Coolify, Railway, Fly.io, and managed cloud PostgreSQL (Supabase / Neon / AWS RDS).
   - _Verification:_ Successful deployment and health verification on each target platform using standard `.env` configuration.

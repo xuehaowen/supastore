@@ -22,7 +22,7 @@ Backend and storefront build into separate images. Image and memory budgets rema
 
 1. **Single Unified Engine:** Standardizes on **Better-Auth** (storing users and sessions directly in PostgreSQL via Drizzle) and the **S3-compatible API** (`@aws-sdk/client-s3`), eliminating multiple fragmented auth/storage implementations.
 2. **Universal Portability:** Connects to any standard PostgreSQL 16+ instance via `DATABASE_URL` (local container, self-hosted VPS, or cloud-managed PostgreSQL such as Supabase, Neon, or AWS RDS). Object storage connects to any S3-compatible backend (RustFS, Cloudflare R2, AWS S3, or Supabase Storage).
-3. **Worker placement:** An in-process loop is the default; worker-only container mode is optional. In the standalone Next.js container, the loop initializes safely via `instrumentation.ts` (`register()` hook, guarded to `process.env.NEXT_RUNTIME === 'nodejs'`) or a server runner. Both implement the same [delivery and coordination contract](api-events-spec.md#worker-lifecycle-and-retry). Operators configure supervision through the [deployment guide](development-deployment.md#configuration-and-process-supervision).
+3. **Worker placement:** The backend's in-process loop runs when `ENABLE_OUTBOX_WORKER=true`. It initializes through `instrumentation.ts` (`register()` hook, guarded to `process.env.NEXT_RUNTIME === 'nodejs'`) and follows the [delivery and coordination contract](api-events-spec.md#worker-lifecycle-and-retry). There is no packaged worker-only entry point. Operators configure supervision through the [deployment guide](development-deployment.md#configuration-and-process-supervision).
 
 ### Redis-Free Rate Limiting & Abuse Defense
 

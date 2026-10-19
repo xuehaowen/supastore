@@ -19,7 +19,7 @@ This playbook guides the recovery of Supastore following severe infrastructure l
 
 ### Step 2: Execute Restore Script
 
-Stop the backend, worker-only containers, and other clients of the target
+Stop the backend (including its in-process worker) and other clients of the target
 database before restoring. Exporting variables in a shell does not change the
 environment of an already-running service. The restore script requires explicit
 cold-maintenance confirmation and refuses a target with active sessions.

@@ -1,6 +1,6 @@
 # System maintenance guide
 
-Maintenance updated: 2026-10-11. Use the [capability inventory](system-capabilities.md) for system behavior and the directory READMEs linked from [backend source](../src/README.md), [applications](../apps/README.md), and [shared packages](../packages/README.md) for module details. This guide covers maintenance across those modules. Commands below come from the current root `package.json` and repository scripts. Review configuration and the target database before running commands that migrate, seed, restore, or contact providers.
+Maintenance updated: 2026-10-18. Use the [capability inventory](system-capabilities.md) for system behavior and the directory READMEs linked from [backend source](../apps/backend/src/README.md), [applications](../apps/README.md), and [shared packages](../packages/README.md) for module details. The [command reference](commands.md) inventories package commands and the [operator cookbook](operator-cookbook.md) provides task recipes. Review configuration and the target database before running commands that migrate, seed, restore, or contact providers.
 
 ## Current transport, fixture and dependency budgets
 
