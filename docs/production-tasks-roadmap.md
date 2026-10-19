@@ -39,7 +39,7 @@ Task checkboxes track implementation, not alternative specifications. Section-le
   - _Details:_ Set up Vitest (`vitest.config.ts`) for fast ESM unit testing. Configure test helper scripts with Docker PostgreSQL or Testcontainers for integration tests requiring real transactional row locks and advisory locks.
   - _Verification:_ `pnpm test` passes sample unit and database integration tests; record runtime and database startup cost separately.
 - [x] **Environment configuration template and startup validation**
-  - _Details:_ Create `.env.example` defining `DATABASE_URL`, `ADMIN_SETUP_SECRET`, `S3_*`, and `SMTP_*`. Implement a strict startup configuration validator (`apps/backend/src/infrastructure/config.ts`) that asserts valid URLs, non-default secrets in production, and halts boot immediately if required variables are missing.
+  - _Details:_ Create `.env.example` defining `DATABASE_URL`, `ADMIN_SETUP_SECRET`, `S3_*`, and `SMTP_*`. Validate URLs through shared configuration helpers (`packages/config/`), with database and authentication modules rejecting missing credentials or invalid production secrets at their respective entry points.
   - _Verification:_ Server fails boot with human-readable errors when mandatory environment variables are omitted.
 
 ### Slice M0 Data Model & Drizzle Schema
@@ -384,9 +384,9 @@ Contract: [Receipt corrections](business-workflows.md#7-receipt-corrections) and
 - [x] **Documentation and quickstart release package**
   - _Details:_ Finalize comprehensive [README.md](../README.md), [merchant operations](merchant-operations.md), and [development and deployment](development-deployment.md). Include synthetic demo seed script (`pnpm db:seed`) creating demo store with sample products and orders.
   - _Verification:_ A new developer follows the documented install, service startup, migration, seed and application startup steps from a clean checkout. Record elapsed time and prerequisites; commands become supported only after this rehearsal passes.
-- [x] **Merchant pilot testing**
+- [ ] **Merchant pilot testing**
   - _Details:_ Supervise pilot deployment with a real test merchant executing the end-to-end flow: Store Onboarding $\to$ Product Listing $\to$ Customer Order $\to$ Payment Receipt Recording $\to$ Packing Slip Printing $\to$ Fulfillment Completion $\to$ Refund Resolution.
-  - _Verification:_ Merchant completes all tasks without manual database intervention or unhandled application errors.
+  - _Verification:_ Merchant completes all tasks without manual database intervention or unhandled application errors. Synthetic acceptance is supporting evidence; an observed human merchant pilot remains pending.
 
 ### Exit & Release Gates
 

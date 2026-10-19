@@ -15,6 +15,8 @@ is upgraded to all 42 migrations after a verified backup.
 
 The optional [two-instance recipe](independent-store-instances.md) records independent pickup-only and shipping-only configurations, data separation and both passing manual-payment mobile sales rehearsals. A single store can also enable both methods. These are supported configuration choices, not mandatory launch defaults. Profile acceptance recorded 1,181 unit/library and 45 default browser tests; later dated results below extend that evidence.
 
+The [store readiness follow-up](store-readiness-follow-up-2026-10-18.md) records staff sign-out, framework-neutral launcher validation, consent-aware conversion analytics and the isolated local acceptance run. Human merchant and live deployment acceptance remain open.
+
 ## Usability findings and changes
 
 | Observed issue                                                                                 | Delivered behavior                                                                                                                                             | Verification                                             |
