@@ -7,6 +7,17 @@ to forward arguments. Commands without arguments below need none.
 
 ## Environment and prerequisites
 
+`node scripts/demo.mjs` (or `pnpm demo` after dependency installation) starts an
+isolated synthetic Docker store without reading the root `.env`. Optional
+arguments: `status`, `logs`, or `down` (preserves data). It requires Node and
+Docker Compose; the initial container build installs the pinned dependencies.
+Settings are stored in ignored `.supastore-demo/settings.env`. See
+[first contribution](contributor-start.md) for demo credentials and limitations.
+
+After startup, `node scripts/test-demo.mjs` (or `pnpm test:demo`) checks readiness,
+seeded catalog, synthetic owner login/staff access and sign-out over HTTP. It needs
+only Node and the owned demo settings, and runs in CI without host dependencies.
+
 Development package launchers preload `.env`, then `.env.local`. Build/start
 launchers preload `.env`, `.env.production`, `.env.local`, then
 `.env.production.local`. Later files win; existing shell variables win over files.

@@ -90,6 +90,9 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:synthetic-ci-password@127.0.0.1:5432/supastore_test
           TRANSLATION_TEST_DATABASE_URL: postgresql://postgres:synthetic-ci-password@127.0.0.1:5432/supastore_test
+          STOREFRONT_ORIGIN: http://localhost:3000
+          APP_URL: http://localhost:3000
+          BETTER_AUTH_URL: http://localhost:3000
           DISABLE_OUTBOUND_DELIVERY: "false"
           EMAIL_PROVIDER: nodemailer
           SMS_PROVIDER: disabled
@@ -100,6 +103,25 @@ jobs:
           SMTP_REQUIRE_TLS: "false"
           SMTP_USER: ""
           SMTP_PASSWORD: ""
+
+  demo-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Start demo without host dependencies or environment files
+        run: node scripts/demo.mjs
+      - name: Verify catalog and synthetic owner access
+        run: node scripts/test-demo.mjs
+      - name: Show demo diagnostics on failure
+        if: failure()
+        run: node scripts/demo.mjs logs
+      - name: Stop isolated demo
+        if: always()
+        run: node scripts/demo.mjs down
 
   container-acceptance:
     runs-on: ubuntu-latest

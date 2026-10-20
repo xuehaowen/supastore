@@ -1,4 +1,5 @@
 # Dependencies
+.supastore-demo/
 node_modules/
 .pnpm-store/
 

@@ -1,6 +1,8 @@
 # Supastore
 
-A self-hosted commerce application for independent merchants, with catalog options, collections, stock tracking, customer accounts, store credit and rewards, manual and Stripe payments, refunds, and physical returns. Backend and storefront are independently deployable applications; the backend owns merchant admin, APIs, authentication, and the outbox worker. Combined local development remains available.
+A self-hosted storefront and merchant admin for independent businesses, with catalog options, stock tracking, customer accounts, manual and Stripe payments, refunds, returns, store credit and rewards. Backend and storefront are independently deployable; PostgreSQL coordinates business data and background delivery without Redis.
+
+**Developer-beta source preview.** No stable production release is supported yet. [Production acceptance](docs/launch-acceptance.md) and the [observed merchant pilot](docs/merchant-pilot.md) remain open. See the [beta release checklist](docs/beta-release.md), [changelog](CHANGELOG.md) and [security policy](SECURITY.md).
 
 Start with [Current System Capabilities](docs/system-capabilities.md) for implemented features and limits, the [Operator Cookbook](docs/operator-cookbook.md) for task recipes, and the [Command Reference](docs/commands.md) for commands and prerequisites. Directory READMEs explain the code beside each module; the navigation index below links their entry points.
 
@@ -23,6 +25,44 @@ Licensed under MIT.
 ---
 
 ## Quickstart
+
+### Try an isolated demo
+
+With Node >=22.13.0 and Docker Compose installed:
+
+```bash
+git clone https://github.com/xuehaowen/supastore.git
+cd supastore
+node scripts/demo.mjs
+```
+
+The first build installs dependencies inside Docker, creates a dedicated database
+and private storage buckets, applies migrations, and seeds synthetic products.
+It leaves the root `.env` and configured store volumes untouched. External
+notifications and payments are disabled.
+
+- Storefront: [http://localhost:3080/en](http://localhost:3080/en)
+- Admin: [http://localhost:3080/admin](http://localhost:3080/admin)
+- Synthetic login: `owner@example.test` / `DemoStorePassword123!`
+- Stop and retain demo data: `node scripts/demo.mjs down`
+
+This loopback-only demo is for evaluation, not public hosting. See
+[first contribution](docs/contributor-start.md) for port changes, diagnostics and
+the architecture introduction. The manual setup below is for source development
+or an intentionally configured installation.
+
+<details>
+<summary>See the synthetic demo</summary>
+
+Storefront with three seeded products (image placeholders):
+
+![Synthetic demo storefront](docs/images/demo-storefront.png)
+
+Merchant overview after signing in as the synthetic owner:
+
+![Synthetic demo admin](docs/images/demo-admin.png)
+
+</details>
 
 ### Prerequisites
 
@@ -191,4 +231,7 @@ Each module README explains its responsibility, maintenance constraints, and whe
 
 ## Contributing & Security
 
-See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and [LICENSE](LICENSE).
+Start with [your first contribution](docs/contributor-start.md) and
+[starter contributions](docs/starter-contributions.md), then read
+[CONTRIBUTING.md](CONTRIBUTING.md). Use [private vulnerability reporting](https://github.com/xuehaowen/supastore/security/advisories/new)
+for security issues. See [SECURITY.md](SECURITY.md) and [LICENSE](LICENSE).

@@ -1,6 +1,6 @@
 # Contributing
 
-Supastore is an implemented, self-hosted commerce application. Start with [scope](docs/product-scope.md), [architecture](docs/architecture-overview.md) and the [vertical-slice roadmap](docs/production-tasks-roadmap.md).
+Supastore is an implemented, self-hosted commerce application preparing a developer beta. New contributors should start with [first contribution](docs/contributor-start.md) and [starter contributions](docs/starter-contributions.md), then read [scope](docs/product-scope.md), [architecture](docs/architecture-overview.md) and the [vertical-slice roadmap](docs/production-tasks-roadmap.md).
 
 Use issues for reproducible problems or bounded proposals grounded in merchant needs. Keep proposals aligned with the current capabilities and documented transaction contracts.
 
@@ -12,4 +12,4 @@ Implementation contributions use one application use case per command, thin rout
 
 Pull requests explain the user-visible result and actual verification. Follow the [error-handling contract and coverage matrix](docs/error-handling.md): mutations and integrations must define failure categories, diagnostics, retry/uncertainty policy and regression tests. Update the matrix for new failure paths. Run `pnpm run test:errors` alongside the relevant integration/browser checks. Use the scripts in package.json to verify changes and report the checks actually run. Use synthetic data and never commit credentials or private customer/payment records.
 
-The project is licensed under the [MIT License](LICENSE). Contributors must ensure that code contributions adhere to the architecture, unidirectional dependencies, transactional outbox patterns and test-driven financial contracts specified in the `docs/` directory. No CLA or commercial restriction applies. Publish issue/PR templates and review expectations in the foundations milestone.
+The project is licensed under the [MIT License](LICENSE). Contributors must ensure that code contributions adhere to the architecture, unidirectional dependencies, transactional outbox patterns and test-driven financial contracts specified in the `docs/` directory. No CLA or commercial restriction applies. Use the issue forms and PR template to describe bounded scope, actual verification and operational effects. Maintainers review changes before release; financial/security changes need explicit authorization and failure-path coverage.

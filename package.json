@@ -47,7 +47,9 @@
     "check:services": "node scripts/check-release-services.mjs",
     "typecheck:backend": "tsc --noEmit -p apps/backend/tsconfig.json",
     "start:backend": "node --env-file-if-exists=.env --env-file-if-exists=.env.production --env-file-if-exists=.env.local --env-file-if-exists=.env.production.local scripts/backend.mjs start",
-    "start:storefront": "node --env-file-if-exists=.env --env-file-if-exists=.env.production --env-file-if-exists=.env.local --env-file-if-exists=.env.production.local scripts/storefront.mjs start"
+    "start:storefront": "node --env-file-if-exists=.env --env-file-if-exists=.env.production --env-file-if-exists=.env.local --env-file-if-exists=.env.production.local scripts/storefront.mjs start",
+    "demo": "node scripts/demo.mjs",
+    "test:demo": "node scripts/test-demo.mjs"
   },
   "devDependencies": {
     "better-auth": "^1.1.18",

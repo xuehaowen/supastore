@@ -11,6 +11,11 @@ COPY packages/i18n/package.json ./packages/i18n/package.json
 COPY packages/shipping/package.json ./packages/shipping/package.json
 COPY patches ./patches
 RUN pnpm install --frozen-lockfile
+FROM deps AS demo-tools
+COPY . .
+ENV DEMO_SEED=true DISABLE_OUTBOUND_DELIVERY=true ENABLE_OUTBOX_WORKER=false
+USER node
+CMD ["node", "--import", "tsx", "scripts/seed-demo.ts"]
 FROM deps AS backend-builder
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1 STANDALONE=true NODE_ENV=production DATABASE_URL=postgresql://build:build@127.0.0.1:1/build_only BETTER_AUTH_URL=http://localhost:3000
