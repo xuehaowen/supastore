@@ -90,7 +90,11 @@ services:
       - SMTP_OAUTH_REFRESH_TOKEN=${SMTP_OAUTH_REFRESH_TOKEN:-}
       - SMTP_SECURE
       - SMTP_REQUIRE_TLS
+      # disabled: silent; console: local previews; telnyx: authorized live delivery.
+      # Global DISABLE_OUTBOUND_DELIVERY also stops console previews.
       - SMS_PROVIDER=${SMS_PROVIDER:-disabled}
+      - SMS_LIVE_AUTHORIZED=${SMS_LIVE_AUTHORIZED:-false}
+      # Console mode does not provide phone verification or enable enrollment.
       - PHONE_VERIFICATION_PROVIDER=${PHONE_VERIFICATION_PROVIDER:-disabled}
       - TELNYX_API_KEY=${TELNYX_API_KEY:-}
       - TELNYX_FROM=${TELNYX_FROM:-}

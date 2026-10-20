@@ -15,8 +15,12 @@ storage, SMTP, authentication and Stripe secrets belong to the backend.
 
 Email/SMS/verification configuration and migrations 0033–0034 are documented in
 [notification integrations](notification-integrations.md). Telnyx credentials
-stay on the backend; live SMS remains disabled. Restart after provider profile
-configuration changes. Backend stop grace is 45 seconds so the 35-second drain
+stay on the backend. `SMS_PROVIDER=disabled` is silent; `console` enables explicit
+previews, and `telnyx` requires `SMS_LIVE_AUTHORIZED=true` for live delivery.
+Compose forwards these settings with live authorization off by default.
+See [console-mode configuration](notification-integrations.md#explicit-console-mode-for-development-and-testing)
+for prerequisites and log access. Recreate the backend container after environment
+changes; a restart alone does not apply new Compose values. Backend stop grace is 45 seconds so the 35-second drain
 can complete bounded provider calls before closing pooled transports.
 
 ## Local development

@@ -57,6 +57,14 @@ it("passes recovery delivery-suppression and worker settings into the actual bac
     "DISABLE_OUTBOUND_DELIVERY=${DISABLE_OUTBOUND_DELIVERY:-false}",
   );
 });
+it("passes explicit SMS modes and defaults live authorization to false", () => {
+  const env = compose.services.backend!.environment;
+  expect(env).toContain("SMS_PROVIDER=${SMS_PROVIDER:-disabled}");
+  expect(env).toContain("SMS_LIVE_AUTHORIZED=${SMS_LIVE_AUTHORIZED:-false}");
+  expect(env).toContain(
+    "PHONE_VERIFICATION_PROVIDER=${PHONE_VERIFICATION_PROVIDER:-disabled}",
+  );
+});
 it("requires an explicit public origin for both production services", () => {
   for (const name of ["backend", "storefront"]) {
     const env = compose.services[name]!.environment;

@@ -122,6 +122,7 @@ required. STOP suppresses pending sends without erasing already accepted facts.
 | `SMTP_SECURE`                      | Optional implicit TLS override; port 465 defaults secure                 |
 | `SMTP_REQUIRE_TLS`                 | Optional STARTTLS override; required by default off-loopback             |
 | `SMS_PROVIDER`                     | `disabled` (silent), `console` (previews), or `telnyx`; default disabled |
+| `SMS_LIVE_AUTHORIZED`              | Explicit authorization for live SMS/verification; default `false`        |
 | `PHONE_VERIFICATION_PROVIDER`      | `telnyx` or `disabled`, default disabled                                 |
 | `TELNYX_API_KEY`                   | Backend-only credential                                                  |
 | `TELNYX_FROM/MESSAGING_PROFILE_ID` | SMS sender and messaging profile                                         |
@@ -147,6 +148,23 @@ The worker must be enabled. Published templates, current verified consent,
 merchant policy readiness and quiet hours still apply. Console mode does not
 enable phone verification or customer enrollment. `DISABLE_OUTBOUND_DELIVERY=true`
 also stops console previews.
+
+For Docker Compose, set these values in the instance's `.env`:
+
+```dotenv
+SMS_PROVIDER=console
+SMS_LIVE_AUTHORIZED=false
+PHONE_VERIFICATION_PROVIDER=disabled
+ENABLE_OUTBOX_WORKER=true
+DISABLE_OUTBOUND_DELIVERY=false
+```
+
+Rebuild the backend image if it predates console-mode support, then recreate
+the service with `docker compose up -d --build backend`. Read preview output
+with `docker compose logs -f backend`. A plain container restart does not apply
+changed Compose environment values. Compose forwards the SMS authorization flag
+with a default of `false`; select `telnyx` and explicitly authorize live sending
+only for a deployment accepted for real SMS.
 
 `SMS_PROVIDER=disabled` stays silent. Selecting `telnyx` without live authorization
 does not activate a sender. Invalid live-provider configuration fails validation;
