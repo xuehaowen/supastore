@@ -16,7 +16,7 @@ workflows use these contracts and never import provider SDKs or response types.
 
 `apps/backend/src/application/notifications` owns content rendering, consent/quiet-hour policy,
 retry decisions, durable delivery processing and callback reconciliation.
-`apps/backend/src/infrastructure/notifications` implements Nodemailer, Telnyx and explicit test
+`apps/backend/src/infrastructure/notifications` implements Nodemailer, Telnyx, console SMS previews and explicit test
 fakes. The bootstrap validates configuration and constructs a process-wide
 registry shared across Next.js entrypoint bundles. There is no implicit fake
 success when a channel is unconfigured. Authentication hooks enqueue expiring
@@ -114,20 +114,20 @@ required. STOP suppresses pending sends without erasing already accepted facts.
 
 ## Backend configuration
 
-| Setting                            | Meaning                                                         |
-| ---------------------------------- | --------------------------------------------------------------- |
-| `EMAIL_PROVIDER`                   | `nodemailer` or `disabled`; inferred from SMTP host when absent |
-| `SMTP_HOST/PORT/FROM`              | Selected SMTP endpoint and sender                               |
-| `SMTP_USER/PASSWORD`               | Optional authentication, kept private to the adapter            |
-| `SMTP_SECURE`                      | Optional implicit TLS override; port 465 defaults secure        |
-| `SMTP_REQUIRE_TLS`                 | Optional STARTTLS override; required by default off-loopback    |
-| `SMS_PROVIDER`                     | `telnyx` or `disabled`, default disabled                        |
-| `PHONE_VERIFICATION_PROVIDER`      | `telnyx` or `disabled`, default disabled                        |
-| `TELNYX_API_KEY`                   | Backend-only credential                                         |
-| `TELNYX_FROM/MESSAGING_PROFILE_ID` | SMS sender and messaging profile                                |
-| `TELNYX_VERIFY_PROFILE_ID`         | Verification profile; optional `_ZH` profile for Chinese        |
-| `TELNYX_PUBLIC_KEY`                | Signature validation for callbacks                              |
-| `DISABLE_OUTBOUND_DELIVERY`        | Global suspension; no transport construction/sending            |
+| Setting                            | Meaning                                                                  |
+| ---------------------------------- | ------------------------------------------------------------------------ |
+| `EMAIL_PROVIDER`                   | `nodemailer` or `disabled`; inferred from SMTP host when absent          |
+| `SMTP_HOST/PORT/FROM`              | Selected SMTP endpoint and sender                                        |
+| `SMTP_USER/PASSWORD`               | Optional authentication, kept private to the adapter                     |
+| `SMTP_SECURE`                      | Optional implicit TLS override; port 465 defaults secure                 |
+| `SMTP_REQUIRE_TLS`                 | Optional STARTTLS override; required by default off-loopback             |
+| `SMS_PROVIDER`                     | `disabled` (silent), `console` (previews), or `telnyx`; default disabled |
+| `PHONE_VERIFICATION_PROVIDER`      | `telnyx` or `disabled`, default disabled                                 |
+| `TELNYX_API_KEY`                   | Backend-only credential                                                  |
+| `TELNYX_FROM/MESSAGING_PROFILE_ID` | SMS sender and messaging profile                                         |
+| `TELNYX_VERIFY_PROFILE_ID`         | Verification profile; optional `_ZH` profile for Chinese                 |
+| `TELNYX_PUBLIC_KEY`                | Signature validation for callbacks                                       |
+| `DISABLE_OUTBOUND_DELIVERY`        | Global suspension; no transport construction/sending                     |
 
 Selected configuration fails fast if invalid. Provider identity uses nonsecret
 endpoint/sender/profile fields; credential rotation preserves that identity.
@@ -135,6 +135,30 @@ Restart the backend when changing configuration. Live SMS authorization defaults
 off independently of provider selection; `SMS_LIVE_AUTHORIZED=true` explicitly
 authorizes the deployment. Merchant policy readiness also gates enrollment and
 delivery. See [merchant SMS consent](sms-consent.md).
+
+### Explicit console mode for development and testing
+
+Set `SMS_PROVIDER=console` and restart the backend to write eligible order notifications to the backend's structured
+console at info level. Each entry is labeled `SMS console preview (live sending
+disabled).` and includes the message text, delivery ID and masked recipient
+(for example, `***0123`). No messaging-provider request is made.
+
+The worker must be enabled. Published templates, current verified consent,
+merchant policy readiness and quiet hours still apply. Console mode does not
+enable phone verification or customer enrollment. `DISABLE_OUTBOUND_DELIVERY=true`
+also stops console previews.
+
+`SMS_PROVIDER=disabled` stays silent. Selecting `telnyx` without live authorization
+does not activate a sender. Invalid live-provider configuration fails validation;
+transport failures follow normal retry/review handling. Neither condition selects
+console mode automatically.
+
+Each successful preview is recorded once as `suppressed` with provider
+`console-sms` and provider status `console_preview`. It is not counted as sent or
+delivered and will not be replayed when live SMS is enabled. Previously pinned
+live-provider deliveries retain their profile checks and require review rather
+than being silently redirected to the console. Console logs contain SMS text;
+keep access limited to store operators.
 
 ## Adding another provider
 

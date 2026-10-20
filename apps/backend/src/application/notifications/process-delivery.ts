@@ -499,6 +499,9 @@ async function processSingleNotification(
         now: new Date(),
         hadUncertainty,
         capabilities: {
+          ...(claim.sender.capabilities.previewOnly
+            ? { previewOnly: true }
+            : {}),
           deliveryTracking: delivery.deliveryTracking,
           ...(delivery.idempotencyWindowMs
             ? { idempotencyWindowMs: delivery.idempotencyWindowMs }

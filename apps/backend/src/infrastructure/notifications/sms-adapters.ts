@@ -5,12 +5,20 @@ import {
   type ProfiledAdapterRegistry,
 } from "../adapter-registry";
 import { TelnyxSmsSender, type TelnyxDependencies } from "./telnyx-sms";
+import { ConsoleSmsSender, CONSOLE_SMS_IDENTITY } from "./console-sms";
 import {
   required,
   validateBuiltinNotificationConfig,
   type SmsProviderConfig,
 } from "./notification-config";
 export const smsAdapters = Object.freeze({
+  console: {
+    handle: "console",
+    parseEnvironment: () => ({ provider: "console" }),
+    validateConfig: () => {},
+    configurationFingerprint: () => CONSOLE_SMS_IDENTITY.profile,
+    create: () => new ConsoleSmsSender(),
+  },
   telnyx: {
     handle: "telnyx",
     parseEnvironment: (env) => ({

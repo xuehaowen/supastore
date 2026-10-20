@@ -25,6 +25,14 @@ beforeEach(() => {
   state.update.mockReset();
 });
 describe("public SMS enrollment boundary", () => {
+  it("does not enroll customers through console preview mode", async () => {
+    state.providers = {
+      sms: { capabilities: { previewOnly: true } },
+      phone: {},
+    };
+    expect((await POST(request({ operation: "start" }))).status).toBe(400);
+    expect(state.update).not.toHaveBeenCalled();
+  });
   it("rejects cross-site submissions and unavailable transports", async () => {
     expect(
       (await POST(request({ operation: "start" }, "https://untrusted.example")))

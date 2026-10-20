@@ -57,7 +57,10 @@ export interface TelnyxPhoneConfig {
   verifyProfileId: string;
   verifyProfileIdZh?: string;
 }
-export type SmsProviderConfig = TelnyxSmsConfig;
+export interface ConsoleSmsConfig {
+  provider: "console";
+}
+export type SmsProviderConfig = TelnyxSmsConfig | ConsoleSmsConfig;
 export type PhoneProviderConfig = TelnyxPhoneConfig;
 export interface NotificationProviderConfig {
   email?: EmailProviderConfig;

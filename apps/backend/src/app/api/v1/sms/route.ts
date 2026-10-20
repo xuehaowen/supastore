@@ -22,7 +22,11 @@ export async function POST(request: Request) {
     )
       throw new DomainError("Please wait before retrying.");
     const providers = getNotificationProviders();
-    if (!providers.phone || !providers.sms)
+    if (
+      !providers.phone ||
+      !providers.sms ||
+      providers.sms.capabilities?.previewOnly
+    )
       throw new DomainError(
         "SMS enrollment is temporarily unavailable. You can still place your order without SMS.",
       );

@@ -18,7 +18,12 @@ export async function GET() {
     const providers = getNotificationProviders();
     return customerSms(
       await customerIdentity(),
-      smsReadiness(store).enabled && Boolean(providers.sms && providers.phone),
+      smsReadiness(store).enabled &&
+        Boolean(
+          providers.sms &&
+          !providers.sms.capabilities?.previewOnly &&
+          providers.phone,
+        ),
     );
   });
 }
@@ -43,7 +48,11 @@ export async function POST(request: Request) {
         consent: body.consent === true,
       },
       providers.phone,
-      Boolean(providers.phone && providers.sms),
+      Boolean(
+        providers.phone &&
+        providers.sms &&
+        !providers.sms.capabilities?.previewOnly,
+      ),
     );
     return { saved: true };
   });

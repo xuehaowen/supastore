@@ -46,9 +46,15 @@ export function deliveryOutcome(
 ): { status: DeliveryStatus; retryAfter: Date; providerStatus: string } {
   if (result.status === "accepted")
     return {
-      status: input.capabilities.deliveryTracking ? "awaiting" : "accepted",
+      status: input.capabilities.previewOnly
+        ? "suppressed"
+        : input.capabilities.deliveryTracking
+          ? "awaiting"
+          : "accepted",
       retryAfter: input.now,
-      providerStatus: "accepted",
+      providerStatus: input.capabilities.previewOnly
+        ? "console_preview"
+        : "accepted",
     };
   const uncertain =
     result.status === "unknown" || Boolean(input.hadUncertainty);

@@ -14,6 +14,8 @@ export type SendResult =
   | { status: "unknown"; code: string };
 export interface TransportCapabilities {
   readonly deliveryTracking: boolean;
+  /** Acceptance records a local preview, never an external submission. */
+  readonly previewOnly?: boolean;
   /** Undefined means uncertain submissions must be reconciled, never blindly retried. */
   readonly idempotencyWindowMs?: number;
 }

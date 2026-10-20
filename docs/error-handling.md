@@ -131,6 +131,13 @@ Files live under `tests/unit`, `tests/integration` and `tests/browser`. A listed
 test is evidence, not a claim that every possible failure is tested. Extend this
 matrix whenever adding a failure path.
 
+Explicit `SMS_PROVIDER=console` uses a preview sink; disabled SMS remains silent.
+Unit `sms-console` covers explicit selection, invalid configuration,
+masked recipients, preview outcomes and global suppression;
+integration `sms-console` covers template pinning, one-time processing, consent
+and quiet hours. Successful previews remain `suppressed`/`console_preview`, so
+they do not establish external delivery or queue a later live resend.
+
 `pnpm run test:errors` enforces 80% coverage on shared failure classification,
 provider classification and worker supervision. CI runs this gate plus the unit
 and integration suites. Run affected browser journeys separately and report

@@ -28,7 +28,9 @@ export function liveSmsAuthorized() {
 export function smsEnrollmentAvailable() {
   if (!liveSmsAuthorized()) return false;
   const providers = getNotificationProviders();
-  return Boolean(providers.sms && providers.phone);
+  return Boolean(
+    providers.sms && !providers.sms.capabilities.previewOnly && providers.phone,
+  );
 }
 export interface NotificationProviderDependencies {
   emailTransportFactory?: EmailTransportFactory;
@@ -51,16 +53,15 @@ export function createNotificationProviders(
       dependencies.emailTransportFactory,
     );
   const authorizeSms = dependencies.authorizeSms ?? liveSmsAuthorized;
-  if (authorizeSms()) {
-    const telnyxDependencies = {
-      authorizeSms,
-      ...(dependencies.fetcher ? { fetcher: dependencies.fetcher } : {}),
-    };
-    if (config.sms)
-      providers.sms = createSmsAdapter(config.sms, telnyxDependencies);
-    if (config.phone)
-      providers.phone = createPhoneAdapter(config.phone, telnyxDependencies);
-  }
+  const liveAuthorized = authorizeSms();
+  const telnyxDependencies = {
+    authorizeSms,
+    ...(dependencies.fetcher ? { fetcher: dependencies.fetcher } : {}),
+  };
+  if (config.sms && (config.sms.provider === "console" || liveAuthorized))
+    providers.sms = createSmsAdapter(config.sms, telnyxDependencies);
+  if (config.phone && liveAuthorized)
+    providers.phone = createPhoneAdapter(config.phone, telnyxDependencies);
   return Object.freeze(providers);
 }
 type ProviderState = {
