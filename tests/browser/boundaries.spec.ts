@@ -64,7 +64,6 @@ test("C3 unsupported destination preserves cart and explains next action", async
 test("C3/C4 keyboard checkout and expanded admin forms are accessible on mobile", async ({
   page,
   admin,
-  sql,
 }) => {
   await page.setViewportSize({ width: 360, height: 780 });
   await admin.setViewportSize({ width: 360, height: 780 });
@@ -145,7 +144,6 @@ test("A7 late receipt on a cancelled order creates return work without reopening
 
 test("Account registration requires verification, retries sign-in, denies admin and signs out", async ({
   page,
-  sql,
 }) => {
   const email = "account-" + Date.now() + "@example.test";
   await page.goto("/en/account");

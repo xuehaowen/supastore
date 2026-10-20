@@ -7,8 +7,6 @@ import {
   productSpecifications,
   storeSettings,
   auditRecords,
-  attributeTranslations,
-  attributeValueTranslations,
 } from "@/infrastructure/db/schema";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import {

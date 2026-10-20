@@ -9,7 +9,6 @@ import {
   boolean,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
 import { notificationTemplateVersions } from "./notification-templates";
 
 export const outboxEvents = pgTable("outbox_events", {

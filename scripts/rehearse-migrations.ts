@@ -5,7 +5,7 @@
  */
 
 import { migrate } from "drizzle-orm/postgres-js/migrator";
-import { db, queryClient } from "@/infrastructure/db";
+import { db } from "@/infrastructure/db";
 import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 

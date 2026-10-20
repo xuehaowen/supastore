@@ -11,8 +11,7 @@ Check session ownership and cart revision. Cart changes must invalidate stale qu
 - [add-to-cart.ts](add-to-cart.ts): Adds an eligible variant to the owned cart.
 - [get-cart.ts](get-cart.ts): Reads cart identity and current contents.
 - [mutate-cart.ts](mutate-cart.ts): Coordinates authorized cart mutations and revisions.
-- [remove-cart-item.ts](remove-cart-item.ts): Removes an item from the owned cart.
-- [update-cart-item.ts](update-cart-item.ts): Changes an owned cart item quantity.
+- [update-cart-item.ts](update-cart-item.ts): Changes an owned cart item quantity; zero removes the item.
 
 ## More context
 

@@ -1,6 +1,6 @@
 # Authentication and staff checks
 
-Better Auth configuration/client integration and active staff verification.
+Better Auth server configuration and active staff verification.
 
 ## When working here
 
@@ -19,7 +19,6 @@ protection and are logged without links or credentials. See
 [error handling](../../../../../docs/error-handling.md).
 
 - [index.ts](index.ts): Server authentication configuration and hooks.
-- [client.ts](client.ts): Browser authentication client using the current public origin.
 - [session.ts](session.ts): In-transaction active staff and owner checks.
 
 ## More context

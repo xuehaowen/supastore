@@ -323,7 +323,7 @@ export async function checkoutPage(locale: string, query: PageQuery = {}) {
     onlinePayment: stripeConfiguredFor(store),
   };
 }
-export async function accountPage(locale: string, query: PageQuery = {}) {
+export async function accountPage(query: PageQuery = {}) {
   const rawSession = await auth.api.getSession({ headers: await headers() });
   const session = rawSession?.user.emailVerified
     ? {
@@ -355,7 +355,7 @@ export async function accountPage(locale: string, query: PageQuery = {}) {
     hasUnverifiedSession: Boolean(rawSession && !session),
   };
 }
-export async function orderPage(locale: string, id: string) {
+export async function orderPage(id: string) {
   parseActionUuid(id, "Order");
   const result = await trackOrder(id, await orderToken(id));
   const store = await publicStore();

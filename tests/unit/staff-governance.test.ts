@@ -1,9 +1,6 @@
 import { describe, it, expect } from "vitest";
 import * as v from "valibot";
-import {
-  InvariantViolationError,
-  UnauthorizedError,
-} from "@/application/common/errors";
+import { InvariantViolationError } from "@/application/common/errors";
 
 describe("M2 Staff Governance & Security", () => {
   describe("Protected Owner Recovery Workflow (M5)", () => {

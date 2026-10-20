@@ -36,9 +36,9 @@ export async function GET(
       case "checkout":
         return checkoutPage(locale, query);
       case "account":
-        return accountPage(locale, query);
+        return accountPage(query);
       case "order":
-        return orderPage(locale, apiText(query, "id", 36));
+        return orderPage(apiText(query, "id", 36));
       case "collection":
         return collectionPage(locale, apiText(query, "handle", 120), query);
       default:

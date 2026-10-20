@@ -171,14 +171,11 @@ export async function authorizeSurplusReturn(
       })
       .returning();
 
-    const [allocation] = await tx
-      .insert(payoutAllocations)
-      .values({
-        paymentReturnId: paymentReturn!.id,
-        receiptId: receipt.id,
-        authorizedAmountCents: input.amountCents,
-      })
-      .returning();
+    await tx.insert(payoutAllocations).values({
+      paymentReturnId: paymentReturn!.id,
+      receiptId: receipt.id,
+      authorizedAmountCents: input.amountCents,
+    });
 
     await tx.insert(auditRecords).values({
       entityType: "payment_return",

@@ -15,7 +15,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@supastore/ui/card";
-import { availableFulfillment } from "@supastore/shipping/destination";
 import { canPlaceQuotedOrder } from "../../../lib/checkout-payment";
 import Link from "next/link";
 export const metadata = { robots: { index: false, follow: false } };

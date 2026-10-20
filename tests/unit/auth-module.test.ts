@@ -81,29 +81,26 @@ describe("Auth Module Configuration and Callbacks", () => {
       staff: false,
       allowed: false,
     },
-  ])(
-    "checks session creation for $label",
-    async ({ verified, staff, allowed }) => {
-      queries.limit.mockReset();
-      queries.limit.mockResolvedValueOnce([{ emailVerified: verified }]);
-      const before = auth.options.databaseHooks!.session!.create!.before!;
-      const result = before({
-        id: "session",
-        userId: "user",
-        token: "token",
-        expiresAt: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
+  ])("checks session creation for $label", async ({ verified, allowed }) => {
+    queries.limit.mockReset();
+    queries.limit.mockResolvedValueOnce([{ emailVerified: verified }]);
+    const before = auth.options.databaseHooks!.session!.create!.before!;
+    const result = before({
+      id: "session",
+      userId: "user",
+      token: "token",
+      expiresAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    if (allowed) await expect(result).resolves.toBeUndefined();
+    else
+      await expect(result).rejects.toMatchObject({
+        status: "FORBIDDEN",
+        body: { code: "EMAIL_NOT_VERIFIED" },
       });
-      if (allowed) await expect(result).resolves.toBeUndefined();
-      else
-        await expect(result).rejects.toMatchObject({
-          status: "FORBIDDEN",
-          body: { code: "EMAIL_NOT_VERIFIED" },
-        });
-      expect(queries.limit).toHaveBeenCalledTimes(1);
-    },
-  );
+    expect(queries.limit).toHaveBeenCalledTimes(1);
+  });
 
   it.each([true, false])(
     "checks active staff membership independently: %s",

@@ -10,7 +10,6 @@ import {
 import { createCategory } from "@/application/use-cases/catalog/create-category";
 import { createProduct } from "@/application/use-cases/catalog/create-product";
 import {
-  addProductImage,
   addProductVariant,
   removeCategory,
   removeProductImage,
@@ -177,20 +176,6 @@ export async function deleteProductVariant(form: FormData) {
     revalidateTag("catalog");
     revalidatePath("/[locale]", "layout");
     return `/admin/products/${productId}/edit?removed=${result}`;
-  });
-}
-export async function createProductImage(form: FormData) {
-  const productId = parseActionUuid(field(form, "productId"), "Product");
-  return perform(`/admin/products/${productId}/edit`, async () => {
-    await addProductImage({
-      staffUserId: await staffIdentity(),
-      productId,
-      s3Key: field(form, "s3Key"),
-      altText: field(form, "altText"),
-    });
-    revalidateTag("catalog");
-    revalidatePath("/[locale]", "layout");
-    return `/admin/products/${productId}/edit?added=image`;
   });
 }
 export async function deleteProductImage(form: FormData) {

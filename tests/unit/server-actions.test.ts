@@ -18,7 +18,6 @@ const mocks = vi.hoisted(() => ({
       "updateProduct",
       "addProductVariant",
       "removeProductVariant",
-      "addProductImage",
       "removeProductImage",
       "updateCategory",
       "removeCategory",
@@ -128,7 +127,6 @@ vi.mock("@/application/use-cases/catalog/update-product", () => ({
 vi.mock("@/application/use-cases/catalog/manage-catalog", () => ({
   addProductVariant: mocks.commands.addProductVariant,
   removeProductVariant: mocks.commands.removeProductVariant,
-  addProductImage: mocks.commands.addProductImage,
   removeProductImage: mocks.commands.removeProductImage,
   updateCategory: mocks.commands.updateCategory,
   removeCategory: mocks.commands.removeCategory,
@@ -331,11 +329,6 @@ const cases = [
     `/admin/products/${id}/edit?removed=archived`,
   ],
   [
-    "createProductImage",
-    "addProductImage",
-    `/admin/products/${id}/edit?added=image`,
-  ],
-  [
     "deleteProductImage",
     "removeProductImage",
     `/admin/products/${id}/edit?removed=image`,
@@ -378,11 +371,6 @@ const expectedPayloads: Record<string, unknown> = {
     staffUserId: "staff-session",
     productId: id,
     variantId: id,
-  },
-  createProductImage: {
-    staffUserId: "staff-session",
-    productId: id,
-    s3Key: "products/image.jpg",
   },
   deleteProductImage: {
     staffUserId: "staff-session",

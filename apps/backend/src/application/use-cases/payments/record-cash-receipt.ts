@@ -122,18 +122,15 @@ export async function recordCashReceipt(input: RecordCashReceiptInput) {
       .returning();
 
     // 5. Insert cash receipt details
-    const [cashDetails] = await tx
-      .insert(cashReceiptDetails)
-      .values({
-        receiptId: receipt!.id,
-        cashDrawerSessionId: input.cashDrawerSessionId || null,
-        sequentialNumber: sequentialReference,
-        drawerName: input.drawerName || "Main Register",
-        payerName: input.payerName || null,
-        tenderedAmountCents: input.tenderedAmountCents,
-        changeDueCents,
-      })
-      .returning();
+    await tx.insert(cashReceiptDetails).values({
+      receiptId: receipt!.id,
+      cashDrawerSessionId: input.cashDrawerSessionId || null,
+      sequentialNumber: sequentialReference,
+      drawerName: input.drawerName || "Main Register",
+      payerName: input.payerName || null,
+      tenderedAmountCents: input.tenderedAmountCents,
+      changeDueCents,
+    });
 
     // 6. Invalidate pending proposals
     const voided = await tx

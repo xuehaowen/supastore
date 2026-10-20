@@ -10,8 +10,6 @@ import { Badge } from "@supastore/ui/badge";
 import { Button, buttonVariants } from "@supastore/ui/button";
 import { cn } from "../../../../../packages/ui/src/utils";
 import { Card, CardContent } from "@supastore/ui/card";
-import { Input } from "@supastore/ui/input";
-import { Label } from "@supastore/ui/label";
 import { ShoppingBag } from "lucide-react";
 import { ShoppingPreview } from "../../shopping-preview";
 import { countryOptions, stateOptions } from "@supastore/shipping/destination";

@@ -1,5 +1,4 @@
 export {
-  createProductImage,
   createProductVariant,
   deleteCategory,
   deleteProductImage,

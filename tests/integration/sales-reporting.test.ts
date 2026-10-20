@@ -323,8 +323,7 @@ describe.skipIf(!server)("generic sales reporting PostgreSQL", () => {
         endExclusive: "2040-02-01",
       }),
     ).rejects.toThrow("revised prices without revised tax");
-    const [refund] =
-      await client`insert into refund_authorizations(order_id,kind,amount_cents,reason,authorized_by_user_id,created_at) values(${revised.orderId},'purchase_refund',10,'Historical refund',${owner},'2040-02-10T12:00:00Z') returning id`;
+    await client`insert into refund_authorizations(order_id,kind,amount_cents,reason,authorized_by_user_id,created_at) values(${revised.orderId},'purchase_refund',10,'Historical refund',${owner},'2040-02-10T12:00:00Z')`;
     await expect(
       generateSalesReport({
         actorUserId: owner,

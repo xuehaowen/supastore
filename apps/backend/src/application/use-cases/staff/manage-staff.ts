@@ -1,13 +1,8 @@
-import { eq, and, sql, ne } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
-import {
-  staffMemberships,
-  user,
-  auditRecords,
-} from "@/infrastructure/db/schema";
+import { staffMemberships, auditRecords } from "@/infrastructure/db/schema";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import {
-  ForbiddenError,
   NotFoundError,
   InvariantViolationError,
 } from "@/application/common/errors";

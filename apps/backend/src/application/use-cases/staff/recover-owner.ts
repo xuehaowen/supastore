@@ -9,8 +9,6 @@ import {
   verification,
   auditRecords,
 } from "@/infrastructure/db/schema";
-import { DomainError } from "@/application/common/errors";
-
 const EmailSchema = v.pipe(
   v.string(),
   v.email("A valid email address is required."),

@@ -11,7 +11,7 @@ record real deployment, provider and recovery evidence.
 1. Follow the [first-owner provisioning recipe](operator-cookbook.md#provision-the-first-owner) from a trusted terminal, then complete protected store setup. The admin UI has no user creation/invitation flow; Settings manages only existing memberships. Customer registration does not grant admin access. Demo seeding is not a general production staff-provisioning procedure.
 2. Set branding, support/policy pages, locale, timezone and currency.
 3. Configure shipping, optional pickup, tax, a manual payment account or cash drawer, and email. Send a test message.
-4. Add products, variants, images and translations, or preview a product CSV import.
+4. Add products, variants, images and translations, or preview a product CSV import. Product uploads accept multiple selected files, up to the product's 20-image limit. Give each image its own description; the selected variant applies to the batch. JPEG, PNG and WebP files must each be smaller than 5 MB. Upload results show failures separately; retry uploads only the failed files. Collection covers use one image.
 5. Complete a synthetic purchase, payment, fulfillment and refund before launch.
 
 The owner overview and Store setup now show a **Next step** link for the first

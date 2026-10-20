@@ -18,7 +18,6 @@ export default defineConfig({
       exclude: [
         "apps/backend/src/infrastructure/db/migrations/**",
         "apps/backend/src/infrastructure/db/schema/**",
-        "apps/backend/src/infrastructure/auth/client.ts",
         "**/*.d.ts",
       ],
       thresholds: {

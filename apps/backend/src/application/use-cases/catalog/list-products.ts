@@ -6,10 +6,7 @@ import {
   productVariants,
   productTranslations,
   productImages,
-  categories,
   storeSettings,
-  collectionMemberships,
-  productCollections,
 } from "@/infrastructure/db/schema";
 export interface ListProductsInput {
   locale?: string;

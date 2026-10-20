@@ -1,6 +1,5 @@
 import { logFailure, safeFailureCode } from "@/infrastructure/http/failure";
 import type { BatchResult } from "@/infrastructure/runtime/worker";
-import { logger } from "@/infrastructure/security/logger";
 import type {
   PaymentProvider,
   PaymentCheckoutSession,

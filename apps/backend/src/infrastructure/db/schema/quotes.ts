@@ -1,11 +1,4 @@
-import {
-  pgTable,
-  text,
-  integer,
-  jsonb,
-  timestamp,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { pgTable, integer, jsonb, timestamp, uuid } from "drizzle-orm/pg-core";
 import { carts } from "./carts";
 
 export const quotes = pgTable("quotes", {

@@ -87,8 +87,6 @@ A business transaction commits event/audit data with its state change. The backe
 
 ## Fixed boundaries and deferred work
 
-Journey review on 2026-10-15 identified a merchant-access implementation gap: the admin UI has no sign-out control. A17 tracks this separately from missing expiry/resume test coverage; customer account sign-out is available.
-
 Current boundaries include physical goods, a single merchant/currency, one stock pool, one fulfillment method per order, manual reconciliation plus the Stripe adapter, English/Simplified Chinese, and narrow transport interfaces.
 
 Multi-business/multi-currency commerce, multiple warehouses, subscriptions, digital goods, marketplaces, arbitrary workflow/plugin builders, carrier labels/calculated rates, reward transfers/expiry/backfill, installment schedules, customer self-service email changes/top-ups, and general order import remain outside current implementation scope. Receipt reassignment to a different receiving account remains deferred; owner investigation is required.
@@ -101,9 +99,6 @@ Historical load/image/bundle results live in [release evidence](generic-store-re
 
 Known older wording to interpret with care:
 
-- The README formerly described one deployment; separate services are now the container model, with combined development still available.
-- [Product scope](product-scope.md) still has first-release rows deferring multiple pickup locations and SMS; code supports multiple locations and optional SMS infrastructure, while live SMS remains disabled.
-- [Contributing](../CONTRIBUTING.md) contains design-stage/no-scripts language that predates the implementation. Use current `package.json` and the maintenance guide for commands.
 - [Architecture](architecture-overview.md) includes historical frontend implementation descriptions. Inspect actual UI imports before relying on a particular component primitive library.
 - The base and extension paragraphs of [transaction contracts](transaction-contracts.md) give different lock summaries. For a change, inspect the shared lock helper and direct locks of every affected writer and resolve the contract discrepancy; do not choose a paragraph as justification for a new lock order.
 

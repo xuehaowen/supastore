@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-  computeCrockfordChecksum,
   generateOrderReferenceCode,
   validateOrderReferenceCode,
 } from "@/domain/money/reference-code";
@@ -25,10 +24,6 @@ describe("Crockford Base32 Reference Code Generator", () => {
       validCode.slice(0, -1) + (validCode.endsWith("A") ? "B" : "A");
     expect(validateOrderReferenceCode(corruptedChecksum)).toBe(false);
 
-    // Corrupt one character in the body
-    const parts = validCode.split("-");
-    const corruptedBody = `${parts[0]}-${parts[1]!.slice(0, 3)}X-${parts[2]}`;
-    // If 'X' changed the checksum requirement, validation should fail
     expect(validateOrderReferenceCode("INVALID-CODE")).toBe(false);
   });
 });

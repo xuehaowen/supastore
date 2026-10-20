@@ -9,12 +9,9 @@ import {
   payoutAttempts,
   outgoingTransfers,
   payoutDiscrepancies,
-  outboxEvents,
-  eventDeliveries,
   auditRecords,
 } from "@/infrastructure/db/schema";
 import { acquireTransactionLocks } from "@/domain/locking/lock-order";
-import { computeOrderFinancialProjection } from "@/domain/financial-projection/projection";
 import {
   classifyPayoutTransfer,
   type Destination,

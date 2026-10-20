@@ -4,11 +4,7 @@ import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { asc, eq, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
-import {
-  customers,
-  storeCreditAccounts,
-  storeCreditEntries,
-} from "@/infrastructure/db/schema";
+import { customers, storeCreditAccounts } from "@/infrastructure/db/schema";
 import { staffIdentity, money } from "@/infrastructure/web";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { AdminNav } from "@/app/admin/admin-nav";

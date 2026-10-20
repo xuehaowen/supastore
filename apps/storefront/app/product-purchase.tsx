@@ -12,7 +12,6 @@ const ShoppingPreview = dynamic(() =>
 );
 import { addItem } from "./actions";
 import { Button } from "@supastore/ui/button";
-import { Input } from "@supastore/ui/input";
 import { Label } from "@supastore/ui/label";
 import { variantCanBePurchased } from "../lib/product-availability";
 

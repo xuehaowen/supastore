@@ -9,11 +9,8 @@ import {
   SignOutButton,
 } from "../../interactive";
 import { Card, CardContent } from "@supastore/ui/card";
-import {
-  openOwnedOrderAction,
-  saveAddressAction,
-} from "../../customer-actions";
-import { Field, Hidden, Notice } from "../../components";
+import { openOwnedOrderAction } from "../../customer-actions";
+import { Hidden, Notice } from "../../components";
 import { Button } from "@supastore/ui/button";
 import { money } from "../../../lib/web";
 import { AddressBook } from "../../address-book";

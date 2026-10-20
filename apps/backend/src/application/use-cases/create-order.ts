@@ -180,7 +180,6 @@ export async function createOrderInTransaction(
     throw new UnauthorizedError(
       "Sign in with a verified account to check out.",
     );
-  const policy = commercePolicy(settings.commercePolicy);
   const rewardComponents: RewardComponent[] = current.calculationItems.flatMap(
     (item, index) => {
       const calculated = current.result.lineItems[index]!;

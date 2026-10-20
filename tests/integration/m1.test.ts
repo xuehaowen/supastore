@@ -8,12 +8,8 @@ import {
   staffMemberships,
   paymentAccounts,
   shippingZones,
-  orders,
   quotes,
-  orderProposals,
   outboxEvents,
-  guestOrderSessions,
-  productVariants,
 } from "@/infrastructure/db/schema";
 import { createProduct } from "@/application/use-cases/catalog/create-product";
 import { listProducts } from "@/application/use-cases/catalog/list-products";

@@ -6,10 +6,7 @@ export {
   emailAuthentication,
   smtpRequiresTls,
 } from "./smtp-settings.mjs";
-import {
-  NotificationConfigurationError,
-  smtpRequiresTls,
-} from "./smtp-settings.mjs";
+import { NotificationConfigurationError } from "./smtp-settings.mjs";
 
 export interface NodemailerConfig {
   provider: "nodemailer";

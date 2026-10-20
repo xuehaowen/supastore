@@ -17,7 +17,6 @@ import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { Field, Hidden, Notice } from "@/app/components";
 import { AdminNav } from "@/app/admin/admin-nav";
 import {
-  createProductImage,
   createProductVariant,
   deleteProductImage,
   deleteProductVariant,

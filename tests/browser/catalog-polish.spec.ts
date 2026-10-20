@@ -1,6 +1,84 @@
 import { randomUUID } from "node:crypto";
 import { test, expect, clickAction } from "./fixtures";
 
+test("product image batches retain successful uploads and retry only failed files", async ({
+  admin,
+  sql,
+}) => {
+  const code = randomUUID();
+  const [product] =
+    await sql`insert into products(handle,title,is_published) values(${`batch-${code}`},'Batch image product',false) returning id`;
+  const [variant] =
+    await sql`insert into product_variants(product_id,sku,title,price_cents) values(${product!.id},${`BATCH-${code}`},'Blue',1000) returning id`;
+  await admin.goto(`/admin/products/${product!.id}/edit`);
+  let fail = true;
+  let requests = 0;
+  await admin.route("**/api/catalog-images", async (route) => {
+    requests++;
+    if (
+      fail &&
+      route
+        .request()
+        .postDataBuffer()
+        ?.includes(Buffer.from('filename="back.png"'))
+    ) {
+      fail = false;
+      await route.fulfill({
+        status: 400,
+        json: { error: "Synthetic upload failure." },
+      });
+    } else await route.continue();
+  });
+  const buffer = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAGUlEQVQokWN4+uI+SYhhVMOL0VB6OlyTBgCmaawfkFnzKAAAAABJRU5ErkJggg==",
+    "base64",
+  );
+  await admin.getByLabel("Image file").setInputFiles(
+    ["front.png", "back.png", "side.png"].map((name) => ({
+      name,
+      mimeType: "image/png",
+      buffer,
+    })),
+  );
+  for (const name of ["front", "back", "side"])
+    await admin
+      .getByLabel(`Image description for ${name}.png`, { exact: true })
+      .fill(`${name} view`);
+  await admin.getByLabel("Apply image to").selectOption(variant!.id);
+  await admin
+    .getByRole("button", { name: "Upload images", exact: true })
+    .click();
+  await expect(
+    admin.getByRole("alert").filter({ hasText: "2 of 3 images uploaded." }),
+  ).toBeVisible({ timeout: 20000 });
+  await expect(
+    admin.getByText("back.png: Synthetic upload failure.", { exact: true }),
+  ).toBeVisible();
+  expect(requests).toBe(3);
+  expect(
+    (
+      await sql`select alt_text from product_images where product_id=${product!.id} order by sort_order`
+    ).map((row) => row.alt_text),
+  ).toEqual(["front view", "side view"]);
+  await admin
+    .getByRole("button", { name: "Retry failed images", exact: true })
+    .click();
+  await expect(
+    admin.getByRole("alert").filter({ hasText: "3 images uploaded." }),
+  ).toBeVisible({ timeout: 20000 });
+  expect(requests).toBe(4);
+  const saved =
+    await sql`select alt_text,variant_id from product_images where product_id=${product!.id} order by sort_order`;
+  expect(saved.map((row) => row.alt_text)).toEqual([
+    "front view",
+    "side view",
+    "back view",
+  ]);
+  expect(saved.every((row) => row.variant_id === variant!.id)).toBe(true);
+  await admin.reload();
+  await expect(admin.getByText(/3 images uploaded\./)).toBeVisible();
+});
+
 test("public catalog requests responsive optimized thumbnails", async ({
   page,
   admin,
@@ -26,7 +104,8 @@ test("public catalog requests responsive optimized thumbnails", async ({
   await expect(
     admin.getByRole("alert").filter({ hasText: "Image uploaded." }),
   ).toBeVisible({ timeout: 20000 });
-  await page.goto("/en");
+  // The home catalog is cached for 30 seconds; search reads the new image now.
+  await page.goto("/en/search?q=studio");
   const image = page.getByRole("img", { name: "Studio cup", exact: true });
   await expect(image).toBeVisible();
   await expect

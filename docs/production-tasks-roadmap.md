@@ -400,7 +400,3 @@ Contract: [Receipt corrections](business-workflows.md#7-receipt-corrections) and
 - [x] **Cross-cutting accounting and concurrency invariants verified**
   - _Details:_ Verify every check in [user journeys](critical-user-journeys.md#accounting-and-concurrency-checks), including idempotency, money math, authorization isolation and outbox semantics.
   - _Verification:_ All release gates signed off with runnable test evidence. Milestone 3 ready for production release.
-
-## Deferred proposals
-
-Customer accounts, store credit/mixed tender, card checkout, quantitative inventory, promotions/loyalty, multiple pickup locations, direct messaging, new themes and deployment profiles require separate merchant evidence and scoped designs. Store credit requires a new ledger, ownership and redemption proposal; the removed recovery architecture is not a prerequisite to reintroduce it.

@@ -1,7 +1,4 @@
-import type {
-  PaymentProvider,
-  PaymentCheckoutSession,
-} from "@/application/ports/payments";
+import type { PaymentProvider } from "@/application/ports/payments";
 import { paymentProviderFromEnvironment } from "@/infrastructure/payments/payment-adapters";
 import { eq, and, notInArray } from "drizzle-orm";
 import { db } from "@/infrastructure/db";

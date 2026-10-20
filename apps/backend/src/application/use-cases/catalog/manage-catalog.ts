@@ -270,17 +270,6 @@ export async function removeProductVariant(input: {
   });
 }
 
-export async function addProductImage(input: {
-  staffUserId: string;
-  productId: string;
-  s3Key: string;
-  altText: string;
-}) {
-  throw new DomainError(
-    "Use the image upload control to attach a validated image.",
-  );
-}
-
 export async function removeProductImage(input: {
   staffUserId: string;
   productId: string;

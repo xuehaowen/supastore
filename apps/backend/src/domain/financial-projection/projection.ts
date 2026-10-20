@@ -84,7 +84,6 @@ export function computeReceiptProjection(
 
   const Fi = r.frozenPurchaseFundingCents ?? 0;
   const settledNonPurchase = r.settledNonPurchaseReturnsCents ?? 0;
-  const settledPurchase = r.settledPurchaseRefundsCents ?? 0;
 
   // F'i = min(Fi, max(0, Ri - settled non-purchase returns from that receipt))
   const Fprime_i = Math.min(Fi, Math.max(0, Ri - settledNonPurchase));
@@ -140,10 +139,6 @@ export function computeOrderFinancialProjection(
   );
   const totalSettledNonPurchase = input.receipts.reduce(
     (sum, r) => sum + (r.settledNonPurchaseReturnsCents ?? 0),
-    0,
-  );
-  const totalSettledPurchase = input.receipts.reduce(
-    (sum, r) => sum + (r.settledPurchaseRefundsCents ?? 0),
     0,
   );
   const totalSettledPayoutsCents = receiptProjections.reduce(

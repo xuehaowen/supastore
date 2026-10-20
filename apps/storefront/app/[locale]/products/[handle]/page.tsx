@@ -3,7 +3,6 @@ import { publicPageMetadata } from "../../../../lib/page-metadata";
 import { BackendApiError } from "../../../../lib/api";
 import { readProductPage } from "../../../../lib/page-data";
 import { textFor } from "@supastore/i18n/messages";
-import { notFound } from "next/navigation";
 import { ProductPurchase } from "../../../product-purchase";
 import { getTranslations } from "next-intl/server";
 import { variantCanBePurchased } from "../../../../lib/product-availability";
