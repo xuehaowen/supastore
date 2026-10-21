@@ -102,6 +102,7 @@ export const adminNavigation: { label: string; sections: AdminSection[] }[] = [
         ownerOnly: true,
       },
       { href: "/admin/reports", label: "Reports", icon: "reports" },
+      { href: "/admin/security", label: "Account security", icon: "settings" },
       {
         href: "/admin/setup",
         label: "Settings",

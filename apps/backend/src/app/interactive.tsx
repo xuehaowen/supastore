@@ -6,10 +6,12 @@ import { Alert, AlertDescription } from "@supastore/ui/alert";
 import { Button } from "@supastore/ui/button";
 import { Input } from "@supastore/ui/input";
 import { Label } from "@supastore/ui/label";
-import { authenticate } from "@/app/client-requests";
+import { authenticate, staffFactorRequest } from "@/app/client-requests";
 export function AuthForm({ locale = "en" }: { locale?: string }) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [challenge, setChallenge] = useState(false);
+  const [recovery, setRecovery] = useState(false);
   const destination = "/admin";
   return (
     <form
@@ -21,11 +23,23 @@ export function AuthForm({ locale = "en" }: { locale?: string }) {
         setBusy(true);
         setMessage("");
         try {
-          await authenticate({
-            email: fields.get("email"),
-            password: fields.get("password"),
-            callbackURL: destination,
-          });
+          if (challenge) {
+            await staffFactorRequest(
+              recovery ? "verify-backup-code" : "verify-totp",
+              { code: fields.get("code"), trustDevice: false },
+            );
+          } else {
+            const result = await authenticate({
+              email: fields.get("email"),
+              password: fields.get("password"),
+              callbackURL: destination,
+            });
+            if (result?.twoFactorRedirect) {
+              setChallenge(true);
+              form.reset();
+              return;
+            }
+          }
           window.location.assign(destination);
         } catch (error) {
           setMessage(
@@ -38,37 +52,60 @@ export function AuthForm({ locale = "en" }: { locale?: string }) {
         }
       }}
     >
-      <div className="grid gap-2">
-        <Label className="auth-field-label" htmlFor="auth-email">
-          <span>
-            <Mail className="mr-1 inline size-3.5" />
-            {textFor(locale).auth.email}
-          </span>
-        </Label>
-        <Input
-          id="auth-email"
-          type="email"
-          name="email"
-          required
-          autoComplete="email"
-          placeholder={textFor(locale).common.emailPlaceholder}
-        />
-      </div>
-      <div className="grid gap-2">
-        <Label className="auth-field-label" htmlFor="auth-password">
-          <span>
-            <LockKeyhole className="mr-1 inline size-3.5" />
-            {textFor(locale).auth.password}
-          </span>
-        </Label>
-        <Input
-          id="auth-password"
-          type="password"
-          name="password"
-          required
-          autoComplete="current-password"
-        />
-      </div>
+      {challenge ? (
+        <div className="grid gap-2">
+          <Label htmlFor="auth-code">
+            {recovery ? "Recovery code" : "Authenticator code"}
+          </Label>
+          <Input
+            id="auth-code"
+            name="code"
+            required
+            autoComplete="one-time-code"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setRecovery(!recovery)}
+          >
+            {recovery ? "Use authenticator" : "Use recovery code"}
+          </Button>
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-2">
+            <Label className="auth-field-label" htmlFor="auth-email">
+              <span>
+                <Mail className="mr-1 inline size-3.5" />
+                {textFor(locale).auth.email}
+              </span>
+            </Label>
+            <Input
+              id="auth-email"
+              type="email"
+              name="email"
+              required
+              autoComplete="email"
+              placeholder={textFor(locale).common.emailPlaceholder}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label className="auth-field-label" htmlFor="auth-password">
+              <span>
+                <LockKeyhole className="mr-1 inline size-3.5" />
+                {textFor(locale).auth.password}
+              </span>
+            </Label>
+            <Input
+              id="auth-password"
+              type="password"
+              name="password"
+              required
+              autoComplete="current-password"
+            />
+          </div>
+        </>
+      )}
       <Button type="submit" size="lg" disabled={busy}>
         {busy && <LoaderCircle className="animate-spin" />}
         {busy

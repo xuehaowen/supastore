@@ -1,6 +1,7 @@
 import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "@supastore/contracts";
 import { resolvePublicOrigin } from "../../../../../packages/config/public-origin.mjs";
 import { betterAuth } from "better-auth";
+import { twoFactor } from "better-auth/plugins/two-factor";
 import { createHmac } from "node:crypto";
 import { APIError } from "better-auth/api";
 import { and, eq } from "drizzle-orm";
@@ -13,6 +14,8 @@ import {
   verification,
   session,
   staffSession,
+  staffTwoFactor,
+  authRateLimit,
 } from "@/infrastructure/db/schema";
 import { queueAuthEmail } from "@/infrastructure/notifications/smtp";
 import { logFailure } from "@/infrastructure/http/failure";
@@ -29,10 +32,27 @@ function createAuth(audience: "customer" | "staff") {
     secret: createHmac("sha256", rootSecret)
       .update(`supastore:${audience}`)
       .digest("hex"),
-    advanced: { cookiePrefix: `supastore-${audience}` },
+    appName: staff ? "Supastore staff" : "Supastore",
+    plugins: staff
+      ? [twoFactor({ issuer: "Supastore", twoFactorTable: "staffTwoFactor" })]
+      : [],
+    rateLimit: {
+      storage: "database",
+      window: 60,
+      max: 100,
+      customRules: {
+        "/sign-in/email": { window: 60, max: 10 },
+        "/request-password-reset": { window: 60, max: 5 },
+      },
+    },
+    advanced: {
+      cookiePrefix: `supastore-${audience}`,
+      ipAddress: { ipAddressHeaders: ["x-forwarded-for"] },
+    },
     trustedOrigins: [
-      "http://localhost:3000",
-      "http://127.0.0.1:3000",
+      ...(process.env.NODE_ENV === "production"
+        ? []
+        : ["http://localhost:3000", "http://127.0.0.1:3000"]),
       process.env.APP_URL,
       process.env.BETTER_AUTH_URL,
       process.env.STOREFRONT_ORIGIN,
@@ -44,6 +64,8 @@ function createAuth(audience: "customer" | "staff") {
         account,
         verification,
         session: staff ? staffSession : session,
+        staffTwoFactor,
+        rateLimit: authRateLimit,
       },
     }),
     emailAndPassword: {
@@ -109,6 +131,25 @@ function createAuth(audience: "customer" | "staff") {
       },
     },
     databaseHooks: {
+      ...(staff
+        ? {
+            user: {
+              update: {
+                after: async (identity: {
+                  id: string;
+                  twoFactorEnabled?: boolean;
+                }) => {
+                  // Enabling/disabling a factor must invalidate sessions issued before that change.
+                  // The plugin subsequently creates a fresh session after successful verification.
+                  if (typeof identity.twoFactorEnabled === "boolean")
+                    await db
+                      .delete(staffSession)
+                      .where(eq(staffSession.userId, identity.id));
+                },
+              },
+            },
+          }
+        : {}),
       session: {
         create: {
           before: async (session) => {

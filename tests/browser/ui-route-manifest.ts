@@ -32,6 +32,7 @@ export const backendPageRoutes = [
   "/admin/promotions",
   "/admin/reconciliation",
   "/admin/reports",
+  "/admin/security",
   "/admin/returns",
   "/admin/returns/[id]",
   "/admin/settings/commerce",

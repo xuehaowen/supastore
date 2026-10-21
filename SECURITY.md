@@ -12,4 +12,6 @@ The maintainers assess impact, reproduce the issue, coordinate a fix and publish
 
 ## Release checks
 
+Follow [Security deployment](docs/security-deployment.md) for staff MFA enrollment, shared authentication limits, trusted ingress and response/upload boundaries. MFA enrollment is per staff account; it is not globally enforced.
+
 Review customer/staff authorization, private order proofs, financial invariants, storage access, dependency updates, migrations and backup/restore behavior. Publish affected/fixed versions and upgrade guidance with security fixes. Deployment credentials, backups and merchant-specific evidence stay outside the repository.

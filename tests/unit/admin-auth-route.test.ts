@@ -44,3 +44,43 @@ it("routes staff session reads and sign-in/sign-out only to the staff handler", 
   expect(handlers.GET).toHaveBeenCalledOnce();
   expect(handlers.POST).toHaveBeenCalledTimes(2);
 });
+
+it("exposes bounded same-origin authenticator requests without trusted-device bypass", async () => {
+  for (const body of [
+    { code: "123456", trustDevice: true },
+    { method: "otp" },
+    { code: "x".repeat(40000) },
+  ]) {
+    expect(
+      (
+        await POST(
+          new Request(
+            "http://localhost/api/admin-auth/two-factor/verify-totp",
+            {
+              method: "POST",
+              headers: {
+                origin: "http://localhost",
+                "content-type": "application/json",
+              },
+              body: JSON.stringify(body),
+            },
+          ),
+        )
+      ).status,
+    ).toBe(400);
+  }
+  expect(handlers.POST).not.toHaveBeenCalled();
+  const result = await POST(
+    new Request("http://localhost/api/admin-auth/two-factor/verify-totp", {
+      method: "POST",
+      headers: {
+        origin: "http://localhost",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ code: "123456" }),
+    }),
+  );
+  expect(result.status).toBe(200);
+  expect(result.headers.get("cache-control")).toBe("no-store");
+  expect(handlers.POST).toHaveBeenCalledOnce();
+});

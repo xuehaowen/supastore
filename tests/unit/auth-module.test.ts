@@ -13,6 +13,35 @@ vi.mock("@/infrastructure/db", () => ({
 }));
 
 describe("Auth Module Configuration and Callbacks", () => {
+  it("does not trust development origins implicitly in production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("STOREFRONT_ORIGIN", "https://shop.example.test");
+    vi.stubEnv("APP_URL", "https://shop.example.test");
+    vi.stubEnv("BETTER_AUTH_URL", "https://shop.example.test");
+    vi.stubEnv(
+      "BETTER_AUTH_SECRET",
+      "production-fixture-random-secret-32-characters",
+    );
+    try {
+      vi.resetModules();
+      const { staffAuth: productionAuth } =
+        await import("@/infrastructure/auth");
+      expect(productionAuth.options.trustedOrigins).not.toContain(
+        "http://localhost:3000",
+      );
+      expect(productionAuth.options.trustedOrigins).not.toContain(
+        "http://127.0.0.1:3000",
+      );
+      expect(productionAuth.options.trustedOrigins).toContain(
+        "https://shop.example.test",
+      );
+      expect(
+        productionAuth.options.advanced?.ipAddress?.ipAddressHeaders,
+      ).toEqual(["x-forwarded-for"]);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
   it("offers authenticator MFA only for staff and persists auth rate limits", () => {
     expect(
       staffAuth.options.plugins?.some((plugin) => plugin.id === "two-factor"),

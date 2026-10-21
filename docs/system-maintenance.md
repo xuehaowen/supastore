@@ -320,6 +320,10 @@ Use the disposable project defined by `scripts/compose.smoke.yml` for container 
 
 ## Release evidence and remaining external checks
 
+Staff authenticator MFA and PostgreSQL authentication rate counters are available
+after migration `0043_staff_security`. Follow [security deployment](security-deployment.md)
+for per-account enrollment, recovery-code handling and trusted TLS ingress.
+
 The repository contains local synthetic integration/browser/container/load/restore evidence. Use the dated hardening evidence for the checks actually rerun. No production migration was applied.
 
 Production acceptance still needs real Stripe configuration and payment/refund receipt verification, SMTP receipt in real inboxes, public TLS/callback/origin validation, trusted ingress limits, production-copy migration/restore rehearsal, and hosting/domain cutover. Optional SMS remains disabled and requires a separate authorized activation decision and provider acceptance. Use deployment-specific measurements for image/memory/bundle claims.

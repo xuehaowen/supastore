@@ -81,7 +81,7 @@ for (const [path, handler] of [
         },
         body,
         duplex: "half",
-      } as RequestInit),
+      } as ConstructorParameters<typeof NextRequest>[1]),
     );
     expect(response.status).toBe(413);
     expect(cancelled).toBe(true);

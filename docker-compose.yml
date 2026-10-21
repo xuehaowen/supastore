@@ -126,7 +126,8 @@ services:
     image: ${STOREFRONT_IMAGE:-supastore-storefront:latest}
     restart: unless-stopped
     ports:
-      - "${PORT:-3000}:3000"
+      # Use loopback with a host TLS proxy; explicitly opt into other interfaces.
+      - "${STOREFRONT_BIND:-127.0.0.1}:${PORT:-3000}:3000"
     environment:
       NODE_ENV: production
       NODE_OPTIONS: ${STOREFRONT_NODE_OPTIONS:---max-old-space-size=256}

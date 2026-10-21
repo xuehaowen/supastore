@@ -10,6 +10,10 @@ import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import { ForbiddenError, DomainError } from "@/application/common/errors";
 import { revalidateTag, revalidatePath } from "next/cache";
 import { assertMutationOrigin } from "@/infrastructure/http/commerce-api";
+import {
+  readUploadForm,
+  UploadTooLargeError,
+} from "@/infrastructure/http/bounded-multipart";
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,7 +43,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const formData = await request.formData();
+  let formData: FormData;
+  try {
+    formData = await readUploadForm(request);
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof UploadTooLargeError
+            ? "CSV upload exceeds the 6 MB request limit."
+            : "Invalid multipart upload.",
+      },
+      { status: error instanceof UploadTooLargeError ? 413 : 400 },
+    );
+  }
   const file = formData.get("file");
 
   if (!(file instanceof File)) {

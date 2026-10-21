@@ -1,18 +1,23 @@
 import { fileURLToPath } from "node:url";
-import { loadEnvConfig } from "@next/env";
-loadEnvConfig(
+import nextEnv from "@next/env";
+nextEnv.loadEnvConfig(
   fileURLToPath(new URL("../../", import.meta.url)),
   process.env.NODE_ENV !== "production",
   console,
   true,
 );
 import createNextIntlPlugin from "next-intl/plugin";
-import type { NextConfig } from "next";
+
+import { securityHeaders } from "../../packages/config/security-headers.mjs";
 
 const isStandalone =
   process.env.STANDALONE === "true" || process.env.DOCKER_BUILD === "true";
 
-const nextConfig: NextConfig = {
+/** @type {import("next").NextConfig} */
+const nextConfig = {
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
+  },
   reactStrictMode: true,
   outputFileTracingRoot: fileURLToPath(new URL("../../", import.meta.url)),
   transpilePackages: [

@@ -66,6 +66,21 @@ export async function signOutStaff() {
   if (!response.ok) throw new Error("Unable to sign out. Please retry.");
 }
 
+export async function staffFactorRequest(
+  operation: "enable" | "disable" | "verify-totp" | "verify-backup-code",
+  body: Record<string, unknown>,
+) {
+  const response = await fetch(`/api/admin-auth/two-factor/${operation}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await readJson(response);
+  if (!response.ok)
+    throw new Error(errorMessage(data, "Unable to verify account security."));
+  return data;
+}
+
 export async function importProductsCsv(
   file: File,
 ): Promise<ProductImportResult> {

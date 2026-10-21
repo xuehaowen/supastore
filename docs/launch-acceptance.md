@@ -45,6 +45,10 @@ are being selected. Do not put real transfers through a synthetic rehearsal.
    reachable endpoint and CORS configuration.
 6. Check `/api/health/live`, `/api/health/ready` and worker health. A database
    readiness response does not prove provider delivery or storage access.
+7. Follow [security deployment](security-deployment.md): enroll every active staff
+   account in authenticator MFA, store recovery codes privately, and verify zero
+   unenrolled accounts using its read-only query. Test second-factor sign-in and
+   confirm rate limits survive a backend restart through the trusted edge.
 
 **Pass evidence:** HTTPS/browser observations, selected image revisions, cookie
 attributes, private-service exposure checks and sanitized health results.

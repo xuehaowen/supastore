@@ -1,8 +1,12 @@
 import { fileURLToPath } from "node:url";
 import createNextIntlPlugin from "next-intl/plugin";
 import { resolveBackendOrigin } from "../../packages/config/backend-origin.mjs";
+import { securityHeaders } from "../../packages/config/security-headers.mjs";
 const backend = resolveBackendOrigin(process.env);
 const nextConfig = {
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
+  },
   transpilePackages: [
     "@supastore/ui",
     "@supastore/i18n",

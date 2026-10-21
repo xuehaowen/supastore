@@ -4,6 +4,10 @@ import { staffIdentity } from "@/infrastructure/web";
 import { uploadCatalogImage } from "@/application/use-cases/catalog/upload-catalog-image";
 import { DomainError, ForbiddenError } from "@/application/common/errors";
 import { assertMutationOrigin } from "@/infrastructure/http/commerce-api";
+import {
+  readUploadForm,
+  UploadTooLargeError,
+} from "@/infrastructure/http/bounded-multipart";
 export async function POST(request: NextRequest) {
   try {
     assertMutationOrigin(request);
@@ -12,14 +16,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
     throw error;
   }
-  if (Number(request.headers.get("content-length")) > 6 * 1024 * 1024)
-    return NextResponse.json(
-      { error: "Image must be smaller than 5 MB." },
-      { status: 413 },
-    );
   try {
     const staffUserId = await staffIdentity();
-    const form = await request.formData(),
+    const form = await readUploadForm(request),
       file = form.get("file");
     if (!(file instanceof File) || file.size >= 5 * 1024 * 1024)
       throw new DomainError("Choose a JPEG, PNG, or WebP smaller than 5 MB.");
@@ -41,6 +40,11 @@ export async function POST(request: NextRequest) {
     revalidatePath("/[locale]", "layout");
     return NextResponse.json({ saved: true });
   } catch (e) {
+    if (e instanceof UploadTooLargeError)
+      return NextResponse.json(
+        { error: "Image upload exceeds the 6 MB request limit." },
+        { status: 413 },
+      );
     return NextResponse.json(
       {
         error:
