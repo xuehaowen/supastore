@@ -1,11 +1,17 @@
 import path from "node:path";
-import { defineConfig } from "vitest/config";
+import { defineConfig, configDefaults } from "vitest/config";
 
 export default defineConfig({
   esbuild: { jsx: "automatic" },
   test: {
     environment: "node",
-    exclude: ["tests/browser/**", "node_modules/**"],
+    exclude: [
+      ...configDefaults.exclude,
+      "tests/browser/**",
+      "**/.tmp-*/**",
+      "**/.test-*/**",
+      "**/.supastore-demo/**",
+    ],
     globals: true,
     testTimeout: 20000,
     coverage: {

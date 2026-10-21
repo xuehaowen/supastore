@@ -252,6 +252,11 @@ record-by-record decisions. Never delete existing volumes as an upgrade recipe.
 | Analytics absent                     | Build-time HTTPS endpoint, explicit consent, endpoint response                      | Rebuild if needed; failed purchase measurements can retry on a later visit             |
 | Browser fixture cannot bind/start    | Competing fixture ports, Chromium/native PostgreSQL prerequisites                   | Stop the conflicting fixture or fix prerequisites; retain logs                         |
 
+For deployment configuration, migration history and public security headers, run
+`pnpm check:deployment --connect` from the matching release checkout. See
+[security deployment](security-deployment.md) for the read-only database credentials
+and manual ingress checks required alongside its report.
+
 Use a request ID from the visible error and sanitized application logs to trace
 an uncertain mutation. Inspect the existing order before submitting another
 purchase or payment. Keep authoritative financial reports separate from optional

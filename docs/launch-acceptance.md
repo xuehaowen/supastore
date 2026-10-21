@@ -30,6 +30,9 @@ are being selected. Do not put real transfers through a synthetic rehearsal.
 
 1. Confirm the target, versioned images and migration revision match the release
    being accepted. Follow the cookbook's explicit migration/start sequence.
+   Run `pnpm check:deployment --connect` from the matching release checkout with
+   the target's private configuration; retain its sanitized report. Complete its
+   manual checks separately.
 2. Open the actual public HTTPS storefront with a normally trusted browser.
    Require a valid hostname/certificate chain and no certificate bypass or mixed
    content. Verify the HTTP origin redirects to the intended HTTPS origin.

@@ -3,6 +3,11 @@ import { describeFailure } from "./failure";
 export { describeFailure } from "./failure";
 import { parseActionInteger } from "@/application/common/request-validation";
 import { resolvePublicOrigin } from "../../../../../packages/config/public-origin.mjs";
+import {
+  readBoundedBody,
+  BodyTooLargeError,
+  BodyReadTimeoutError,
+} from "./bounded-body";
 
 export function assertMutationOrigin(request: Request) {
   const origin = request.headers.get("origin");
@@ -24,26 +29,19 @@ export async function readApiBody(
   assertMutationOrigin(request);
   if (!request.headers.get("content-type")?.startsWith("application/json"))
     throw new DomainError("JSON body required.");
-  // Bound actual bytes as well as Content-Length, including chunked requests.
-  const reader = request.body?.getReader();
-  if (!reader) throw new DomainError("JSON body required.");
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  while (true) {
-    const chunk = await reader.read();
-    if (chunk.done) break;
-    size += chunk.value.byteLength;
-    if (size > 32768) {
-      await reader.cancel();
+  if (!request.body) throw new DomainError("JSON body required.");
+  let bytes: Uint8Array;
+  try {
+    bytes = await readBoundedBody(request.body, {
+      maxBytes: 32768,
+      contentLength: request.headers.get("content-length"),
+    });
+  } catch (error) {
+    if (error instanceof BodyTooLargeError)
       throw new DomainError("Request is too large.");
-    }
-    chunks.push(chunk.value);
-  }
-  const bytes = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.length;
+    if (error instanceof BodyReadTimeoutError)
+      throw new DomainError("Request timed out.");
+    throw error;
   }
   let value: unknown;
   try {

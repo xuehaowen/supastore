@@ -85,9 +85,19 @@ charges/refunds merely because a response timed out.
 
 ## Failure coverage matrix
 
+JSON request bodies are bounded to 32 KiB with a 10-second read deadline;
+multipart requests retain their 6 MiB/30-second request boundary. Both count
+actual bytes, cancel incomplete reads and release stream locks. Oversized JSON
+remains a validation failure; multipart routes retain their 413 response.
+Neither rejection starts a mutation, so users can correct the input and retry.
+Deployment diagnostics are read-only: failures return fixed messages and a
+nonzero CLI status, while skipped connectivity checks remain explicit.
+
 | Operation                             | Failure and recovery evidence                                                                                            | Tests                                                                                                                                                                 |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | API/admin boundaries                  | Status, safe message, correlation, private errors                                                                        | Unit: `failure-contract`, `commerce-api`, `action-failure`, `server-actions`                                                                                          |
+| Bounded request reads                 | Actual-byte limits, declared-length mismatch, source failure, timeout and cancellation without lock leaks                | Unit: `bounded-body`, `bounded-multipart`, `admin-upload-origin`, `commerce-api`                                                                                      |
+| Deployment readiness                  | Missing/divergent migration history, invalid origins, missing headers and safe connection failures                       | Unit: `deployment-checks`; integration: `deployment-readiness`                                                                                                        |
 | Evidence upload                       | Origin/access denial, invalid/oversized data, hidden storage errors, retry                                               | Unit: `evidence-upload-route`, `api-routes`; browser `cuj` C6                                                                                                         |
 | Checkout                              | Invalid/stale quote, consent, retained inputs and duplicate-submission recovery                                          | Unit: `checkout`, `server-actions`, `checkout-contracts`; browser `cuj`                                                                                               |
 | Contextual commerce                   | Missing context, exclusions, stock changes, invalid promotions, stale settings revisions and retained rule-editor drafts | Unit: `commerce-evaluation`, `commerce-preview-contract`, `commerce-rule-form`, `commerce-summary`; integration/browser `commerce-evaluation` / `contextual-commerce` |
