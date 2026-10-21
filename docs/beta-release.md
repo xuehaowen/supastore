@@ -70,7 +70,35 @@ Docker Engine 29.7.2 and Compose 5.5.1:
   Prettier checks passed. The release/demo changes received independent review.
 - GitHub private vulnerability reporting was enabled and verified through its API.
 
-These are local preparation results, not an uncached fresh-clone rehearsal,
-hosted CI result, published release, provider acceptance or observed human pilot.
-The publishing workflow has not been run and no beta images or tag were published
-as part of this preparation. Repeat the release prerequisites on the merged commit.
+These initial checks used the existing workspace. The clean-clone rehearsal below
+adds installation evidence; neither result establishes hosted CI, a published
+release, provider acceptance or an observed human pilot. The publishing workflow
+has not been run and no beta images or tag were published as part of this
+preparation. Repeat the release prerequisites on the merged commit.
+
+## Clean-clone rehearsal — 2026-10-20
+
+Candidate `666104b` was cloned locally with `git clone --no-local --single-branch`.
+The clone had no `node_modules`, root `.env` or existing demo settings. A newly
+created Docker container builder (`supastore-beta-fresh-20261020`, with
+`default-load=true`) was selected through `BUILDX_BUILDER`; it had no prior build
+cache. The frozen install downloaded all 678 packages with zero package reuse.
+
+- `node scripts/demo.mjs` exited successfully after building all four targets,
+  creating new, separately named volumes, migrating, provisioning storage and
+  seeding the three products. Application and PostgreSQL health checks passed.
+- `node scripts/test-demo.mjs` passed readiness, storefront/API catalog,
+  anonymous admin denial, synthetic owner login/staff access and sign-out checks.
+  No host dependency installation or root environment file was needed.
+- The new `demo-smoke` CI job runs those same commands on an Ubuntu runner,
+  includes failure diagnostics and always stops the demo. Its hosted execution
+  remains pending until these commits are pushed through the repository workflow.
+- Targeted packaging tests (5), root type checking, ESLint and repository-wide
+  formatting passed after the isolation/smoke changes. Independent review found
+  no remaining blockers.
+
+Separate checkouts previously shared demo volumes. New settings now persist a
+validated random Compose project name; legacy settings preserve the original
+project and data. The rehearsal demo was stopped and its generated settings and
+volumes retained. The temporary builder was removed. This local Git-clone test
+does not verify cloning from GitHub, hosted CI or anonymous registry pulls.

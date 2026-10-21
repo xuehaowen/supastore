@@ -13,6 +13,8 @@ below establishes a supported production release or real merchant acceptance.
 - Explicit console SMS previews, with silent disabled mode and separate live authorization.
 - Transactional outbox delivery, scoped authentication, private storage and recovery tooling.
 - Isolated Docker demo, private vulnerability reporting and contributor templates.
+- Per-checkout demo volumes and a dependency-free CI smoke check for catalog,
+  synthetic owner access and sign-out.
 - Release workflow for versioned backend/storefront/migration images, gated on CI.
 
 Production provider/HTTPS/recovery acceptance and the observed human merchant
