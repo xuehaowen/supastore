@@ -30,7 +30,29 @@ test("consent controls the shopping funnel and confirmed purchase retries withou
     accepted.push(payload);
     await route.fulfill({ status: 204, headers });
   });
+  await page.setViewportSize({ width: 375, height: 900 });
   await page.goto("/en");
+  const allowButton = page.getByRole("button", {
+    name: "Allow analytics",
+    exact: true,
+  });
+  const declineButton = page.getByRole("button", {
+    name: "Decline",
+    exact: true,
+  });
+  await expect(allowButton).toBeVisible();
+  await expect(declineButton).toBeVisible();
+  const allow = await allowButton.boundingBox();
+  const decline = await declineButton.boundingBox();
+  expect(allow).not.toBeNull();
+  expect(decline).not.toBeNull();
+  expect(allow!.height).toBeGreaterThanOrEqual(32);
+  expect(decline!.height).toBeGreaterThanOrEqual(32);
+  expect(decline!.x - (allow!.x + allow!.width)).toBeGreaterThanOrEqual(8);
+  await page.screenshot({
+    path: test.info().outputPath("analytics-consent-mobile.png"),
+    fullPage: true,
+  });
   await page.getByRole("button", { name: "Decline", exact: true }).click();
   await page.goto("/en/cart");
   await expect(

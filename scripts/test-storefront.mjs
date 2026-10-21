@@ -472,12 +472,18 @@ try {
             "tests/browser/cuj.spec.ts",
             "tests/browser/i18n.spec.ts",
             "tests/browser/boundaries.spec.ts",
+            "tests/browser/error-handling.spec.ts",
             "tests/browser/cross-service-sitemap.spec.ts",
             "tests/browser/sitemap.spec.ts",
             "tests/browser/cross-service-scale.spec.ts",
             "tests/browser/sales-usability.spec.ts",
             "tests/browser/manual-launch-profiles.spec.ts",
             "tests/browser/contextual-commerce.spec.ts",
+            "tests/browser/catalog-polish.spec.ts",
+            "tests/browser/commerce-management.spec.ts",
+            "tests/browser/session-isolation.spec.ts",
+            "tests/browser/sms-consent.spec.ts",
+            "tests/browser/admin-history-pagination.spec.ts",
             "tests/browser/ui-page-audit.spec.ts",
           ];
     await completed(

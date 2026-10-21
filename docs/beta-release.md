@@ -102,3 +102,34 @@ validated random Compose project name; legacy settings preserve the original
 project and data. The rehearsal demo was stopped and its generated settings and
 volumes retained. The temporary builder was removed. This local Git-clone test
 does not verify cloning from GitHub, hosted CI or anonymous registry pulls.
+
+## Browser verification — 2026-10-20
+
+Production builds of both services were checked in an isolated Linux Playwright
+1.63.0 container, using synthetic PostgreSQL, SMTP and storage fixtures. The
+candidate was `7f02fb8` plus the browser fixes in this working tree.
+
+- Final full Chromium run: **124 passed, 1 skipped** in 6.0 minutes. The skipped
+  case requires the separate representative benchmark harness. Optional analytics
+  ran with its synthetic endpoint intercepted by Playwright.
+- Responsive audit: **118 screens**, covering 46 backend and 19 storefront page
+  sources plus their locale/state/role variants, at widths 1440, 768 and 375.
+  No horizontal overflow or serious/critical axe violations were found. Mobile
+  checkout and product-editor captures were also inspected visually.
+- Corrected stale promotion selectors, separate customer-session setup, ambiguous
+  diagnostic alert selection and SMS-save navigation timing. The email preview
+  retains its sandbox and is audited separately under a script-blocking CSP,
+  avoiding axe's reproduced stall in a script-disabled iframe.
+- Added these regression suites to the default browser/CI selection.
+- Visual inspection then found adjacent analytics consent buttons. Matching
+  outlined buttons now have spacing and wrapping. A fresh production build passed
+  the enhanced mobile analytics test (size/separation, consent, funnel and purchase
+  retry); related unit tests, type checks and review also passed. The full run
+  above preceded this focused visual fix; its affected flow was then retested.
+
+Local reports/screenshots are retained under `.tmp-cuj/browser-final-report`,
+`.tmp-cuj/browser-final-results` and `.tmp-cuj/browser-visual-report`. They are
+ignored artifacts, not files shipped with the repository. The initial Windows
+build was blocked by SWC native-cache permissions, so these passing results apply
+to Linux Chromium. Firefox/WebKit, hosted CI, real provider acceptance and the
+human merchant pilot remain outside this verification.

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { test, expect, login, clickAction } from "./fixtures";
+import { test, expect, clickAction } from "./fixtures";
 
 test("merchant creates a draft, sells with mixed credit, receives a partial return and settles both refund sources", async ({
   admin,
@@ -70,8 +70,17 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
   );
 
   // The seeded verified owner is also a customer in a separate browser session.
-  await login(page);
   await page.goto("/en/account");
+  await page.getByLabel("Email", { exact: true }).fill("owner@example.test");
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill(process.env.DEMO_OWNER_PASSWORD!);
+  await page
+    .getByRole("button", { name: "Sign in securely", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Save profile", exact: true }),
+  ).toBeVisible();
   await admin.goto("/admin/store-credit?q=owner%40example.test");
   await admin
     .getByRole("button", { name: "Issue credit", exact: true })

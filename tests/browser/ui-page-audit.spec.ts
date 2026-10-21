@@ -103,7 +103,46 @@ test("every page source has a usable responsive and accessible screen", async ({
         );
       }
     }
-    const scan = await new AxeBuilder({ page: target }).analyze();
+    const preview = target.locator('iframe[title="Email layout preview"]');
+    const scanner = new AxeBuilder({ page: target });
+    if (await preview.count()) {
+      await expect(preview).toHaveAttribute("sandbox", "");
+      // axe's asynchronous frame scan cannot complete when the sandbox disables scripts.
+      // Audit that HTML separately with CSP, preserving the application's sandbox.
+      scanner.exclude('iframe[title="Email layout preview"]');
+      const html = await preview.getAttribute("srcdoc");
+      expect(html).toBeTruthy();
+      const context = await browser.newContext();
+      const previewUrl = "https://email-preview.example.test/";
+      try {
+        await context.route("**/*", (route) =>
+          route.request().url() === previewUrl
+            ? route.fulfill({
+                contentType: "text/html",
+                headers: {
+                  "Content-Security-Policy":
+                    "default-src 'none'; style-src 'unsafe-inline'",
+                },
+                body: html!,
+              })
+            : route.abort(),
+        );
+        const email = await context.newPage();
+        await email.goto(previewUrl);
+        const result = await new AxeBuilder({ page: email }).analyze();
+        const violations = result.violations.filter((item) =>
+          ["critical", "serious"].includes(item.impact ?? ""),
+        );
+        if (violations.length)
+          accessibilityIssues.push({
+            screen: screen + " email preview",
+            violations,
+          });
+      } finally {
+        await context.close();
+      }
+    }
+    const scan = await scanner.analyze();
     const violations = scan.violations.filter((item) =>
       ["critical", "serious"].includes(item.impact ?? ""),
     );

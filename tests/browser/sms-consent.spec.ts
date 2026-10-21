@@ -1,4 +1,4 @@
-import { test, expect } from "./fixtures";
+import { test, expect, clickAction } from "./fixtures";
 
 test("merchant publishes policies and optional SMS consent remains independent of checkout", async ({
   admin,
@@ -19,19 +19,28 @@ test("merchant publishes policies and optional SMS consent remains independent o
       .fill(
         "Example store Terms of Service. SMS order updates are optional. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out or HELP for help.",
       );
-    await admin.getByRole("button", { name: "Save store content" }).click();
+    await clickAction(
+      admin,
+      admin.getByRole("button", { name: "Save store content" }),
+    );
     await expect(
       admin.getByText("Store content saved.", { exact: true }),
     ).toBeVisible();
     await admin.goto("/admin/settings/sms");
     await admin.locator('input[name="enabled"]').check();
-    await admin.getByRole("button", { name: "Save SMS settings" }).click();
-    await expect(
-      admin.getByText(/Review the policies, SMS disclosures/).first(),
-    ).toBeVisible();
+    await clickAction(
+      admin,
+      admin.getByRole("button", { name: "Save SMS settings" }),
+    );
+    await expect(admin.getByRole("main").getByRole("alert")).toContainText(
+      "Review the policies, SMS disclosures",
+    );
     await admin.locator('input[name="reviewed"]').check();
     await admin.locator('input[name="enabled"]').check();
-    await admin.getByRole("button", { name: "Save SMS settings" }).click();
+    await clickAction(
+      admin,
+      admin.getByRole("button", { name: "Save SMS settings" }),
+    );
     await expect(
       admin.getByText("SMS settings saved.", { exact: true }),
     ).toBeVisible();

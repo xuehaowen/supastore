@@ -12,6 +12,7 @@ import {
   trackPurchase,
 } from "../lib/analytics";
 import type { StorefrontMessages } from "../lib/i18n";
+import { Button } from "@supastore/ui/button";
 export function AnalyticsPreference({
   locale,
   messages,
@@ -49,10 +50,14 @@ export function AnalyticsPreference({
     <aside aria-label={m.changePreference} className="border-t py-4 text-sm">
       <p>{m.notice}</p>
       {choice === "pending" ? (
-        <>
-          <button onClick={() => choose("yes")}>{m.allow}</button>
-          <button onClick={() => choose("no")}>{m.decline}</button>
-        </>
+        <div className="mt-3 flex flex-wrap gap-3">
+          <Button type="button" variant="outline" onClick={() => choose("yes")}>
+            {m.allow}
+          </Button>
+          <Button type="button" variant="outline" onClick={() => choose("no")}>
+            {m.decline}
+          </Button>
+        </div>
       ) : (
         <button onClick={() => choose("pending")}>{m.changePreference}</button>
       )}
