@@ -13,6 +13,16 @@ vi.mock("@/infrastructure/db", () => ({
 }));
 
 describe("Auth Module Configuration and Callbacks", () => {
+  it("offers authenticator MFA only for staff and persists auth rate limits", () => {
+    expect(
+      staffAuth.options.plugins?.some((plugin) => plugin.id === "two-factor"),
+    ).toBe(true);
+    expect(
+      auth.options.plugins?.some((plugin) => plugin.id === "two-factor"),
+    ).not.toBe(true);
+    expect(staffAuth.options.rateLimit?.storage).toBe("database");
+    expect(auth.options.rateLimit?.storage).toBe("database");
+  });
   it("applies the shared password creation policy in both identity realms", () => {
     for (const identity of [auth, staffAuth]) {
       expect(identity.options.emailAndPassword?.minPasswordLength).toBe(

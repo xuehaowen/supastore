@@ -49,6 +49,52 @@ for (const [path, handler] of [
   ["/api/catalog-images", uploadImage],
   ["/api/admin/imports/products", importCsv],
 ] as const) {
+  it(`${path} stops chunked multipart input at the request byte limit`, async () => {
+    vi.stubEnv("STOREFRONT_ORIGIN", "https://shop.example.test");
+    let pulled = 0;
+    let cancelled = false;
+    const body = new ReadableStream({
+      pull(controller) {
+        pulled++;
+        if (pulled === 1)
+          controller.enqueue(
+            new TextEncoder().encode(
+              '--fixture\r\nContent-Disposition: form-data; name="file"; filename="large.png"\r\nContent-Type: image/png\r\n\r\n',
+            ),
+          );
+        else if (pulled <= 21) controller.enqueue(new Uint8Array(1024 * 1024));
+        else {
+          controller.enqueue(new TextEncoder().encode("\r\n--fixture--\r\n"));
+          controller.close();
+        }
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    const response = await handler(
+      new NextRequest(`http://backend:3000${path}`, {
+        method: "POST",
+        headers: {
+          origin: "https://shop.example.test",
+          "content-type": "multipart/form-data; boundary=fixture",
+        },
+        body,
+        duplex: "half",
+      } as RequestInit),
+    );
+    expect(response.status).toBe(413);
+    expect(cancelled).toBe(true);
+    expect(pulled).toBeLessThan(10);
+    expect(mocks.upload).not.toHaveBeenCalled();
+    expect(mocks.importCsv).not.toHaveBeenCalled();
+  });
+}
+
+for (const [path, handler] of [
+  ["/api/catalog-images", uploadImage],
+  ["/api/admin/imports/products", importCsv],
+] as const) {
   it.each(["APP_URL", "STOREFRONT_ORIGIN", "BETTER_AUTH_URL"])(
     `${path} accepts proxied uploads with only %s configured`,
     async (key) => {
