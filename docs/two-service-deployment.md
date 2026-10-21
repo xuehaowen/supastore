@@ -45,12 +45,11 @@ Install with `pnpm install --frozen-lockfile`. Start dependencies with
 database, then run `pnpm dev:backend` and `pnpm dev:storefront` separately.
 Development launchers default the public origin to `http://localhost:3001` (or `STOREFRONT_PORT`). Production start requires an explicit `STOREFRONT_ORIGIN`, `APP_URL` or `BETTER_AUTH_URL`; Compose requires `STOREFRONT_ORIGIN`. Launchers validate only their supplied in-memory environment and have no file-loading or Next.js dependency. Root package commands use Node environment-file options before launching: development loads `.env` then `.env.local`; production loads `.env`, `.env.production`, `.env.local`, then `.env.production.local`. Existing shell variables take precedence. Direct launcher callers must preload their own configuration. The storefront process receives an allowlist of runtime/public variables, including its edge proxy secret, without backend/provider credentials. Authentication, notification links and storefront URLs share the same origin resolver. Use
 `http://127.0.0.1:3000` for the storefront's `BACKEND_URL`. `pnpm dev` starts both services. The backend has no customer page routes; its root opens `/admin`. The storefront now renders the original customer UI, including search, categories, collections and policy pages. Customer pages and
-`/admin` use the storefront origin. Optional Adminer uses port 9002 with
-`docker compose --profile tools up -d adminer`; RustFS retains port 9001.
+`/admin` use the storefront origin. RustFS retains port 9001.
 
 ## Containers
 
-PostgreSQL, RustFS and optional Adminer host ports bind only to `127.0.0.1`.
+PostgreSQL and RustFS host ports bind only to `127.0.0.1`.
 Use an SSH tunnel for remote operator access. Only the storefront port publishes
 application traffic. Browser-facing signed storage links additionally require a
 separately configured reachable storage origin, as described below.

@@ -139,7 +139,7 @@ Contract: [Authorization boundary](architecture-overview.md#authorization-bounda
 
 - [x] **Public catalog browsing with React Server Components (RSC)**
   - _Details:_ Implement `/` (home) and `/products/[handle]` (PDP) using pure React Server Components with static generation and tag-based revalidation (`revalidateTag('catalog')`). Keep catalog rendering on the server and measure framework runtime plus interactive client code.
-  - _Verification:_ Record Lighthouse results under documented mobile network/CPU throttling; identify blocking time and layout-shift regressions.
+  - _Verification:_ Record browser performance results under documented mobile network/CPU throttling; identify blocking time and layout-shift regressions using the project's browser benchmark tooling.
 - [x] **Product variants, categories, and availability management**
   - _Details:_ Support variant attributes (size, color), category hierarchies, image asset key mapping, and instant manual availability toggles (`is_available: boolean`).
   - _Verification:_ Toggling variant availability immediately reflects on the PDP without restarting the application or rebuilding pages.

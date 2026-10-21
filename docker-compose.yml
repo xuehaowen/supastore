@@ -18,18 +18,6 @@ services:
       timeout: 5s
       retries: 5
 
-  adminer:
-    image: adminer:latest@sha256:74f29c416e148b98305e84446a18db7cd2c1038264dec464359d36774ef080ce
-    restart: unless-stopped
-    profiles: [tools]
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      ADMINER_DEFAULT_SERVER: postgres
-    ports:
-      - "127.0.0.1:${ADMINER_PORT:-9002}:8080"
-
   rustfs:
     image: rustfs/rustfs:latest@sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c
     container_name: ${COMPOSE_PROJECT_NAME:-supastore}-rustfs

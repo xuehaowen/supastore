@@ -37,7 +37,6 @@ it("allows each instance to choose its loopback-only dependency ports", () => {
     ["postgres", "POSTGRES_PORT", "5432", "5432"],
     ["rustfs", "S3_API_PORT", "9000", "9000"],
     ["rustfs", "S3_CONSOLE_PORT", "9001", "9001"],
-    ["adminer", "ADMINER_PORT", "9002", "8080"],
   ]) {
     expect(compose.services[service!]!.ports).toContain(
       `127.0.0.1:\${${variable}:-${fallback}}:${internal}`,

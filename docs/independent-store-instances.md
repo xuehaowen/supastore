@@ -54,7 +54,6 @@ Example values for **new installations**:
 | `POSTGRES_PORT`                    | `5432`                       | `5433`                         |
 | `S3_API_PORT`                      | `9000`                       | `9100`                         |
 | `S3_CONSOLE_PORT`                  | `9001`                       | `9101`                         |
-| `ADMINER_PORT` (optional tools)    | `9002`                       | `9102`                         |
 | `PORT` (storefront ingress target) | `3000`                       | `3002`                         |
 | Public origin                      | `https://pickup.example.com` | `https://shipping.example.com` |
 
