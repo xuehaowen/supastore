@@ -19,6 +19,7 @@ const nextConfig = {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
   reactStrictMode: true,
+  serverExternalPackages: ["pg-boss"],
   outputFileTracingRoot: fileURLToPath(new URL("../../", import.meta.url)),
   transpilePackages: [
     "@supastore/ui",
