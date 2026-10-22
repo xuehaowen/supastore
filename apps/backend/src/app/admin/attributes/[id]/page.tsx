@@ -46,6 +46,11 @@ export default async function AttributePage({
       <main tabIndex={-1} id="admin-content" className="admin">
         <Link href="/admin/attributes">← All attributes</Link>
         <h1>{a.name}</h1>
+        <p>
+          {a.kind === "variant"
+            ? "Variant option: values define purchasable variants."
+            : "Descriptive attribute: values describe product facts and do not generate variants."}
+        </p>
         <Notice error={q.error} />
         {q.saved && (
           <Alert>
@@ -150,7 +155,11 @@ export default async function AttributePage({
               {!values.length && (
                 <TableRow>
                   <TableCell colSpan={4}>
-                    Add values to use this attribute as a product option.
+                    Add values for this{" "}
+                    {a.kind === "variant"
+                      ? "variant option"
+                      : "descriptive attribute"}
+                    .
                   </TableCell>
                 </TableRow>
               )}

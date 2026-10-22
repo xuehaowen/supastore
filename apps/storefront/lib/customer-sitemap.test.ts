@@ -8,6 +8,17 @@ import {
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 afterEach(() => vi.unstubAllEnvs());
 describe("original public discoverability on separate storefront", () => {
+  it("accepts every common storefront page including support and terms", () => {
+    const paths = [
+      "about",
+      "support",
+      "shipping",
+      "returns",
+      "privacy",
+      "terms",
+    ].map((key) => ({ path: `/pages/${key}`, locales: ["en", "zh"] }));
+    expect(parseSitemapEntries(paths)).toHaveLength(6);
+  });
   it("points x-default at the published locale when English is absent", () => {
     const body = [
       ...customerSitemapEntries([{ path: "/pages/about", locales: ["zh"] }]),

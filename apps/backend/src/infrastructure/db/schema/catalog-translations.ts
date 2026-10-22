@@ -41,6 +41,9 @@ export const attributes = pgTable("attributes", {
   id: uuid("id").primaryKey().defaultRandom(),
   code: text("code").notNull().unique(),
   name: text("name").notNull(),
+  kind: text("kind", { enum: ["descriptive", "variant"] })
+    .notNull()
+    .default("descriptive"),
   sortOrder: integer("sort_order").notNull().default(0),
   isArchived: boolean("is_archived").notNull().default(false),
   ...timestamps(),

@@ -44,7 +44,12 @@ export const storeSettings = pgTable("store_settings", {
           "en" | "zh",
           Partial<
             Record<
-              "about" | "shipping" | "returns" | "privacy" | "terms",
+              | "about"
+              | "support"
+              | "shipping"
+              | "returns"
+              | "privacy"
+              | "terms",
               string
             >
           >

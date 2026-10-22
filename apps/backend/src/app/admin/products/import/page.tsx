@@ -209,11 +209,12 @@ export default function ProductImportExportPage() {
               <code className="rounded bg-gray-100 px-1">is_published</code>,{" "}
               <code>option_values</code> (color:red|size:m), and{" "}
               <code>collection_handles</code> (summer|gifts). Max 5 MB. Existing
-              attribute values and collections must already exist. Memberships
-              are added; removing them uses the collection editor. Files import
-              in atomic batches of at most 100 rows, keeping each product
-              together. After a partial failure, retrying the same file
-              preserves existing SKU identities.
+              variant option values and collections must already exist.
+              Descriptive attributes cannot define variants. Memberships are
+              added; removing them uses the collection editor. Files import in
+              atomic batches of at most 100 rows, keeping each product together.
+              After a partial failure, retrying the same file preserves existing
+              SKU identities.
             </p>
 
             {preview.status === "idle" && (

@@ -29,10 +29,11 @@ export default async function Content({
       <main tabIndex={-1} id="admin-content" className="admin">
         <h1>Store information & policies</h1>
         <p>
-          Write plain text for customers. Blank pages remain hidden.
-          Translations fall back to the default store language. Policy starters
-          must be completed and reviewed for your business before publication.
-          Saving policy changes turns SMS opt-in off until reviewed again.
+          Write plain text for customers. Blank pages use the default storefront
+          information. Translations fall back to the default store language.
+          Policy starters must be completed and reviewed for your business
+          before publication. Saving policy changes turns SMS opt-in off until
+          reviewed again.
         </p>
         <Notice error={query.error} />
         {query.saved && (
@@ -47,7 +48,14 @@ export default async function Content({
               <fieldset key={locale}>
                 <legend>{locale === "en" ? "English" : "中文"}</legend>
                 {(
-                  ["about", "shipping", "returns", "privacy", "terms"] as const
+                  [
+                    "about",
+                    "support",
+                    "shipping",
+                    "returns",
+                    "privacy",
+                    "terms",
+                  ] as const
                 ).map((key) => (
                   <div key={key} className="mb-5 grid gap-2">
                     <label htmlFor={`${locale}.${key}`}>

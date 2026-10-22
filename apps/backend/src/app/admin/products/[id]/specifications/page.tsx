@@ -56,6 +56,7 @@ export default async function Specifications({
       .where(
         and(
           eq(attributes.isArchived, false),
+          eq(attributes.kind, "descriptive"),
           eq(attributeValues.isArchived, false),
           sql`(${attributes.name} ilike ${search} or ${attributeValues.label} ilike ${search})`,
         ),
@@ -81,16 +82,16 @@ export default async function Specifications({
         >
           {data.owner ? "← Product editor" : "← Products"}
         </Link>
-        <h1>Specifications · {data.product.title}</h1>
+        <h1>Attributes · {data.product.title}</h1>
         <ProductEditorNav productId={id} />
         <p>
-          Describe material, care, origin, or other properties. Specifications
-          do not generate variants.
+          Describe weight, calories, sugar-free status, or other properties.
+          Attributes do not generate variants.
         </p>
         <Notice error={query.error} />
         {query.saved && (
           <Alert>
-            <AlertDescription>Specifications saved.</AlertDescription>
+            <AlertDescription>Attributes saved.</AlertDescription>
           </Alert>
         )}
         <section className="panel">
@@ -144,7 +145,7 @@ export default async function Specifications({
                     colSpan={4}
                     className="text-center text-muted-foreground"
                   >
-                    No specifications yet.
+                    No descriptive attributes yet.
                   </TableCell>
                 </TableRow>
               )}
@@ -152,7 +153,7 @@ export default async function Specifications({
           </Table>
         </section>
         <section className="panel">
-          <h2>Add specification</h2>
+          <h2>Add attribute</h2>
           <form method="get">
             <Field
               name="q"

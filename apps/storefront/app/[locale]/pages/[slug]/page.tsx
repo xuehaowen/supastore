@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { textFor } from "@supastore/i18n/messages";
 import { readRequestPage } from "../../../../lib/page-data";
 import {
   policyPresentation,
@@ -35,6 +37,19 @@ export default async function StorePage({
     <article className="mx-auto max-w-3xl py-14">
       <h1 className="mb-8 font-serif text-4xl">{policy.title}</h1>
       <p className="whitespace-pre-line leading-8">{policy.content}</p>
+      {store?.supportEmail && (
+        <p className="mt-8">
+          <a href={`mailto:${store.supportEmail}`}>{store.supportEmail}</a>
+        </p>
+      )}
+      {slug === "support" && (
+        <nav className="mt-8 flex gap-6" aria-label={policy.title}>
+          <Link href={`/${locale}/account`}>{textFor(locale).ui.account}</Link>
+          <Link href={`/recover?locale=${locale}`}>
+            {textFor(locale).recover}
+          </Link>
+        </nav>
+      )}
     </article>
   );
 }

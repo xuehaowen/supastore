@@ -1,8 +1,9 @@
+import { customerDirectoryFilter } from "@/application/queries/customer-directory";
 import { CurrencyField } from "@/app/admin/currency-field";
 import Link from "next/link";
 import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import { customers, storeCreditAccounts } from "@/infrastructure/db/schema";
 import { staffIdentity, money } from "@/infrastructure/web";
@@ -45,7 +46,10 @@ export default async function CreditPage({
       .from(storeCreditAccounts)
       .innerJoin(customers, eq(customers.id, storeCreditAccounts.customerId))
       .where(
-        sql`(${customers.name} ilike ${pattern} or ${customers.email} ilike ${pattern})`,
+        and(
+          customerDirectoryFilter(),
+          sql`(${customers.name} ilike ${pattern} or ${customers.email} ilike ${pattern})`,
+        ),
       )
       .orderBy(asc(customers.name), asc(storeCreditAccounts.id))
       .limit(26)
@@ -54,7 +58,10 @@ export default async function CreditPage({
       .select()
       .from(customers)
       .where(
-        sql`(${customers.name} ilike ${pattern} or ${customers.email} ilike ${pattern})`,
+        and(
+          customerDirectoryFilter(),
+          sql`(${customers.name} ilike ${pattern} or ${customers.email} ilike ${pattern})`,
+        ),
       )
       .orderBy(asc(customers.name), asc(customers.id))
       .limit(25);

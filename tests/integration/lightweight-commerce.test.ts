@@ -771,9 +771,9 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
     const code = randomUUID().replaceAll("-", ""),
       handle = `import-${code}`;
     const [color] =
-      await client`insert into attributes(code,name) values(${`color-${code}`},'Color') returning id`;
+      await client`insert into attributes(code,name,kind) values(${`color-${code}`},'Color','variant') returning id`;
     const [size] =
-      await client`insert into attributes(code,name) values(${`size-${code}`},'Size') returning id`;
+      await client`insert into attributes(code,name,kind) values(${`size-${code}`},'Size','variant') returning id`;
     await client`insert into attribute_values(attribute_id,code,label) values(${color!.id},'red','Red'),(${color!.id},'blue','Blue'),(${size!.id},'s','Small'),(${size!.id},'m','Medium')`;
     const [collection] =
       await client`insert into product_collections(handle,title) values(${`collection-${code}`},'Import collection') returning id`;

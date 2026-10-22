@@ -140,6 +140,12 @@ cleanup. Category and attribute translations provide `name`, attribute values
 provide `label`, and optional custom variant translations provide `title`.
 
 `attributes` has a globally unique stable `code` and a base-language `name`.
+Its immutable `kind` distinguishes `descriptive` product facts (weight, calories,
+sugar-free status) from `variant` options (color, size). New fields default to
+descriptive. Product specifications accept descriptive values; variant generation
+and CSV `option_values` accept variant values. Migration 0045 classifies existing
+variant assignments and copies fields shared with specifications into separate
+descriptive fields, preserving translations and existing variant identities.
 `attribute_values` has a code unique within its attribute and a base-language
 `label`. Both include sort order. `variant_attribute_values` allows one value per
 attribute per variant; a composite foreign key ensures that value belongs to the

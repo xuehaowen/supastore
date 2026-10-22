@@ -1,4 +1,4 @@
-import { PLATFORM_NAME } from "@supastore/contracts";
+import { storePageKeys, PLATFORM_NAME } from "@supastore/contracts";
 import { readRequestPage } from "../../lib/page-data";
 import { textFor } from "@supastore/i18n/messages";
 import { LanguageLink } from "../interactive";
@@ -115,29 +115,24 @@ export default async function ShopLayout({
           aria-label={textFor(locale).ui.storeInformation}
           className="flex flex-wrap gap-4"
         >
-          {(["about", "shipping", "returns", "privacy", "terms"] as const)
-            .filter(
-              (key) =>
-                store?.publicContent[locale as "en" | "zh"]?.[key] ||
-                store?.publicContent[store.defaultLocale as "en" | "zh"]?.[key],
-            )
-            .map((key) => (
-              <Link key={key} href={`/${locale}/pages/${key}`}>
-                {
-                  textFor(locale).common[
-                    (
-                      {
-                        about: "about",
-                        shipping: "shippingPolicy",
-                        returns: "returnsPolicy",
-                        privacy: "privacyPolicy",
-                        terms: "termsOfService",
-                      } as const
-                    )[key]
-                  ]
-                }
-              </Link>
-            ))}
+          {(store ? storePageKeys : []).map((key) => (
+            <Link key={key} href={`/${locale}/pages/${key}`}>
+              {
+                textFor(locale).common[
+                  (
+                    {
+                      about: "about",
+                      support: "customerSupport",
+                      shipping: "shippingPolicy",
+                      returns: "returnsPolicy",
+                      privacy: "privacyPolicy",
+                      terms: "termsOfService",
+                    } as const
+                  )[key]
+                ]
+              }
+            </Link>
+          ))}
           {store?.sms?.enabled && (
             <Link href={`/${locale}/sms`}>{textFor(locale).sms.title}</Link>
           )}

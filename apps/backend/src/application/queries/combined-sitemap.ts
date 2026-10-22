@@ -1,3 +1,4 @@
+import { storePageKeys } from "@supastore/contracts";
 import { sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import { storeSettings } from "@/infrastructure/db/schema";
@@ -65,19 +66,10 @@ export async function getCombinedSitemapStatic(): Promise<SitemapEntry[]> {
     .from(storeSettings)
     .limit(1);
   const entries: SitemapEntry[] = [{ path: "" }];
-  for (const key of [
-    "about",
-    "shipping",
-    "returns",
-    "privacy",
-    "terms",
-  ] as const) {
-    const locales = (["en", "zh"] as const).filter(
-      (locale) =>
-        store?.publicContent[locale]?.[key] ||
-        store?.publicContent[store.defaultLocale as "en" | "zh"]?.[key],
-    );
-    if (locales.length) entries.push({ path: `/pages/${key}`, locales });
+  if (store) {
+    for (const key of storePageKeys) {
+      entries.push({ path: `/pages/${key}`, locales: ["en", "zh"] });
+    }
   }
   return entries;
 }

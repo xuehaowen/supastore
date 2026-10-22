@@ -28,8 +28,14 @@ export async function saveAttribute(input: {
   code: string;
   label: string;
   archived: boolean;
+  kind?: string;
 }) {
   const label = parseActionRequiredText(input.label, "Name", 100);
+  if (
+    input.kind !== undefined &&
+    !["descriptive", "variant"].includes(input.kind)
+  )
+    throw new DomainError("Choose a descriptive attribute or variant option.");
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.code) || input.code.length > 40)
     throw new DomainError(
       "Code must use lowercase letters, numbers, and hyphens (up to 40 characters).",
@@ -127,6 +133,10 @@ export async function saveAttribute(input: {
           throw new DomainError(
             "Attribute codes are permanent. Archive the old attribute and create a new one.",
           );
+        if (input.kind && input.kind !== current.kind)
+          throw new DomainError(
+            "Attribute purpose is permanent. Create a separate attribute or variant option.",
+          );
         await tx
           .update(attributes)
           .set({
@@ -139,7 +149,12 @@ export async function saveAttribute(input: {
       } else {
         const [attribute] = await tx
           .insert(attributes)
-          .values({ code: input.code, name: label, isArchived: input.archived })
+          .values({
+            code: input.code,
+            name: label,
+            isArchived: input.archived,
+            kind: input.kind === "variant" ? "variant" : "descriptive",
+          })
           .returning();
         savedId = attribute!.id;
       }

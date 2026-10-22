@@ -27,6 +27,7 @@ export async function saveStoreContentAction(form: FormData) {
         content[locale] = {};
         for (const key of [
           "about",
+          "support",
           "shipping",
           "returns",
           "privacy",

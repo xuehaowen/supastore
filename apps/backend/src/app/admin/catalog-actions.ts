@@ -214,6 +214,7 @@ export async function saveAttributeAction(form: FormData) {
       code: text(form, "code"),
       label: text(form, "label"),
       archived: form.has("archived"),
+      ...(text(form, "kind") ? { kind: text(form, "kind") } : {}),
     });
     return `/admin/attributes/${id}?saved=1`;
   });

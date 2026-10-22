@@ -6,6 +6,7 @@ export type CustomerStore = {
   supportEmail: string;
   publicContent: {
     en?: {
+      support?: string;
       about?: string;
       shipping?: string;
       returns?: string;
@@ -13,6 +14,7 @@ export type CustomerStore = {
       terms?: string;
     };
     zh?: {
+      support?: string;
       about?: string;
       shipping?: string;
       returns?: string;

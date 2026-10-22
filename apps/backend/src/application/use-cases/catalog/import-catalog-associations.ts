@@ -68,6 +68,10 @@ export async function importCatalogAssociations(
         throw new DomainError(
           `Unknown option ${attribute}:${value}. Create its reusable attribute value first.`,
         );
+      if (found.attribute.kind !== "variant")
+        throw new DomainError(
+          `Descriptive attribute ${attribute} cannot define variant options.`,
+        );
       return found;
     });
     const axisIds = resolved.map((d) => d.attribute.id).sort();

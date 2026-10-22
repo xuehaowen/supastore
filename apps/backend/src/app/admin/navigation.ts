@@ -75,7 +75,7 @@ export const adminNavigation: { label: string; sections: AdminSection[] }[] = [
           { href: "/admin/collections", label: "Collections", ownerOnly: true },
           {
             href: "/admin/attributes",
-            label: "Attributes & options",
+            label: "Attributes & variant options",
             ownerOnly: true,
           },
           { href: "/admin/products/import", label: "Import & export" },

@@ -79,6 +79,7 @@ export default async function ProductOptionsPage({
       .where(
         and(
           eq(attributes.isArchived, false),
+          eq(attributes.kind, "variant"),
           eq(attributeValues.isArchived, false),
           sql`(${attributes.name} ilike ${pattern} or ${attributes.code} ilike ${pattern})`,
         ),
@@ -153,14 +154,12 @@ export default async function ProductOptionsPage({
         )}
         <section className="panel">
           <h2>Product options</h2>
-          <Link href="/admin/attributes">
-            Manage reusable attributes & values
-          </Link>
+          <Link href="/admin/attributes">Manage reusable variant options</Link>
           <form method="get">
             <Hidden name="preview" value="1" />
             <Field
               name="q"
-              label="Find an attribute"
+              label="Find a variant option"
               value={search}
               required={false}
             />
@@ -172,7 +171,7 @@ export default async function ProductOptionsPage({
               value={price}
             />
             <p>
-              Choose up to four attributes. Generation is limited to 50
+              Choose up to four variant options. Generation is limited to 50
               combinations.
             </p>
             {choices.map(({ attribute: a, value: v }) => (
@@ -186,10 +185,12 @@ export default async function ProductOptionsPage({
               </label>
             ))}
             {!choices.length && (
-              <p>No active values match. Add attributes and values first.</p>
+              <p>
+                No active values match. Add variant options and values first.
+              </p>
             )}
             {data.truncated && (
-              <p>Showing 200 values. Refine the attribute search.</p>
+              <p>Showing 200 values. Refine the variant option search.</p>
             )}
             {valueIds
               .filter((valueId) => !choices.some((c) => c.value.id === valueId))

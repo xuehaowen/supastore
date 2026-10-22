@@ -54,9 +54,11 @@ it("matches visible policy fallback and links only locales that resolve", () => 
   const localized = { ...store, publicContent: { zh: { about: "精选商品" } } };
   expect(policyPresentation(localized, "zh", "about")).toMatchObject({
     content: "精选商品",
-    locales: ["zh"],
+    locales: ["en", "zh"],
   });
-  expect(policyPresentation(localized, "en", "about")).toBeNull();
+  expect(policyPresentation(localized, "en", "about")?.content).toContain(
+    "Welcome",
+  );
   expect(policyPresentation(store, "zh", "about")).toMatchObject({
     content: "A test store",
     locales: ["en", "zh"],

@@ -1,3 +1,4 @@
+import { storePageContent } from "@supastore/contracts";
 import type { Metadata } from "next";
 import type { CustomerPageModels } from "@supastore/contracts";
 import { textFor } from "@supastore/i18n/messages";
@@ -6,6 +7,7 @@ import { alternateLinks, publicOrigin } from "./seo";
 type Store = CustomerPageModels["layout"]["store"];
 const policyTitles = {
   about: "about",
+  support: "customerSupport",
   shipping: "shippingPolicy",
   returns: "returnsPolicy",
   privacy: "privacyPolicy",
@@ -20,8 +22,7 @@ export function policyPresentation(store: Store, locale: string, slug: string) {
     return null;
   const key = slug as keyof typeof policyTitles;
   const contentFor = (language: "en" | "zh") =>
-    store.publicContent[language]?.[key] ||
-    store.publicContent[store.defaultLocale as "en" | "zh"]?.[key];
+    storePageContent(store, language, key);
   const content = contentFor(locale);
   if (!content) return null;
   return {

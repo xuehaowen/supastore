@@ -23,7 +23,7 @@ export function parseSitemapEntries(value: unknown): SitemapEntry[] {
       !item ||
       typeof item !== "object" ||
       typeof item.path !== "string" ||
-      !/^(?:\/(?:products|categories|collections)\/[^/\s]+|\/pages\/(?:about|shipping|returns|privacy))?$/.test(
+      !/^(?:\/(?:products|categories|collections)\/[^/\s]+|\/pages\/(?:about|support|shipping|returns|privacy|terms))?$/.test(
         item.path,
       ) ||
       (item.locales !== undefined &&

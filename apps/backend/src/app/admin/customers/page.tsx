@@ -1,3 +1,7 @@
+import {
+  customerDirectoryFilter,
+  excludeStaffContacts,
+} from "@/application/queries/customer-directory";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { and, desc, isNull, sql } from "drizzle-orm";
@@ -40,7 +44,10 @@ export default async function CustomersPage({
       })
       .from(customers)
       .where(
-        sql`(${customers.email} ilike ${pattern} or ${customers.name} ilike ${pattern})`,
+        and(
+          customerDirectoryFilter(),
+          sql`(${customers.email} ilike ${pattern} or ${customers.name} ilike ${pattern})`,
+        ),
       )
       .orderBy(desc(customers.createdAt), desc(customers.id))
       .limit(26)
@@ -55,6 +62,7 @@ export default async function CustomersPage({
           .where(
             and(
               isNull(orders.customerId),
+              excludeStaffContacts(sql`${orders.guestEmail}`),
               sql`${orders.guestEmail} ilike ${pattern}`,
             ),
           )

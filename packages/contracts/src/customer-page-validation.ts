@@ -69,6 +69,7 @@ const terms = v.object({
   }),
 });
 const publicContent = v.object({
+  support: v.exactOptional(text),
   about: v.exactOptional(text),
   shipping: v.exactOptional(text),
   returns: v.exactOptional(text),

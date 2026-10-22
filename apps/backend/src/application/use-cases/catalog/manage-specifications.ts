@@ -42,7 +42,11 @@ export async function changeSpecification(input: {
     if (product.quoteVersion !== input.revision)
       throw new ConflictError("Product changed. Reload before saving.");
     const [value] = await tx
-      .select({ value: attributeValues, archived: attributes.isArchived })
+      .select({
+        value: attributeValues,
+        archived: attributes.isArchived,
+        kind: attributes.kind,
+      })
       .from(attributeValues)
       .innerJoin(attributes, eq(attributes.id, attributeValues.attributeId))
       .where(eq(attributeValues.id, valueId));
@@ -57,6 +61,10 @@ export async function changeSpecification(input: {
           ),
         );
     else {
+      if (value.kind !== "descriptive")
+        throw new DomainError(
+          "Variant options cannot be assigned as descriptive attributes.",
+        );
       if (value.value.isArchived || value.archived)
         throw new DomainError("Choose an active attribute value.");
       const count = await tx

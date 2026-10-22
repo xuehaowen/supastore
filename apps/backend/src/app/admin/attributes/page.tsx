@@ -9,6 +9,7 @@ import { AdminNav } from "@/app/admin/admin-nav";
 import { CatalogTabs } from "@/app/admin/catalog-tabs";
 import { AdminDialog } from "@/app/admin/admin-dialog";
 import { Field, Notice } from "@/app/components";
+import { NativeSelect } from "@supastore/ui/native-select";
 import { Button } from "@supastore/ui/button";
 import {
   Table,
@@ -54,12 +55,13 @@ export default async function AttributesPage({
     <>
       <AdminNav />
       <main tabIndex={-1} id="admin-content" className="admin">
-        <h1>Product attributes</h1>
+        <h1>Attributes & variant options</h1>
         <CatalogTabs />
         <p className="admin-description">
-          Reusable options such as color and size. Permanent codes keep variant
-          identities stable; archived items remain available in historical
-          orders.
+          Descriptive attributes record weight, calories, sugar-free status, and
+          other product facts. Variant options such as color and size define
+          separately purchasable combinations. Choose the purpose when creating
+          a field.
         </p>
         <Notice error={query.error} />
         <form method="get" className="filter-bar">
@@ -73,7 +75,14 @@ export default async function AttributesPage({
         </form>
         <AdminDialog trigger="Add attribute" title="Add attribute">
           <form action={saveAttributeAction}>
-            <Field name="label" label="Attribute name" />
+            <Field name="label" label="Name" />
+            <label>
+              Purpose
+              <NativeSelect name="kind" defaultValue="descriptive">
+                <option value="descriptive">Descriptive attribute</option>
+                <option value="variant">Variant option</option>
+              </NativeSelect>
+            </label>
             <Field name="code" label="Permanent code" />
             <Button type="submit">Create attribute</Button>
           </form>
@@ -83,6 +92,7 @@ export default async function AttributesPage({
             <TableHeader>
               <TableRow>
                 <TableHead>Attribute</TableHead>
+                <TableHead>Purpose</TableHead>
                 <TableHead>Code</TableHead>
                 <TableHead>Values</TableHead>
                 <TableHead>Status</TableHead>
@@ -93,6 +103,11 @@ export default async function AttributesPage({
               {rows.slice(0, 25).map(({ attribute: a, count }) => (
                 <TableRow key={a.id}>
                   <TableCell>{a.name}</TableCell>
+                  <TableCell>
+                    {a.kind === "variant"
+                      ? "Variant option"
+                      : "Descriptive attribute"}
+                  </TableCell>
                   <TableCell>{a.code}</TableCell>
                   <TableCell>{count}</TableCell>
                   <TableCell>{a.isArchived ? "Archived" : "Active"}</TableCell>
@@ -105,7 +120,7 @@ export default async function AttributesPage({
               ))}
               {!rows.length && (
                 <TableRow>
-                  <TableCell colSpan={5}>
+                  <TableCell colSpan={6}>
                     No attributes match this search.
                   </TableCell>
                 </TableRow>

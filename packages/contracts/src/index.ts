@@ -106,3 +106,5 @@ export interface CartDto {
   subtotalCents: number;
 }
 export * from "./sms";
+
+export * from "./store-pages";

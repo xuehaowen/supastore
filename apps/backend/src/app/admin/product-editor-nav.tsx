@@ -11,10 +11,10 @@ export function ProductEditorNav({ productId }: { productId: string }) {
     ? [
         ["edit", "Details & pricing"],
         ["options", "Options & variants"],
-        ["specifications", "Specifications"],
+        ["specifications", "Attributes"],
         ["organization", "Collections"],
       ]
-    : [["specifications", "Specifications"]];
+    : [["specifications", "Attributes"]];
   return (
     <nav className="admin-tabs" aria-label="Product editor sections">
       {pages.map(([path, label]) => {

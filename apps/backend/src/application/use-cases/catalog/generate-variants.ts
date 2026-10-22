@@ -43,6 +43,7 @@ export async function loadGenerationOptions(
       and(
         inArray(attributeValues.id, valueIds),
         eq(attributes.isArchived, false),
+        eq(attributes.kind, "variant"),
         eq(attributeValues.isArchived, false),
       ),
     )
@@ -54,7 +55,7 @@ export async function loadGenerationOptions(
     );
   if (rows.length !== valueIds.length)
     throw new DomainError(
-      "Some selected values are missing or archived. Reload the options.",
+      "Choose active variant option values. Descriptive attributes cannot generate variants.",
     );
   const groups = new Map<string, GenerationOption>();
   for (const row of rows) {

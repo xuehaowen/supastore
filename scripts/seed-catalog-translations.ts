@@ -17,6 +17,7 @@ type NamedTranslation = { locale: string; name: string };
 export interface AttributeSeed {
   code: string;
   name: string;
+  kind?: "descriptive" | "variant";
   sortOrder?: number;
   translations?: NamedTranslation[];
   values: Array<{
@@ -55,6 +56,7 @@ export async function seedCatalogTranslations(
         .values({
           code: entry.code,
           name: entry.name,
+          kind: entry.kind ?? "variant",
           sortOrder: entry.sortOrder ?? 0,
         })
         .onConflictDoUpdate({
