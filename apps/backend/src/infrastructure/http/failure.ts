@@ -4,15 +4,19 @@ import { DomainError } from "@/application/common/errors";
 import { logger } from "@/infrastructure/security/logger";
 
 /** Never retain raw provider messages, SQL, URLs, input, or stacks at request boundaries. */
-export function safeFailureCode(error: unknown) {
+export function safeFailureCode(error: unknown, depth = 0): string {
   const code =
     error && typeof error === "object" && "code" in error
       ? error.code
       : undefined;
-  return typeof code === "string" &&
+  if (
+    typeof code === "string" &&
     /^(?:[A-Z][A-Z0-9_]{1,63}|[0-9]{2}[A-Z0-9]{3})$/.test(code)
-    ? code
-    : "UNEXPECTED_ERROR";
+  )
+    return code;
+  if (depth < 4 && error && typeof error === "object" && "cause" in error)
+    return safeFailureCode(error.cause, depth + 1);
+  return "UNEXPECTED_ERROR";
 }
 export function logFailure(
   error: unknown,

@@ -7,9 +7,19 @@ import {
 import { describeFailure } from "@/infrastructure/http/commerce-api";
 import { logger } from "@/infrastructure/security/logger";
 import { smtpFailure } from "@/infrastructure/notifications/provider-errors";
+import { safeFailureCode } from "@/infrastructure/http/failure";
 
 afterEach(() => vi.restoreAllMocks());
 describe("safe failure contract", () => {
+  it("preserves a wrapped database code without retaining its message", () => {
+    const cause = Object.assign(new Error("private SQL parameters"), {
+      code: "42P01",
+    });
+    expect(safeFailureCode(new Error("query failed", { cause }))).toBe("42P01");
+    const cycle: { cause?: unknown } = {};
+    cycle.cause = cycle;
+    expect(safeFailureCode(cycle)).toBe("UNEXPECTED_ERROR");
+  });
   it.each([
     [new DomainError("Choose a quantity."), 400, "validation"],
     [new UnauthorizedError(), 401, "authentication"],
