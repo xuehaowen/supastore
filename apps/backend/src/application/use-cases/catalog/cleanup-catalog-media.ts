@@ -1,4 +1,4 @@
-import { and, eq, inArray, lt } from "drizzle-orm";
+import { and, asc, eq, inArray, lte } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
   catalogMediaUploads,
@@ -7,17 +7,19 @@ import {
 } from "@/infrastructure/db/schema";
 import { deleteCatalogAsset } from "@/infrastructure/storage";
 import { logger } from "@/infrastructure/security/logger";
-export async function cleanupCatalogMedia() {
+export async function cleanupCatalogMedia(uploadId?: string) {
   const candidates = await db
     .select()
     .from(catalogMediaUploads)
     .where(
       and(
         inArray(catalogMediaUploads.status, ["pending", "expired"]),
-        lt(catalogMediaUploads.expiresAt, new Date()),
+        lte(catalogMediaUploads.expiresAt, new Date()),
+        uploadId ? eq(catalogMediaUploads.id, uploadId) : undefined,
       ),
     )
-    .limit(25);
+    .orderBy(asc(catalogMediaUploads.expiresAt))
+    .limit(100);
   for (const upload of candidates) {
     const [claimed] = await db
       .update(catalogMediaUploads)
@@ -26,6 +28,7 @@ export async function cleanupCatalogMedia() {
         and(
           eq(catalogMediaUploads.id, upload.id),
           inArray(catalogMediaUploads.status, ["pending", "expired"]),
+          lte(catalogMediaUploads.expiresAt, new Date()),
         ),
       )
       .returning();
@@ -63,6 +66,7 @@ export async function cleanupCatalogMedia() {
         `Catalog media cleanup failed for ${upload.id}; the expired upload will retry.`,
         e,
       );
+      if (uploadId) throw e;
     }
   }
 }

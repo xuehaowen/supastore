@@ -11,6 +11,7 @@ import { InvariantViolationError } from "@/application/common/errors";
 import { copyCandidate, deleteObject } from "@/infrastructure/storage";
 import { validateEvidence } from "@/domain/evidence";
 import { emitOrderEvent } from "@/application/common/events";
+import { scheduleAction } from "@/application/scheduling/scheduled-actions";
 export async function finalizeUpload(input: {
   intentId: string;
   orderId: string;
@@ -46,6 +47,12 @@ export async function finalizeUpload(input: {
         leaseExpiresAt: new Date(Date.now() + 5 * 60000),
       })
       .returning();
+    await scheduleAction(tx, {
+      key: `candidate:${candidate!.id}`,
+      kind: "upload-candidate",
+      entityId: candidate!.id,
+      scheduledFor: candidate!.leaseExpiresAt,
+    });
     return { intent, candidate: candidate! };
   });
   if (!prepared.candidate) return prepared.intent;
@@ -124,8 +131,15 @@ export async function finalizeUpload(input: {
       )
       .returning();
     if (retired)
-      await deleteObject(retired.key).catch(() => {
-        /* Durable retired row is retried by cleanup. */
-      });
+      await deleteObject(retired.key)
+        .then(async () => {
+          await db
+            .update(uploadCandidates)
+            .set({ deletedAt: new Date() })
+            .where(eq(uploadCandidates.id, retired.id));
+        })
+        .catch(() => {
+          /* Durable retired row is retried by cleanup. */
+        });
   }
 }

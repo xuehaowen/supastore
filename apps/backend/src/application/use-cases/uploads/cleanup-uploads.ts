@@ -1,4 +1,4 @@
-import { and, eq, lt, ne, or } from "drizzle-orm";
+import { and, asc, eq, isNull, lte, ne, or } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
   orders,
@@ -6,11 +6,19 @@ import {
   uploadCandidates,
 } from "@/infrastructure/db/schema";
 import { deleteObject } from "@/infrastructure/storage";
-export async function cleanupUploads() {
+export async function cleanupUploads(intentId?: string) {
   const intents = await db
     .select()
     .from(paymentUploadIntents)
-    .where(lt(paymentUploadIntents.expiresAt, new Date()));
+    .where(
+      and(
+        lte(paymentUploadIntents.expiresAt, new Date()),
+        isNull(paymentUploadIntents.stagingDeletedAt),
+        intentId ? eq(paymentUploadIntents.id, intentId) : undefined,
+      ),
+    )
+    .orderBy(asc(paymentUploadIntents.expiresAt))
+    .limit(100);
   for (const intent of intents) {
     const key = await db.transaction(async (tx) => {
       await tx
@@ -23,7 +31,12 @@ export async function cleanupUploads() {
         .from(paymentUploadIntents)
         .where(eq(paymentUploadIntents.id, intent.id))
         .for("update");
-      if (!current) return null;
+      if (
+        !current ||
+        current.expiresAt > new Date() ||
+        current.stagingDeletedAt
+      )
+        return null;
       const active = await tx
         .select()
         .from(uploadCandidates)
@@ -41,20 +54,32 @@ export async function cleanupUploads() {
           .where(eq(paymentUploadIntents.id, intent.id));
       return current.s3Key;
     });
-    if (key) await deleteObject(key);
+    if (key) {
+      await deleteObject(key);
+      await db
+        .update(paymentUploadIntents)
+        .set({ stagingDeletedAt: new Date() })
+        .where(eq(paymentUploadIntents.id, intent.id));
+    }
   }
   const candidates = await db
     .select()
     .from(uploadCandidates)
     .where(
-      or(
-        eq(uploadCandidates.status, "retired"),
-        and(
-          eq(uploadCandidates.status, "active"),
-          lt(uploadCandidates.leaseExpiresAt, new Date()),
+      and(
+        isNull(uploadCandidates.deletedAt),
+        intentId ? eq(uploadCandidates.intentId, intentId) : undefined,
+        or(
+          eq(uploadCandidates.status, "retired"),
+          and(
+            eq(uploadCandidates.status, "active"),
+            lte(uploadCandidates.leaseExpiresAt, new Date()),
+          ),
         ),
       ),
-    );
+    )
+    .orderBy(asc(uploadCandidates.leaseExpiresAt))
+    .limit(100);
   for (const candidate of candidates) {
     const [retired] = await db
       .update(uploadCandidates)
@@ -63,9 +88,20 @@ export async function cleanupUploads() {
         and(
           eq(uploadCandidates.id, candidate.id),
           ne(uploadCandidates.status, "attached"),
+          isNull(uploadCandidates.deletedAt),
+          or(
+            eq(uploadCandidates.status, "retired"),
+            lte(uploadCandidates.leaseExpiresAt, new Date()),
+          ),
         ),
       )
       .returning();
-    if (retired) await deleteObject(retired.key);
+    if (retired) {
+      await deleteObject(retired.key);
+      await db
+        .update(uploadCandidates)
+        .set({ deletedAt: new Date() })
+        .where(eq(uploadCandidates.id, retired.id));
+    }
   }
 }

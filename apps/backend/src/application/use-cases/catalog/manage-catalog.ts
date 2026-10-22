@@ -1,3 +1,4 @@
+import { scheduleAction } from "@/application/scheduling/scheduled-actions";
 import { and, eq, sql } from "drizzle-orm";
 import { commerceRules } from "@/domain/commerce-evaluation";
 import { db } from "@/infrastructure/db";
@@ -290,10 +291,18 @@ export async function removeProductImage(input: {
       )
       .returning();
     if (!image) throw new NotFoundError("Image not found for this product.");
-    await tx
+    const retiredUploads = await tx
       .update(catalogMediaUploads)
       .set({ status: "pending", expiresAt: new Date() })
-      .where(eq(catalogMediaUploads.s3Key, image.s3Key));
+      .where(eq(catalogMediaUploads.s3Key, image.s3Key))
+      .returning();
+    for (const upload of retiredUploads)
+      await scheduleAction(tx, {
+        key: `catalog-upload:${upload.id}`,
+        kind: "catalog-upload",
+        entityId: upload.id,
+        scheduledFor: upload.expiresAt,
+      });
     await tx.insert(auditRecords).values({
       entityType: "product_image",
       entityId: imageId,

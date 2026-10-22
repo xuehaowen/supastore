@@ -1,3 +1,4 @@
+import { scheduleAction } from "@/application/scheduling/scheduled-actions";
 import { randomUUID } from "node:crypto";
 import { db } from "@/infrastructure/db";
 import { paymentUploadIntents } from "@/infrastructure/db/schema";
@@ -39,6 +40,12 @@ export async function createUploadIntent(input: {
         expiresAt: new Date(Date.now() + 900000),
       })
       .returning();
+    await scheduleAction(tx, {
+      key: `payment-upload:${intent!.id}`,
+      kind: "payment-upload",
+      entityId: intent!.id,
+      scheduledFor: intent!.expiresAt,
+    });
     return intent!;
   });
   return {

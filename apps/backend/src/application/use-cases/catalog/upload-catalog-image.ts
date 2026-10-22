@@ -1,3 +1,4 @@
+import { scheduleAction } from "@/application/scheduling/scheduled-actions";
 import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
@@ -75,6 +76,12 @@ export async function uploadCatalogImage(input: {
       s3Key: key,
       expiresAt: new Date(Date.now() + 3600000),
     });
+    await scheduleAction(tx, {
+      key: `catalog-upload:${id}`,
+      kind: "catalog-upload",
+      entityId: id,
+      scheduledFor: new Date(Date.now() + 3600000),
+    });
     return version;
   });
   let attached = false;
@@ -147,8 +154,8 @@ export async function uploadCatalogImage(input: {
             updatedAt: new Date(),
           })
           .where(eq(productCollections.id, entityId));
-        if (collection.imageKey)
-          await tx
+        if (collection.imageKey) {
+          const retired = await tx
             .update(catalogMediaUploads)
             .set({ status: "pending", expiresAt: new Date() })
             .where(
@@ -157,7 +164,16 @@ export async function uploadCatalogImage(input: {
                 eq(catalogMediaUploads.entityId, entityId),
                 eq(catalogMediaUploads.status, "attached"),
               ),
-            );
+            )
+            .returning();
+          for (const upload of retired)
+            await scheduleAction(tx, {
+              key: `catalog-upload:${upload.id}`,
+              kind: "catalog-upload",
+              entityId: upload.id,
+              scheduledFor: upload.expiresAt,
+            });
+        }
       }
       const [intent] = await tx
         .select()
