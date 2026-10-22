@@ -18,13 +18,13 @@ CI runs formatting/lint/type checks, pure calculation tests, database-backed aut
 
 ## Supported deployment model
 
-Evaluate Docker Compose and container hosts such as Railway, Fly.io, Coolify and Render using a 1 vCPU, 1GB RAM test host. The <80MB image and 256–512MB application memory budgets are provisional, unmeasured targets. Record application, database and storage requirements separately and publish only verified deployment recipes. An in-process worker requires a continuously running instance; disable scale-to-zero or supply a continuously running dedicated worker.
+Evaluate Docker Compose and container hosts such as Railway, Fly.io, Coolify and Render using a 1 vCPU, 1GB RAM test host. The <80MB image and 256–512MB application memory budgets are provisional, unmeasured targets. Record application, database and storage requirements separately and publish only verified deployment recipes. The dedicated queue worker requires a continuously running instance; disable scale-to-zero for that service.
 
 ### Configuration and process supervision
 
 Use the stack and provider interfaces in [architecture](architecture-overview.md#deployment-and-stack). Deployment recipes must document database, storage and email credentials, a protected bootstrap secret, TLS and verified proxy/edge rate limits. Caddy, Traefik or platform edge defaults are candidates; verify required modules rather than assuming rate limiting is built in.
 
-The worker runs inside the backend through Next.js `instrumentation.ts` when `ENABLE_OUTBOX_WORKER=true`; keep that backend continuously running. There is no packaged worker-only executable. The backend uses a 35-second shutdown drain and Compose allows a 45-second stop grace period. Worker shutdown, leases, sequencing and retries follow the [events contract](api-events-spec.md#worker-lifecycle-and-retry).
+The worker runs separately through `scripts/worker.ts`, with pg-boss and PostgreSQL. Local launchers start it alongside the backend when `ENABLE_OUTBOX_WORKER=true`; Compose has a dedicated `worker` service. Apply migrations before startup. See [background jobs](background-jobs.md) for scheduling, permissions, health and recovery. The worker uses a 35-second shutdown drain and Compose allows a 45-second stop grace period. Worker shutdown, leases, sequencing and retries follow the [events contract](api-events-spec.md#worker-lifecycle-and-retry).
 
 Run daily housekeeping according to [retention responsibilities](database-schema.md#retention-and-automated-housekeeping). Record job liveness and failures alongside delivery health. No external scheduler is required for the default deployment.
 

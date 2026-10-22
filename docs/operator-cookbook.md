@@ -193,7 +193,7 @@ does not provide the pnpm/tsx administrative toolchain.
 Verify public `/en`, `/admin/login` and `/api/health/ready`, then check worker
 health at `/api/health/worker`. Worker
 execution requires `ENABLE_OUTBOX_WORKER=true` and a continuously running
-backend. Compose allows 45 seconds for the 35-second shutdown drain.
+worker service; see [background jobs](background-jobs.md). Compose allows 45 seconds for the 35-second shutdown drain.
 
 Verify a controlled purchase, image/evidence upload, confirmation, fulfillment
 and refund in the intended acceptance environment. Production needs independent

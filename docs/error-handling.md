@@ -34,7 +34,7 @@ request bodies, credentials, customer contact details or uploaded content.
 ## Notifications
 
 Purchase and authentication emails use the durable outbox.
-`ENABLE_OUTBOX_WORKER=true` is required on the backend. Auth acknowledgement
+`ENABLE_OUTBOX_WORKER=true` enables the separate worker; see [background jobs](background-jobs.md). Auth acknowledgement
 means queued, not sent. Auth tokens live one hour; dispatch stops after 15
 minutes of queue delay. Expired queued links are suppressed; request a new
 link. Persistence failures are logged. Verification requests report temporary
