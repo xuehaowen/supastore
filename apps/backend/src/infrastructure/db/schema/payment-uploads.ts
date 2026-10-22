@@ -44,6 +44,7 @@ export const paymentUploadIntents = pgTable(
     // Populated when the upload is finalized (actual MIME from magic bytes)
     verifiedMimeType: text("verified_mime_type"),
     finalizedAt: timestamp("finalized_at", { withTimezone: true }),
+    stagingDeletedAt: timestamp("staging_deleted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -62,6 +63,7 @@ export const uploadCandidates = pgTable("upload_candidates", {
     .notNull()
     .references(() => paymentUploadIntents.id),
   key: text("key").notNull().unique(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
   status: text("status", { enum: ["active", "retired", "attached"] })
     .notNull()
     .default("active"),

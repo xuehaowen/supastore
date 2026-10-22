@@ -65,6 +65,7 @@ export const notificationEvents: Record<string, EventDefinition> = {
   "fulfillment.shipped": orderEvent("Order dispatched", true),
   "fulfillment.out_for_delivery": orderEvent("Out for delivery", true),
   "fulfillment.ready_for_pickup": orderEvent("Ready for pickup", true),
+  "fulfillment.pickup_reminder": orderEvent("Pickup reminder", true),
   "fulfillment.completed": orderEvent("Fulfillment complete", true),
   "return.requested": orderEvent("Return requested", false, true),
   "return.approved": orderEvent("Return approved"),

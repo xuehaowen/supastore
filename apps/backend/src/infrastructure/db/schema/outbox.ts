@@ -56,6 +56,11 @@ export const eventDeliveries = pgTable(
     providerStatus: text("provider_status"),
     failureCode: text("failure_code"),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
     providerName: text("provider_name"),
     providerProfile: text("provider_profile"),
     deliveryTracking: boolean("delivery_tracking").notNull().default(false),

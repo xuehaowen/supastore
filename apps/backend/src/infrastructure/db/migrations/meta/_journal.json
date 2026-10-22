@@ -309,6 +309,13 @@
       "when": 1791167400021,
       "tag": "0043_staff_security",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1791167400022,
+      "tag": "0044_scheduled_work",
+      "breakpoints": true
     }
   ]
 }

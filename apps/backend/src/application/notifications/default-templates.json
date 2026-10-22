@@ -250,5 +250,17 @@
       "subject": "销售额达到提醒阈值 · {{store.name}}",
       "body": "净销售额已达到 {{sales.total}}，超过设定的 {{sales.threshold}} 提醒阈值。\n报告期间：{{sales.period}}\n查看报告：{{sales.url}}"
     }
+  },
+  "fulfillment.pickup_reminder": {
+    "en": {
+      "subject": "Pickup reminder · {{order.reference}}",
+      "body": "Your pickup is coming up. Please check your collection details.\n\nOrder: {{order.reference}}\nPickup: {{fulfillment.pickup}}\nView or recover your order: {{order.url}}\n\n{{store.name}}\nSupport: {{support.email}}",
+      "sms": "{{store.name}}: Pickup reminder · {{order.reference}}. {{fulfillment.pickup}}. {{order.url}} Reply STOP to unsubscribe."
+    },
+    "zh": {
+      "subject": "取货提醒 · {{order.reference}}",
+      "body": "您的取货时间即将到来，请查看取货详情。\n\n订单编号：{{order.reference}}\n取货信息：{{fulfillment.pickup}}\n查看或找回订单：{{order.url}}\n\n{{store.name}}\n客服：{{support.email}}",
+      "sms": "{{store.name}}：取货提醒 · {{order.reference}}。{{fulfillment.pickup}}。{{order.url}} 回复 STOP 退订。"
+    }
   }
 }

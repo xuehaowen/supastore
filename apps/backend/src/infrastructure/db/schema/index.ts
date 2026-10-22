@@ -27,3 +27,4 @@ export * from "./shipments";
 export * from "./sales-reporting";
 export * from "./sms";
 export * from "./notification-templates";
+export * from "./scheduled-work";

@@ -50,5 +50,15 @@ export async function provisionRuntimeRole(client, { user, password }) {
       'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO %I',
       ${identity.database}::text, ${user}::text, ${user}::text, ${user}::text, ${user}::text) AS statement`;
     await tx.unsafe(grants.statement);
+    const [queueSchema] =
+      await tx`SELECT 1 FROM pg_namespace WHERE nspname='pgboss'`;
+    if (queueSchema) {
+      const [queueGrants] = await tx`SELECT format(
+        'REVOKE ALL ON SCHEMA pgboss FROM %I; GRANT USAGE ON SCHEMA pgboss TO %I; '
+        'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA pgboss TO %I; '
+        'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA pgboss TO %I',
+        ${user}::text, ${user}::text, ${user}::text, ${user}::text) AS statement`;
+      await tx.unsafe(queueGrants.statement);
+    }
   });
 }
