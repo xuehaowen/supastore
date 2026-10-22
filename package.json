@@ -50,7 +50,9 @@
     "start:backend": "node --env-file-if-exists=.env --env-file-if-exists=.env.production --env-file-if-exists=.env.local --env-file-if-exists=.env.production.local scripts/backend.mjs start",
     "start:storefront": "node --env-file-if-exists=.env --env-file-if-exists=.env.production --env-file-if-exists=.env.local --env-file-if-exists=.env.production.local scripts/storefront.mjs start",
     "demo": "node scripts/demo.mjs",
-    "test:demo": "node scripts/test-demo.mjs"
+    "test:demo": "node scripts/test-demo.mjs",
+    "dev:worker": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/worker.mjs",
+    "start:worker": "node --env-file-if-exists=.env --env-file-if-exists=.env.production --env-file-if-exists=.env.local --env-file-if-exists=.env.production.local scripts/worker.mjs start"
   },
   "devDependencies": {
     "better-auth": "^1.1.18",

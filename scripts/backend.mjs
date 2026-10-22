@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { launcherSettings } from "./launcher-settings.mjs";
+import { startWorker } from "./worker.mjs";
 const root = fileURLToPath(new URL("../", import.meta.url));
 export function startBackend(command = "dev") {
   if (!["dev", "build", "start"].includes(command))
@@ -52,6 +53,27 @@ if (
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
   const child = startBackend(process.argv[2]);
+  const worker =
+    process.argv[2] !== "build" && process.env.ENABLE_OUTBOX_WORKER === "true"
+      ? startWorker(process.argv[2])
+      : undefined;
+  worker?.once("error", (error) => {
+    console.error(error.message);
+    process.exitCode = 1;
+    child.kill("SIGTERM");
+  });
+  worker?.once("exit", (code) => {
+    if (child.exitCode === null) {
+      process.exitCode = code ?? 1;
+      child.kill("SIGTERM");
+    }
+  });
+  child.once("exit", () => {
+    if (worker?.exitCode === null) worker.kill("SIGTERM");
+  });
   for (const signal of ["SIGINT", "SIGTERM"])
-    process.once(signal, () => child.kill(signal));
+    process.once(signal, () => {
+      child.kill(signal);
+      worker?.kill(signal);
+    });
 }

@@ -23,7 +23,7 @@ RUN BETTER_AUTH_SECRET=$(node -e "process.stdout.write(require('node:crypto').ra
 RUN mkdir -p /app/apps/backend/public
 FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS backend
 WORKDIR /app
-ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS=--max-old-space-size=256 PORT=3000 HOSTNAME=0.0.0.0 SERVICE_ROLE=backend ENABLE_OUTBOX_WORKER=true
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS=--max-old-space-size=256 PORT=3000 HOSTNAME=0.0.0.0 SERVICE_ROLE=backend
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 COPY --from=backend-builder --chown=nextjs:nodejs /app/apps/backend/.next/standalone ./
 COPY --from=backend-builder --chown=nextjs:nodejs /app/apps/backend/.next/static ./apps/backend/.next/static
@@ -32,6 +32,12 @@ USER nextjs
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s CMD node -e "fetch('http://127.0.0.1:3000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "apps/backend/server.js"]
+FROM deps AS worker
+COPY . .
+ENV NODE_ENV=production SERVICE_ROLE=worker ENABLE_OUTBOX_WORKER=true NODE_OPTIONS=--max-old-space-size=256
+USER node
+HEALTHCHECK --interval=30s --timeout=10s CMD node --import tsx scripts/check-worker.ts
+CMD ["node", "--import", "tsx", "scripts/worker.ts"]
 FROM deps AS storefront-builder
 COPY . .
 ARG BACKEND_URL=http://backend:3000

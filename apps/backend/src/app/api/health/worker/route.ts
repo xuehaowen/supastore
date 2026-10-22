@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
-import { workerHealth } from "@/infrastructure/runtime/worker";
+import { queueWorkerHealth } from "@/infrastructure/queue/health";
 import { logFailure } from "@/infrastructure/http/failure";
 
 export const dynamic = "force-dynamic";
@@ -61,7 +61,7 @@ export async function GET() {
         )
       : 0;
 
-    const worker = workerHealth();
+    const worker = await queueWorkerHealth();
     const status =
       worker.status === "ok" &&
       (counts.review > 0 || counts.exhausted > 0 || counts.failed > 0)

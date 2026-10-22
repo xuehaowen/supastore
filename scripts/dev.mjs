@@ -1,9 +1,12 @@
 import { startBackend } from "./backend.mjs";
 import { startStorefront } from "./storefront.mjs";
+import { startWorker } from "./worker.mjs";
 const command = process.argv[2] || "dev";
 if (!["dev", "start"].includes(command))
   throw new Error("Expected dev or start");
 const children = [startBackend(command), startStorefront(command)];
+if (process.env.ENABLE_OUTBOX_WORKER === "true")
+  children.push(startWorker(command));
 let stopping = false;
 function stop() {
   if (stopping) return;
