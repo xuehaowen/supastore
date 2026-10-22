@@ -1,3 +1,4 @@
+import { schedulePickupReminder } from "@/application/scheduling/scheduled-actions";
 import type { Transaction } from "@/application/common/transaction";
 import {
   InvariantViolationError,
@@ -395,6 +396,7 @@ export async function createOrderInTransaction(
       details: { itemCount: input.manualItemCount ?? 0 },
     });
   const session = await issueOrderSession(tx, order.id);
+  await schedulePickupReminder(tx, order.id);
   return {
     ...order,
     orderId: order.id,

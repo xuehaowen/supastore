@@ -76,6 +76,7 @@ import { authorizeRefund } from "@/application/use-cases/refund-payout";
 import { uploadCatalogImage } from "@/application/use-cases/catalog/upload-catalog-image";
 import { cleanupCatalogMedia } from "@/application/use-cases/catalog/cleanup-catalog-media";
 import { removeProductImage } from "@/application/use-cases/catalog/manage-catalog";
+import { closeQueueProducer } from "@/infrastructure/queue/client";
 import { importProductsCsv } from "@/application/use-cases/catalog/import-products-csv";
 import { listProducts } from "@/application/use-cases/catalog/list-products";
 import { bulkUpdateVariants } from "@/application/use-cases/catalog/bulk-update-variants";
@@ -98,6 +99,7 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
     );
     const url = new URL(server!);
     url.pathname = `/${name}`;
+    vi.stubEnv("DATABASE_URL", url.toString());
     client = postgres(url.toString(), { max: 10, onnotice: () => {} });
     active.db = drizzle(client, { schema });
     await migrate(active.db as ReturnType<typeof drizzle>, {
@@ -113,6 +115,8 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
       await client`insert into "user"(id,name,email,email_verified) values(${id},${id},${`${id}@example.test`},true)`;
   }, 30000);
   afterAll(async () => {
+    await closeQueueProducer();
+    vi.unstubAllEnvs();
     if (client) await client.end();
     if (admin) {
       await admin.unsafe(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);

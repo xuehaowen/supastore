@@ -1,3 +1,4 @@
+import { cancelPickupReminder } from "@/application/scheduling/scheduled-actions";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import { settleOrderStock } from "../inventory/stock-operations";
@@ -307,6 +308,7 @@ export async function completePickupHandoff(input: CompletePickupHandoffInput) {
       .where(eq(orders.id, order.id))
       .returning();
     await releaseOrderReward(tx, order.id, staff.userId);
+    await cancelPickupReminder(tx, order.id);
 
     const [event] = await tx
       .insert(outboxEvents)

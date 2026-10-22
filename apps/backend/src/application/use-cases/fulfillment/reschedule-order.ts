@@ -1,3 +1,4 @@
+import { schedulePickupReminder } from "@/application/scheduling/scheduled-actions";
 import { DomainError } from "@/application/common/errors";
 import {
   parseActionRequiredText,
@@ -160,6 +161,7 @@ export async function rescheduleOrder(input: {
       reason,
       details: { sourceSlotId: source.id, destinationSlotId: slotId },
     });
+    await schedulePickupReminder(tx, id);
     return { slotId };
   });
 }

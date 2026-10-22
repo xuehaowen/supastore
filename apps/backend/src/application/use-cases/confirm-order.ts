@@ -1,3 +1,4 @@
+import { schedulePickupReminder } from "@/application/scheduling/scheduled-actions";
 import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import { settleOrderCredit } from "./store-credit/credit-operations";
@@ -242,6 +243,7 @@ export async function confirmOrderInTransaction(
     reason: "Order payment verified and confirmed",
   });
 
+  await schedulePickupReminder(tx, order.id);
   return {
     orderId: updatedOrder!.id,
     lifecycleStatus: updatedOrder!.lifecycleStatus,

@@ -1,3 +1,4 @@
+import { cancelPickupReminder } from "@/application/scheduling/scheduled-actions";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import { settleOrderStock } from "../inventory/stock-operations";
@@ -234,6 +235,7 @@ export async function cancelOrder(
       retryAfter: new Date(),
     });
 
+    await cancelPickupReminder(tx, order.id);
     // 6. Audit record
     await tx.insert(auditRecords).values({
       entityType: "order",

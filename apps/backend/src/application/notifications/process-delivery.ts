@@ -7,6 +7,10 @@ import {
   notificationAttemptResults,
   smsPreferences,
   storeSettings,
+  orders,
+  orderFulfillments,
+  outboxEvents,
+  scheduledActions,
 } from "@/infrastructure/db/schema";
 import type {
   EmailMessage,
@@ -46,8 +50,9 @@ interface Claim {
 }
 
 export async function enqueueSmsNotifications() {
-  await db.execute(sql`INSERT INTO event_deliveries(event_id,recipient,channel)
-    SELECT e.id,p.phone,'sms' FROM outbox_events e
+  await db.execute(sql`INSERT INTO event_deliveries(event_id,recipient,channel,expires_at,scheduled_for)
+    SELECT e.id,p.phone,'sms',NULLIF(e.payload->>'reminderExpiresAt','')::timestamptz,
+      coalesce(NULLIF(e.payload->>'scheduledFor','')::timestamptz,now()) FROM outbox_events e
     JOIN orders o ON e.aggregate_id=o.id AND e.aggregate_type='order'
     JOIN sms_preferences p ON (p.id=o.sms_preference_id OR (o.sms_preference_id IS NULL AND p.customer_id=o.customer_id))
     WHERE p.opted_in AND p.verified_at IS NOT NULL AND p.consent_at IS NOT NULL AND e.created_at >= p.consent_at
@@ -381,6 +386,49 @@ async function processSingleNotification(
           .where(eq(eventDeliveries.id, claim.id));
         return false;
       }
+      const [event] = await tx
+        .select()
+        .from(outboxEvents)
+        .where(eq(outboxEvents.id, delivery.eventId));
+      if (event?.eventType === "fulfillment.pickup_reminder") {
+        const [current] = await tx
+          .select({
+            lifecycle: orders.lifecycleStatus,
+            slot: orderFulfillments.fulfillmentSlotId,
+            status: orderFulfillments.status,
+          })
+          .from(orders)
+          .innerJoin(
+            orderFulfillments,
+            eq(orderFulfillments.orderId, orders.id),
+          )
+          .where(eq(orders.id, event.aggregateId));
+        const payload = event.payload as Record<string, unknown>;
+        const [action] = await tx
+          .select()
+          .from(scheduledActions)
+          .where(eq(scheduledActions.key, `pickup:${event.aggregateId}`));
+        if (
+          !current ||
+          current.lifecycle !== "confirmed" ||
+          current.status === "fulfilled" ||
+          current.slot !== payload.reminderSlotId ||
+          action?.jobId !== payload.reminderJobId ||
+          action.status !== "completed"
+        ) {
+          await tx
+            .update(eventDeliveries)
+            .set({
+              status: "suppressed",
+              providerStatus: "booking_changed",
+              preparedMessage: null,
+              leaseToken: null,
+              leaseExpiresAt: null,
+            })
+            .where(eq(eventDeliveries.id, claim.id));
+          return false;
+        }
+      }
       if (channel === "sms") {
         const [store] = await tx.select().from(storeSettings).limit(1);
         const [preference] =
@@ -519,6 +567,10 @@ async function processSingleNotification(
               ? `unknown:${result.code}`
               : outcome.providerStatus,
           failureCode: result.status === "accepted" ? null : result.code,
+          submittedAt:
+            result.status === "accepted"
+              ? (delivery.submittedAt ?? new Date())
+              : delivery.submittedAt,
           providerMessageId:
             result.status === "accepted"
               ? result.providerMessageId

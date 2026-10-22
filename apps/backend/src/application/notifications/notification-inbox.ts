@@ -235,6 +235,10 @@ export async function processNotificationInboxBatch(
           .update(eventDeliveries)
           .set({
             status,
+            deliveredAt:
+              event.state === "delivered"
+                ? (delivery.deliveredAt ?? occurredAt)
+                : delivery.deliveredAt,
             providerMessageId: event.providerMessageId,
             providerStatus:
               status === delivery.status && (older || event.state !== status)
