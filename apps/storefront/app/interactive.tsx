@@ -2,11 +2,11 @@
 import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "@supastore/contracts";
 import { textFor } from "@supastore/i18n/messages";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { customerError } from "@supastore/i18n/customer";
 import { LoaderCircle, LockKeyhole, Mail, UserRound } from "lucide-react";
 import { Alert, AlertDescription } from "@supastore/ui/alert";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@supastore/ui/tabs";
 import { Button } from "@supastore/ui/button";
 import { Input } from "@supastore/ui/input";
 import { Label } from "@supastore/ui/label";
@@ -136,152 +136,147 @@ export function AuthForm({
   const isCustomer = audience === "customer";
   const destination = isCustomer ? `/${locale}/account` : "/admin";
   return (
-    <form
-      className="grid gap-4"
-      onSubmit={async (event) => {
-        event.preventDefault();
-        const form = event.currentTarget;
-        const fields = new FormData(form);
-        setBusy(true);
+    <Tabs
+      value={mode}
+      onValueChange={(value) => {
+        setMode(value as "sign-in" | "sign-up");
         setMessage("");
-        try {
-          const payload = await authenticate(
-            mode,
-            {
-              name: fields.get("name"),
-              email: fields.get("email"),
-              password: fields.get("password"),
-              callbackURL: destination,
-            },
-            { customer: isCustomer },
-          );
-          if (mode === "sign-up") {
-            setMessage(textFor(locale).common.accountCreated);
-            setMode("sign-in");
-            form.reset();
-            return;
-          }
-          if (
-            isCustomer &&
-            payload &&
-            typeof payload.user === "object" &&
-            payload.user !== null &&
-            "emailVerified" in payload.user &&
-            payload.user.emailVerified === false
-          ) {
-            await signOutSession();
-            throw new Error(textFor(locale).errors.verifyEmail);
-          }
-          window.location.assign(destination);
-        } catch (error) {
-          setMessage(
-            isCustomer
-              ? customerError(error, locale)
-              : error instanceof Error
-                ? error.message
-                : textFor(locale).errors.generic,
-          );
-        } finally {
-          setBusy(false);
-        }
       }}
     >
-      {isCustomer && (
-        <div
-          className="grid grid-cols-2 rounded-lg bg-muted p-1"
-          aria-label={textFor(locale).common.accountAction}
-        >
-          <Button
-            type="button"
-            variant={mode === "sign-in" ? "secondary" : "ghost"}
-            onClick={() => {
+      <form
+        className="grid gap-4"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const fields = new FormData(form);
+          setBusy(true);
+          setMessage("");
+          try {
+            const payload = await authenticate(
+              mode,
+              {
+                name: fields.get("name"),
+                email: fields.get("email"),
+                password: fields.get("password"),
+                callbackURL: destination,
+              },
+              { customer: isCustomer },
+            );
+            if (mode === "sign-up") {
+              setMessage(textFor(locale).common.accountCreated);
               setMode("sign-in");
-              setMessage("");
-            }}
-          >
-            {textFor(locale).auth.signIn}
-          </Button>
-          <Button
-            type="button"
-            variant={mode === "sign-up" ? "secondary" : "ghost"}
-            onClick={() => {
-              setMode("sign-up");
-              setMessage("");
-            }}
-          >
-            {textFor(locale).common.createAccount}
-          </Button>
-        </div>
-      )}
-      {mode === "sign-up" && (
-        <div className="grid gap-2">
-          <Label htmlFor="name">
-            <UserRound className="mr-1 inline size-3.5" />
-            {textFor(locale).profile.name}
-          </Label>
-          <Input id="name" name="name" required autoComplete="name" />
-        </div>
-      )}
-      <div className="grid gap-2">
-        <Label className="auth-field-label" htmlFor="auth-email">
-          <span>
-            <Mail className="mr-1 inline size-3.5" />
-            {textFor(locale).auth.email}
-          </span>
-        </Label>
-        <Input
-          id="auth-email"
-          type="email"
-          name="email"
-          required
-          autoComplete="email"
-          placeholder={textFor(locale).common.emailPlaceholder}
-        />
-      </div>
-      <div className="grid gap-2">
-        <Label className="auth-field-label" htmlFor="auth-password">
-          <span>
-            <LockKeyhole className="mr-1 inline size-3.5" />
-            {textFor(locale).auth.password}
-          </span>
-        </Label>
-        <Input
-          id="auth-password"
-          type="password"
-          name="password"
-          minLength={mode === "sign-up" ? MIN_PASSWORD_LENGTH : undefined}
-          maxLength={mode === "sign-up" ? MAX_PASSWORD_LENGTH : undefined}
-          required
-          autoComplete={
-            mode === "sign-up" ? "new-password" : "current-password"
+              form.reset();
+              return;
+            }
+            if (
+              isCustomer &&
+              payload &&
+              typeof payload.user === "object" &&
+              payload.user !== null &&
+              "emailVerified" in payload.user &&
+              payload.user.emailVerified === false
+            ) {
+              await signOutSession();
+              throw new Error(textFor(locale).errors.verifyEmail);
+            }
+            window.location.assign(destination);
+          } catch (error) {
+            setMessage(
+              isCustomer
+                ? customerError(error, locale)
+                : error instanceof Error
+                  ? error.message
+                  : textFor(locale).errors.generic,
+            );
+          } finally {
+            setBusy(false);
           }
-        />
-      </div>
-      <Button type="submit" size="lg" disabled={busy}>
-        {busy && <LoaderCircle className="animate-spin" />}
-        {busy
-          ? textFor(locale).common.wait
-          : mode === "sign-up"
-            ? textFor(locale).common.createAccount
-            : textFor(locale).common.signInSecurely}
-      </Button>
-      {isCustomer && mode === "sign-in" && (
-        <p className="text-xs leading-5 text-muted-foreground">
-          {textFor(locale).common.verifiedNotice}
-        </p>
-      )}
-      {message && (
-        <Alert
-          variant={
-            message === textFor(locale).common.accountCreated
-              ? "default"
-              : "destructive"
-          }
-        >
-          <AlertDescription>{message}</AlertDescription>
-        </Alert>
-      )}
-    </form>
+        }}
+      >
+        {isCustomer && (
+          <>
+            <TabsList aria-label={textFor(locale).common.accountAction}>
+              <TabsTrigger value="sign-in">
+                {textFor(locale).auth.signIn}
+              </TabsTrigger>
+              <TabsTrigger value="sign-up">
+                {textFor(locale).common.createAccount}
+              </TabsTrigger>
+            </TabsList>
+          </>
+        )}
+        <TabsContent value={mode} className="grid gap-4 pt-0">
+          {mode === "sign-up" && (
+            <div className="grid gap-2">
+              <Label htmlFor="name">
+                <UserRound className="mr-1 inline size-3.5" />
+                {textFor(locale).profile.name}
+              </Label>
+              <Input id="name" name="name" required autoComplete="name" />
+            </div>
+          )}
+          <div className="grid gap-2">
+            <Label className="auth-field-label" htmlFor="auth-email">
+              <span>
+                <Mail className="mr-1 inline size-3.5" />
+                {textFor(locale).auth.email}
+              </span>
+            </Label>
+            <Input
+              id="auth-email"
+              type="email"
+              name="email"
+              required
+              autoComplete="email"
+              placeholder={textFor(locale).common.emailPlaceholder}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label className="auth-field-label" htmlFor="auth-password">
+              <span>
+                <LockKeyhole className="mr-1 inline size-3.5" />
+                {textFor(locale).auth.password}
+              </span>
+            </Label>
+            <Input
+              id="auth-password"
+              type="password"
+              name="password"
+              minLength={mode === "sign-up" ? MIN_PASSWORD_LENGTH : undefined}
+              maxLength={mode === "sign-up" ? MAX_PASSWORD_LENGTH : undefined}
+              required
+              autoComplete={
+                mode === "sign-up" ? "new-password" : "current-password"
+              }
+            />
+          </div>
+          <Button type="submit" size="lg" disabled={busy}>
+            {busy && <LoaderCircle className="animate-spin" />}
+            {busy
+              ? textFor(locale).common.wait
+              : mode === "sign-up"
+                ? textFor(locale).common.createAccount
+                : textFor(locale).common.signInSecurely}
+          </Button>
+          {isCustomer && mode === "sign-in" && (
+            <p className="text-xs leading-5 text-muted-foreground">
+              {textFor(locale).common.verifiedNotice}
+            </p>
+          )}
+          {message && (
+            <Alert
+              variant={
+                message === textFor(locale).common.accountCreated
+                  ? "default"
+                  : "destructive"
+              }
+            >
+              <AlertDescription>{message}</AlertDescription>
+            </Alert>
+          )}
+        </TabsContent>
+      </form>
+    </Tabs>
   );
 }
 
@@ -307,23 +302,6 @@ export function SignOutButton({ locale }: { locale: string }) {
         ? textFor(locale).common.signingOut
         : textFor(locale).account.signOut}
     </Button>
-  );
-}
-
-export function LanguageLink({ locale }: { locale: string }) {
-  const pathname = usePathname();
-  const query = useSearchParams().toString();
-  return (
-    <Link
-      href={
-        pathname.replace(
-          /^\/(en|zh)(?=\/|$)/,
-          locale === "en" ? "/zh" : "/en",
-        ) + (query ? `?${query}` : "")
-      }
-    >
-      {textFor(locale).common.languageName}
-    </Link>
   );
 }
 

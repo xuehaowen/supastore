@@ -323,6 +323,13 @@
       "when": 1791167400023,
       "tag": "0045_attribute_purpose",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1791167400024,
+      "tag": "0046_storefront_hero",
+      "breakpoints": true
     }
   ]
 }

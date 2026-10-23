@@ -4,6 +4,7 @@ import {
   catalogMediaUploads,
   productImages,
   productCollections,
+  storeSettings,
 } from "@/infrastructure/db/schema";
 import { deleteCatalogAsset } from "@/infrastructure/storage";
 import { logger } from "@/infrastructure/security/logger";
@@ -33,23 +34,33 @@ export async function cleanupCatalogMedia(uploadId?: string) {
       )
       .returning();
     if (!claimed) continue;
-    const [image] = await db
-      .select({ id: productImages.id })
-      .from(productImages)
-      .where(eq(productImages.s3Key, upload.s3Key))
-      .limit(1);
-    const [cover] = await db
-      .select({ id: productCollections.id })
-      .from(productCollections)
-      .where(eq(productCollections.imageKey, upload.s3Key))
-      .limit(1);
-    if (image || cover) {
-      await db
+    // Serialize reference retention with hero replacement so a retired upload
+    // cannot be marked attached after the owner has scheduled its cleanup.
+    const retained = await db.transaction(async (tx) => {
+      const [store] = await tx
+        .select({ hero: storeSettings.storefrontHero })
+        .from(storeSettings)
+        .limit(1)
+        .for("update");
+      const [image] = await tx
+        .select({ id: productImages.id })
+        .from(productImages)
+        .where(eq(productImages.s3Key, upload.s3Key))
+        .limit(1);
+      const [cover] = await tx
+        .select({ id: productCollections.id })
+        .from(productCollections)
+        .where(eq(productCollections.imageKey, upload.s3Key))
+        .limit(1);
+      if (!image && !cover && store?.hero?.imageKey !== upload.s3Key)
+        return false;
+      await tx
         .update(catalogMediaUploads)
         .set({ status: "attached" })
         .where(eq(catalogMediaUploads.id, upload.id));
-      continue;
-    }
+      return true;
+    });
+    if (retained) continue;
     try {
       await deleteCatalogAsset(upload.s3Key);
       await db

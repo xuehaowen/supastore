@@ -33,6 +33,7 @@ test("C1/C2 search, empty results, category navigation and cart edit/remove acro
   ).toHaveCount(1);
   await page.goto("/en/products/studio-cup");
   await page.getByRole("button", { name: "Add to bag" }).click();
+  await page.getByRole("link", { name: "View bag", exact: true }).click();
   await expect(page).toHaveURL(/\/en\/cart$/);
   await page.goto("/en/cart");
   await clickAction(
@@ -62,6 +63,7 @@ test("C3/C4 checkout validates shipping and consent without losing the cart", as
 }) => {
   await page.goto("/en/products/studio-cup");
   await page.getByRole("button", { name: "Add to bag" }).click();
+  await page.getByRole("link", { name: "View bag", exact: true }).click();
   await page.getByRole("link", { name: "Continue to checkout" }).click();
   await page
     .getByLabel("Street address")
@@ -786,6 +788,7 @@ test("M4 packing slips and private exports require an authenticated staff sessio
 async function reviewCheckout(page: import("@playwright/test").Page) {
   await page.goto("/en/products/studio-cup");
   await page.getByRole("button", { name: "Add to bag" }).click();
+  await page.getByRole("link", { name: "View bag", exact: true }).click();
   await page.getByRole("link", { name: "Continue to checkout" }).click();
   await page.getByLabel("Street address").fill("1 Test Street");
   await page

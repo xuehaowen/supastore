@@ -89,22 +89,29 @@ test("every page source has a usable responsive and accessible screen", async ({
         (await target.locator(".storefront-shell > header").count())
       ) {
         const brand = await target
-          .locator(".storefront-shell > header > a")
+          .locator(".storefront-header .storefront-wordmark")
           .boundingBox();
-        const navigation = await target
-          .locator(".storefront-shell > header > nav")
+        const actions = await target
+          .locator(
+            ".storefront-header .storefront-mobile-actions:visible, .storefront-header .checkout-back:visible",
+          )
           .boundingBox();
+        expect(brand, screen + " mobile brand").not.toBeNull();
+        expect(actions, screen + " mobile actions").not.toBeNull();
         expect(
-          navigation!.y,
-          screen + " mobile header rows",
-        ).toBeGreaterThanOrEqual(brand!.y + brand!.height);
-        expect(brand!.width, screen + " mobile brand width").toBeGreaterThan(
-          width * 0.8,
-        );
+          brand!.x + brand!.width,
+          screen + " mobile header overlap",
+        ).toBeLessThanOrEqual(actions!.x);
+        expect(
+          actions!.x + actions!.width,
+          screen + " mobile actions fit",
+        ).toBeLessThanOrEqual(width);
       }
     }
     const preview = target.locator('iframe[title="Email layout preview"]');
     const scanner = new AxeBuilder({ page: target });
+    // Keep the draft sandbox intact; its document has a separate accessibility audit.
+    scanner.exclude('iframe[title="Unsaved homepage preview"]');
     if (await preview.count()) {
       await expect(preview).toHaveAttribute("sandbox", "");
       // axe's asynchronous frame scan cannot complete when the sandbox disables scripts.
@@ -255,6 +262,7 @@ test("every page source has a usable responsive and accessible screen", async ({
     // Cover the actual checkout form as well as its empty-cart state.
     await page.goto("/en/products/studio-cup");
     await page.getByRole("button", { name: "Add to bag", exact: true }).click();
+    await page.getByRole("link", { name: "View bag", exact: true }).click();
     for (const locale of ["en", "zh"]) {
       await page.goto(`/${locale}/checkout`);
       await inspect(page, "storefront " + locale + " populated checkout");

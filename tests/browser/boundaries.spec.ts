@@ -18,7 +18,10 @@ async function accessible(page: import("@playwright/test").Page) {
       { timeout: 10000 },
     )
     .toBe(true);
-  const scan = await new AxeBuilder({ page }).analyze();
+  // The script-disabled draft is audited separately in storefront-refinement.
+  const scan = await new AxeBuilder({ page })
+    .exclude('iframe[title="Unsaved homepage preview"]')
+    .analyze();
   expect(
     scan.violations.filter((v) =>
       ["critical", "serious"].includes(v.impact ?? ""),
@@ -40,6 +43,7 @@ test("C3 unsupported destination preserves cart and explains next action", async
   try {
     await page.goto("/en/products/studio-cup");
     await page.getByRole("button", { name: "Add to bag" }).click();
+    await page.getByRole("link", { name: "View bag", exact: true }).click();
     await page.getByRole("link", { name: "Continue to checkout" }).click();
     await page.getByLabel("Country", { exact: true }).selectOption("AQ");
     await page.getByLabel("Street address").fill("1 Test Street");
@@ -70,6 +74,7 @@ test("C3/C4 keyboard checkout and expanded admin forms are accessible on mobile"
   await page.goto("/en/products/studio-cup");
   await page.getByRole("button", { name: "Add to bag" }).focus();
   await page.keyboard.press("Enter");
+  await page.getByRole("link", { name: "View bag", exact: true }).click();
   await page.getByRole("link", { name: "Continue to checkout" }).click();
   await page.getByLabel("Street address").fill("1 Test Street");
   await page
@@ -147,9 +152,7 @@ test("Account registration requires verification, retries sign-in, denies admin 
 }) => {
   const email = "account-" + Date.now() + "@example.test";
   await page.goto("/en/account");
-  await page
-    .getByRole("button", { name: "Create account", exact: true })
-    .click();
+  await page.getByRole("tab", { name: "Create account", exact: true }).click();
   await page.getByLabel("Name", { exact: true }).fill("Account Customer");
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page
@@ -370,14 +373,18 @@ test("M2/C1 multiple variants and Chinese product text persist into customer sel
   const [large] =
     await sql`select id from product_variants where sku=${handle + "-b"}`;
   const largeRadio = page.getByRole("radio", { name: /Large/ });
-  await expect(largeRadio).toHaveValue(large!.id);
-  await largeRadio.check();
-  await expect(largeRadio).toBeChecked();
+  await largeRadio.click();
+  await expect(largeRadio).toHaveAttribute("aria-checked", "true");
   await expect
     .poll(() =>
-      largeRadio.evaluate((radio: HTMLInputElement) =>
-        new FormData(radio.form!).get("variantId"),
-      ),
+      page
+        .locator("form")
+        .filter({
+          has: page.getByRole("button", { name: "Add to bag", exact: true }),
+        })
+        .evaluate((form: HTMLFormElement) =>
+          new FormData(form).get("variantId"),
+        ),
     )
     .toBe(large!.id);
   await clickAction(page, page.getByRole("button", { name: "Add to bag" }));

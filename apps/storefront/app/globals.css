@@ -87,11 +87,6 @@
   }
   body {
     @apply min-h-screen bg-background text-foreground antialiased;
-    background-image: radial-gradient(
-      circle at 90% -10%,
-      oklch(0.9 0.065 112 / 0.35),
-      transparent 28rem
-    );
   }
   a {
     @apply underline-offset-4;
@@ -102,23 +97,6 @@
 }
 
 @layer components {
-  .admin {
-    width: min(100% - 2rem, 90rem);
-    margin-inline: auto;
-    padding-block: clamp(1.5rem, 4vw, 4rem);
-  }
-
-  .admin-nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1.5rem;
-    margin-bottom: 2.5rem;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 1rem;
-  }
-
-  .admin-brand,
   .auth-brand {
     color: var(--foreground);
     font-family: var(--font-serif);
@@ -127,37 +105,6 @@
     text-decoration: none;
   }
 
-  .admin-brand span {
-    margin-left: 0.4rem;
-    color: var(--muted-foreground);
-    font-family: var(--font-sans);
-    font-size: 0.55rem;
-    font-weight: 700;
-    letter-spacing: 0.18em;
-    vertical-align: middle;
-  }
-
-  .admin-links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.25rem;
-    align-items: center;
-    font-size: 0.875rem;
-  }
-  .admin-links a {
-    color: var(--muted-foreground);
-    text-decoration: none;
-    transition: color 160ms ease;
-  }
-  .admin-links a:hover {
-    color: var(--foreground);
-  }
-  .admin-links .admin-shop-link {
-    color: var(--foreground);
-    font-weight: 600;
-  }
-
-  .admin > h1,
   .standalone > h1 {
     margin-block: 0 1.75rem;
     font-family: var(--font-serif);
@@ -166,28 +113,11 @@
     letter-spacing: -0.045em;
   }
 
-  .admin h2 {
-    font-family: var(--font-serif);
-    font-size: 1.5rem;
-    line-height: 1.15;
-  }
-
-  .admin h3 {
-    font-weight: 600;
-  }
-
   .eyebrow {
     margin-bottom: 1rem;
     font-size: 0.625rem;
     font-weight: 700;
     letter-spacing: 0.2em;
-  }
-
-  .admin-grid {
-    display: grid;
-    gap: 1.5rem;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
-    align-items: start;
   }
 
   .panel {
@@ -200,105 +130,9 @@
     box-shadow: 0 1px 2px oklch(0.2 0.02 158 / 0.06);
   }
 
-  .panel > form,
-  .admin-grid > section > form,
-  .admin details form {
+  .panel > form {
     display: grid;
     gap: 1rem;
-  }
-
-  .admin textarea,
-  .admin select {
-    min-height: 2.5rem;
-    width: 100%;
-    border: 1px solid var(--input);
-    border-radius: var(--radius-md);
-    background: var(--background);
-    padding: 0.55rem 0.75rem;
-    font-size: 0.875rem;
-  }
-
-  .admin textarea {
-    min-height: 6rem;
-    resize: vertical;
-  }
-
-  .admin button:not([data-slot]) {
-    min-height: 2.5rem;
-    border-radius: var(--radius-md);
-    background: var(--primary);
-    padding: 0.5rem 0.9rem;
-    color: var(--primary-foreground);
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition:
-      background-color 160ms ease,
-      opacity 160ms ease;
-  }
-
-  .admin button:not([data-slot]):hover {
-    opacity: 0.9;
-  }
-  .admin button:not([data-slot]):focus-visible,
-  .admin select:focus-visible,
-  .admin textarea:focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
-
-  .admin button.secondary {
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--foreground);
-  }
-
-  .metrics {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-    gap: 0.75rem;
-    margin-block: 2rem;
-  }
-
-  .metrics > a {
-    display: grid;
-    gap: 0.4rem;
-    min-height: 7.5rem;
-    align-content: space-between;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    background: var(--card);
-    padding: 1rem;
-    text-decoration: none;
-    transition:
-      border-color 160ms ease,
-      background-color 160ms ease;
-  }
-
-  .metrics > a:hover {
-    border-color: var(--primary);
-    background: var(--muted);
-  }
-  .metrics strong {
-    font-family: var(--font-serif);
-    font-size: 2.5rem;
-    line-height: 1;
-  }
-
-  .queue-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    gap: 1rem;
-    align-items: center;
-    border-bottom: 1px solid var(--border);
-    padding-block: 1rem;
-  }
-
-  .queue-row:last-child {
-    border-bottom: 0;
-  }
-  .queue-row form {
-    display: contents;
   }
 
   .two-col {
@@ -565,25 +399,8 @@
   }
 
   @media (max-width: 42rem) {
-    .queue-row {
-      grid-template-columns: 1fr;
-    }
-    .queue-row form {
-      display: block;
-    }
-    .queue-row form + form {
-      margin-top: -0.5rem;
-    }
     .two-col {
       grid-template-columns: 1fr;
-    }
-    .admin-nav {
-      align-items: flex-start;
-      flex-direction: column;
-      gap: 0.85rem;
-    }
-    .admin-links {
-      gap: 0.85rem;
     }
     .auth-shell,
     .account-shell {
@@ -613,9 +430,5 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .admin button:not([data-slot]),
-    .metrics > a {
-      transition: none;
-    }
   }
 }

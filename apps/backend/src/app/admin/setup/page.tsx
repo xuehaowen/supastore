@@ -1,3 +1,4 @@
+import { StorefrontSettings } from "./storefront-settings";
 import { PaymentSettings } from "./payment-settings";
 import { StaffSettings } from "./staff-settings";
 import { PickupSettings } from "./pickup-settings";
@@ -39,7 +40,12 @@ import { getLaunchReadiness } from "@/application/use-cases/store/get-launch-rea
 export default async function Setup({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; sent?: string; staff?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    sent?: string;
+    staff?: string;
+    heroSearch?: string;
+  }>;
 }) {
   const staff = await staffIdentity().catch(() => redirect("/admin/login"));
   const [store] = await db.select().from(storeSettings).limit(1);
@@ -83,6 +89,12 @@ export default async function Setup({
         <LaunchChecklist checklist={readiness.checklist} />
         <SettingsDirectory />
         <div className="admin-grid setup-sections">
+          <StorefrontSettings
+            hero={store.storefrontHero}
+            storeName={store.storeName}
+            defaultLocale={store.defaultLocale}
+            search={q.heroSearch?.slice(0, 120) ?? ""}
+          />
           <section className="panel">
             <h2 id="store-profile">Store profile & taxes</h2>
             <form action={saveSettings}>

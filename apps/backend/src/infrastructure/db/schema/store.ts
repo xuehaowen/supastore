@@ -36,6 +36,10 @@ export const storeSettings = pgTable("store_settings", {
       rewardsEndAt: null,
     }),
   logoKey: text("logo_key"),
+  storefrontHero:
+    jsonb("storefront_hero").$type<
+      import("@supastore/contracts").StorefrontHero
+    >(),
   supportEmail: text("support_email").notNull().default(""),
   publicContent: jsonb("public_content")
     .$type<

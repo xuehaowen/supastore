@@ -1,17 +1,23 @@
 "use client";
+import Link from "next/link";
+import { Package } from "lucide-react";
+import { designCopy } from "../lib/design-copy";
 import { MAX_ITEM_QUANTITY } from "@supastore/contracts";
 import { textFor } from "@supastore/i18n/messages";
-import { useState } from "react";
-import { useFormStatus } from "react-dom";
+import { startTransition, useActionState, useState, useRef } from "react";
 import Image from "next/image";
 import type { ProductDetail, CommercePreview } from "@supastore/contracts";
 import dynamic from "next/dynamic";
 import type { DestinationOptions } from "./shopping-preview";
+const ProductVariantOptions = dynamic(
+  () => import("./product-variant-options"),
+);
 const ShoppingPreview = dynamic(() =>
   import("./shopping-preview").then((module) => module.ShoppingPreview),
 );
 import { addItem } from "./actions";
 import { Button } from "@supastore/ui/button";
+import { Separator } from "@supastore/ui/separator";
 import { Label } from "@supastore/ui/label";
 import { variantCanBePurchased } from "../lib/product-availability";
 
@@ -35,6 +41,8 @@ export function ProductPurchase({
   destinations?: DestinationOptions;
 }) {
   const m = textFor(locale).commercePreview;
+  const copy = designCopy(locale);
+  const [addState, addAction, adding] = useActionState(addItem, {});
   const initial =
     product.variants.find((v) =>
       variantCanBePurchased(v, availableQuantities),
@@ -73,6 +81,18 @@ export function ProductPurchase({
     (activeImageKey
       ? product.images.find((i) => i.s3Key === activeImageKey)
       : null) || variantImage;
+  const imageIndex = Math.max(
+    0,
+    product.images.findIndex((image) => image.s3Key === activeImage?.s3Key),
+  );
+  const gesture = useRef<{ x: number; y: number } | null>(null);
+  function nextImage(offset: number) {
+    const image =
+      product.images[
+        (imageIndex + offset + product.images.length) % product.images.length
+      ];
+    if (image) setActiveImageKey(image.s3Key);
+  }
   const effectivePrice =
     hasContextualRules && evaluated
       ? evaluated.unitPriceCents
@@ -110,8 +130,27 @@ export function ProductPurchase({
   }
   return (
     <div className="contents">
-      <div className="flex flex-col gap-3 md:sticky md:top-6">
-        <div className="flex aspect-square items-center justify-center overflow-hidden rounded-3xl bg-[#e5e8df]">
+      <div className="product-gallery">
+        <div
+          className="product-main-image"
+          style={{ touchAction: "pan-y" }}
+          onPointerDown={(event) => {
+            if (event.pointerType !== "mouse")
+              gesture.current = { x: event.clientX, y: event.clientY };
+          }}
+          onPointerCancel={() => {
+            gesture.current = null;
+          }}
+          onPointerUp={(event) => {
+            const start = gesture.current;
+            gesture.current = null;
+            if (!start || product.images.length < 2) return;
+            const dx = event.clientX - start.x,
+              dy = event.clientY - start.y;
+            if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy))
+              nextImage(dx < 0 ? 1 : -1);
+          }}
+        >
           {activeImage ? (
             <Image
               className="size-full object-cover transition-all duration-300"
@@ -122,56 +161,88 @@ export function ProductPurchase({
               sizes="(max-width: 767px) 88vw, 50vw"
             />
           ) : (
-            <span
-              className="font-serif text-8xl text-[#889475]"
-              aria-hidden="true"
-            >
-              {product.title.slice(0, 1)}
+            <span className="product-image-placeholder">
+              <Package aria-hidden="true" />
+              <span>{copy.noImage}</span>
             </span>
           )}
         </div>
         {product.images.length > 1 && (
-          <div
-            className="flex gap-2.5 overflow-x-auto pb-1"
-            aria-label={textFor(locale).ui.productImageGallery}
-          >
-            {product.images.map((img) => {
-              const isSelected = activeImage?.s3Key === img.s3Key;
-              return (
-                <button
-                  key={img.s3Key}
-                  type="button"
-                  onClick={() => setActiveImageKey(img.s3Key)}
-                  className={`relative size-16 shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
-                    isSelected
-                      ? "border-primary ring-2 ring-primary/20"
-                      : "border-transparent opacity-70 hover:opacity-100"
-                  }`}
-                  aria-pressed={isSelected}
-                  aria-label={img.altText || product.title}
-                >
-                  <Image
-                    className="size-full object-cover"
-                    src={`/api/assets?key=${encodeURIComponent(img.s3Key)}&inline=1`}
-                    alt=""
-                    width={80}
-                    height={80}
-                  />
-                </button>
-              );
-            })}
-          </div>
+          <>
+            <div
+              className="product-gallery-controls"
+              role="group"
+              aria-label={textFor(locale).ui.productImageGallery}
+            >
+              <Button
+                type="button"
+                variant="outline"
+                aria-label={copy.previousPhoto}
+                onClick={() => nextImage(-1)}
+              >
+                ←
+              </Button>
+              <span role="status">
+                {copy.photo} {imageIndex + 1} / {product.images.length}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                aria-label={copy.nextPhoto}
+                onClick={() => nextImage(1)}
+              >
+                →
+              </Button>
+            </div>
+            <div
+              className="flex gap-2.5 overflow-x-auto pb-1"
+              aria-label={textFor(locale).ui.productImageGallery}
+            >
+              {product.images.map((img) => {
+                const isSelected = activeImage?.s3Key === img.s3Key;
+                return (
+                  <button
+                    key={img.s3Key}
+                    type="button"
+                    onClick={() => setActiveImageKey(img.s3Key)}
+                    className={`relative size-16 shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
+                      isSelected
+                        ? "border-primary ring-2 ring-primary/20"
+                        : "border-transparent opacity-70 hover:opacity-100"
+                    }`}
+                    aria-pressed={isSelected}
+                    aria-label={img.altText || product.title}
+                  >
+                    <Image
+                      className="size-full object-cover"
+                      src={`/api/assets?key=${encodeURIComponent(img.s3Key)}&inline=1`}
+                      alt=""
+                      width={80}
+                      height={80}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
-      <div className="max-w-xl self-center">
+      <div className="product-purchase-info">
         <p className="mb-5 text-[10px] font-bold tracking-[0.2em]">
           {product.categories.map((c) => c.name).join(" / ")}
         </p>
         <h1 className="mb-5 font-serif text-5xl leading-none tracking-[-0.045em] md:text-6xl">
           {product.title}
         </h1>
-        <p className="mb-6 whitespace-pre-line leading-7 text-muted-foreground">
-          {product.description}
+        <p role="status" aria-live="polite" className="product-price">
+          {price}
+          {!canPurchase ? ` · ${labels.unavailable}` : ""}
+        </p>
+        <p className="mb-6 leading-7 text-muted-foreground">
+          {Array.from(product.description || "")
+            .slice(0, 180)
+            .join("")}
+          {Array.from(product.description || "").length > 180 ? "…" : ""}
         </p>
         {hasContextualRules && current && (
           <ShoppingPreview
@@ -181,7 +252,17 @@ export function ProductPurchase({
             onEvaluation={setShopping}
           />
         )}
-        <form className="grid gap-6" action={addItem}>
+        <form
+          className="grid gap-6"
+          action={addAction}
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!adding) {
+              const data = new FormData(event.currentTarget);
+              startTransition(() => addAction(data));
+            }
+          }}
+        >
           <input type="hidden" name="locale" value={locale} />
           {normalized ? (
             <>
@@ -257,40 +338,24 @@ export function ProductPurchase({
               <legend className="px-2 text-sm font-medium">
                 {textFor(locale).ui.variant}
               </legend>
-              {product.variants.map((v) => (
-                <Label
-                  key={v.id}
-                  className="flex items-start gap-3 font-normal"
-                >
-                  <input
-                    className="mt-0.5 size-4 shrink-0"
-                    type="radio"
-                    name="variantId"
-                    value={v.id}
-                    disabled={!variantCanBePurchased(v, availableQuantities)}
-                    required
-                    checked={v.id === variantId}
-                    onChange={() => selectVariant(v.id)}
-                  />
-                  <span>
-                    {v.title}
-                    {!variantCanBePurchased(v, availableQuantities)
-                      ? ` · ${labels.unavailable}`
-                      : ""}
-                  </span>
-                </Label>
-              ))}
+              <input
+                type="hidden"
+                name="variantId"
+                value={canPurchase ? variantId : ""}
+              />
+              <ProductVariantOptions
+                variants={product.variants}
+                selected={variantId}
+                quantities={availableQuantities}
+                onSelect={selectVariant}
+                label={textFor(locale).ui.variant}
+                unavailable={labels.unavailable}
+              />
             </fieldset>
           )}
-          <p role="status" aria-live="polite" className="text-lg font-medium">
-            {hasContextualRules && !evaluated && (
-              <small className="block text-xs text-muted-foreground">
-                {m.basePriceNotice}
-              </small>
-            )}
-            {current?.title} · {price}
-            {!canPurchase ? ` · ${labels.unavailable}` : ""}
-          </p>
+          {hasContextualRules && !evaluated && (
+            <small className="text-muted-foreground">{m.basePriceNotice}</small>
+          )}
           {availableQuantities[variantId] !== undefined && (
             <p className="text-sm text-muted-foreground">
               {textFor(locale).ui.availableQuantity}:{" "}
@@ -332,16 +397,44 @@ export function ProductPurchase({
           </div>
           <AddToCartButton
             available={canPurchase}
+            pending={adding}
             labels={labels}
             wait={textFor(locale).common.wait}
           />
+          {addState.error && (
+            <p role="alert" className="text-sm text-destructive">
+              {addState.error}
+            </p>
+          )}
+          {addState.saved && (
+            <div role="status" aria-live="polite" className="purchase-feedback">
+              <span>{copy.added}</span>
+              <Link className="underline" href={`/${locale}/cart`}>
+                {copy.viewBag}
+              </Link>
+            </div>
+          )}
         </form>
-        <aside className="mt-8 border-t pt-5 text-sm leading-6 text-muted-foreground">
+        <Separator className="mt-8" />
+        <aside className="pt-5 text-sm leading-6 text-muted-foreground">
           {
             textFor(locale).ui
               .shippingAndLocalPickupOptionsAreConfirmedAtCheckout
           }
         </aside>
+        <div className="product-policies">
+          <Link href={`/${locale}/pages/shipping`}>{copy.shipping}</Link>
+          <Link href={`/${locale}/pages/returns`}>{copy.returns}</Link>
+        </div>
+        {product.description && (
+          <details className="storefront-disclosure mt-8">
+            <summary>
+              {copy.details}
+              <span aria-hidden="true">+</span>
+            </summary>
+            <div className="whitespace-pre-line">{product.description}</div>
+          </details>
+        )}
       </div>
     </div>
   );
@@ -351,12 +444,13 @@ function AddToCartButton({
   available,
   labels,
   wait,
+  pending,
 }: {
   available: boolean;
   labels: { add: string; unavailable: string };
   wait: string;
+  pending: boolean;
 }) {
-  const { pending } = useFormStatus();
   return (
     <Button
       className="w-full sm:w-auto"

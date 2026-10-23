@@ -17,6 +17,7 @@ export interface ListProductsInput {
   collectionHandle?: string;
   sort?: "newest" | "price-low" | "price-high";
   optionValues?: { attribute: string; value: string }[];
+  featuredFirst?: boolean;
 }
 export async function listProducts(input: ListProductsInput = {}) {
   return db.transaction(async (tx) => {
@@ -28,6 +29,17 @@ export async function listProducts(input: ListProductsInput = {}) {
     );
     const conditions = [eq(products.isPublished, true)];
     const [settings] = await tx.select().from(storeSettings).limit(1);
+    const featured = input.featuredFirst
+      ? (settings?.storefrontHero?.featuredProductIds ?? [])
+      : [];
+    const editorialOrder = featured.length
+      ? [
+          sql`array_position(ARRAY[${sql.join(
+            featured.map((id) => sql`${id}::uuid`),
+            sql`, `,
+          )}], ${products.id}) asc nulls last`,
+        ]
+      : [];
     const search = input.search?.trim().slice(0, 200);
     if (search)
       conditions.push(
@@ -66,6 +78,7 @@ export async function listProducts(input: ListProductsInput = {}) {
       .from(products)
       .where(and(...conditions))
       .orderBy(
+        ...editorialOrder,
         input.sort === "price-low"
           ? sql`(select min(v.price_cents) from product_variants v where v.product_id=${products.id} and v.is_available) asc nulls last`
           : input.sort === "price-high"
@@ -97,7 +110,7 @@ export async function listProducts(input: ListProductsInput = {}) {
           .select()
           .from(productImages)
           .where(inArray(productImages.productId, ids))
-          .orderBy(productImages.sortOrder)
+          .orderBy(productImages.sortOrder, productImages.id)
       : [];
     const translationsByProduct = new Map<string, typeof translations>();
     for (const translation of translations) {
@@ -112,9 +125,15 @@ export async function listProducts(input: ListProductsInput = {}) {
       pricesByProduct.set(variant.productId, prices);
     }
     const coverByProduct = new Map<string, string>();
+    const previewByProduct = new Map<string, string>();
     for (const image of images)
       if (!coverByProduct.has(image.productId))
         coverByProduct.set(image.productId, image.s3Key);
+      else if (
+        coverByProduct.get(image.productId) !== image.s3Key &&
+        !previewByProduct.has(image.productId)
+      )
+        previewByProduct.set(image.productId, image.s3Key);
     return {
       page,
       pageSize,
@@ -143,6 +162,7 @@ export async function listProducts(input: ListProductsInput = {}) {
           ),
           isPublished: p.isPublished,
           coverImageKey: coverByProduct.get(p.id) ?? null,
+          previewImageKey: previewByProduct.get(p.id) ?? null,
           lowestPriceCents: prices.length ? Math.min(...prices) : null,
           variantCount: prices.length,
         };

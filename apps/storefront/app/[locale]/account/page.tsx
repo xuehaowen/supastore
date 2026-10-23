@@ -106,7 +106,7 @@ export default async function Account({
         </CardContent>
       </Card>
       {account && (
-        <div className="grid gap-6 mt-8">
+        <div className="account-history grid gap-6 mt-8">
           <Card>
             <CardContent>
               <h2>{t("account.storeCredit")}</h2>

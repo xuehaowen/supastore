@@ -44,6 +44,7 @@ test("admin regional rates reach checkout and survive validation and editing", a
     await addZone("CUJ San Francisco", "CA", "941", "500");
     await page.goto("/en/products/studio-cup");
     await page.getByRole("button", { name: "Add to bag" }).click();
+    await page.getByRole("link", { name: "View bag", exact: true }).click();
     await page.getByRole("link", { name: "Continue to checkout" }).click();
     await expect(page.getByLabel("Country", { exact: true })).toHaveValue("US");
     await expect(

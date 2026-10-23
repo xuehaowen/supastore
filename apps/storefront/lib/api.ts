@@ -1,4 +1,4 @@
-import { headers } from "next/headers";
+import { cookies } from "next/headers";
 import { responseData, responseMessage } from "./response";
 import { fetchJson, TransportError } from "./fetch-json";
 export class BackendApiError extends Error {
@@ -14,9 +14,8 @@ export async function readApi<T>(
   path: string,
   decode: (value: unknown) => T,
 ): Promise<T> {
-  const incoming = await headers();
   return readDecoded(path, decode, {
-    headers: { cookie: incoming.get("cookie") || "" },
+    headers: { cookie: (await cookies()).toString() },
     cache: "no-store",
   });
 }
@@ -106,7 +105,7 @@ export function readPublicApi<T>(
 async function readDecoded<T>(
   path: string,
   decode: (value: unknown) => T,
-  init: RequestInit,
+  init: RequestInit & { next?: { revalidate: number } },
 ): Promise<T> {
   const {
     response,

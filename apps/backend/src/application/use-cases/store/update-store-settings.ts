@@ -1,10 +1,14 @@
-import { eq, sql, inArray } from "drizzle-orm";
+import { and, eq, sql, inArray } from "drizzle-orm";
 import * as v from "valibot";
 import { commercePolicySchema } from "@/domain/commerce-policy";
 import { commerceRulesSchema } from "@/domain/commerce-evaluation";
 import { db } from "@/infrastructure/db";
 import {
   storeSettings,
+  productImages,
+  products,
+  productCollections,
+  catalogMediaUploads,
   orders,
   storeCreditEntries,
   auditRecords,
@@ -16,6 +20,8 @@ import {
   InvariantViolationError,
   NotFoundError,
 } from "@/application/common/errors";
+import { scheduleAction } from "@/application/scheduling/scheduled-actions";
+import { storefrontHeroSchema } from "@supastore/contracts";
 const schema = v.object({
   commerceRules: v.optional(commerceRulesSchema),
   commercePolicy: v.optional(commercePolicySchema),
@@ -23,6 +29,7 @@ const schema = v.object({
     v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(120)),
   ),
   logoKey: v.optional(v.string()),
+  storefrontHero: v.optional(storefrontHeroSchema),
   supportEmail: v.optional(v.pipe(v.string(), v.email())),
   currency: v.optional(v.pipe(v.string(), v.regex(/^[A-Z]{3}$/))),
   precision: v.optional(
@@ -56,6 +63,49 @@ export async function updateStoreSettings(input: UpdateStoreSettingsInput) {
       .for("update")
       .limit(1);
     if (!settings) throw new NotFoundError("Complete owner bootstrap first.");
+    for (const [ids, table, label] of [
+      [parsed.storefrontHero?.featuredProductIds, products, "products"],
+      [
+        parsed.storefrontHero?.featuredCollectionIds,
+        productCollections,
+        "collections",
+      ],
+    ] as const) {
+      if (!ids?.length) continue;
+      const selected = await tx
+        .select({ id: table.id })
+        .from(table)
+        .where(and(inArray(table.id, ids), eq(table.isPublished, true)));
+      if (selected.length !== ids.length)
+        throw new InvariantViolationError(
+          `Choose published ${label} for the homepage.`,
+        );
+    }
+    if (parsed.storefrontHero?.imageKey) {
+      const key = parsed.storefrontHero.imageKey;
+      const [image] = await tx
+        .select({ id: productImages.id })
+        .from(productImages)
+        .innerJoin(products, eq(products.id, productImages.productId))
+        .where(
+          and(eq(productImages.s3Key, key), eq(products.isPublished, true)),
+        )
+        .limit(1);
+      const [collection] = await tx
+        .select({ id: productCollections.id })
+        .from(productCollections)
+        .where(
+          and(
+            eq(productCollections.imageKey, key),
+            eq(productCollections.isPublished, true),
+          ),
+        )
+        .limit(1);
+      if (!image && !collection && settings.storefrontHero?.imageKey !== key)
+        throw new InvariantViolationError(
+          "Choose an image from a published product or collection.",
+        );
+    }
     if (parsed.commercePolicy?.rewardEligibleCategoryIds.length) {
       const selected = await tx
         .select({ id: categories.id })
@@ -103,6 +153,24 @@ export async function updateStoreSettings(input: UpdateStoreSettingsInput) {
         throw new InvariantViolationError(
           "Currency cannot change after recording outside sales.",
         );
+    }
+    if (
+      "storefrontHero" in parsed &&
+      settings.storefrontHero?.imageKey &&
+      settings.storefrontHero.imageKey !== parsed.storefrontHero?.imageKey
+    ) {
+      const retired = await tx
+        .update(catalogMediaUploads)
+        .set({ status: "pending", expiresAt: new Date() })
+        .where(eq(catalogMediaUploads.s3Key, settings.storefrontHero.imageKey))
+        .returning();
+      for (const upload of retired)
+        await scheduleAction(tx, {
+          key: `catalog-upload:${upload.id}`,
+          kind: "catalog-upload",
+          entityId: upload.id,
+          scheduledFor: upload.expiresAt,
+        });
     }
     const [updated] = await tx
       .update(storeSettings)

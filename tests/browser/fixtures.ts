@@ -119,6 +119,7 @@ export async function checkout(
       .getByRole("button", { name: "Increase quantity", exact: true })
       .click();
   await page.getByRole("button", { name: "Add to bag" }).click();
+  await page.getByRole("link", { name: "View bag", exact: true }).click();
   await page.getByRole("link", { name: "Continue to checkout" }).click();
   if (options.pickup) {
     await page.getByLabel("Local pickup", { exact: true }).check();

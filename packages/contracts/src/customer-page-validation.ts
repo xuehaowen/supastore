@@ -2,6 +2,8 @@ import * as v from "valibot";
 import type { CustomerPageModels } from "./customer-pages";
 import { shoppingContextSchema } from "./commerce-evaluation";
 
+import { storefrontHeroSchema } from "./storefront-hero";
+
 const text = v.string();
 const id = v.pipe(text, v.minLength(1));
 const integer = v.pipe(v.number(), v.safeInteger());
@@ -84,6 +86,7 @@ const store = v.exactOptional(
     ),
     hasContextualRules: v.exactOptional(v.boolean()),
     logoKey: v.nullable(text),
+    storefrontHero: v.exactOptional(storefrontHeroSchema),
     supportEmail: text,
     publicContent: v.object({
       en: v.exactOptional(publicContent),
@@ -185,6 +188,7 @@ const catalog = v.object({
       description: text,
       isPublished: v.boolean(),
       coverImageKey: v.nullable(text),
+      previewImageKey: v.exactOptional(v.nullable(text)),
       lowestPriceCents: v.nullable(amount),
       variantCount: amount,
     }),

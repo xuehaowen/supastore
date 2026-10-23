@@ -33,14 +33,25 @@ async function perform(
   }
   redirect(next);
 }
-export async function addItem(form: FormData) {
-  return perform(`/${locale(form)}/cart`, async () => {
+export async function addItem(
+  _previous: { error?: string; saved?: boolean; requestId?: string },
+  form: FormData,
+): Promise<{ error?: string; saved?: boolean; requestId?: string }> {
+  try {
     await serverRequest("cart", {
       locale: locale(form),
       variantId: text(form, "variantId"),
       quantity: Number(text(form, "quantity")),
     });
-  });
+    revalidatePath("/[locale]", "layout");
+    return { saved: true };
+  } catch (error) {
+    const failure = actionFailure(error, "storefront.add-item");
+    return {
+      error: customerError(failure.message, locale(form)),
+      ...(failure.requestId ? { requestId: failure.requestId } : {}),
+    };
+  }
 }
 export async function changeItem(form: FormData) {
   return perform(`/${locale(form)}/cart`, async () => {

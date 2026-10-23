@@ -3,7 +3,7 @@ import { parseOptionalCartDto } from "../../../packages/contracts/src/index";
 import { BackendApiError, readApi, readPublicApi } from "./api";
 import { ApiError, request } from "./client";
 vi.mock("next/headers", () => ({
-  headers: async () => new Headers({ cookie: "guest=test" }),
+  cookies: async () => ({ toString: () => "guest=test" }),
 }));
 
 const fetchMock = vi.fn();

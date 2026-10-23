@@ -1,7 +1,7 @@
 import { storePageKeys, PLATFORM_NAME } from "@supastore/contracts";
 import { readRequestPage } from "../../lib/page-data";
 import { textFor } from "@supastore/i18n/messages";
-import { LanguageLink } from "../interactive";
+import { LanguageLink } from "../language-link";
 import { StorefrontNavLink } from "../storefront-nav-link";
 import { DocumentLanguage } from "../../../../packages/i18n/src/document-language";
 import Link from "next/link";
@@ -9,6 +9,10 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Alert, AlertDescription } from "@supastore/ui/alert";
+import { StorefrontMenu, StorefrontHeader } from "../storefront-menu";
+import { designCopy } from "../../lib/design-copy";
+import { readRequestPage as readCustomerPage } from "../../lib/page-data";
+import { Search, ShoppingBag, ArrowLeft } from "lucide-react";
 import { AnalyticsPreference } from "../analytics";
 export const dynamic = "force-dynamic";
 export async function generateMetadata({
@@ -31,11 +35,15 @@ export default async function ShopLayout({
   if (!["en", "zh"].includes(locale)) notFound();
   const t = await getTranslations({ locale });
   const { store, session } = await readRequestPage("layout", locale);
+  const { cart } = await readCustomerPage("cart", locale);
+  const m = designCopy(locale);
+  const brand = (
+    <Link className="storefront-wordmark" href={`/${locale}`}>
+      {store?.storeName ?? PLATFORM_NAME}
+    </Link>
+  );
   return (
-    <div
-      className="storefront-shell mx-auto flex min-h-screen max-w-375 flex-col px-[6%]"
-      lang={locale}
-    >
+    <div className="storefront-shell" lang={locale}>
       <DocumentLanguage locale={locale} />
       <a
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded focus:bg-background focus:p-4"
@@ -43,11 +51,16 @@ export default async function ShopLayout({
       >
         {textFor(locale).common.skipToContent}
       </a>
-      <header className="flex items-center justify-between gap-6 border-b py-6 max-sm:items-start">
-        <Link
-          className="font-serif text-3xl font-semibold no-underline transition-opacity hover:opacity-75"
-          href={"/" + locale}
-        >
+      <StorefrontHeader
+        checkoutBrand={brand}
+        checkoutLink={
+          <Link className="checkout-back" href={`/${locale}/cart`}>
+            <ArrowLeft size={16} />
+            {m.backBag}
+          </Link>
+        }
+      >
+        <Link className="storefront-wordmark" href={"/" + locale}>
           {store?.logoKey && (
             <Image
               className="mr-2 inline-block size-10 object-contain align-middle"
@@ -64,7 +77,7 @@ export default async function ShopLayout({
           </span>
         </Link>
         <nav
-          className="flex flex-wrap items-center justify-end gap-x-5 gap-y-3 text-sm max-sm:max-w-52 max-sm:gap-x-3"
+          className="storefront-desktop-nav"
           aria-label={textFor(locale).shop}
         >
           <StorefrontNavLink
@@ -89,16 +102,39 @@ export default async function ShopLayout({
           >
             {session ? textFor(locale).ui.account : textFor(locale).auth.signIn}
           </StorefrontNavLink>
+          <Link
+            className="storefront-search-link"
+            href={`/${locale}/search`}
+            aria-label={m.search}
+          >
+            <Search size={18} />
+          </Link>
           <StorefrontNavLink
             locale={locale}
             className="rounded-md border px-3 py-1.5 font-medium no-underline transition-colors hover:bg-muted"
             href={"/" + locale + "/cart"}
           >
-            {t("cart")} <span aria-hidden="true">↗</span>
+            <ShoppingBag size={16} aria-hidden="true" /> {t("cart")}{" "}
+            <span className="bag-count">{cart?.itemCount ?? 0}</span>
           </StorefrontNavLink>
           <LanguageLink locale={locale} />
         </nav>
-      </header>
+        <div className="storefront-mobile-actions">
+          <LanguageLink locale={locale} />
+          <Link
+            href={`/${locale}/cart`}
+            aria-label={`${m.bag} (${cart?.itemCount ?? 0})`}
+          >
+            <ShoppingBag size={19} />
+            <span className="bag-count">{cart?.itemCount ?? 0}</span>
+          </Link>
+          <StorefrontMenu
+            locale={locale}
+            accountLabel={session ? m.account : textFor(locale).auth.signIn}
+            recoverLabel={t("recover")}
+          />
+        </div>
+      </StorefrontHeader>
       {store?.isPaused && (
         <Alert className="mt-6">
           <AlertDescription>{store.pauseMessage}</AlertDescription>
@@ -107,36 +143,40 @@ export default async function ShopLayout({
       <main id="main" tabIndex={-1} className="flex-1">
         {children}
       </main>
-      <footer
-        role="contentinfo"
-        className="mt-12 flex justify-between gap-6 border-t py-8 text-xs text-muted-foreground max-sm:flex-col"
-      >
-        <nav
-          aria-label={textFor(locale).ui.storeInformation}
-          className="flex flex-wrap gap-4"
-        >
-          {(store ? storePageKeys : []).map((key) => (
-            <Link key={key} href={`/${locale}/pages/${key}`}>
-              {
-                textFor(locale).common[
-                  (
+      <footer role="contentinfo" className="storefront-footer">
+        <div className="footer-link-groups">
+          {[
+            ["shipping", "returns", "support"],
+            ["about", "privacy", "terms"],
+          ].map((keys, index) => (
+            <nav key={index} aria-label={index ? m.information : m.help}>
+              <h2>{index ? m.information : m.help}</h2>
+              {(store ? storePageKeys : [])
+                .filter((key) => keys.includes(key))
+                .map((key) => (
+                  <Link key={key} href={`/${locale}/pages/${key}`}>
                     {
-                      about: "about",
-                      support: "customerSupport",
-                      shipping: "shippingPolicy",
-                      returns: "returnsPolicy",
-                      privacy: "privacyPolicy",
-                      terms: "termsOfService",
-                    } as const
-                  )[key]
-                ]
-              }
-            </Link>
+                      textFor(locale).common[
+                        (
+                          {
+                            about: "about",
+                            support: "customerSupport",
+                            shipping: "shippingPolicy",
+                            returns: "returnsPolicy",
+                            privacy: "privacyPolicy",
+                            terms: "termsOfService",
+                          } as const
+                        )[key]
+                      ]
+                    }
+                  </Link>
+                ))}
+              {!index && store?.sms?.enabled && (
+                <Link href={`/${locale}/sms`}>{textFor(locale).sms.title}</Link>
+              )}
+            </nav>
           ))}
-          {store?.sms?.enabled && (
-            <Link href={`/${locale}/sms`}>{textFor(locale).sms.title}</Link>
-          )}
-        </nav>
+        </div>
         <div>
           <p className="font-medium text-foreground">
             {store?.storeName ?? PLATFORM_NAME}

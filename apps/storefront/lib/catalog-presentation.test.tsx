@@ -13,6 +13,10 @@ vi.mock("./page-data", () => ({
     store: {
       ...pages.catalog.store,
       storeName: page === "layout" ? state.latestName : "Fixture bakery",
+      storefrontHero: {
+        imageKey: state.image || null,
+        en: { heading: "", body: "", imageAlt: "Morning loaf" },
+      },
       publicContent: { en: { about: state.about } },
     },
     result: {
@@ -46,7 +50,7 @@ it("keeps hero branding current when the anonymous product catalog is cached", a
   expect(html).toContain("Current bakery name");
   expect(html).not.toContain("Fixture bakery");
 });
-it("uses the configured merchant identity and a real catalog image instead of decorative shapes", async () => {
+it("uses the configured merchant identity and deliberately selected hero photography", async () => {
   const html = renderToStaticMarkup(
     await Catalog({ locale: "en", showHero: true }),
   );

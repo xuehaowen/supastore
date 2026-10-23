@@ -77,7 +77,7 @@ test("original category, content, account, Chinese UI and missing pages are serv
   await expect(page.locator("main h1")).toBeVisible();
   await page.goto("/en/account");
   await expect(
-    page.getByRole("button", { name: "Sign in", exact: true }),
+    page.getByRole("tab", { name: "Sign in", exact: true }),
   ).toBeVisible();
   await page.goto("/zh/products/studio-cup");
   await expect(page.locator("html")).toHaveAttribute("lang", "zh");

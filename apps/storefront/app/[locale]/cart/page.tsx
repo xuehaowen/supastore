@@ -1,3 +1,5 @@
+import Image from "next/image";
+import { Package } from "lucide-react";
 import { MAX_ITEM_QUANTITY } from "@supastore/contracts";
 import { readPage } from "../../../lib/page-data";
 import { textFor } from "@supastore/i18n/messages";
@@ -11,7 +13,7 @@ import { Button, buttonVariants } from "@supastore/ui/button";
 import { cn } from "../../../../../packages/ui/src/utils";
 import { Card, CardContent } from "@supastore/ui/card";
 import { ShoppingBag } from "lucide-react";
-import { ShoppingPreview } from "../../shopping-preview";
+import { ShoppingPreview } from "../../shopping-preview-lazy";
 import { countryOptions, stateOptions } from "@supastore/shipping/destination";
 export const metadata = { robots: { index: false, follow: false } };
 export default async function Cart({
@@ -59,18 +61,39 @@ export default async function Cart({
               {cart.items.map((item) => (
                 <Card key={item.id}>
                   <CardContent className="grid items-center gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(9rem,1fr)_auto_auto]">
-                    <div>
-                      <Link
-                        href={"/" + locale + "/products/" + item.productHandle}
-                      >
-                        <h2>{item.productTitle}</h2>
-                      </Link>
-                      <p className="text-sm text-muted-foreground">
-                        {item.title}
-                      </p>
-                      {!item.isAvailable && (
-                        <Badge variant="secondary">{t("unavailable")}</Badge>
+                    <div className="cart-item-info">
+                      {item.imageKey ? (
+                        <Image
+                          className="cart-item-image"
+                          src={`/api/assets?key=${encodeURIComponent(item.imageKey)}&inline=1`}
+                          alt={item.productTitle}
+                          width={144}
+                          height={160}
+                          sizes="72px"
+                        />
+                      ) : (
+                        <span
+                          className="cart-item-image flex items-center justify-center"
+                          aria-hidden="true"
+                        >
+                          <Package size={24} strokeWidth={1} />
+                        </span>
                       )}
+                      <div>
+                        <Link
+                          href={
+                            "/" + locale + "/products/" + item.productHandle
+                          }
+                        >
+                          <h2>{item.productTitle}</h2>
+                        </Link>
+                        <p className="text-sm text-muted-foreground">
+                          {item.title}
+                        </p>
+                        {!item.isAvailable && (
+                          <Badge variant="secondary">{t("unavailable")}</Badge>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-1 rounded-lg border bg-background p-1">
                       <form action={changeItem}>

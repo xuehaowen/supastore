@@ -13,7 +13,9 @@ test("catalog search preserves the document during navigation", async ({
   await page.getByRole("button", { name: /Search/ }).click();
   await expect(page).toHaveURL(/\/en\/search\?.*q=studio/);
   await expect(
-    page.locator('.storefront-product-card a[href="/en/products/studio-cup"]'),
+    page.locator(
+      '.storefront-product-card > a[href="/en/products/studio-cup"]',
+    ),
   ).toBeVisible();
   expect(
     await page.evaluate(
@@ -43,7 +45,11 @@ test("navigation and cart submission provide feedback during a slow response", a
   await page.goto("/en");
   try {
     await page
-      .locator('.storefront-product-card a[href="/en/products/studio-cup"]')
+      .locator(".storefront-product-card")
+      .filter({
+        has: page.getByRole("heading", { name: "Studio cup", exact: true }),
+      })
+      .locator(".storefront-product-image")
       .click();
     await expect(page.getByRole("status")).toHaveText("Please wait…");
     await expect(page.locator(".storefront-navigation-progress")).toBeVisible();
@@ -68,7 +74,10 @@ test("navigation and cart submission provide feedback during a slow response", a
   } finally {
     release();
   }
-  await expect(page).toHaveURL(/\/en\/cart$/);
+  await expect(
+    page.getByRole("link", { name: "View bag", exact: true }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/en\/products\/studio-cup$/);
   await expect(page.locator("h1")).toBeVisible();
 });
 

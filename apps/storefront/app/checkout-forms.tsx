@@ -12,7 +12,9 @@ import {
   type PickupOption,
   type DeliveryOption,
 } from "./checkout-fields";
-import { CheckoutCredit } from "./checkout-credit";
+const CheckoutCredit = dynamic(() =>
+  import("./checkout-credit").then((module) => module.CheckoutCredit),
+);
 import type { CheckoutDefaults, CheckoutActionState } from "./checkout-state";
 import { Hidden, Notice } from "./components";
 import { Button } from "@supastore/ui/button";
@@ -24,8 +26,13 @@ import type {
   ShippingDestinationRule,
   FulfillmentMethod,
 } from "@supastore/shipping/destination";
-import { CheckoutPreview } from "./checkout-preview";
-import { SmsOptIn } from "./sms-opt-in";
+import dynamic from "next/dynamic";
+const CheckoutPreview = dynamic(() =>
+  import("./checkout-preview").then((module) => module.CheckoutPreview),
+);
+const SmsOptIn = dynamic(() =>
+  import("./sms-opt-in").then((module) => module.SmsOptIn),
+);
 
 const emptyState: CheckoutActionState = {};
 

@@ -1,3 +1,6 @@
+import { localizedStorefrontHero } from "@supastore/contracts";
+import { designCopy } from "../lib/design-copy";
+import { CatalogFilters } from "./catalog-filters";
 import { readRequestPage } from "../lib/page-data";
 import { textFor } from "@supastore/i18n/messages";
 import Link from "next/link";
@@ -34,12 +37,25 @@ export default async function Catalog({
     .filter(Boolean)
     .slice(0, 4);
   const { result, store, facets, collections, collectionTitles, groups } =
-    await readRequestPage("catalog", locale, query);
-  const facetAxes = [...new Set(facets.map((f) => f.attribute))].slice(0, 4);
-  const featured = result.items.find((product) => product.coverImageKey);
+    await readRequestPage("catalog", locale, {
+      ...query,
+      home: showHero ? "1" : undefined,
+    });
+  const m = designCopy(locale);
   const branding = showHero
     ? (await readRequestPage("layout", locale)).store
     : store;
+  const hero = localizedStorefrontHero(
+    branding?.storefrontHero,
+    locale,
+    branding?.defaultLocale,
+  );
+  const featuredCollections = showHero
+    ? (branding?.storefrontHero?.featuredCollectionIds ?? []).flatMap((id) => {
+        const collection = collections.find((item) => item.id === id);
+        return collection ? [collection] : [];
+      })
+    : [];
   const about = policyPresentation(branding, locale, "about")?.content;
   const introductionCharacters = Array.from(
     (about || t("subtitle")).replace(/\s+/g, " ").trim(),
@@ -62,37 +78,35 @@ export default async function Catalog({
       {showHero ? (
         <section
           className={
-            "catalog-hero" + (featured ? " catalog-hero-with-image" : "")
+            "catalog-hero" + (hero?.imageKey ? " catalog-hero-with-image" : "")
           }
         >
           <div className="catalog-hero-copy">
-            <p className="catalog-hero-eyebrow">{t("collection")}</p>
-            <h1>{branding?.storeName || t("shop")}</h1>
-            <p className="catalog-hero-description">{introduction}</p>
+            <p className="catalog-hero-eyebrow">{m.edit}</p>
+            <h1>{hero?.heading || branding?.storeName || t("shop")}</h1>
+            <p className="catalog-hero-description">
+              {hero?.body || introduction}
+            </p>
             <a className="catalog-hero-link" href="#collection">
-              {t("collection")} <span aria-hidden="true">↓</span>
+              {m.browse} <span aria-hidden="true">↓</span>
             </a>
           </div>
-          {featured?.coverImageKey && (
-            <Link
-              className="catalog-hero-feature"
-              href={`/${locale}/products/${featured.handle}`}
+          {hero?.imageKey && (
+            <div
+              className="catalog-hero-image"
+              data-position={
+                branding?.storefrontHero?.imagePosition ?? "center"
+              }
             >
-              <div className="catalog-hero-image">
-                <Image
-                  src={`/api/assets?key=${encodeURIComponent(featured.coverImageKey)}&inline=1`}
-                  alt={featured.title}
-                  width={800}
-                  height={800}
-                  sizes="(max-width: 767px) 88vw, 42vw"
-                  priority
-                />
-              </div>
-              <span>
-                {featured.title}
-                <span aria-hidden="true"> ↗</span>
-              </span>
-            </Link>
+              <Image
+                src={`/api/assets?key=${encodeURIComponent(hero.imageKey)}&inline=1`}
+                alt={hero.imageAlt || hero.heading || branding?.storeName || ""}
+                width={1000}
+                height={900}
+                sizes="(max-width: 767px) 100vw, 50vw"
+                priority
+              />
+            </div>
           )}
         </section>
       ) : (
@@ -111,25 +125,77 @@ export default async function Catalog({
         </header>
       )}
       <section id="collection">
-        {collections.length > 0 && (
+        {featuredCollections.length > 0 && (
+          <section
+            className="catalog-featured-collections"
+            aria-labelledby="featured-collections-heading"
+          >
+            <h2 id="featured-collections-heading">{m.featuredCollections}</h2>
+            <div>
+              {featuredCollections.map((collection) => {
+                const translated = collectionTitles.find(
+                  (item) => item.collectionId === collection.id,
+                );
+                return (
+                  <Link
+                    key={collection.id}
+                    href={`/${locale}/collections/${collection.handle}`}
+                  >
+                    {collection.imageKey && (
+                      <Image
+                        src={`/api/assets?key=${encodeURIComponent(collection.imageKey)}&inline=1`}
+                        alt={
+                          collection.imageAlt ||
+                          translated?.title ||
+                          collection.title
+                        }
+                        width={600}
+                        height={400}
+                        sizes="(max-width: 767px) 90vw, 30vw"
+                      />
+                    )}
+                    <span>
+                      {translated?.title || collection.title}
+                      <span aria-hidden="true">↗</span>
+                    </span>
+                    {(translated?.description || collection.description) && (
+                      <p>{translated?.description || collection.description}</p>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
+        {collections.some(
+          (collection) =>
+            !featuredCollections.some((item) => item.id === collection.id),
+        ) && (
           <nav
-            className="my-7 flex flex-wrap gap-3"
+            className="catalog-collection-nav"
             aria-label={textFor(locale).ui.collections}
           >
-            {collections.map((collection) => (
-              <Link
-                key={collection.id}
-                href={`/${locale}/collections/${collection.handle}`}
-              >
-                {collectionTitles.find(
-                  (item) => item.collectionId === collection.id,
-                )?.title ?? collection.title}
-              </Link>
-            ))}
+            {collections
+              .filter(
+                (collection) =>
+                  !featuredCollections.some(
+                    (item) => item.id === collection.id,
+                  ),
+              )
+              .map((collection) => (
+                <Link
+                  key={collection.id}
+                  href={`/${locale}/collections/${collection.handle}`}
+                >
+                  {collectionTitles.find(
+                    (item) => item.collectionId === collection.id,
+                  )?.title ?? collection.title}
+                </Link>
+              ))}
           </nav>
         )}
         <div className="storefront-catalog-tools">
-          <h2>{t("collection")}</h2>
+          <h2>{m.collection}</h2>
           <Form
             className="flex gap-2 max-sm:w-full"
             action={"/" + locale + "/search"}
@@ -158,31 +224,14 @@ export default async function Catalog({
                 </option>
               </NativeSelect>
             </label>
-            {facetAxes.map((axis) => (
-              <label key={axis} className="grid gap-2">
-                {facets.find((f) => f.attribute === axis)!.name}
-                <NativeSelect
-                  name="options"
-                  defaultValue={
-                    selectedOptions.find((v) => v.startsWith(`${axis}:`)) || ""
-                  }
-                >
-                  <option value="">{t("all")}</option>
-                  {facets
-                    .filter((f) => f.attribute === axis)
-                    .map((f) => (
-                      <option key={f.value} value={`${axis}:${f.value}`}>
-                        {f.label}
-                      </option>
-                    ))}
-                </NativeSelect>
-              </label>
+            {selectedOptions.map((value) => (
+              <input key={value} type="hidden" name="options" value={value} />
             ))}
             <Button type="submit">{t("searchButton")}</Button>
           </Form>
         </div>
         <nav
-          className="my-7 flex flex-wrap gap-2"
+          className="catalog-category-nav"
           aria-label={textFor(locale).common.categories}
         >
           <Link
@@ -214,6 +263,20 @@ export default async function Catalog({
             </Link>
           ))}
         </nav>
+        <CatalogFilters
+          key={JSON.stringify([
+            query.q,
+            query.category,
+            query.sort,
+            selectedOptions,
+          ])}
+          locale={locale}
+          facets={facets}
+          selected={selectedOptions}
+          query={query.q || ""}
+          sort={query.sort || "newest"}
+          category={query.category || ""}
+        />
         <div className="storefront-product-grid">
           {result.items.map((product) => (
             <ProductCard
@@ -234,7 +297,7 @@ export default async function Catalog({
             </AlertDescription>
           </Alert>
         )}
-        <div className="flex justify-between py-7">
+        <div className="storefront-pagination">
           {result.page > 1 && (
             <Link href={pageHref(result.page - 1)}>
               ← {textFor(locale).common.previous}

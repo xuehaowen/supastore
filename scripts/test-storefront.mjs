@@ -340,6 +340,11 @@ try {
     );
   }
 
+  if (!benchmark)
+    start(["--import", "tsx", "scripts/worker.ts"], true, {
+      SERVICE_ROLE: "worker",
+    });
+
   if (production)
     await completed(
       start(["node_modules/next/dist/bin/next", "build", "apps/backend"]),
@@ -469,6 +474,10 @@ try {
         ? testArguments
         : [
             "tests/browser/original-storefront-separation.spec.ts",
+            "tests/browser/storefront-redesign.spec.ts",
+            "tests/browser/storefront-refinement.spec.ts",
+            "tests/browser/storefront-fixes.spec.ts",
+            "tests/browser/storefront-performance.spec.ts",
             "tests/browser/cuj.spec.ts",
             "tests/browser/i18n.spec.ts",
             "tests/browser/boundaries.spec.ts",

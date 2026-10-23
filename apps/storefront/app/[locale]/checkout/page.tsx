@@ -1,3 +1,4 @@
+import { designCopy } from "../../../lib/design-copy";
 import { readPage } from "../../../lib/page-data";
 import { CheckoutDetailsForm, CheckoutOrderForm } from "../../checkout-forms";
 import { Notice } from "../../components";
@@ -48,7 +49,7 @@ export default async function Checkout({
     onlinePayment,
   } = await readPage("checkout", locale, query);
   return (
-    <section className="mx-auto my-12 min-h-[50vh] max-w-4xl">
+    <section className="checkout-page">
       <p className="mb-6 text-[10px] font-bold tracking-[0.2em]">
         {t("eyebrowCheckout")}
       </p>
@@ -266,99 +267,152 @@ export default async function Checkout({
           </Card>
         </div>
       ) : cart?.items.length ? (
-        <div className="checkout-layout">
-          <Card className="checkout-form-card">
-            <CardHeader>
-              <CardTitle>{t("checkoutDetails.heading")}</CardTitle>
-              <CardDescription>
-                {t("checkoutDetails.description")}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <CheckoutDetailsForm
-                key={savedQuote?.id ?? cart.id}
-                cartId={cart.id}
-                {...(store?.hasContextualRules
-                  ? {
-                      evaluationItems: cart.items.map((item) => ({
-                        variantId: item.variantId,
-                        quantity: item.quantity,
-                      })),
-                    }
-                  : {})}
-                locale={locale}
-                shippingRules={shippingRules}
-                methods={methods}
-                deliveryAreas={delivery.map((area) => ({
-                  id: area.id,
-                  name: area.name,
-                  countryCodes: area.countryCodes,
-                  postalPrefixes: area.postalPrefixes,
-                  scheduleRequired: area.scheduleRequired,
-                  dates: area.dates,
-                }))}
-                accounts={accounts}
-                onlinePayment={onlinePayment}
-                initial={
-                  initial
-                    ? {
-                        ...initial.input,
-                        address: initial.shippingAddress.address,
-                        country: initial.shippingAddress.country,
-                        region: initial.shippingAddress.region ?? "",
-                        postalCode: initial.shippingAddress.postalCode ?? "",
-                      }
-                    : undefined
-                }
-                addresses={customer?.addresses ?? []}
-                timezone={store?.timezone ?? "UTC"}
-                locations={locations.map((location) => ({
-                  id: location.id,
-                  name: location.name,
-                  address: location.address,
-                  scheduleRequired: location.scheduleRequired,
-                  dates: location.dates,
-                }))}
-              />
-            </CardContent>
-          </Card>
-          <Card className="checkout-summary-card">
-            <CardHeader>
-              <CardTitle>{t("cart")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {cart.items.map((item) => (
-                <div
-                  className="flex justify-between gap-4 text-sm"
-                  key={item.id}
-                >
-                  <span>
-                    {item.quantity} × {item.productTitle}
-                  </span>
-                  <span className="shrink-0 tabular-nums">
-                    {money(
-                      item.lineTotalCents,
-                      store?.currency,
-                      store?.precision,
-                      locale,
-                    )}
-                  </span>
-                </div>
-              ))}
-              <div className="flex justify-between border-t pt-4 font-medium">
-                <span>{t("checkoutDetails.subtotal")}</span>
-                <span className="tabular-nums">
-                  {money(
-                    cart.subtotalCents,
-                    store?.currency,
-                    store?.precision,
-                    locale,
-                  )}
-                </span>
+        <>
+          <div className="checkout-mobile-summary">
+            <details className="storefront-disclosure">
+              <summary>
+                {designCopy(locale).summary} ·{" "}
+                {money(
+                  cart.subtotalCents,
+                  store?.currency,
+                  store?.precision,
+                  locale,
+                )}
+                <span aria-hidden="true">+</span>
+              </summary>
+              <div>
+                {" "}
+                <CardContent className="space-y-3">
+                  {cart.items.map((item) => (
+                    <div
+                      className="flex justify-between gap-4 text-sm"
+                      key={item.id}
+                    >
+                      <span>
+                        {item.quantity} × {item.productTitle}
+                      </span>
+                      <span className="shrink-0 tabular-nums">
+                        {money(
+                          item.lineTotalCents,
+                          store?.currency,
+                          store?.precision,
+                          locale,
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between border-t pt-4 font-medium">
+                    <span>{t("checkoutDetails.subtotal")}</span>
+                    <span className="tabular-nums">
+                      {money(
+                        cart.subtotalCents,
+                        store?.currency,
+                        store?.precision,
+                        locale,
+                      )}
+                    </span>
+                  </div>
+                </CardContent>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </details>
+          </div>
+          <div className="checkout-layout">
+            <Card className="checkout-form-card">
+              <CardHeader>
+                <CardTitle>{t("checkoutDetails.heading")}</CardTitle>
+                <CardDescription>
+                  {t("checkoutDetails.description")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <CheckoutDetailsForm
+                  key={savedQuote?.id ?? cart.id}
+                  cartId={cart.id}
+                  {...(store?.hasContextualRules
+                    ? {
+                        evaluationItems: cart.items.map((item) => ({
+                          variantId: item.variantId,
+                          quantity: item.quantity,
+                        })),
+                      }
+                    : {})}
+                  locale={locale}
+                  shippingRules={shippingRules}
+                  methods={methods}
+                  deliveryAreas={delivery.map((area) => ({
+                    id: area.id,
+                    name: area.name,
+                    countryCodes: area.countryCodes,
+                    postalPrefixes: area.postalPrefixes,
+                    scheduleRequired: area.scheduleRequired,
+                    dates: area.dates,
+                  }))}
+                  accounts={accounts}
+                  onlinePayment={onlinePayment}
+                  initial={
+                    initial
+                      ? {
+                          ...initial.input,
+                          address: initial.shippingAddress.address,
+                          country: initial.shippingAddress.country,
+                          region: initial.shippingAddress.region ?? "",
+                          postalCode: initial.shippingAddress.postalCode ?? "",
+                        }
+                      : undefined
+                  }
+                  addresses={customer?.addresses ?? []}
+                  timezone={store?.timezone ?? "UTC"}
+                  locations={locations.map((location) => ({
+                    id: location.id,
+                    name: location.name,
+                    address: location.address,
+                    scheduleRequired: location.scheduleRequired,
+                    dates: location.dates,
+                  }))}
+                />
+              </CardContent>
+            </Card>
+            <div className="checkout-desktop-summary">
+              {" "}
+              <Card className="checkout-summary-card">
+                <CardHeader>
+                  <CardTitle>{t("cart")}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {cart.items.map((item) => (
+                    <div
+                      className="flex justify-between gap-4 text-sm"
+                      key={item.id}
+                    >
+                      <span>
+                        {item.quantity} × {item.productTitle}
+                      </span>
+                      <span className="shrink-0 tabular-nums">
+                        {money(
+                          item.lineTotalCents,
+                          store?.currency,
+                          store?.precision,
+                          locale,
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between border-t pt-4 font-medium">
+                    <span>{t("checkoutDetails.subtotal")}</span>
+                    <span className="tabular-nums">
+                      {money(
+                        cart.subtotalCents,
+                        store?.currency,
+                        store?.precision,
+                        locale,
+                      )}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </>
       ) : (
         <p>{t("empty")}</p>
       )}

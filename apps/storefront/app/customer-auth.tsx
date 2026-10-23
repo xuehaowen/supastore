@@ -3,6 +3,12 @@ import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "@supastore/contracts";
 import { textFor } from "@supastore/i18n/messages";
 import { useState } from "react";
 import Link from "next/link";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@supastore/ui/accordion";
 import { Button } from "@supastore/ui/button";
 import { Input } from "@supastore/ui/input";
 import { customerAuthRequest } from "./customer-auth-requests";
@@ -181,34 +187,39 @@ export function CustomerAuthTools({
         </>
       ) : (
         <>
-          {(["forgot", "verify"] as const).map((operation) => (
-            <details key={operation}>
-              <summary>
-                {operation === "forgot"
-                  ? textFor(locale).auth.forgotPassword
-                  : textFor(locale).auth.resendVerification}
-              </summary>
-              <form
-                className="grid gap-3 mt-3"
-                onSubmit={(e) => submit(e, operation)}
-              >
-                <label>
+          <Accordion>
+            {" "}
+            {(["forgot", "verify"] as const).map((operation) => (
+              <AccordionItem key={operation} value={operation}>
+                <AccordionTrigger>
                   {operation === "forgot"
-                    ? textFor(locale).ui.emailForPasswordReset
-                    : textFor(locale).ui.emailForVerification}
-                  <Input
-                    name="email"
-                    type="email"
-                    required
-                    autoComplete="email"
-                  />
-                </label>
-                <Button type="submit" disabled={busy}>
-                  {textFor(locale).auth.sendLink}
-                </Button>
-              </form>
-            </details>
-          ))}
+                    ? textFor(locale).auth.forgotPassword
+                    : textFor(locale).auth.resendVerification}
+                </AccordionTrigger>
+                <AccordionContent>
+                  <form
+                    className="grid gap-3 mt-3"
+                    onSubmit={(e) => submit(e, operation)}
+                  >
+                    <label>
+                      {operation === "forgot"
+                        ? textFor(locale).ui.emailForPasswordReset
+                        : textFor(locale).ui.emailForVerification}
+                      <Input
+                        name="email"
+                        type="email"
+                        required
+                        autoComplete="email"
+                      />
+                    </label>
+                    <Button type="submit" disabled={busy}>
+                      {textFor(locale).auth.sendLink}
+                    </Button>
+                  </form>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
         </>
       )}
     </div>

@@ -69,9 +69,20 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
     count.getByRole("button", { name: "Save stock count" }),
   );
 
-  // The seeded verified owner is also a customer in a separate browser session.
+  // Store-credit recipients must be customers outside the staff directory.
+  const customerEmail = `commerce-${code}@example.test`;
+  const signup = await page.request.post("/api/auth/sign-up/email", {
+    headers: { origin: process.env.APP_URL! },
+    data: {
+      name: "Commerce customer",
+      email: customerEmail,
+      password: process.env.DEMO_OWNER_PASSWORD!,
+    },
+  });
+  expect(signup.ok()).toBe(true);
+  await sql`update "user" set email_verified=true where email=${customerEmail}`;
   await page.goto("/en/account");
-  await page.getByLabel("Email", { exact: true }).fill("owner@example.test");
+  await page.getByLabel("Email", { exact: true }).fill(customerEmail);
   await page
     .getByLabel("Password", { exact: true })
     .fill(process.env.DEMO_OWNER_PASSWORD!);
@@ -81,7 +92,9 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
   await expect(
     page.getByRole("button", { name: "Save profile", exact: true }),
   ).toBeVisible();
-  await admin.goto("/admin/store-credit?q=owner%40example.test");
+  await admin.goto(
+    `/admin/store-credit?q=${encodeURIComponent(customerEmail)}`,
+  );
   await admin
     .getByRole("button", { name: "Issue credit", exact: true })
     .click();
@@ -109,6 +122,7 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
     .getByRole("button", { name: "Increase quantity", exact: true })
     .click();
   await page.getByRole("button", { name: "Add to bag" }).click();
+  await page.getByRole("link", { name: "View bag", exact: true }).click();
   await page.getByRole("link", { name: "Continue to checkout" }).click();
   await page.getByLabel("Street address").fill("1 Synthetic Street");
   await page

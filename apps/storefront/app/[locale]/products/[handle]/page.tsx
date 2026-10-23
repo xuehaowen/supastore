@@ -1,3 +1,11 @@
+import Link from "next/link";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@supastore/ui/breadcrumb";
 import { publicOrigin } from "../../../../lib/seo";
 import { publicPageMetadata } from "../../../../lib/page-metadata";
 import { BackendApiError } from "../../../../lib/api";
@@ -44,13 +52,24 @@ export default async function Product({
         })),
   };
   return (
-    <section className="grid gap-10 py-10 md:grid-cols-[1.1fr_1fr] md:gap-14 md:py-14">
+    <section className="product-layout">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(structured).replace(/</g, "\\u003c"),
         }}
       />
+      <Breadcrumb aria-label={textFor(locale).shop}>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <Link href={`/${locale}`}>{t("shop")}</Link>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{p.title}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
       <ProductPurchase
         product={purchasable}
         hasContextualRules={store?.hasContextualRules ?? false}

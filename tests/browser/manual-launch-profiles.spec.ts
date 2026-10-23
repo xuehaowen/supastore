@@ -23,6 +23,7 @@ for (const method of ["pickup", "shipping"] as const) {
       await sql`update store_settings set commerce_policy=${sql.json({ ...original!.commerce_policy, shippingEnabled: method === "shipping", pickupEnabled: method === "pickup", deliveryEnabled: false })}`;
       await page.goto("/en/products/studio-cup");
       await page.getByRole("button", { name: "Add to bag" }).click();
+      await page.getByRole("link", { name: "View bag", exact: true }).click();
       await page.getByRole("link", { name: "Continue to checkout" }).click();
       const methods = page.locator('input[name="fulfillmentType"]');
       await expect(methods).toHaveCount(1);

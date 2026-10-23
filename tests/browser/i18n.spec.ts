@@ -20,7 +20,7 @@ test("Chinese storefront translates catalog, auth, recovery and document languag
     page.getByRole("button", { name: "安全登录", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "创建账户", exact: true }),
+    page.getByRole("tab", { name: "创建账户", exact: true }),
   ).toBeVisible();
   await page
     .getByRole("link", { name: "查找订单", exact: true })
@@ -110,6 +110,7 @@ test("Chinese missing pages and request failures have translated fallbacks", asy
   await expect(page.locator("html")).toHaveAttribute("lang", "zh");
   await page.goto("/zh/products/studio-cup");
   await page.getByRole("button", { name: "加入购物袋" }).click();
+  await page.getByRole("link", { name: "查看购物袋", exact: true }).click();
   await expect(
     page.getByRole("button", { name: /减少 .* 的数量/ }),
   ).toBeVisible();

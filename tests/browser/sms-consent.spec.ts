@@ -68,6 +68,7 @@ test("merchant publishes policies and optional SMS consent remains independent o
     ).toBeVisible();
     await page.goto("/en/products/studio-cup");
     await page.getByRole("button", { name: "Add to bag" }).click();
+    await page.getByRole("link", { name: "View bag", exact: true }).click();
     await page.getByRole("link", { name: "Continue to checkout" }).click();
     await page.getByLabel("Street address").fill("123 SMS Test Street");
     await page.getByRole("button", { name: /Review your order/ }).click();

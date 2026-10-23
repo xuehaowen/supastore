@@ -11,7 +11,10 @@ vi.mock("next/headers", () => ({
       cookie: "shop-cart=synthetic",
       "x-forwarded-for": "spoofed",
     }),
-  cookies: async () => ({ set: setCookie }),
+  cookies: async () => ({
+    set: setCookie,
+    toString: () => "shop-cart=synthetic",
+  }),
 }));
 vi.mock("./backend-proxy", () => ({ proxyBackendApi: proxy }));
 afterEach(() => vi.unstubAllEnvs());

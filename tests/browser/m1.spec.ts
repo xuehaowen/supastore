@@ -12,6 +12,7 @@ test("C1-C6 storefront, persistent cart, order, refresh and direct upload", asyn
   ).toBeVisible();
   await page.getByRole("link", { name: "Everyday shirt" }).click();
   await page.getByRole("button", { name: "Add to bag" }).click();
+  await page.getByRole("link", { name: "View bag", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Your bag" })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { name: "Your bag" })).toBeVisible();
@@ -158,6 +159,7 @@ test("C8-C10 recovery, proposal acceptance and failed email visibility", async (
 }) => {
   await page.goto("/en/products/studio-cup");
   await page.getByRole("button", { name: "Add to bag" }).click();
+  await page.getByRole("link", { name: "View bag", exact: true }).click();
   await page.getByRole("link", { name: "Continue to checkout" }).click();
   await page.getByLabel("Street address").fill("1 Test Street");
   await page
@@ -288,6 +290,7 @@ test("M2/C3/C7 publish variants, free pickup checkout and availability", async (
   const customer = await context.newPage();
   await customer.goto("/en/products/" + handle);
   await customer.getByRole("button", { name: "Add to bag" }).click();
+  await customer.getByRole("link", { name: "View bag", exact: true }).click();
   await customer.getByRole("link", { name: "Continue to checkout" }).click();
   await customer.getByLabel("Local pickup", { exact: true }).check();
   await customer.locator('input[name="pickupLocationId"]').first().check();

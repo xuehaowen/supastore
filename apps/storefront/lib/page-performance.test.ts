@@ -3,7 +3,7 @@ import { readPage } from "./page-data";
 import { pages } from "../../../tests/fixtures/customer-pages";
 
 vi.mock("next/headers", () => ({
-  headers: async () => new Headers({ cookie: "session=private-customer" }),
+  cookies: async () => ({ toString: () => "session=private-customer" }),
 }));
 vi.mock("next/navigation", () => ({ notFound: vi.fn() }));
 const fetchMock = vi.fn();

@@ -10,6 +10,11 @@ import {
 
 const settings = [
   [
+    "#storefront",
+    "Storefront homepage",
+    "Hero photograph and English/Chinese editorial copy.",
+  ],
+  [
     "/admin/settings/sms",
     "SMS consent & readiness",
     "SMS opt-in, policy readiness and campaign keyword responses.",

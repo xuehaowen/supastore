@@ -9,6 +9,7 @@ import { DomainError } from "@/application/common/errors";
 const keys = [
   "storeName",
   "logoKey",
+  "storefrontHero",
   "supportEmail",
   "currency",
   "precision",

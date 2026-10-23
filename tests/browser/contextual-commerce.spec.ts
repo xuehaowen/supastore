@@ -28,6 +28,7 @@ test("evaluated free pickup works without payment methods while a paid quote req
     await sql`update store_settings set commerce_rules=${sql.json([priceRule])},commerce_policy=commerce_policy || '{"shippingEnabled":false,"pickupEnabled":true,"deliveryEnabled":false}'::jsonb,quote_version=quote_version+1`;
     await page.goto("/en/products/studio-cup");
     await page.getByRole("button", { name: "Add to bag", exact: true }).click();
+    await page.getByRole("link", { name: "View bag", exact: true }).click();
     await page
       .getByRole("link", { name: "Continue to checkout", exact: true })
       .click();
@@ -336,6 +337,7 @@ test("owner configures a regional price and customers preview it before acceptin
       fullPage: true,
     });
     await page.getByRole("button", { name: "Add to bag", exact: true }).click();
+    await page.getByRole("link", { name: "View bag", exact: true }).click();
     await page
       .getByRole("link", { name: "Continue to checkout", exact: true })
       .click();

@@ -40,7 +40,7 @@ export async function serverRequest(
   const forwarded = new Headers({
     "content-type": "application/json",
     origin,
-    cookie: incoming.get("cookie") || "",
+    cookie: (await cookies()).toString(),
   });
   // Reuse trusted ingress validation, rather than forwarding arbitrary IP headers.
   for (const key of ["x-supastore-edge-token", "x-supastore-client-ip"]) {

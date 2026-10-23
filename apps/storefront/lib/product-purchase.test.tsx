@@ -54,6 +54,6 @@ it("starts with an in-stock variant when the first manually enabled variant is s
       availableQuantities={{ variant: 0, "in-stock": 3 }}
     />,
   );
-  expect(html).toMatch(/checked=""[^>]*value="in-stock"/);
+  expect(html).toMatch(/name="variantId"[^>]*value="in-stock"/);
   expect(html).toContain("Add to bag");
 });

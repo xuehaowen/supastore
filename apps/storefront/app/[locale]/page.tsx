@@ -23,7 +23,10 @@ export async function generateMetadata({
   const { store } = await readRequestPage("layout", locale);
   const name = store?.storeName || textFor(locale).shop;
   const query = await searchParams;
-  const { result } = await readRequestPage("catalog", locale, query);
+  const { result } = await readRequestPage("catalog", locale, {
+    ...query,
+    home: "1",
+  });
   return {
     ...publicPageMetadata({
       locale,

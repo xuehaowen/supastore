@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
   productImages,
@@ -19,7 +19,12 @@ export async function GET(request: NextRequest) {
   const [logo] = await db
     .select({ key: storeSettings.logoKey })
     .from(storeSettings)
-    .where(eq(storeSettings.logoKey, key))
+    .where(
+      or(
+        eq(storeSettings.logoKey, key),
+        sql`${storeSettings.storefrontHero}->>'imageKey' = ${key}`,
+      ),
+    )
     .limit(1);
   const [collection] = await db
     .select({ key: productCollections.imageKey })

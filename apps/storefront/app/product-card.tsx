@@ -1,7 +1,10 @@
+import { Package } from "lucide-react";
+import { designCopy } from "../lib/design-copy";
 import Image from "next/image";
 import Link from "next/link";
 import { money } from "../lib/web";
 import { NavigationPending } from "./navigation-pending";
+import { ProductImagePreview } from "./product-image-preview";
 import { textFor } from "@supastore/i18n/messages";
 
 export function ProductCard({
@@ -16,6 +19,7 @@ export function ProductCard({
     handle: string;
     title: string;
     coverImageKey: string | null;
+    previewImageKey?: string | null;
     lowestPriceCents: number | null;
   };
   locale: string;
@@ -24,31 +28,45 @@ export function ProductCard({
   hasContextualRules?: boolean;
 }) {
   const m = textFor(locale).commercePreview;
+  const href = `/${locale}/products/${product.handle}`;
+  const keys = [product.coverImageKey, product.previewImageKey].filter(
+    (key): key is string => !!key,
+  );
+  const photographs = keys.map((key) => (
+    <Link key={key} href={href}>
+      <Image
+        src={`/api/assets?key=${encodeURIComponent(key)}&inline=1`}
+        alt={product.title}
+        width={600}
+        height={600}
+        sizes="(max-width: 639px) 44vw, (max-width: 1023px) 42vw, 28vw"
+        className="size-full object-cover"
+      />
+      <NavigationPending label={textFor(locale).common.wait} />
+    </Link>
+  ));
   return (
     <article className="storefront-product-card group">
-      <Link
-        className="block no-underline"
-        href={`/${locale}/products/${product.handle}`}
-      >
-        <div className="storefront-product-image">
-          {product.coverImageKey ? (
-            <Image
-              src={`/api/assets?key=${encodeURIComponent(product.coverImageKey)}&inline=1`}
-              alt={product.title}
-              width={600}
-              height={600}
-              sizes="(max-width: 639px) 44vw, (max-width: 1023px) 42vw, 28vw"
-              className="size-full object-cover transition-transform duration-300 motion-reduce:transition-none group-hover:scale-[1.025]"
-            />
-          ) : (
-            <span
-              aria-hidden="true"
-              className="font-serif text-7xl text-muted-foreground"
-            >
-              {product.title.slice(0, 1)}
+      <div className="storefront-product-image">
+        {keys.length > 1 ? (
+          <ProductImagePreview
+            label={`${designCopy(locale).photo} · ${product.title}`}
+          >
+            {photographs}
+          </ProductImagePreview>
+        ) : product.coverImageKey ? (
+          photographs[0]
+        ) : (
+          <Link href={href} aria-label={product.title}>
+            <span className="product-image-placeholder">
+              <Package aria-hidden="true" />
+              <span>{designCopy(locale).noImage}</span>
             </span>
-          )}
-        </div>
+            <NavigationPending label={textFor(locale).common.wait} />
+          </Link>
+        )}
+      </div>
+      <Link className="block no-underline" href={href}>
         <div className="storefront-product-meta">
           <h3>{product.title}</h3>
           <span>

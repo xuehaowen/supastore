@@ -186,3 +186,51 @@ export async function togglePause(form: FormData) {
     revalidatePath("/[locale]", "layout");
   });
 }
+
+export async function saveStorefrontHero(form: FormData) {
+  return perform("/admin/setup", async () => {
+    const en = {
+      heading: field(form, "hero-en-heading"),
+      body: field(form, "hero-en-body"),
+      imageAlt: field(form, "hero-en-imageAlt"),
+    };
+    const zh = {
+      heading: field(form, "hero-zh-heading"),
+      body: field(form, "hero-zh-body"),
+      imageAlt: field(form, "hero-zh-imageAlt"),
+    };
+    const imageKey = field(form, "heroImageKey") || null;
+    const featuredProductIds = form
+      .getAll("featuredProductId")
+      .map(String)
+      .filter(Boolean);
+    const featuredCollectionIds = form
+      .getAll("featuredCollectionId")
+      .map(String)
+      .filter(Boolean);
+    await updateStoreSettings({
+      staffUserId: await staffIdentity(),
+      storefrontHero:
+        imageKey ||
+        featuredProductIds.length ||
+        featuredCollectionIds.length ||
+        Object.values(en).some(Boolean) ||
+        Object.values(zh).some(Boolean)
+          ? {
+              imageKey,
+              en,
+              zh,
+              imagePosition: parseActionEnum(
+                field(form, "heroImagePosition") || "center",
+                "Photograph crop",
+                ["top", "center", "bottom"] as const,
+              ),
+              featuredProductIds,
+              featuredCollectionIds,
+            }
+          : null,
+    });
+    revalidateTag("catalog");
+    revalidatePath("/[locale]", "layout");
+  });
+}

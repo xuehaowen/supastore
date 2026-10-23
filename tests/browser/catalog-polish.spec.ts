@@ -96,6 +96,10 @@ test("public catalog requests responsive optimized thumbnails", async ({
     ),
   });
   await admin
+    .locator("form")
+    .filter({
+      has: admin.getByRole("button", { name: "Upload image", exact: true }),
+    })
     .getByLabel("Image description", { exact: true })
     .fill("Thumbnail fixture");
   await admin

@@ -108,3 +108,5 @@ export interface CartDto {
 export * from "./sms";
 
 export * from "./store-pages";
+
+export * from "./storefront-hero";

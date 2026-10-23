@@ -78,6 +78,7 @@ test.describe("request rejection flows", () => {
   test("checkout rejects an unsupported fulfillment type", async ({ page }) => {
     await page.goto("/en/products/studio-cup");
     await page.getByRole("button", { name: "Add to bag" }).click();
+    await page.getByRole("link", { name: "View bag", exact: true }).click();
     await page.getByRole("link", { name: "Continue to checkout" }).click();
     await page.getByLabel("Street address").fill("1 Test Street");
     await page

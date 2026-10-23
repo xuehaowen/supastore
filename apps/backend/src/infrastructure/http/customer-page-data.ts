@@ -60,6 +60,7 @@ export type CustomerPageContractCheck = MatchesPublicContracts<{
   collection: Serialized<Awaited<ReturnType<typeof collectionPage>>>;
 }>;
 export type PageQuery = {
+  home?: string;
   q?: string;
   category?: string;
   page?: string;
@@ -76,6 +77,7 @@ async function publicStore() {
       storeName: storeSettings.storeName,
       smsPolicy: storeSettings.smsPolicy,
       logoKey: storeSettings.logoKey,
+      storefrontHero: storeSettings.storefrontHero,
       supportEmail: storeSettings.supportEmail,
       publicContent: storeSettings.publicContent,
       currency: storeSettings.currency,
@@ -123,6 +125,12 @@ export async function catalogPage(locale: string, query: PageQuery = {}) {
   const [result, store, facets, collections, categoryRows] = await Promise.all([
     listProducts({
       locale,
+      featuredFirst:
+        query.home === "1" &&
+        !query.q &&
+        !query.category &&
+        !selectedOptions.length &&
+        (!query.sort || query.sort === "newest"),
       search: query.q ?? "",
       categorySlug: query.category ?? "",
       page: Number(query.page) || 1,
@@ -165,7 +173,10 @@ export async function catalogPage(locale: string, query: PageQuery = {}) {
       .select()
       .from(productCollections)
       .where(eq(productCollections.isPublished, true))
-      .orderBy(productCollections.title)
+      .orderBy(
+        sql`case when exists(select 1 from store_settings s, jsonb_array_elements_text(coalesce(s.storefront_hero->'featuredCollectionIds', '[]'::jsonb)) f(id) where f.id=${productCollections.id}::text) then 0 else 1 end`,
+        productCollections.title,
+      )
       .limit(25),
     db.select().from(categories).orderBy(categories.sortOrder, categories.slug),
   ]);

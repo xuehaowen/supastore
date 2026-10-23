@@ -138,7 +138,8 @@ test("mobile and desktop shop keep merchant identity, products and controls usab
         path: info.outputPath(`home-${locale}-${width}.png`),
         fullPage: true,
       });
-      await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      await expect(page.locator(".storefront-wordmark")).toContainText(
         store!.store_name,
       );
       await expect(

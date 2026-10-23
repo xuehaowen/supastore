@@ -3,6 +3,7 @@ export type CustomerStore = {
   sms?: { enabled: boolean; available: boolean };
   storeName: string;
   logoKey: null | string;
+  storefrontHero?: import("./storefront-hero").StorefrontHero;
   supportEmail: string;
   publicContent: {
     en?: {
@@ -105,6 +106,7 @@ export type CatalogResult = {
     description: string;
     isPublished: boolean;
     coverImageKey: null | string;
+    previewImageKey?: null | string;
     lowestPriceCents: null | number;
     variantCount: number;
   }>;
