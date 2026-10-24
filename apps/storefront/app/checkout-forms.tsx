@@ -4,6 +4,8 @@ import {
   startTransition,
   useActionState,
   useState,
+  useEffect,
+  useRef,
   type FormEvent,
 } from "react";
 import { quoteCheckout, placeCheckout } from "./actions";
@@ -26,6 +28,12 @@ import {
 import { Button } from "@supastore/ui/button";
 import { Label } from "@supastore/ui/label";
 import { textFor } from "@supastore/i18n/messages";
+import {
+  checkoutDraftKey,
+  readCheckoutDraft,
+  saveCheckoutDraft,
+  CHECKOUT_PLACEMENT_PREFIX,
+} from "../lib/checkout-draft";
 import type {
   ShippingDestinationRule,
   FulfillmentMethod,
@@ -52,6 +60,7 @@ function submitCheckout(
 
 export function CheckoutDetailsForm({
   cartId,
+  draftOwner = "guest",
   locale,
   locations,
   timezone,
@@ -65,6 +74,7 @@ export function CheckoutDetailsForm({
   evaluationItems,
 }: {
   cartId: string;
+  draftOwner?: string;
   locale: string;
   locations: PickupOption[];
   timezone: string;
@@ -85,6 +95,29 @@ export function CheckoutDetailsForm({
   const t = textFor(locale);
   const m = t.checkoutDetails;
   const [previewRevision, setPreviewRevision] = useState(0);
+  const [draftInitial, setDraftInitial] = useState(initial);
+  const [draftRevision, setDraftRevision] = useState(0);
+  const [draftStatus, setDraftStatus] = useState<"saved" | "restored" | null>(
+    null,
+  );
+  const edited = useRef(false);
+  const serverInitial = useRef(initial);
+  const draftKey = checkoutDraftKey(cartId, draftOwner);
+  useEffect(() => {
+    try {
+      const draft = readCheckoutDraft(sessionStorage, draftKey);
+      if (!draft || edited.current || Object.keys(serverInitial.current).length)
+        return;
+      setDraftInitial(draft);
+      setPromotion(draft.promotionCode ?? "");
+      setDraftRevision((value) => value + 1);
+      setPreviewRevision((value) => value + 1);
+      setDraftStatus("restored");
+    } catch {
+      /* Checkout remains usable without browser storage. */
+    }
+    // Server defaults take precedence when editing a reviewed quote.
+  }, [draftKey]);
   return (
     <CustomerForm
       locale={locale}
@@ -95,12 +128,54 @@ export function CheckoutDetailsForm({
       className="grid gap-5"
       action={action}
       onSubmit={(event) => submitCheckout(event, action)}
-      onChange={() => setPreviewRevision((value) => value + 1)}
+      onInputCapture={() => {
+        edited.current = true;
+      }}
+      onChange={(event) => {
+        edited.current = true;
+        const form = event.currentTarget;
+        setPreviewRevision((value) => value + 1);
+        queueMicrotask(() => {
+          try {
+            if (saveCheckoutDraft(sessionStorage, draftKey, new FormData(form)))
+              setDraftStatus((current) => current ?? "saved");
+          } catch {
+            /* Browser storage is optional. */
+          }
+        });
+      }}
     >
+      {draftStatus && (
+        <div className="rounded border p-3 text-sm">
+          <p role="status">
+            {draftStatus === "restored" ? m.draftRestored : m.draftSaved}
+          </p>
+          <button
+            type="button"
+            disabled={pending}
+            className="mt-2 underline underline-offset-4"
+            onClick={() => {
+              try {
+                sessionStorage.removeItem(draftKey);
+              } catch {
+                /* Optional storage. */
+              }
+              setDraftInitial(initial);
+              setPromotion(initial.promotionCode ?? "");
+              setDraftRevision((value) => value + 1);
+              setDraftStatus(null);
+              setPreviewRevision((value) => value + 1);
+            }}
+          >
+            {m.clearDraft}
+          </button>
+        </div>
+      )}
       <Hidden name="locale" value={locale} />
       <Hidden name="cartId" value={cartId} />
       <CheckoutFields
-        initial={initial}
+        key={draftRevision}
+        initial={draftInitial}
         locale={locale}
         locations={locations}
         timezone={timezone}
@@ -156,8 +231,10 @@ export function CheckoutOrderForm({
   customerEmail = "",
   credit,
   sms,
+  draftKey,
 }: {
   quoteId: string;
+  draftKey?: string;
   locale: string;
   customerName?: string | undefined;
   customerEmail?: string | undefined;
@@ -186,7 +263,23 @@ export function CheckoutOrderForm({
       busy={pending}
       className="grid gap-4"
       action={action}
-      onSubmit={(event) => submitCheckout(event, action)}
+      onSubmit={(event) => {
+        event.preventDefault();
+        const data = new FormData(event.currentTarget);
+        if (draftKey) {
+          try {
+            const token = crypto.randomUUID();
+            sessionStorage.setItem(
+              CHECKOUT_PLACEMENT_PREFIX + token,
+              JSON.stringify({ key: draftKey, placedAt: Date.now() }),
+            );
+            data.set("draftToken", token);
+          } catch {
+            /* Storage must not prevent placing an order. */
+          }
+        }
+        startTransition(() => action(data));
+      }}
     >
       <Hidden name="locale" value={locale} />
       <Hidden name="quoteId" value={quoteId} />

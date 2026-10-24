@@ -81,7 +81,10 @@
     "creditError": "Enter an amount within your available credit and order total.",
     "creditNotice": "Credit funds the purchase; it does not change the merchandise price or tax.",
     "errorHeading": "We couldn’t complete that yet.",
-    "errorRetry": "Please review the details and try again."
+    "errorRetry": "Please review the details and try again.",
+    "draftRestored": "Your saved details have been restored. Please reselect any pickup or delivery time.",
+    "draftSaved": "Your details can be restored in this tab for 30 minutes.",
+    "clearDraft": "Clear saved details"
   },
   "account": {
     "title": "Your account",

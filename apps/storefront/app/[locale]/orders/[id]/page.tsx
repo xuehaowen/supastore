@@ -24,12 +24,17 @@ export const metadata = { robots: { index: false, follow: false } };
 import { OrderPayment } from "../../../order-payment";
 import { getStorefrontMessages } from "../../../../lib/i18n";
 import { PurchaseAnalytics } from "../../../analytics";
+import { CheckoutDraftCleanup } from "../../../checkout-draft-cleanup";
 export default async function OrderPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
-  searchParams: Promise<{ requestId?: string; error?: string }>;
+  searchParams: Promise<{
+    requestId?: string;
+    error?: string;
+    placed?: string;
+  }>;
 }) {
   const { locale, id } = await params;
   const query = await searchParams;
@@ -74,6 +79,7 @@ export default async function OrderPage({
   const support = getStorefrontMessages(locale).order;
   return (
     <section className="mx-auto my-12 min-h-[50vh] max-w-3xl">
+      {query.placed && <CheckoutDraftCleanup token={query.placed} />}
       {["confirmed", "completed"].includes(order.lifecycleStatus) && (
         <PurchaseAnalytics
           orderId={id}

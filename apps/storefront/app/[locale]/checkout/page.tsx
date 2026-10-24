@@ -1,4 +1,5 @@
 import { designCopy } from "../../../lib/design-copy";
+import { checkoutDraftKey } from "../../../lib/checkout-draft";
 import { readPage } from "../../../lib/page-data";
 import { CheckoutDetailsForm, CheckoutOrderForm } from "../../checkout-forms";
 import { Notice } from "../../components";
@@ -235,6 +236,10 @@ export default async function Checkout({
                 <CheckoutOrderForm
                   key={quote.id}
                   quoteId={quote.id}
+                  draftKey={checkoutDraftKey(
+                    quote.cartId,
+                    customer?.customer.email ?? "guest",
+                  )}
                   locale={locale}
                   customerName={customer?.customer.name}
                   customerEmail={customer?.customer.email}
@@ -326,8 +331,9 @@ export default async function Checkout({
               </CardHeader>
               <CardContent>
                 <CheckoutDetailsForm
-                  key={savedQuote?.id ?? cart.id}
+                  key={`${savedQuote?.id ?? cart.id}:${customer?.customer.email ?? "guest"}`}
                   cartId={cart.id}
+                  draftOwner={customer?.customer.email ?? "guest"}
                   {...(store?.hasContextualRules
                     ? {
                         evaluationItems: cart.items.map((item) => ({

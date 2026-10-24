@@ -81,7 +81,10 @@
     "creditError": "请输入不超过可用余额和订单总额的金额。",
     "creditNotice": "余额用于支付订单，不会改变商品价格或税费。",
     "errorHeading": "暂时无法完成操作。",
-    "errorRetry": "请检查填写的信息后重试。"
+    "errorRetry": "请检查填写的信息后重试。",
+    "draftRestored": "已恢复您保存的信息。请重新选择自取或配送时间。",
+    "draftSaved": "30 分钟内可在此标签页中恢复您填写的信息。",
+    "clearDraft": "清除已保存的信息"
   },
   "account": {
     "title": "账户",

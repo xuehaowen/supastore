@@ -113,6 +113,8 @@ export async function placeCheckout(
   form: FormData,
 ): Promise<CheckoutActionState> {
   let id: string;
+  const draftToken = text(form, "draftToken");
+  form.delete("draftToken");
   try {
     id = resultId(
       await serverRequest("orders", {
@@ -130,7 +132,10 @@ export async function placeCheckout(
       ...(failure.requestId ? { requestId: failure.requestId } : {}),
     };
   }
-  redirect(`/${locale(form)}/orders/${encodeURIComponent(id)}`);
+  const marker = /^[a-f0-9-]{36}$/.test(draftToken)
+    ? `?placed=${draftToken}`
+    : "";
+  redirect(`/${locale(form)}/orders/${encodeURIComponent(id)}${marker}`);
 }
 export async function recoverOrder(form: FormData) {
   return perform(`/recover?locale=${locale(form)}`, async () => {
