@@ -65,6 +65,7 @@ export type PageQuery = {
   home?: string;
   q?: string;
   category?: string;
+  collection?: string;
   page?: string;
   sort?: string;
   options?: string | string[];
@@ -119,6 +120,20 @@ async function verifiedSession() {
     : null;
 }
 export async function catalogPage(locale: string, query: PageQuery = {}) {
+  const [selectedCollection] = query.collection
+    ? await db
+        .select()
+        .from(productCollections)
+        .where(
+          and(
+            eq(productCollections.handle, query.collection),
+            eq(productCollections.isPublished, true),
+          ),
+        )
+        .limit(1)
+    : [];
+  if (query.collection && !selectedCollection)
+    throw new NotFoundError("Collection not found.");
   const selectedOptions = (
     Array.isArray(query.options) ? query.options : [query.options || ""]
   )
@@ -131,14 +146,18 @@ export async function catalogPage(locale: string, query: PageQuery = {}) {
         query.home === "1" &&
         !query.q &&
         !query.category &&
+        !query.collection &&
         !selectedOptions.length &&
-        (!query.sort || query.sort === "newest"),
+        (!query.sort || query.sort === "recommended"),
       search: query.q ?? "",
       categorySlug: query.category ?? "",
+      collectionHandle: query.collection || "",
       page: Number(query.page) || 1,
-      sort: ["newest", "price-low", "price-high"].includes(query.sort || "")
-        ? (query.sort as "newest" | "price-low" | "price-high")
-        : "newest",
+      sort: ["recommended", "newest", "price-low", "price-high"].includes(
+        query.sort || "",
+      )
+        ? (query.sort as "recommended" | "newest" | "price-low" | "price-high")
+        : "recommended",
       optionValues: selectedOptions.map((value) => {
         const [attribute, code] = value.split(":");
         return { attribute: attribute || "", value: code || "" };
@@ -177,6 +196,7 @@ export async function catalogPage(locale: string, query: PageQuery = {}) {
       .where(eq(productCollections.isPublished, true))
       .orderBy(
         sql`case when exists(select 1 from store_settings s, jsonb_array_elements_text(coalesce(s.storefront_hero->'featuredCollectionIds', '[]'::jsonb)) f(id) where f.id=${productCollections.id}::text) then 0 else 1 end`,
+        sql`${productCollections.isPinned} desc`,
         productCollections.sortOrder,
         productCollections.handle,
         productCollections.id,
@@ -184,7 +204,12 @@ export async function catalogPage(locale: string, query: PageQuery = {}) {
       .limit(25),
     db.select().from(categories).orderBy(categories.sortOrder, categories.slug),
   ]);
-  const [collectionTitles, groups] = await Promise.all([
+  if (
+    selectedCollection &&
+    !collections.some((item) => item.id === selectedCollection.id)
+  )
+    collections.push(selectedCollection);
+  const [requestedCollectionTitles, groups] = await Promise.all([
     collections.length
       ? db
           .select()
@@ -205,6 +230,26 @@ export async function catalogPage(locale: string, query: PageQuery = {}) {
       store?.defaultLocale ?? "en",
     ),
   ]);
+  const collectionTitles = [...requestedCollectionTitles];
+  // Collection headings retain the same default-locale fallback as collectionPage.
+  if (
+    selectedCollection &&
+    !collectionTitles.some(
+      (item) => item.collectionId === selectedCollection.id,
+    )
+  ) {
+    const [fallback] = await db
+      .select()
+      .from(collectionTranslations)
+      .where(
+        and(
+          eq(collectionTranslations.collectionId, selectedCollection.id),
+          eq(collectionTranslations.locale, store?.defaultLocale ?? "en"),
+        ),
+      )
+      .limit(1);
+    if (fallback) collectionTitles.push(fallback);
+  }
 
   return { result, store, facets, collections, collectionTitles, groups };
 }
@@ -230,6 +275,7 @@ export async function collectionsPage(
       .from(productCollections)
       .where(eq(productCollections.isPublished, true))
       .orderBy(
+        sql`${productCollections.isPinned} desc`,
         productCollections.sortOrder,
         productCollections.handle,
         productCollections.id,
@@ -465,6 +511,21 @@ export async function collectionPage(
   const result = await listProducts({
     locale,
     collectionHandle: handle,
+    categorySlug: query.category || "",
+    search: query.q || "",
+    sort: ["newest", "price-low", "price-high"].includes(query.sort ?? "")
+      ? (query.sort as "newest" | "price-low" | "price-high")
+      : "recommended",
+    optionValues: (Array.isArray(query.options)
+      ? query.options
+      : [query.options ?? ""]
+    )
+      .filter(Boolean)
+      .slice(0, 4)
+      .map((option) => {
+        const [attribute, value] = option.split(":");
+        return { attribute: attribute ?? "", value: value ?? "" };
+      }),
     page: Number(query.page) || 1,
   });
   return { collection, translated, result, store };

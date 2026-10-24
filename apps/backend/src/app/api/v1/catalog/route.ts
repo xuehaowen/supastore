@@ -26,7 +26,8 @@ export async function GET(request: Request) {
         1,
         100,
       ),
-      ...(query.sort === "newest" ||
+      ...(query.sort === "recommended" ||
+      query.sort === "newest" ||
       query.sort === "price-low" ||
       query.sort === "price-high"
         ? { sort: query.sort }

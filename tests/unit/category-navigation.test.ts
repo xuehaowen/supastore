@@ -9,6 +9,18 @@ const category = (
 ) => ({ id, parentId, sortOrder, slug });
 
 describe("category navigation", () => {
+  it("pins siblings without lifting children out of their parent", () => {
+    const items = [
+      category("a", null, 0),
+      { ...category("b", null, 10), isPinned: true },
+      { ...category("a-child", "a", 0), isPinned: true },
+    ];
+    expect(categoryNavigation(items).map((item) => item.id)).toEqual([
+      "b",
+      "a",
+      "a-child",
+    ]);
+  });
   it("orders siblings and keeps each complete subtree before the next parent", () => {
     expect(
       categoryNavigation([

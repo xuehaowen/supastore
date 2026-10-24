@@ -9,6 +9,7 @@ describe("catalog navigation", () => {
   const state = {
     q: "blue cup",
     category: "cups",
+    collection: "summer",
     sort: "price-low",
     options: ["color:blue", "size:small"],
     page: "3",
@@ -21,6 +22,7 @@ describe("catalog navigation", () => {
     expect(url.pathname).toBe("/en/search");
     expect(url.searchParams.get("q")).toBe("blue cup");
     expect(url.searchParams.get("category")).toBe("gifts");
+    expect(url.searchParams.get("collection")).toBe("summer");
     expect(url.searchParams.get("sort")).toBe("price-low");
     expect(url.searchParams.getAll("options")).toEqual(state.options);
     expect(url.searchParams.has("page")).toBe(false);
@@ -39,6 +41,32 @@ describe("catalog navigation", () => {
     expect(clear.searchParams.has("options")).toBe(false);
     expect(clear.searchParams.get("q")).toBe("blue cup");
     expect(clear.searchParams.get("sort")).toBe("price-low");
+  });
+  it("keeps collection pages scoped when switching categories and removing options", () => {
+    const url = new URL(
+      catalogHref(
+        "zh",
+        { ...state, collectionPage: true },
+        { category: "gifts", options: [] },
+      ),
+      "http://store.test",
+    );
+    expect(url.pathname).toBe("/zh/collections/summer");
+    expect(url.searchParams.get("category")).toBe("gifts");
+    expect(url.searchParams.get("q")).toBe("blue cup");
+    expect(url.searchParams.get("sort")).toBe("price-low");
+    expect(url.searchParams.has("collection")).toBe(false);
+    expect(url.searchParams.has("page")).toBe(false);
+  });
+  it("can remove the collection alone while retaining the rest of a mixed search", () => {
+    const url = new URL(
+      catalogHref("en", state, { collection: "" }),
+      "http://store.test",
+    );
+    expect(url.pathname).toBe("/en/search");
+    expect(url.searchParams.has("collection")).toBe(false);
+    expect(url.searchParams.get("category")).toBe("cups");
+    expect(url.searchParams.getAll("options")).toEqual(state.options);
   });
 });
 

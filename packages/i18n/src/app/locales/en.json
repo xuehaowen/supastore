@@ -253,7 +253,12 @@
     "noProductsInThisCollectionYet": "No products in this collection yet.",
     "account": "Account",
     "storeInformation": "Store information",
-    "specifications": "Specifications"
+    "specifications": "Specifications",
+    "recommended": "Recommended",
+    "allCollections": "All collections",
+    "collectionFilter": "Collection",
+    "categoryFilter": "Category",
+    "removeCategory": "Remove category"
   },
   "sms": {
     "title": "SMS order updates",

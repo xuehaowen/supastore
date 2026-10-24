@@ -9,7 +9,7 @@ import Image from "next/image";
 import { policyPresentation } from "../lib/page-metadata";
 
 import { ProductCard } from "./product-card";
-import { catalogHref } from "../lib/catalog-navigation";
+import { catalogHref, catalogPath } from "../lib/catalog-navigation";
 import { CatalogSort } from "./catalog-sort";
 import { getTranslations } from "next-intl/server";
 import { notFound, redirect } from "next/navigation";
@@ -20,12 +20,15 @@ export default async function Catalog({
   locale,
   query = {},
   showHero = false,
+  collectionPage = false,
 }: {
   locale: string;
   showHero?: boolean;
+  collectionPage?: boolean;
   query?: {
     q?: string;
     category?: string;
+    collection?: string;
     page?: string;
     sort?: string;
     options?: string | string[];
@@ -44,6 +47,18 @@ export default async function Catalog({
       home: showHero ? "1" : undefined,
     });
   const m = designCopy(locale);
+  const navigation = { ...query, collectionPage };
+  const selectedCollection = collections.find(
+    (item) => item.handle === query.collection,
+  );
+  const selectedCollectionTitle = collectionTitles.find(
+    (item) => item.collectionId === selectedCollection?.id,
+  );
+  const clearFilters = {
+    category: "",
+    options: [],
+    collection: collectionPage ? query.collection || "" : "",
+  };
   const branding = showHero
     ? (await readRequestPage("layout", locale)).store
     : store;
@@ -70,16 +85,45 @@ export default async function Catalog({
       page: String(page),
       q: query.q || "",
       category: query.category || "",
+      ...(!collectionPage && query.collection
+        ? { collection: query.collection }
+        : {}),
       sort: query.sort || "",
     });
     selectedOptions.forEach((value) => state.append("options", value));
-    return `?${state}`;
+    return `${catalogPath(locale, navigation)}?${state}`;
   };
   const lastPage = Math.max(1, Math.ceil(result.total / result.pageSize));
   if (result.page > lastPage) redirect(pageHref(lastPage));
   return (
     <>
-      {showHero ? (
+      {collectionPage && selectedCollection ? (
+        <header className="storefront-collection storefront-collection-heading">
+          <Link href={`/${locale}`}>← {textFor(locale).all}</Link>
+          <h1>{selectedCollectionTitle?.title ?? selectedCollection.title}</h1>
+          <p>
+            {selectedCollectionTitle?.description ??
+              selectedCollection.description}
+          </p>
+          {selectedCollection.imageKey && (
+            <Image
+              src={`/api/assets?key=${encodeURIComponent(selectedCollection.imageKey)}&inline=1`}
+              alt={
+                selectedCollection.imageAlt ||
+                selectedCollectionTitle?.title ||
+                selectedCollection.title
+              }
+              width={1200}
+              height={600}
+              sizes="(max-width: 767px) 88vw, 1200px"
+              className="mb-8 max-h-96 w-full object-cover"
+            />
+          )}
+          <p>
+            {result.total} {textFor(locale).ui.products.toLowerCase()}
+          </p>
+        </header>
+      ) : showHero ? (
         <section
           className={
             "catalog-hero" + (hero?.imageKey ? " catalog-hero-with-image" : "")
@@ -116,12 +160,14 @@ export default async function Catalog({
       ) : (
         <header className="storefront-catalog-heading">
           <h1>
-            {query.category
-              ? (groups.find((group) => group.slug === query.category)?.name ??
-                t("all"))
-              : query.q
-                ? t("search") + " · " + query.q
-                : t("all")}
+            {selectedCollection
+              ? (selectedCollectionTitle?.title ?? selectedCollection.title)
+              : query.category
+                ? (groups.find((group) => group.slug === query.category)
+                    ?.name ?? t("all"))
+                : query.q
+                  ? t("search") + " · " + query.q
+                  : t("all")}
           </h1>
           <p>
             {result.total} {textFor(locale).ui.products.toLowerCase()}
@@ -171,45 +217,51 @@ export default async function Catalog({
             </div>
           </section>
         )}
-        {collections.some(
-          (collection) =>
-            !featuredCollections.some((item) => item.id === collection.id),
-        ) && (
-          <nav
-            className="catalog-collection-nav"
-            aria-label={textFor(locale).ui.collections}
+        {!collectionPage &&
+          collections.some(
+            (collection) =>
+              !featuredCollections.some((item) => item.id === collection.id),
+          ) && (
+            <nav
+              className="catalog-collection-nav"
+              aria-label={textFor(locale).ui.collections}
+            >
+              {collections
+                .filter(
+                  (collection) =>
+                    !featuredCollections.some(
+                      (item) => item.id === collection.id,
+                    ),
+                )
+                .map((collection) => (
+                  <Link
+                    key={collection.id}
+                    href={catalogHref(locale, navigation, {
+                      collection: collection.handle,
+                      collectionPage: true,
+                    })}
+                  >
+                    {collectionTitles.find(
+                      (item) => item.collectionId === collection.id,
+                    )?.title ?? collection.title}
+                  </Link>
+                ))}
+            </nav>
+          )}
+        {!collectionPage && (
+          <a
+            className="collection-directory-link"
+            href={`/${locale}/collections`}
           >
-            {collections
-              .filter(
-                (collection) =>
-                  !featuredCollections.some(
-                    (item) => item.id === collection.id,
-                  ),
-              )
-              .map((collection) => (
-                <Link
-                  key={collection.id}
-                  href={`/${locale}/collections/${collection.handle}`}
-                >
-                  {collectionTitles.find(
-                    (item) => item.collectionId === collection.id,
-                  )?.title ?? collection.title}
-                </Link>
-              ))}
-          </nav>
+            {textFor(locale).ui.viewAllCollections}{" "}
+            <span aria-hidden="true">→</span>
+          </a>
         )}
-        <a
-          className="collection-directory-link"
-          href={`/${locale}/collections`}
-        >
-          {textFor(locale).ui.viewAllCollections}{" "}
-          <span aria-hidden="true">→</span>
-        </a>
         <div className="storefront-catalog-tools">
           <h2>{m.collection}</h2>
           <form
             className="flex gap-2 max-sm:w-full"
-            action={"/" + locale + "/search"}
+            action={catalogPath(locale, navigation)}
           >
             <label className="sr-only" htmlFor="search">
               {t("search")}
@@ -222,6 +274,9 @@ export default async function Catalog({
             />
             {query.category && (
               <input type="hidden" name="category" value={query.category} />
+            )}
+            {query.collection && !collectionPage && (
+              <input type="hidden" name="collection" value={query.collection} />
             )}
             {query.sort && (
               <input type="hidden" name="sort" value={query.sort} />
@@ -236,6 +291,8 @@ export default async function Catalog({
             query={{
               q: query.q || "",
               category: query.category || "",
+              collection: query.collection || "",
+              collectionPage,
               sort: query.sort || "",
               options: selectedOptions,
             }}
@@ -252,17 +309,22 @@ export default async function Catalog({
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-transparent hover:border-border hover:bg-muted")
             }
-            href={catalogHref(locale, query, { category: "" })}
+            href={catalogHref(locale, navigation, { category: "" })}
             aria-current={query.category ? undefined : "page"}
           >
             {t("all")}
           </a>
-          <CategoryNavigation groups={groups} locale={locale} query={query} />
+          <CategoryNavigation
+            groups={groups}
+            locale={locale}
+            query={navigation}
+          />
         </nav>
         <CatalogFilters
           key={JSON.stringify([
             query.q,
             query.category,
+            query.collection,
             query.sort,
             selectedOptions,
           ])}
@@ -270,18 +332,37 @@ export default async function Catalog({
           facets={facets}
           selected={selectedOptions}
           query={query.q || ""}
-          sort={query.sort || "newest"}
+          sort={query.sort || "recommended"}
           category={query.category || ""}
+          collection={query.collection || ""}
+          collectionPage={collectionPage}
+          categories={groups}
+          collections={collections.map((collection) => ({
+            handle: collection.handle,
+            title:
+              collectionTitles.find(
+                (item) => item.collectionId === collection.id,
+              )?.title ?? collection.title,
+          }))}
         />
-        {(query.category || selectedOptions.length > 0) && (
+        {(query.category ||
+          (!collectionPage && query.collection) ||
+          selectedOptions.length > 0) && (
           <nav
             className="catalog-active-filters"
             aria-label={textFor(locale).ui.activeFilters}
           >
             {query.category && (
-              <a href={catalogHref(locale, query, { category: "" })}>
+              <a href={catalogHref(locale, navigation, { category: "" })}>
                 {groups.find((group) => group.slug === query.category)?.name ??
                   query.category}
+                <span className="sr-only"> · {t("remove")}</span>{" "}
+                <span aria-hidden="true">×</span>
+              </a>
+            )}
+            {!collectionPage && selectedCollection && (
+              <a href={catalogHref(locale, navigation, { collection: "" })}>
+                {selectedCollectionTitle?.title ?? selectedCollection.title}
                 <span className="sr-only"> · {t("remove")}</span>{" "}
                 <span aria-hidden="true">×</span>
               </a>
@@ -289,7 +370,7 @@ export default async function Catalog({
             {selectedOptions.map((option) => (
               <a
                 key={option}
-                href={catalogHref(locale, query, {
+                href={catalogHref(locale, navigation, {
                   options: selectedOptions.filter((value) => value !== option),
                 })}
               >
@@ -300,7 +381,7 @@ export default async function Catalog({
                 <span aria-hidden="true">×</span>
               </a>
             ))}
-            <a href={catalogHref(locale, query, { category: "", options: [] })}>
+            <a href={catalogHref(locale, navigation, clearFilters)}>
               {textFor(locale).ui.clearFilters}
             </a>
           </nav>
@@ -322,13 +403,15 @@ export default async function Catalog({
             <AlertDescription>
               {textFor(locale).common.noProducts}
               {query.q && <p>{textFor(locale).ui.searchRecovery}</p>}
-              {(query.category || selectedOptions.length > 0) && (
-                <a
-                  href={catalogHref(locale, query, {
-                    category: "",
-                    options: [],
-                  })}
-                >
+              {query.category && (
+                <a href={catalogHref(locale, navigation, { category: "" })}>
+                  {textFor(locale).ui.removeCategory}
+                </a>
+              )}
+              {(query.category ||
+                query.collection ||
+                selectedOptions.length > 0) && (
+                <a href={catalogHref(locale, navigation, clearFilters)}>
                   {textFor(locale).ui.clearFilters}
                 </a>
               )}
@@ -343,8 +426,10 @@ export default async function Catalog({
                     <a
                       key={group.id}
                       href={catalogHref(locale, {
+                        ...navigation,
+                        q: "",
                         category: group.slug,
-                        sort: query.sort || "",
+                        options: [],
                       })}
                     >
                       {group.name}

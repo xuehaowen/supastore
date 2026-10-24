@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { NativeSelect } from "@supastore/ui/native-select";
 import { Button } from "@supastore/ui/button";
 import { textFor } from "@supastore/i18n/messages";
-import { type CatalogNavigation } from "../lib/catalog-navigation";
+import { catalogPath, type CatalogNavigation } from "../lib/catalog-navigation";
 
 export function CatalogSort({
   locale,
@@ -20,7 +20,10 @@ export function CatalogSort({
     ? query.options
     : [query.options || ""];
   return (
-    <form action={`/${locale}/search`} className="catalog-sort-form">
+    <form action={catalogPath(locale, query)} className="catalog-sort-form">
+      {query.collection && !query.collectionPage && (
+        <input type="hidden" name="collection" value={query.collection} />
+      )}
       {query.q && <input type="hidden" name="q" value={query.q} />}
       {query.category && (
         <input type="hidden" name="category" value={query.category} />
@@ -33,9 +36,10 @@ export function CatalogSort({
         <NativeSelect
           disabled={!ready}
           name="sort"
-          defaultValue={query.sort || "newest"}
+          defaultValue={query.sort || "recommended"}
           onChange={(event) => event.currentTarget.form?.requestSubmit()}
         >
+          <option value="recommended">{t.recommended}</option>
           <option value="newest">{t.newest}</option>
           <option value="price-low">{t.priceLowToHigh}</option>
           <option value="price-high">{t.priceHighToLow}</option>
@@ -45,7 +49,8 @@ export function CatalogSort({
         <style>{`.catalog-sort-enhanced { display: none; }`}</style>
         <label>
           {t.sort}
-          <NativeSelect name="sort" defaultValue={query.sort || "newest"}>
+          <NativeSelect name="sort" defaultValue={query.sort || "recommended"}>
+            <option value="recommended">{t.recommended}</option>
             <option value="newest">{t.newest}</option>
             <option value="price-low">{t.priceLowToHigh}</option>
             <option value="price-high">{t.priceHighToLow}</option>

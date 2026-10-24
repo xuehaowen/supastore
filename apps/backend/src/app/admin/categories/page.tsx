@@ -59,8 +59,9 @@ export default async function CategoriesPage({
       .from(categories)
       .where(filter)
       .orderBy(
+        sql`${categories.isPinned} desc`,
         asc(categories.sortOrder),
-        asc(categories.name),
+        asc(categories.slug),
         asc(categories.id),
       )
       .limit(25)
@@ -115,9 +116,10 @@ export default async function CategoriesPage({
         <p className="eyebrow">CATALOG STRUCTURE</p>
         <h1>Categories</h1>
         <p className="admin-description">
-          Organize products and maintain category handles and hierarchy.
-          Storefront order uses lower numbers first within each parent. Ties use
-          the category handle. Children stay under their parent.
+          Organize products and maintain category handles and hierarchy. Pins
+          appear first within each parent. Move controls reorder within the same
+          pin group. Storefront order uses lower numbers first. Ties use the
+          category handle. Children stay under their parent.
         </p>
         <div className="admin-page-actions">
           <AdminDialog
@@ -207,12 +209,18 @@ export default async function CategoriesPage({
                         id={category.id}
                         name={category.name}
                         position={category.sortOrder}
+                        pinned={category.isPinned}
                         search={search}
                         page={page}
                       />
                     </TableCell>
                     <TableCell>
                       <div className="table-actions">
+                        <Link
+                          href={`/admin/products?category=${category.id}&sort=storefront`}
+                        >
+                          Arrange products
+                        </Link>
                         <AdminDialog
                           trigger="Edit category"
                           title={`Edit category · ${category.name}`}

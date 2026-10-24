@@ -27,7 +27,11 @@ export async function listAdminProducts(
     ? input.category!
     : "";
   const sort =
-    input.sort === "oldest" || input.sort === "title" ? input.sort : "newest";
+    input.sort === "oldest" ||
+    input.sort === "title" ||
+    input.sort === "storefront"
+      ? input.sort
+      : "newest";
   const requestedPage = Number(input.page);
   const page =
     Number.isSafeInteger(requestedPage) && requestedPage > 0
@@ -53,6 +57,14 @@ export async function listAdminProducts(
         sql`exists(select 1 from product_categories pc where pc.product_id=${products.id} and pc.category_id=${category}::uuid)`,
       );
     const where = and(...conditions);
+    const position = category
+      ? sql<
+          number | null
+        >`(select pc.sort_order from product_categories pc where pc.product_id=${products.id} and pc.category_id=${category}::uuid)`
+      : sql<number | null>`${products.sortOrder}`;
+    const pinned = category
+      ? sql<boolean>`(select pc.is_pinned from product_categories pc where pc.product_id=${products.id} and pc.category_id=${category}::uuid)`
+      : sql<boolean>`${products.isPinned}`;
     const [count] = await tx
       .select({ total: sql<number>`count(*)::int` })
       .from(products)
@@ -62,6 +74,8 @@ export async function listAdminProducts(
     const rows = await tx
       .select({
         product: products,
+        position,
+        pinned,
         variantCount: sql<number>`count(${productVariants.id})::int`,
         minPrice: sql<number | null>`min(${productVariants.priceCents})`,
         maxPrice: sql<number | null>`max(${productVariants.priceCents})`,
@@ -71,6 +85,9 @@ export async function listAdminProducts(
       .where(where)
       .groupBy(products.id)
       .orderBy(
+        ...(sort === "storefront"
+          ? [sql`${pinned} desc`, sql`${position} asc nulls last`]
+          : []),
         sort === "title"
           ? asc(products.title)
           : sort === "oldest"

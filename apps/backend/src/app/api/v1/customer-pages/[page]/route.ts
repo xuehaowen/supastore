@@ -43,7 +43,10 @@ export async function GET(
       case "order":
         return orderPage(apiText(query, "id", 36));
       case "collection":
-        return collectionPage(locale, apiText(query, "handle", 120), query);
+        return collectionPage(locale, apiText(query, "handle", 120), {
+          ...query,
+          options,
+        });
       default:
         throw new NotFoundError("Customer page not found.");
     }

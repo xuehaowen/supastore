@@ -226,7 +226,11 @@ export async function getCollectionAdmin(
       .where(eq(productCollections.id, id));
     if (!collection) return null;
     const members = await tx
-      .select({ product: products, position: collectionMemberships.sortOrder })
+      .select({
+        product: products,
+        position: collectionMemberships.sortOrder,
+        pinned: collectionMemberships.isPinned,
+      })
       .from(collectionMemberships)
       .innerJoin(products, eq(products.id, collectionMemberships.productId))
       .where(
@@ -238,7 +242,11 @@ export async function getCollectionAdmin(
             .replace(/[\\%_]/g, "\\$&")}%`}`,
         ),
       )
-      .orderBy(asc(collectionMemberships.sortOrder), asc(products.id))
+      .orderBy(
+        sql`${collectionMemberships.isPinned} desc`,
+        asc(collectionMemberships.sortOrder),
+        asc(products.id),
+      )
       .limit(26)
       .offset((Math.min(10000, Math.max(1, Math.floor(page) || 1)) - 1) * 25);
     const pattern = `%${search

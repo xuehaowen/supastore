@@ -10,6 +10,7 @@ import { Button } from "@supastore/ui/button";
 import { Checkbox } from "@supastore/ui/checkbox";
 import { CatalogImageUpload } from "@/app/admin/catalog-image-upload";
 import { NativeSelect } from "@supastore/ui/native-select";
+import { CatalogPlacement } from "@/app/admin/catalog-placement";
 import {
   Table,
   TableHeader,
@@ -158,6 +159,13 @@ export default async function CollectionDetail({
             />
             <Button type="submit">Search</Button>
           </form>
+          <p className="admin-description">
+            Pins lead this collection in recommended sorting. Collection
+            placement also applies when shoppers narrow it by category. Move
+            controls reorder within the same pin group across all members,
+            including filtered rows. Explicit newest and price sorting take
+            precedence.
+          </p>
           <form action={changeCollectionMemberAction} className="grid gap-4">
             {identity}
             <label>
@@ -188,10 +196,24 @@ export default async function CollectionDetail({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {members.map(({ product, position }) => (
+              {members.map(({ product, position, pinned }) => (
                 <TableRow key={product.id}>
                   <TableCell>{product.title}</TableCell>
-                  <TableCell>{position}</TableCell>
+                  <TableCell>
+                    <CatalogPlacement
+                      kind="collection-product"
+                      id={product.id}
+                      scopeId={id}
+                      name={product.title}
+                      position={position}
+                      pinned={pinned}
+                      context={{
+                        q: query.q ?? "",
+                        memberQ: query.memberQ ?? "",
+                        page: String(page),
+                      }}
+                    />
+                  </TableCell>
                   <TableCell>
                     <AdminDialog
                       trigger="Edit membership"

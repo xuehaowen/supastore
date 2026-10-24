@@ -18,6 +18,7 @@ export default async function Search({
   searchParams: Promise<{
     q?: string;
     category?: string;
+    collection?: string;
     page?: string;
     sort?: string;
     options?: string | string[];

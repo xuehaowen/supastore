@@ -44,6 +44,7 @@ export default async function Collections({
       .from(productCollections)
       .where(sql`${productCollections.title} ilike ${pattern}`)
       .orderBy(
+        sql`${productCollections.isPinned} desc`,
         asc(productCollections.sortOrder),
         asc(productCollections.handle),
         asc(productCollections.id),
@@ -60,7 +61,8 @@ export default async function Collections({
         <h1>Collections</h1>
         <p className="admin-description">
           Curate product groups for your storefront. Products can belong to
-          multiple collections. Storefront order uses lower numbers first; ties
+          multiple collections. Pins appear first. Move controls reorder within
+          the same pin group. Storefront order uses lower numbers first; ties
           use the handle. Homepage featured collections keep their separate
           order in Storefront settings.
         </p>
@@ -119,6 +121,7 @@ export default async function Collections({
                       id={collection.id}
                       name={collection.title}
                       position={collection.sortOrder}
+                      pinned={collection.isPinned}
                       search={search}
                       page={page}
                     />

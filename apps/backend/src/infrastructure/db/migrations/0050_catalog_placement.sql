@@ -1,0 +1,12 @@
+ALTER TABLE products ADD COLUMN sort_order integer;
+ALTER TABLE products ADD COLUMN is_pinned boolean NOT NULL DEFAULT false;
+ALTER TABLE product_categories ADD COLUMN sort_order integer;
+ALTER TABLE product_categories ADD COLUMN is_pinned boolean NOT NULL DEFAULT false;
+ALTER TABLE product_collection_memberships ADD COLUMN is_pinned boolean NOT NULL DEFAULT false;
+ALTER TABLE categories ADD COLUMN is_pinned boolean NOT NULL DEFAULT false;
+ALTER TABLE product_collections ADD COLUMN is_pinned boolean NOT NULL DEFAULT false;
+ALTER TABLE products ADD CONSTRAINT products_sort_order_valid CHECK (sort_order BETWEEN 0 AND 1000000);
+ALTER TABLE product_categories ADD CONSTRAINT product_categories_sort_order_valid CHECK (sort_order BETWEEN 0 AND 1000000);
+CREATE INDEX idx_product_placement ON products (is_pinned DESC, sort_order, created_at DESC, id);
+CREATE INDEX idx_category_product_placement ON product_categories (category_id, is_pinned DESC, sort_order, product_id);
+CREATE INDEX idx_collection_product_placement ON product_collection_memberships (collection_id, is_pinned DESC, sort_order, product_id);

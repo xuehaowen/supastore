@@ -2,6 +2,7 @@ type Category = {
   id: string;
   parentId: string | null;
   sortOrder: number;
+  isPinned?: boolean;
   slug: string;
 };
 
@@ -11,6 +12,7 @@ export function categoryNavigation<T extends Category>(
 ): (T & { depth: number })[] {
   const ordered = [...categories].sort(
     (a, b) =>
+      Number(!!b.isPinned) - Number(!!a.isPinned) ||
       a.sortOrder - b.sortOrder ||
       (a.slug < b.slug ? -1 : a.slug > b.slug ? 1 : 0) ||
       a.id.localeCompare(b.id),

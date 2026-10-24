@@ -1,5 +1,6 @@
 import { VariantFields } from "@/app/interactive";
 import { CategoryPicker } from "@/app/admin/category-picker";
+import { CatalogPlacement } from "@/app/admin/catalog-placement";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { listAdminProducts } from "@/application/use-cases/catalog/list-admin-products";
@@ -58,6 +59,23 @@ export default async function Products({
         <p className="admin-description">
           Manage your catalog, pricing, and product availability.
         </p>
+        {owner && (
+          <p className="admin-description">
+            Placement scope:{" "}
+            {category
+              ? (groups.find((group) => group.id === category)?.name ??
+                "Selected category")
+              : "All products"}
+            . Select a category to arrange its products independently. Pins lead
+            recommended sorting; explicit newest and price sorting take
+            precedence. Move controls stay within the same pin group across the
+            full scope, including filtered rows. Leave position empty for
+            automatic placement.{" "}
+            <Link href="/admin/setup#storefront">
+              Homepage featured selections
+            </Link>
+          </p>
+        )}
         {owner && (
           <div className="admin-page-actions">
             <Link href="/admin/products/new">Create draft product</Link>
@@ -123,6 +141,7 @@ export default async function Products({
           <label>
             Sort
             <NativeSelect name="sort" defaultValue={sort}>
+              <option value="storefront">Storefront order</option>
               <option value="newest">Newest first</option>
               <option value="oldest">Oldest first</option>
               <option value="title">Title A–Z</option>
@@ -141,70 +160,109 @@ export default async function Products({
                   <TableHead>Variants</TableHead>
                   <TableHead>Price range</TableHead>
                   <TableHead>Status</TableHead>
+                  {owner && <TableHead>Storefront placement</TableHead>}
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map(({ product, variantCount, minPrice, maxPrice }) => {
-                  return (
-                    <TableRow key={product.id}>
-                      <TableCell>
-                        <strong>{product.title}</strong>
-                      </TableCell>
-                      <TableCell>/{product.handle}</TableCell>
-                      <TableCell>{variantCount}</TableCell>
-                      <TableCell>
-                        {minPrice === null
-                          ? "Not priced"
-                          : money(minPrice, store?.currency, store?.precision)}
-                        {minPrice !== null &&
-                          maxPrice !== null &&
-                          maxPrice > minPrice &&
-                          ` – ${money(maxPrice, store?.currency, store?.precision)}`}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            product.isPublished ? "default" : "secondary"
-                          }
-                        >
-                          {product.isPublished ? "Published" : "Draft"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {owner ? (
-                          <div className="table-actions">
-                            <Link
-                              href={`/admin/products/${product.id}/edit`}
-                              className="admin-edit-link"
-                            >
-                              Edit
-                            </Link>
-                            <form action={toggleAvailability}>
-                              <Hidden name="productId" value={product.id} />
-                              <Hidden
-                                name="published"
-                                value={String(!product.isPublished)}
-                              />
-                              <Button type="submit" size="sm" variant="outline">
-                                {product.isPublished ? "Unpublish" : "Publish"}
-                              </Button>
-                            </form>
-                          </div>
-                        ) : (
-                          <Link
-                            href={`/admin/products/${product.id}/specifications`}
+                {rows.map(
+                  ({
+                    product,
+                    variantCount,
+                    minPrice,
+                    maxPrice,
+                    position,
+                    pinned,
+                  }) => {
+                    return (
+                      <TableRow key={product.id}>
+                        <TableCell>
+                          <strong>{product.title}</strong>
+                        </TableCell>
+                        <TableCell>/{product.handle}</TableCell>
+                        <TableCell>{variantCount}</TableCell>
+                        <TableCell>
+                          {minPrice === null
+                            ? "Not priced"
+                            : money(
+                                minPrice,
+                                store?.currency,
+                                store?.precision,
+                              )}
+                          {minPrice !== null &&
+                            maxPrice !== null &&
+                            maxPrice > minPrice &&
+                            ` – ${money(maxPrice, store?.currency, store?.precision)}`}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              product.isPublished ? "default" : "secondary"
+                            }
                           >
-                            View specifications
-                          </Link>
+                            {product.isPublished ? "Published" : "Draft"}
+                          </Badge>
+                        </TableCell>
+                        {owner && (
+                          <TableCell>
+                            <CatalogPlacement
+                              kind={category ? "category-product" : "product"}
+                              id={product.id}
+                              scopeId={category}
+                              name={product.title}
+                              position={position}
+                              pinned={pinned}
+                              context={{
+                                q: search,
+                                status,
+                                category,
+                                sort,
+                                page: String(page),
+                              }}
+                            />
+                          </TableCell>
                         )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                        <TableCell>
+                          {owner ? (
+                            <div className="table-actions">
+                              <Link
+                                href={`/admin/products/${product.id}/edit`}
+                                className="admin-edit-link"
+                              >
+                                Edit
+                              </Link>
+                              <form action={toggleAvailability}>
+                                <Hidden name="productId" value={product.id} />
+                                <Hidden
+                                  name="published"
+                                  value={String(!product.isPublished)}
+                                />
+                                <Button
+                                  type="submit"
+                                  size="sm"
+                                  variant="outline"
+                                >
+                                  {product.isPublished
+                                    ? "Unpublish"
+                                    : "Publish"}
+                                </Button>
+                              </form>
+                            </div>
+                          ) : (
+                            <Link
+                              href={`/admin/products/${product.id}/specifications`}
+                            >
+                              View specifications
+                            </Link>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  },
+                )}
                 {rows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6}>
+                    <TableCell colSpan={owner ? 7 : 6}>
                       No products match these filters.
                     </TableCell>
                   </TableRow>

@@ -10,7 +10,7 @@ const StorefrontSheet = dynamic(() => import("./storefront-sheet"), {
 import { NativeSelect } from "@supastore/ui/native-select";
 import { Button } from "@supastore/ui/button";
 import { designCopy } from "../lib/design-copy";
-import { catalogHref } from "../lib/catalog-navigation";
+import { catalogHref, catalogPath } from "../lib/catalog-navigation";
 
 type Facet = { attribute: string; name: string; value: string; label: string };
 export function CatalogFilters({
@@ -20,6 +20,10 @@ export function CatalogFilters({
   query,
   sort,
   category,
+  collection = "",
+  collectionPage = false,
+  collections = [],
+  categories = [],
 }: {
   locale: string;
   facets: Facet[];
@@ -27,18 +31,64 @@ export function CatalogFilters({
   query: string;
   sort: string;
   category: string;
+  collection?: string;
+  collectionPage?: boolean;
+  collections?: { handle: string; title: string }[];
+  categories?: { slug: string; name: string; depth?: number }[];
 }) {
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const m = designCopy(locale);
   const axes = [...new Set(facets.map((f) => f.attribute))].slice(0, 4);
-  if (!axes.length) return null;
+  const state = { q: query, sort, category, collection, collectionPage };
+  const count =
+    selected.length +
+    Number(!!category) +
+    Number(!!collection && !collectionPage);
+  const collectionSelector = !collectionPage && collections.length > 0;
+  if (!axes.length && !collectionSelector && !categories.length) return null;
   const fields = (prefix: string) => (
     <>
       <input type="hidden" name="q" value={query} />
       <input type="hidden" name="sort" value={sort} />
-      <input type="hidden" name="category" value={category} />
+      {prefix === "mobile" && categories.length ? (
+        <label className="grid gap-2" htmlFor={`${prefix}-category`}>
+          {textFor(locale).ui.categoryFilter}
+          <NativeSelect
+            id={`${prefix}-category`}
+            name="category"
+            defaultValue={category}
+          >
+            <option value="">{textFor(locale).all}</option>
+            {categories.map((item) => (
+              <option
+                key={item.slug}
+                value={item.slug}
+              >{`${"— ".repeat(item.depth ?? 0)}${item.name}`}</option>
+            ))}
+          </NativeSelect>
+        </label>
+      ) : (
+        <input type="hidden" name="category" value={category} />
+      )}
+      {!collectionPage && collections.length > 0 && (
+        <label className="grid gap-2" htmlFor={`${prefix}-collection`}>
+          {textFor(locale).ui.collectionFilter}
+          <NativeSelect
+            id={`${prefix}-collection`}
+            name="collection"
+            defaultValue={collection}
+          >
+            <option value="">{textFor(locale).ui.allCollections}</option>
+            {collections.map((item) => (
+              <option key={item.handle} value={item.handle}>
+                {item.title}
+              </option>
+            ))}
+          </NativeSelect>
+        </label>
+      )}
       {axes.map((axis) => (
         <label className="grid gap-2" key={axis} htmlFor={`${prefix}-${axis}`}>
           {facets.find((f) => f.attribute === axis)!.name}
@@ -61,7 +111,11 @@ export function CatalogFilters({
       <Button type="submit">{m.apply}</Button>
       <a
         className="text-sm underline"
-        href={catalogHref(locale, { q: query, category, sort })}
+        href={catalogHref(locale, state, {
+          category: "",
+          collection: collectionPage ? collection : "",
+          options: [],
+        })}
       >
         {m.clear}
       </a>
@@ -69,13 +123,15 @@ export function CatalogFilters({
   );
   return (
     <>
-      <form
-        action={`/${locale}/search`}
-        className="catalog-desktop-filters"
-        aria-label={m.filters}
-      >
-        {fields("desktop")}
-      </form>
+      {(axes.length > 0 || collectionSelector) && (
+        <form
+          action={catalogPath(locale, state)}
+          className="catalog-desktop-filters"
+          aria-label={m.filters}
+        >
+          {fields("desktop")}
+        </form>
+      )}
       <div className="catalog-mobile-filters">
         <Button
           ref={trigger}
@@ -89,7 +145,7 @@ export function CatalogFilters({
         >
           <SlidersHorizontal />
           {m.filters}
-          {selected.length ? ` (${selected.length})` : ""}
+          {count ? ` (${count})` : ""}
         </Button>
         {loaded && (
           <StorefrontSheet
@@ -100,7 +156,7 @@ export function CatalogFilters({
             description={m.apply}
             closeLabel={m.close}
           >
-            <form action={`/${locale}/search`} className="grid gap-6">
+            <form action={catalogPath(locale, state)} className="grid gap-6">
               {fields("mobile")}
             </form>
           </StorefrontSheet>

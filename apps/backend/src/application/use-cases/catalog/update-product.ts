@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
 import {
@@ -179,14 +179,24 @@ export async function updateProduct(input: UpdateProductInput) {
     }
     await tx
       .delete(productCategories)
-      .where(eq(productCategories.productId, product.id));
-    if (categoryIds.length)
-      await tx.insert(productCategories).values(
-        categoryIds.map((categoryId) => ({
-          productId: product.id,
-          categoryId,
-        })),
+      .where(
+        and(
+          eq(productCategories.productId, product.id),
+          categoryIds.length
+            ? notInArray(productCategories.categoryId, categoryIds)
+            : undefined,
+        ),
       );
+    if (categoryIds.length)
+      await tx
+        .insert(productCategories)
+        .values(
+          categoryIds.map((categoryId) => ({
+            productId: product.id,
+            categoryId,
+          })),
+        )
+        .onConflictDoNothing();
     await tx
       .update(productTranslations)
       .set({ title, description: input.description, updatedAt: new Date() })

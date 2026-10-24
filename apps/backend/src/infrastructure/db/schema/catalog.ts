@@ -29,6 +29,7 @@ export const categories = pgTable("categories", {
   name: text("name").notNull(),
   parentId: uuid("parent_id"), // self-referencing; FK added in migration
   sortOrder: integer("sort_order").notNull().default(0),
+  isPinned: boolean("is_pinned").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -50,6 +51,8 @@ export const products = pgTable(
     taxable: boolean("taxable").notNull().default(true),
     rewardEligible: boolean("reward_eligible").notNull().default(true),
     isPublished: boolean("is_published").notNull().default(true),
+    sortOrder: integer("sort_order"),
+    isPinned: boolean("is_pinned").notNull().default(false),
     quoteVersion: integer("quote_version").notNull().default(1),
     skuPrefix: text("sku_prefix"),
     // Stored generated tsvector for native full-text search (GIN-indexed).
@@ -119,6 +122,8 @@ export const productCategories = pgTable(
     categoryId: uuid("category_id")
       .notNull()
       .references(() => categories.id, { onDelete: "cascade" }),
+    sortOrder: integer("sort_order"),
+    isPinned: boolean("is_pinned").notNull().default(false),
   },
   (t) => [uniqueIndex("uq_product_category").on(t.productId, t.categoryId)],
 );

@@ -17,7 +17,7 @@ export interface ListProductsInput {
   page?: number;
   pageSize?: number;
   collectionHandle?: string;
-  sort?: "newest" | "price-low" | "price-high";
+  sort?: "recommended" | "newest" | "price-low" | "price-high";
   optionValues?: { attribute: string; value: string }[];
   featuredFirst?: boolean;
 }
@@ -31,9 +31,11 @@ export async function listProducts(input: ListProductsInput = {}) {
     );
     const conditions = [eq(products.isPublished, true)];
     const [settings] = await tx.select().from(storeSettings).limit(1);
-    const featured = input.featuredFirst
-      ? (settings?.storefrontHero?.featuredProductIds ?? [])
-      : [];
+    const recommended = !input.sort || input.sort === "recommended";
+    const featured =
+      input.featuredFirst && recommended
+        ? (settings?.storefrontHero?.featuredProductIds ?? [])
+        : [];
     const editorialOrder = featured.length
       ? [
           sql`array_position(ARRAY[${sql.join(
@@ -83,21 +85,36 @@ export async function listProducts(input: ListProductsInput = {}) {
       .select({ total: sql<number>`count(*)::int` })
       .from(products)
       .where(and(...conditions));
+    const placement = input.collectionHandle
+      ? {
+          pinned: sql`(select m.is_pinned from product_collection_memberships m join product_collections c on c.id=m.collection_id where m.product_id=${products.id} and c.handle=${input.collectionHandle})`,
+          position: sql`(select m.sort_order from product_collection_memberships m join product_collections c on c.id=m.collection_id where m.product_id=${products.id} and c.handle=${input.collectionHandle})`,
+        }
+      : input.categorySlug
+        ? {
+            pinned: sql`(select pc.is_pinned from product_categories pc join categories c on c.id=pc.category_id where pc.product_id=${products.id} and c.slug=${input.categorySlug})`,
+            position: sql`(select pc.sort_order from product_categories pc join categories c on c.id=pc.category_id where pc.product_id=${products.id} and c.slug=${input.categorySlug})`,
+          }
+        : { pinned: products.isPinned, position: products.sortOrder };
     const rows = await tx
       .select()
       .from(products)
       .where(and(...conditions))
       .orderBy(
         ...editorialOrder,
+        ...(recommended
+          ? [
+              sql`${placement.pinned} desc`,
+              sql`${placement.position} asc nulls last`,
+            ]
+          : []),
         input.sort === "price-low"
           ? sql`(select min(v.price_cents) from product_variants v left join variant_stock s on s.variant_id=v.id where v.product_id=${products.id} and v.is_available and (s.tracking_enabled is not true or s.on_hand > s.reserved)) asc nulls last`
           : input.sort === "price-high"
             ? sql`(select min(v.price_cents) from product_variants v left join variant_stock s on s.variant_id=v.id where v.product_id=${products.id} and v.is_available and (s.tracking_enabled is not true or s.on_hand > s.reserved)) desc nulls last`
-            : input.sort === "newest"
-              ? sql`${products.createdAt} desc`
-              : input.collectionHandle
-                ? sql`(select m.sort_order from product_collection_memberships m join product_collections c on c.id=m.collection_id where m.product_id=${products.id} and c.handle=${input.collectionHandle})`
-                : products.createdAt,
+            : input.collectionHandle && recommended
+              ? products.id
+              : sql`${products.createdAt} desc`,
         products.id,
       )
       .limit(pageSize)

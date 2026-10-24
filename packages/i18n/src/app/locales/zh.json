@@ -253,7 +253,12 @@
     "noProductsInThisCollectionYet": "暂无商品。",
     "account": "账户",
     "storeInformation": "商店信息",
-    "specifications": "商品规格"
+    "specifications": "商品规格",
+    "recommended": "推荐排序",
+    "allCollections": "所有系列",
+    "collectionFilter": "系列",
+    "categoryFilter": "分类",
+    "removeCategory": "移除分类"
   },
   "sms": {
     "title": "短信订单更新",

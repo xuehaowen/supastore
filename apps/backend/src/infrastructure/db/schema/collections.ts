@@ -19,6 +19,7 @@ export const productCollections = pgTable("product_collections", {
   imageAlt: text("image_alt").notNull().default(""),
   isPublished: boolean("is_published").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
+  isPinned: boolean("is_pinned").notNull().default(false),
   revision: integer("revision").notNull().default(1),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -37,6 +38,7 @@ export const collectionMemberships = pgTable(
       .notNull()
       .references(() => products.id, { onDelete: "cascade" }),
     sortOrder: integer("sort_order").notNull().default(0),
+    isPinned: boolean("is_pinned").notNull().default(false),
   },
   (t) => [
     uniqueIndex("uq_collection_product").on(t.collectionId, t.productId),
