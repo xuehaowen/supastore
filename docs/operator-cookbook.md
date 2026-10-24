@@ -66,6 +66,10 @@ seeds a named local database using administrator credentials. It does not change
 the URLs in `.env` or create storage buckets. Point the app at that database
 before starting it. Neither demo tool belongs in real merchant provisioning.
 
+New databases use UTF8 with PostgreSQL 18's builtin `PG_UNICODE_FAST` locale.
+Existing databases retain their settings; see [database locale](database-locale.md)
+for inspection and migration guidance.
+
 ## RustFS console setup
 
 With the supplied Compose configuration, open `http://localhost:9001` (or
