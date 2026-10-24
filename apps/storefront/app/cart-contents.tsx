@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import Link from "./shopping-link";
 import { Package, ShoppingBag } from "lucide-react";
 import {
   MAX_ITEM_QUANTITY,

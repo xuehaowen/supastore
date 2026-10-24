@@ -1,7 +1,7 @@
 import { Package } from "lucide-react";
 import { designCopy } from "../lib/design-copy";
 import Image from "next/image";
-import Link from "next/link";
+import Link from "./shopping-link";
 import { money } from "../lib/web";
 import { NavigationPending } from "./navigation-pending";
 import { ProductImagePreview } from "./product-image-preview";

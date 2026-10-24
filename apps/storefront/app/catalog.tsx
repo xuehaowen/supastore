@@ -4,7 +4,7 @@ import { CatalogFilters } from "./catalog-filters";
 import { CategoryNavigation } from "./category-navigation";
 import { readRequestPage } from "../lib/page-data";
 import { textFor } from "@supastore/i18n/messages";
-import Link from "next/link";
+import Link from "./shopping-link";
 import Image from "next/image";
 import { policyPresentation } from "../lib/page-metadata";
 

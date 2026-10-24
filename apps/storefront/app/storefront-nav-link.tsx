@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "./shopping-link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { NavigationPending } from "./navigation-pending";
