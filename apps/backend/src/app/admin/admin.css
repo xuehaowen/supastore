@@ -407,6 +407,10 @@
 .payment-evidence-workspace > * {
   min-width: 0;
 }
+.payment-evidence-workspace > .evidence-viewer {
+  position: sticky;
+  top: 0;
+}
 .payment-review-actions form + form {
   margin-top: 1.5rem;
   padding-top: 1rem;
@@ -459,6 +463,9 @@
 @media (max-width: 640px) {
   .payment-evidence-workspace {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .payment-evidence-workspace > .evidence-viewer {
+    position: static;
   }
   .order-money-summary {
     grid-template-columns: minmax(0, 1fr);

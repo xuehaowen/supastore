@@ -588,6 +588,28 @@ test("staff can see submitted payment evidence in the review grid", async ({
     name: `Payment evidence · ${order.reference_code}`,
   });
   await expect(
+    review.getByRole("heading", {
+      name: `Order details · ${order.reference_code}`,
+    }),
+  ).toBeVisible();
+  const lines =
+    await sql`select quantity, catalog_snapshot from order_items where order_id=${order.id}`;
+  for (const line of lines) {
+    const row = review
+      .getByRole("row")
+      .filter({ hasText: line.catalog_snapshot.sku });
+    await expect(row).toBeVisible();
+    await expect(
+      row.getByRole("cell", { name: String(line.quantity), exact: true }),
+    ).toBeVisible();
+  }
+  await expect(
+    review.getByText("External payment total:", { exact: false }),
+  ).toBeVisible();
+  await expect(
+    review.getByRole("heading", { name: "Fulfillment", exact: true }),
+  ).toBeVisible();
+  await expect(
     review.getByRole("img", {
       name: `Full-size payment evidence submitted for order ${order.reference_code}`,
     }),

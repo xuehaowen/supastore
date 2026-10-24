@@ -321,7 +321,11 @@ export async function getAdminOperations(input: AdminOperationsInput) {
           ? await tx
               .select({
                 ...getTableColumns(paymentUploadIntents),
-                order: orders,
+                order: {
+                  ...getTableColumns(orders),
+                  pickupLocationName: orderPickupLocation,
+                  pickupTime: orderPickupTime,
+                },
               })
               .from(paymentUploadIntents)
               .innerJoin(orders, eq(orders.id, paymentUploadIntents.orderId))
@@ -342,6 +346,24 @@ export async function getAdminOperations(input: AdminOperationsInput) {
             .from(paymentReceipts)
             .where(inArray(paymentReceipts.orderId, evidenceOrderIds))
         : [];
+      const evidenceItems = evidenceOrderIds.length
+        ? await tx
+            .select({
+              ...getTableColumns(orderItems),
+              quoteItems: quotes.itemsSnapshot,
+            })
+            .from(orderItems)
+            .innerJoin(orders, eq(orders.id, orderItems.orderId))
+            .innerJoin(quotes, eq(quotes.id, orders.quoteId))
+            .where(inArray(orderItems.orderId, evidenceOrderIds))
+            .orderBy(orderItems.createdAt, orderItems.id)
+        : [];
+      const evidenceOrderItems = evidenceItems.map(
+        ({ quoteItems, ...item }) => ({
+          ...item,
+          name: orderItemName(item, quoteItems),
+        }),
+      );
       const failures =
         view === "overview"
           ? await tx
@@ -437,6 +459,7 @@ export async function getAdminOperations(input: AdminOperationsInput) {
         discrepancies,
         evidence: evidence.slice(0, 50),
         evidenceReceipts,
+        evidenceOrderItems,
         evidenceHasNext: evidence.length > 50,
         failures: failures.slice(0, 50),
         failureHasNext: failures.length > 50,

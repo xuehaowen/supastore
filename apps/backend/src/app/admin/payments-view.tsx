@@ -304,11 +304,61 @@ export function PaymentsView(props: OperationsScreenProps) {
                       <div className="payment-evidence-workspace">
                         <EvidenceImage id={item.id} label={label} />
                         <div>
+                          <h3>Order details · {label}</h3>
                           <p>
                             <strong>{order.guestName}</strong>
                             <br />
                             {order.guestEmail}
                           </p>
+                          <Badge variant="outline">
+                            {order.lifecycleStatus}
+                          </Badge>
+                          <p>
+                            Placed{" "}
+                            <time dateTime={order.createdAt.toISOString()}>
+                              {order.createdAt.toLocaleString("en-US", {
+                                timeZone: store?.timezone ?? "UTC",
+                                timeZoneName: "short",
+                              })}
+                            </time>
+                          </p>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Item</TableHead>
+                                <TableHead>Quantity</TableHead>
+                                <TableHead>Unit price</TableHead>
+                                <TableHead>Line total</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {data.evidenceOrderItems
+                                .filter((line) => line.orderId === order.id)
+                                .map((line) => (
+                                  <TableRow key={line.id}>
+                                    <TableCell>
+                                      {line.name}
+                                      <p>{line.catalogSnapshot.sku}</p>
+                                    </TableCell>
+                                    <TableCell>{line.quantity}</TableCell>
+                                    <TableCell>
+                                      {money(
+                                        line.unitPriceCents,
+                                        currency,
+                                        precision,
+                                      )}
+                                    </TableCell>
+                                    <TableCell>
+                                      {money(
+                                        line.lineTotalCents,
+                                        currency,
+                                        precision,
+                                      )}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                            </TableBody>
+                          </Table>
                           <p>
                             Order total:{" "}
                             {money(
@@ -323,7 +373,42 @@ export function PaymentsView(props: OperationsScreenProps) {
                               currency,
                               precision,
                             )}
+                            <br />
+                            External payment total:{" "}
+                            {money(
+                              order.purchaseTotalCents -
+                                order.creditAppliedCents,
+                              currency,
+                              precision,
+                            )}
                           </p>
+                          <h4>Fulfillment</h4>
+                          <p>{order.fulfillmentType.replaceAll("_", " ")}</p>
+                          {order.pickupLocationName && (
+                            <p>{order.pickupLocationName}</p>
+                          )}
+                          {order.pickupTime && <p>{order.pickupTime}</p>}
+                          {order.shippingAddressSnapshot !== null &&
+                            typeof order.shippingAddressSnapshot ===
+                              "object" && (
+                              <address>
+                                {Object.entries(order.shippingAddressSnapshot)
+                                  .filter(
+                                    ([key, value]) =>
+                                      [
+                                        "address",
+                                        "region",
+                                        "postalCode",
+                                        "country",
+                                      ].includes(key) &&
+                                      typeof value === "string" &&
+                                      value,
+                                  )
+                                  .map(([key, value]) => (
+                                    <div key={key}>{String(value)}</div>
+                                  ))}
+                              </address>
+                            )}
                           <PaymentReview
                             order={order}
                             accounts={data.accounts}
