@@ -1,3 +1,7 @@
+import { ORDER_SORTS } from "@/domain/catalog/order-filters";
+import type { QuoteTerms } from "@supastore/contracts";
+import { ExpandableOrderRow } from "./expandable-order-row";
+import Link from "next/link";
 import { adminQueueReturnContext } from "@/application/common/admin-return-context";
 import { CurrencyField } from "@/app/admin/currency-field";
 import {
@@ -37,7 +41,13 @@ export function OrdersView(props: OperationsScreenProps) {
   const managementRows = data.managedOrders.length
     ? data.managedOrders
     : data.rows;
-  const { search, status, page } = props.filters;
+  const { search, status, page, orderFilters = {} } = props.filters;
+  const pageLink = (target: number) =>
+    adminQueueReturnContext("/admin/orders", {
+      ...query,
+      page: String(target),
+      manage: undefined,
+    });
   const back = adminQueueReturnContext("/admin/orders", {
     ...query,
     manage: undefined,
@@ -71,7 +81,7 @@ export function OrdersView(props: OperationsScreenProps) {
         </Alert>
       )}
       {view === "orders" && (
-        <form method="get" className="admin-filter-bar">
+        <form method="get" className="admin-filter-bar order-filter-bar">
           <label>
             Search orders
             <Input
@@ -90,7 +100,67 @@ export function OrdersView(props: OperationsScreenProps) {
               <option value="cancelled">Cancelled</option>
             </NativeSelect>
           </label>
+          <label>
+            Fulfillment type
+            <NativeSelect
+              name="fulfillmentType"
+              defaultValue={orderFilters.fulfillmentType ?? ""}
+            >
+              <option value="">All types</option>
+              <option value="pickup">Pickup</option>
+              <option value="shipping">Shipping</option>
+              <option value="local_delivery">Local delivery</option>
+            </NativeSelect>
+          </label>
+          {(
+            [
+              ["customer", "Customer name or email", "text"],
+              ["pickupLocation", "Pickup location", "text"],
+              ["createdFrom", "Created from (UTC)", "date"],
+              ["createdTo", "Created through (UTC)", "date"],
+              ["pickupFrom", "Pickup from", "date"],
+              ["pickupTo", "Pickup through", "date"],
+              ["pickupTimeFrom", "Pickup start time from", "time"],
+              ["pickupTimeTo", "Pickup start time through", "time"],
+              ["minTotal", "Minimum total", "number"],
+              ["maxTotal", "Maximum total", "number"],
+            ] as const
+          ).map(([name, label, type]) => (
+            <label key={name}>
+              {label}
+              <Input
+                name={name}
+                type={type}
+                defaultValue={orderFilters[name] ?? ""}
+                {...(type === "number" ? { min: 0, step: "any" } : {})}
+              />
+            </label>
+          ))}
+          <label>
+            Sort by
+            <NativeSelect
+              name="sort"
+              defaultValue={orderFilters.sort ?? "createdAt"}
+            >
+              {Object.entries(ORDER_SORTS).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </NativeSelect>
+          </label>
+          <label>
+            Sort direction
+            <NativeSelect
+              name="direction"
+              defaultValue={orderFilters.direction ?? "desc"}
+            >
+              <option value="desc">Descending</option>
+              <option value="asc">Ascending</option>
+            </NativeSelect>
+          </label>
           <Button type="submit">Filter</Button>
+          <Link href="/admin/orders">Clear filters</Link>
         </form>
       )}
       {view === "orders" && (
@@ -101,11 +171,18 @@ export function OrdersView(props: OperationsScreenProps) {
           <section className="panel">
             <h2>Order index</h2>
             {member.role === "owner" && (
-              <OrderExportToolbar search={search} status={status} />
+              <OrderExportToolbar
+                search={search}
+                status={status}
+                filters={orderFilters}
+              />
             )}
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>
+                    <span className="sr-only">Order items</span>
+                  </TableHead>
                   {member.role === "owner" && (
                     <TableHead>
                       <OrderSelectionCheckbox />
@@ -116,6 +193,8 @@ export function OrdersView(props: OperationsScreenProps) {
                   <TableHead>Email</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Fulfillment</TableHead>
+                  <TableHead>Pickup location</TableHead>
+                  <TableHead>Pickup time</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -123,7 +202,33 @@ export function OrdersView(props: OperationsScreenProps) {
               </TableHeader>
               <TableBody>
                 {rows.slice(0, 50).map((order) => (
-                  <TableRow key={order.id}>
+                  <ExpandableOrderRow
+                    key={order.id}
+                    reference={order.referenceCode}
+                    columnCount={member.role === "owner" ? 12 : 11}
+                    items={data.orderIndexItems
+                      .filter((item) => item.orderId === order.id)
+                      .map((item) => {
+                        const terms =
+                          order.termsSnapshot as Partial<QuoteTerms>;
+                        return {
+                          id: item.id,
+                          name: item.name,
+                          sku: item.catalogSnapshot.sku ?? "",
+                          quantity: item.quantity,
+                          unitPrice: money(
+                            item.unitPriceCents,
+                            terms.currency ?? store?.currency,
+                            terms.precision ?? store?.precision,
+                          ),
+                          lineTotal: money(
+                            item.lineTotalCents,
+                            terms.currency ?? store?.currency,
+                            terms.precision ?? store?.precision,
+                          ),
+                        };
+                      })}
+                  >
                     {member.role === "owner" && (
                       <TableCell>
                         <OrderSelectionCheckbox
@@ -156,6 +261,8 @@ export function OrdersView(props: OperationsScreenProps) {
                       </Badge>
                     </TableCell>
                     <TableCell>{order.fulfillmentType}</TableCell>
+                    <TableCell>{order.pickupLocationName || "—"}</TableCell>
+                    <TableCell>{order.pickupTime.trim() || "—"}</TableCell>
                     <TableCell>
                       {money(
                         order.purchaseTotalCents,
@@ -178,7 +285,7 @@ export function OrdersView(props: OperationsScreenProps) {
                         View order
                       </a>
                     </TableCell>
-                  </TableRow>
+                  </ExpandableOrderRow>
                 ))}
               </TableBody>
             </Table>
@@ -186,20 +293,8 @@ export function OrdersView(props: OperationsScreenProps) {
               <p className="admin-empty">No orders match these filters.</p>
             )}
             <nav className="admin-pagination" aria-label="Order pages">
-              {page > 1 && (
-                <a
-                  href={`/admin/orders?q=${encodeURIComponent(search)}&status=${status}&page=${page - 1}`}
-                >
-                  ← Previous
-                </a>
-              )}
-              {rows.length > 50 && (
-                <a
-                  href={`/admin/orders?q=${encodeURIComponent(search)}&status=${status}&page=${page + 1}`}
-                >
-                  Next →
-                </a>
-              )}
+              {page > 1 && <a href={pageLink(page - 1)}>← Previous</a>}
+              {rows.length > 50 && <a href={pageLink(page + 1)}>Next →</a>}
             </nav>
           </section>
         </OrderSelection>

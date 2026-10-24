@@ -37,12 +37,18 @@ displayed.
 
 ## Order exports
 
+Each order row has a disclosure arrow to expand or collapse its items inline.
+The preview shows historical item names, SKUs when recorded, quantities, unit
+prices, and line totals in currency units. Expanding a row preserves order
+selection and the current filters; multiple orders can be expanded independently.
+Only items for the current page are loaded.
+
 Owners select rows using the order table checkboxes. Export defaults to selected
 orders and stays disabled until at least one order is selected. Scope choices are:
 
 - Selected orders on the current page.
 - Every order on the current page.
-- Every order matching the current search and status filters.
+- Every order matching the current filters.
 - All orders, chosen explicitly.
 
 CSV and XLSX share the same server-side selection and filters. Selected IDs must
@@ -51,6 +57,28 @@ selection fails instead of falling back to all orders. Existing unscoped API
 downloads remain compatible. Product import/export links to the Orders page for
 order selection instead of downloading every order immediately.
 
+Order exports use a single read-only database snapshot across all batches.
+Concurrent rescheduling or changes to order totals do not duplicate or skip
+orders during a sorted download. The connection is released when streaming
+finishes or is cancelled.
+
 Selection resets on navigation to a different order page or filters. Multi-page
 manual selection is not currently supported; use the matching-filter scope to
 export a larger result set.
+
+The order list supports ascending and descending sorting by creation time,
+pickup location, pickup time, customer name, and total. Filters include search,
+status, customer name or email, fulfillment type, pickup location, creation date
+range (UTC), pickup date and start-time ranges (store local time), and minimum
+and maximum total in currency units. Filters and ordering persist through pages
+and order details. Filtered exports use the same filters and ordering; selected,
+current-page, and all-order exports retain the chosen ordering.
+
+Each CSV or XLSX row represents one order item, with historical item name and SKU,
+quantity, unit price, and line total. Order-level information repeats for each
+item; an order without items still receives one row. Exports include pickup
+location, address, date, time window, timezone, and shipping address components.
+Amounts use decimal currency units (for example, `22.50` instead of `2250`), with
+an explicit currency column. Monetary column names no longer end in `_cents`.
+XLSX amounts remain numeric and use decimal formatting. XLSX supports up to
+10,000 item rows; use CSV for larger exports.

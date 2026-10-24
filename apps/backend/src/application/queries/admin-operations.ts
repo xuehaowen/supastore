@@ -1,3 +1,11 @@
+import type { OrderFilters } from "@/domain/catalog/order-filters";
+import { orderItemName } from "@/domain/catalog/order-item-name";
+import {
+  orderFilterConditions,
+  orderSort,
+  orderPickupLocation,
+  orderPickupTime,
+} from "./order-filters";
 import { getLaunchReadiness } from "@/application/use-cases/store/get-launch-readiness";
 import { getDashboardSales } from "./dashboard-sales";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
@@ -19,6 +27,7 @@ import {
   products,
   productVariants,
   storeSettings,
+  quotes,
 } from "@/infrastructure/db/schema";
 import {
   and,
@@ -31,6 +40,7 @@ import {
   sql,
 } from "drizzle-orm";
 export interface AdminOperationsInput {
+  orderFilters?: OrderFilters;
   staffUserId: string;
   view: "overview" | "orders" | "payments" | "fulfillment";
   search: string;
@@ -88,6 +98,10 @@ export async function getAdminOperations(input: AdminOperationsInput) {
                 : []),
             ]
           : [];
+      if (view === "orders") {
+        const extra = orderFilterConditions(input.orderFilters ?? {});
+        if (extra) orderFilters.push(extra);
+      }
       if (view === "fulfillment") {
         const work = [
           "prepare",
@@ -131,10 +145,17 @@ export async function getAdminOperations(input: AdminOperationsInput) {
       }
       const paginated = view === "orders" || view === "fulfillment";
       const resultRows = await tx
-        .select()
+        .select({
+          ...getTableColumns(orders),
+          pickupLocationName: orderPickupLocation,
+          pickupTime: orderPickupTime,
+        })
         .from(orders)
         .where(orderFilters.length ? and(...orderFilters) : undefined)
-        .orderBy(desc(orders.createdAt), desc(orders.id))
+        .orderBy(
+          ...orderSort(view === "orders" ? (input.orderFilters ?? {}) : {})
+            .clauses,
+        )
         .limit(paginated ? 51 : 100)
         .offset(
           view === "orders"
@@ -145,6 +166,24 @@ export async function getAdminOperations(input: AdminOperationsInput) {
         );
       const rows =
         view === "fulfillment" ? resultRows.slice(0, 50) : resultRows;
+      const indexOrderIds = rows.slice(0, 50).map((order) => order.id);
+      const indexItems =
+        view === "orders" && indexOrderIds.length
+          ? await tx
+              .select({
+                ...getTableColumns(orderItems),
+                quoteItems: quotes.itemsSnapshot,
+              })
+              .from(orderItems)
+              .innerJoin(orders, eq(orders.id, orderItems.orderId))
+              .innerJoin(quotes, eq(quotes.id, orders.quoteId))
+              .where(inArray(orderItems.orderId, indexOrderIds))
+              .orderBy(orderItems.createdAt, orderItems.id)
+          : [];
+      const orderIndexItems = indexItems.map(({ quoteItems, ...item }) => ({
+        ...item,
+        name: orderItemName(item, quoteItems),
+      }));
       const managedOrders = input.managedOrderId
         ? await tx
             .select()
@@ -384,6 +423,7 @@ export async function getAdminOperations(input: AdminOperationsInput) {
       return {
         member,
         rows,
+        orderIndexItems,
         managedOrders,
         fulfillmentRows,
         partialShipmentOrderIds: partialShipmentOrders.map((order) => order.id),

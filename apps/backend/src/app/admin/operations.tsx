@@ -1,3 +1,5 @@
+import { DomainError } from "@/domain/errors";
+import { parseOrderFilters } from "@/domain/catalog/order-filters";
 import { AdminNav } from "@/app/admin/admin-nav";
 import { Notice } from "@/app/components";
 import { ForbiddenError, UnauthorizedError } from "@/application/common/errors";
@@ -23,6 +25,21 @@ export default async function Admin({
   view?: "overview" | "orders" | "payments" | "fulfillment";
 }) {
   const query = await searchParams;
+  let orderFilters = {};
+  try {
+    if (view === "orders")
+      orderFilters = parseOrderFilters(
+        new URLSearchParams(
+          Object.entries(query).filter(
+            (entry): entry is [string, string] => typeof entry[1] === "string",
+          ),
+        ),
+      );
+  } catch (error) {
+    if (error instanceof DomainError)
+      redirect(`/admin/orders?error=${encodeURIComponent(error.message)}`);
+    throw error;
+  }
   const search = query.q?.trim().slice(0, 120) ?? "";
   const status = ["unpaid", "confirmed", "completed", "cancelled"].includes(
     query.status ?? "",
@@ -67,6 +84,7 @@ export default async function Admin({
       ? managed
       : undefined;
   const data = await getAdminOperations({
+    orderFilters,
     staffUserId: staff,
     view,
     search,
@@ -103,6 +121,7 @@ export default async function Admin({
     view,
     returnTo,
     filters: {
+      orderFilters,
       search,
       status,
       page,

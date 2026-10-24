@@ -5,6 +5,7 @@ import { EvidenceImage } from "./evidence-image";
 import { PaymentReview } from "./payment-review";
 import { adminQueueReturnContext } from "@/application/common/admin-return-context";
 import { Badge } from "@supastore/ui/badge";
+import { ExpandableTableRow } from "@supastore/ui/expandable-table-row";
 import { Button } from "@supastore/ui/button";
 import { Input } from "@supastore/ui/input";
 import { NativeSelect } from "@supastore/ui/native-select";
@@ -70,6 +71,9 @@ export function PaymentsView(props: OperationsScreenProps) {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>
+                    <span className="sr-only">Payment details</span>
+                  </TableHead>
                   <TableHead>Payment reference</TableHead>
                   <TableHead>Order</TableHead>
                   <TableHead>Customer name</TableHead>
@@ -84,7 +88,87 @@ export function PaymentsView(props: OperationsScreenProps) {
               </TableHeader>
               <TableBody>
                 {paymentRows.slice(0, 50).map(({ receipt, order, account }) => (
-                  <TableRow key={receipt.id}>
+                  <ExpandableTableRow
+                    key={receipt.id}
+                    columnCount={11}
+                    detailsLabel={`Payment details for ${receipt.normalizedReference}`}
+                    expandLabel={`Show payment ${receipt.normalizedReference}`}
+                    collapseLabel={`Hide payment ${receipt.normalizedReference}`}
+                    details={
+                      <div className="space-y-4">
+                        <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                          <div>
+                            <dt className="text-muted-foreground">
+                              Original reference
+                            </dt>
+                            <dd className="break-words">
+                              {receipt.rawReference}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-muted-foreground">
+                              Receiving account
+                            </dt>
+                            <dd>
+                              {account.accountName} ·{" "}
+                              {account.accountIdentifier}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-muted-foreground">
+                              Recorded at
+                            </dt>
+                            <dd>
+                              <time dateTime={receipt.createdAt.toISOString()}>
+                                {receipt.createdAt.toLocaleString("en-US", {
+                                  timeZone: store?.timezone ?? "UTC",
+                                  timeZoneName: "short",
+                                })}
+                              </time>
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-muted-foreground">
+                              Order total
+                            </dt>
+                            <dd>
+                              {money(
+                                order.purchaseTotalCents,
+                                store?.currency,
+                                store?.precision,
+                              )}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-muted-foreground">
+                              Store credit applied
+                            </dt>
+                            <dd>
+                              {money(
+                                order.creditAppliedCents,
+                                store?.currency,
+                                store?.precision,
+                              )}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-muted-foreground">
+                              Fulfillment
+                            </dt>
+                            <dd className="capitalize">
+                              {order.fulfillmentType.replaceAll("_", " ")}
+                            </dd>
+                          </div>
+                        </dl>
+                        <a
+                          className="admin-edit-link"
+                          href={`/admin/orders/${order.id}`}
+                        >
+                          View order {order.referenceCode}
+                        </a>
+                      </div>
+                    }
+                  >
                     <TableCell>
                       <strong>{receipt.normalizedReference}</strong>
                     </TableCell>
@@ -131,7 +215,7 @@ export function PaymentsView(props: OperationsScreenProps) {
                         Manage
                       </a>
                     </TableCell>
-                  </TableRow>
+                  </ExpandableTableRow>
                 ))}
               </TableBody>
             </Table>

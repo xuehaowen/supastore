@@ -3,6 +3,7 @@ import { updateStaffMember, removeStaffMember } from "@/app/actions";
 import { Hidden, Notice } from "@/app/components";
 import { Button } from "@supastore/ui/button";
 import { Badge } from "@supastore/ui/badge";
+import { ExpandableTableRow } from "@supastore/ui/expandable-table-row";
 import { NativeSelect } from "@supastore/ui/native-select";
 import {
   Table,
@@ -27,6 +28,9 @@ export function StaffSettings({
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead>
+            <span className="sr-only">Staff details</span>
+          </TableHead>
           <TableHead>Email</TableHead>
           <TableHead>Role</TableHead>
           <TableHead>Access</TableHead>
@@ -35,7 +39,43 @@ export function StaffSettings({
       </TableHeader>
       <TableBody>
         {members.map((member) => (
-          <TableRow key={member.id}>
+          <ExpandableTableRow
+            key={member.id}
+            columnCount={5}
+            detailsLabel={`Staff details for ${member.email}`}
+            expandLabel={`Show staff ${member.email}`}
+            collapseLabel={`Hide staff ${member.email}`}
+            details={
+              <div className="space-y-4">
+                <dl className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-muted-foreground">
+                      Access granted (UTC)
+                    </dt>
+                    <dd>
+                      <time dateTime={member.createdAt.toISOString()}>
+                        {member.createdAt.toLocaleString("en-US", {
+                          timeZone: "UTC",
+                        })}
+                      </time>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">
+                      Last updated (UTC)
+                    </dt>
+                    <dd>
+                      <time dateTime={member.updatedAt.toISOString()}>
+                        {member.updatedAt.toLocaleString("en-US", {
+                          timeZone: "UTC",
+                        })}
+                      </time>
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            }
+          >
             <TableCell>{member.email}</TableCell>
             <TableCell>{member.role}</TableCell>
             <TableCell>
@@ -87,7 +127,7 @@ export function StaffSettings({
                 </details>
               </AdminDialog>
             </TableCell>
-          </TableRow>
+          </ExpandableTableRow>
         ))}
       </TableBody>
     </Table>

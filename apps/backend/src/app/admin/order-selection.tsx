@@ -1,5 +1,6 @@
 "use client";
 
+import type { OrderFilters } from "@/domain/catalog/order-filters";
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { Checkbox } from "@supastore/ui/checkbox";
 import { Button } from "@supastore/ui/button";
@@ -75,9 +76,11 @@ export function OrderSelectionCheckbox({
 export function OrderExportToolbar({
   search,
   status,
+  filters = {},
 }: {
   search: string;
   status: string;
+  filters?: OrderFilters;
 }) {
   const { selected, setSelected, pageIds } = useSelection();
   const [scope, setScope] = useState("selected");
@@ -91,12 +94,16 @@ export function OrderExportToolbar({
         scope: scope === "page" ? "selected" : scope,
         format,
       });
+      for (const key of ["sort", "direction"] as const)
+        if (filters[key]) parameters.set(key, filters[key]);
       if (scope === "selected" || scope === "page")
         parameters.set(
           "ids",
           (scope === "page" ? pageIds : selected).join(","),
         );
       if (scope === "filtered") {
+        for (const [key, value] of Object.entries(filters))
+          if (value) parameters.set(key, value);
         parameters.set("q", search);
         parameters.set("status", status);
       }

@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@supastore/ui/table";
 import { Button } from "@supastore/ui/button";
+import { ExpandableTableRow } from "@supastore/ui/expandable-table-row";
 export default async function CustomersPage({
   searchParams,
 }: {
@@ -40,6 +41,9 @@ export default async function CustomersPage({
         id: customers.id,
         name: customers.name,
         email: customers.email,
+        phone: customers.phone,
+        createdAt: customers.createdAt,
+        updatedAt: customers.updatedAt,
         orderCount: sql<number>`(select count(*)::int from orders where customer_id=${sql`${customers.id}`})`,
       })
       .from(customers)
@@ -57,6 +61,8 @@ export default async function CustomersPage({
           .select({
             email: orders.guestEmail,
             orderCount: sql<number>`count(*)::int`,
+            firstOrderAt: sql<string>`min(${orders.createdAt})::text`,
+            lastOrderAt: sql<string>`max(${orders.createdAt})::text`,
           })
           .from(orders)
           .where(
@@ -104,6 +110,9 @@ export default async function CustomersPage({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>
+                  <span className="sr-only">Customer details</span>
+                </TableHead>
                 <TableHead>Customer</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead className="text-right">Orders</TableHead>
@@ -112,7 +121,57 @@ export default async function CustomersPage({
             <TableBody>
               {query.guests
                 ? data.guests.slice(0, 25).map((g) => (
-                    <TableRow key={g.email}>
+                    <ExpandableTableRow
+                      key={g.email}
+                      columnCount={4}
+                      detailsLabel={`Guest contact details for ${g.email}`}
+                      expandLabel={`Show guest contact ${g.email}`}
+                      collapseLabel={`Hide guest contact ${g.email}`}
+                      details={
+                        <div className="space-y-4">
+                          <dl className="grid gap-4 sm:grid-cols-2">
+                            <div>
+                              <dt className="text-muted-foreground">
+                                First order (UTC)
+                              </dt>
+                              <dd>
+                                <time
+                                  dateTime={new Date(
+                                    g.firstOrderAt,
+                                  ).toISOString()}
+                                >
+                                  {new Date(g.firstOrderAt).toLocaleString(
+                                    "en-US",
+                                    { timeZone: "UTC" },
+                                  )}
+                                </time>
+                              </dd>
+                            </div>
+                            <div>
+                              <dt className="text-muted-foreground">
+                                Latest order (UTC)
+                              </dt>
+                              <dd>
+                                <time
+                                  dateTime={new Date(
+                                    g.lastOrderAt,
+                                  ).toISOString()}
+                                >
+                                  {new Date(g.lastOrderAt).toLocaleString(
+                                    "en-US",
+                                    { timeZone: "UTC" },
+                                  )}
+                                </time>
+                              </dd>
+                            </div>
+                          </dl>
+                          <p className="text-muted-foreground">
+                            Guest contact summaries do not establish account
+                            ownership.
+                          </p>
+                        </div>
+                      }
+                    >
                       <TableCell className="font-medium">
                         Guest contact
                       </TableCell>
@@ -120,10 +179,48 @@ export default async function CustomersPage({
                       <TableCell className="text-right">
                         {g.orderCount}
                       </TableCell>
-                    </TableRow>
+                    </ExpandableTableRow>
                   ))
                 : data.profiles.slice(0, 25).map((c) => (
-                    <TableRow key={c.id}>
+                    <ExpandableTableRow
+                      key={c.id}
+                      columnCount={4}
+                      detailsLabel={`Customer details for ${c.name || c.email}`}
+                      expandLabel={`Show customer ${c.name || c.email}`}
+                      collapseLabel={`Hide customer ${c.name || c.email}`}
+                      details={
+                        <dl className="grid gap-4 sm:grid-cols-3">
+                          <div>
+                            <dt className="text-muted-foreground">Phone</dt>
+                            <dd>{c.phone || "Not provided"}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-muted-foreground">
+                              Customer since (UTC)
+                            </dt>
+                            <dd>
+                              <time dateTime={c.createdAt.toISOString()}>
+                                {c.createdAt.toLocaleDateString("en-US", {
+                                  timeZone: "UTC",
+                                })}
+                              </time>
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-muted-foreground">
+                              Profile updated (UTC)
+                            </dt>
+                            <dd>
+                              <time dateTime={c.updatedAt.toISOString()}>
+                                {c.updatedAt.toLocaleString("en-US", {
+                                  timeZone: "UTC",
+                                })}
+                              </time>
+                            </dd>
+                          </div>
+                        </dl>
+                      }
+                    >
                       <TableCell className="font-medium">
                         <Link href={`/admin/customers/${c.id}`}>
                           {c.name || c.email}
@@ -133,12 +230,12 @@ export default async function CustomersPage({
                       <TableCell className="text-right">
                         {c.orderCount}
                       </TableCell>
-                    </TableRow>
+                    </ExpandableTableRow>
                   ))}
               {!rows.length && (
                 <TableRow>
                   <TableCell
-                    colSpan={3}
+                    colSpan={4}
                     className="text-center text-muted-foreground"
                   >
                     No customers match this view.

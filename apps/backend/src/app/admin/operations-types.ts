@@ -1,9 +1,10 @@
+import type { OrderFilters } from "@/domain/catalog/order-filters";
 import type {
   AdminOperationsData,
   AdminOperationsInput,
 } from "@/application/queries/admin-operations";
 
-export type OperationsQuery = {
+export type OperationsQuery = OrderFilters & {
   error?: string;
   q?: string;
   status?: string;
@@ -29,6 +30,7 @@ export interface OperationsScreenProps {
   view: AdminOperationsInput["view"];
   returnTo: string;
   filters: {
+    orderFilters?: OrderFilters;
     search: string;
     status: string;
     page: number;

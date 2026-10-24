@@ -143,11 +143,12 @@ export default async function PackingSlipPage({
         {/* Recipient */}
         <div className="mb-2 border-b border-dashed border-black pb-2 leading-tight">
           <p className="font-bold">DELIVER TO:</p>
-          <p>{order.guestName}</p>
+          <p>{shipping?.recipientName || order.guestName}</p>
           <p className="text-neutral-600">{order.guestEmail}</p>
           {(shipping?.address || shipping?.street) && (
             <p>{shipping.address || shipping.street}</p>
           )}
+          {shipping?.line2 && <p>{shipping.line2}</p>}
           {(shipping?.city || shipping?.region || shipping?.postalCode) && (
             <p>
               {shipping.city} {shipping.region} {shipping.postalCode}
