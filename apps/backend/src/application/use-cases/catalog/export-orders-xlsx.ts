@@ -45,14 +45,9 @@ export async function exportOrdersXlsx(
       );
     sheet.addRow(row);
   }
-  for (const key of [
-    "discount_cents",
-    "purchase_total_cents",
-    "quantity",
-    "unit_price_cents",
-    "line_total_cents",
-  ])
-    sheet.getColumn(key).numFmt = "#,##0";
+  for (const key of ["discount", "purchase_total", "unit_price", "line_total"])
+    sheet.getColumn(key).numFmt = "#,##0.00####";
+  sheet.getColumn("quantity").numFmt = "#,##0";
   sheet.getColumn("created_at").numFmt = "mm/dd/yy hh:mm";
   const output = await workbook.xlsx.writeBuffer();
   const source = output as unknown as Uint8Array;

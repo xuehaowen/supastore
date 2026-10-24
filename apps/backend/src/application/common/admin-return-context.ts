@@ -1,3 +1,8 @@
+import {
+  ORDER_FILTER_KEYS,
+  parseOrderFilters,
+} from "@/domain/catalog/order-filters";
+
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const statuses = ["unpaid", "confirmed", "completed", "cancelled"];
 export function adminReturnContext(requested: string) {
@@ -26,7 +31,19 @@ export function adminReturnContext(requested: string) {
     return "/admin";
   const query = new URLSearchParams();
   for (const [key, value] of url.searchParams) {
+    let orderFilterValid = false;
+    if ((ORDER_FILTER_KEYS as readonly string[]).includes(key)) {
+      try {
+        orderFilterValid = Boolean(
+          Object.keys(parseOrderFilters(new URLSearchParams({ [key]: value })))
+            .length,
+        );
+      } catch {
+        /* Drop invalid return parameters. */
+      }
+    }
     const valid =
+      orderFilterValid ||
       (["q", "paymentQ"].includes(key) && value.length <= 120) ||
       (["status", "paymentStatus"].includes(key) &&
         (statuses.includes(value) ||

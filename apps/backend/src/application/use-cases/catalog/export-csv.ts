@@ -1,3 +1,11 @@
+import {
+  orderFilterConditions,
+  orderSort,
+  orderPickupLocation,
+} from "@/application/queries/order-filters";
+import { minorToDecimal } from "@/domain/money/decimal-input";
+import { orderItemName } from "@/domain/catalog/order-item-name";
+import type { QuoteTerms } from "@supastore/contracts";
 import { db } from "@/infrastructure/db";
 import {
   products,
@@ -6,13 +14,16 @@ import {
   orderItems,
   orderFulfillments,
   paymentReceipts,
+  quotes,
+  fulfillmentSlots,
+  storeSettings,
 } from "@/infrastructure/db/schema";
 import { and, eq, asc, inArray, ilike, or, sql } from "drizzle-orm";
 import type { OrderExportSelection } from "@/domain/catalog/order-export-selection";
 
 type ExportCursor = { id: string; timestamp: string };
-async function exportCutoff() {
-  const [snapshot] = await db.execute<{ timestamp: string }>(
+async function exportCutoff(database: Pick<typeof db, "execute"> = db) {
+  const [snapshot] = await database.execute<{ timestamp: string }>(
     sql`select clock_timestamp()::text as timestamp`,
   );
   return snapshot!.timestamp;
@@ -120,15 +131,27 @@ export const ORDER_EXPORT_COLUMNS = [
   "guest_name",
   "fulfillment_type",
   "fulfillment_status",
-  "discount_cents",
-  "purchase_total_cents",
+  "discount",
+  "purchase_total",
   "sku",
   "variant_title",
   "quantity",
-  "unit_price_cents",
-  "line_total_cents",
+  "unit_price",
+  "line_total",
   "receipt_references",
   "created_at",
+  "currency",
+  "item_name",
+  "pickup_location",
+  "pickup_address",
+  "pickup_date",
+  "pickup_start_time",
+  "pickup_end_time",
+  "pickup_timezone",
+  "shipping_address",
+  "shipping_region",
+  "shipping_postal_code",
+  "shipping_country",
 ] as const;
 
 export type OrderExportRow = Record<
@@ -139,15 +162,56 @@ export type OrderExportRow = Record<
 export async function* streamOrderExportRows(
   selection: OrderExportSelection = {},
 ): AsyncGenerator<OrderExportRow> {
+  type ExportDatabase = Pick<typeof db, "select" | "execute">;
+  let provideSnapshot!: (database: ExportDatabase) => void;
+  let releaseSnapshot!: () => void;
+  const ready = new Promise<ExportDatabase>((resolve) => {
+    provideSnapshot = resolve;
+  });
+  const finished = new Promise<void>((resolve) => {
+    releaseSnapshot = resolve;
+  });
+  // Keep the transaction alive while the async generator yields to its consumer.
+  const transaction = db.transaction(
+    async (snapshot) => {
+      provideSnapshot(snapshot);
+      await finished;
+    },
+    { isolationLevel: "repeatable read", accessMode: "read only" },
+  );
+  try {
+    const snapshot = await Promise.race([
+      ready,
+      transaction.then(() => {
+        throw new Error("Export snapshot ended before streaming started.");
+      }),
+    ]);
+    yield* streamSnapshotOrderRows(snapshot, selection);
+  } finally {
+    releaseSnapshot();
+    await transaction;
+  }
+}
+
+async function* streamSnapshotOrderRows(
+  database: Pick<typeof db, "select" | "execute">,
+  selection: OrderExportSelection,
+): AsyncGenerator<OrderExportRow> {
   const BATCH = 100;
-  const cutoff = await exportCutoff();
-  let cursor: ExportCursor | undefined;
+  const [store] = await database.select().from(storeSettings).limit(1);
+  const sorting = orderSort(selection);
+  let sortCursor: { id: string; value: string } | undefined;
+  const cutoff = await exportCutoff(database);
 
   while (true) {
-    const orderRows = await db
+    const orderRows = await database
       .select({
         id: orders.id,
-        cursorTimestamp: sql<string>`${orders.createdAt}::text`,
+        cursorValue: sql<string>`${sorting.key}::text`,
+        termsSnapshot: orders.termsSnapshot,
+        shippingAddress: orders.shippingAddressSnapshot,
+        pickupLocationName: orderPickupLocation,
+        quoteItems: quotes.itemsSnapshot,
         referenceCode: orders.referenceCode,
         lifecycleStatus: orders.lifecycleStatus,
         guestEmail: orders.guestEmail,
@@ -157,8 +221,10 @@ export async function* streamOrderExportRows(
         purchaseTotalCents: orders.purchaseTotalCents,
         createdAt: orders.createdAt,
         fulfillmentStatus: orderFulfillments.status,
+        pickupTimezone: sql<string>`(select ${fulfillmentSlots.timezone} from ${fulfillmentSlots} where ${fulfillmentSlots.id} = ${orderFulfillments.fulfillmentSlotId})`,
       })
       .from(orders)
+      .innerJoin(quotes, eq(quotes.id, orders.quoteId))
       .leftJoin(orderFulfillments, eq(orderFulfillments.orderId, orders.id))
       .where(
         and(
@@ -168,6 +234,7 @@ export async function* streamOrderExportRows(
               ? inArray(orders.id, selection.ids)
               : sql`false`
             : undefined,
+          orderFilterConditions(selection),
           selection.status
             ? eq(orders.lifecycleStatus, selection.status)
             : undefined,
@@ -178,22 +245,26 @@ export async function* streamOrderExportRows(
                 ilike(orders.guestEmail, `%${selection.search}%`),
               )
             : undefined,
-          cursor
-            ? sql`(${orders.createdAt}, ${orders.id}) > (${cursor.timestamp}::timestamptz, ${cursor.id}::uuid)`
+          sortCursor
+            ? sorting.direction === "asc"
+              ? sql`(${sorting.key}, ${orders.id}) > (${sorting.cursorValue(sortCursor.value)}, ${sortCursor.id}::uuid)`
+              : sql`(${sorting.key}, ${orders.id}) < (${sorting.cursorValue(sortCursor.value)}, ${sortCursor.id}::uuid)`
             : undefined,
         ),
       )
-      .orderBy(asc(orders.createdAt), asc(orders.id))
+      .orderBy(...sorting.clauses)
       .limit(BATCH);
 
     if (orderRows.length === 0) break;
 
     const orderIds = orderRows.map((order) => order.id);
-    const itemRows = await db
+    const itemRows = await database
       .select({
         orderId: orderItems.orderId,
         sku: productVariants.sku,
         variantTitle: productVariants.title,
+        variantId: orderItems.variantId,
+        catalogSnapshot: orderItems.catalogSnapshot,
         quantity: orderItems.quantity,
         unitPriceCents: orderItems.unitPriceCents,
         lineTotalCents: orderItems.lineTotalCents,
@@ -203,7 +274,7 @@ export async function* streamOrderExportRows(
       .where(inArray(orderItems.orderId, orderIds))
       .orderBy(asc(orderItems.orderId), asc(orderItems.id));
 
-    const receiptRows = await db
+    const receiptRows = await database
       .select({
         orderId: paymentReceipts.orderId,
         rawReference: paymentReceipts.rawReference,
@@ -219,50 +290,68 @@ export async function* streamOrderExportRows(
         .map((receipt) => receipt.rawReference)
         .join("; ");
 
-      if (items.length === 0) {
+      const terms = order.termsSnapshot as Partial<QuoteTerms>;
+      const precision = terms.precision ?? store?.precision ?? 2;
+      const amount = (value: number) =>
+        Number(minorToDecimal(value, precision));
+      const address = order.shippingAddress as Partial<
+        QuoteTerms["shippingAddress"]
+      > | null;
+      const base = {
+        reference_code: order.referenceCode,
+        lifecycle_status: order.lifecycleStatus,
+        guest_email: order.guestEmail,
+        guest_name: order.guestName,
+        fulfillment_type: order.fulfillmentType,
+        fulfillment_status: order.fulfillmentStatus ?? "",
+        discount: amount(order.discountCents),
+        purchase_total: amount(order.purchaseTotalCents),
+        receipt_references: receiptRefs,
+        created_at: order.createdAt,
+        currency: terms.currency ?? store?.currency ?? "USD",
+        pickup_location:
+          order.fulfillmentType === "pickup" ? order.pickupLocationName : "",
+        pickup_address: terms.pickup?.address ?? "",
+        pickup_date: terms.pickup?.date ?? "",
+        pickup_start_time: terms.pickup?.startTime ?? "",
+        pickup_end_time: terms.pickup?.endTime ?? "",
+        pickup_timezone: terms.pickup
+          ? (order.pickupTimezone ?? store?.timezone ?? "UTC")
+          : "",
+        shipping_address:
+          order.fulfillmentType === "pickup"
+            ? ""
+            : [
+                address?.recipientName,
+                address?.address,
+                address?.line2,
+                address?.city,
+              ]
+                .filter(Boolean)
+                .join(", "),
+        shipping_region:
+          order.fulfillmentType === "pickup" ? "" : (address?.region ?? ""),
+        shipping_postal_code:
+          order.fulfillmentType === "pickup" ? "" : (address?.postalCode ?? ""),
+        shipping_country:
+          order.fulfillmentType === "pickup" ? "" : (address?.country ?? ""),
+      };
+      for (const item of items.length ? items : [null]) {
         yield {
-          reference_code: order.referenceCode,
-          lifecycle_status: order.lifecycleStatus,
-          guest_email: order.guestEmail,
-          guest_name: order.guestName,
-          fulfillment_type: order.fulfillmentType,
-          fulfillment_status: order.fulfillmentStatus ?? "",
-          discount_cents: order.discountCents,
-          purchase_total_cents: order.purchaseTotalCents,
-          sku: "",
-          variant_title: "",
-          quantity: "",
-          unit_price_cents: "",
-          line_total_cents: "",
-          receipt_references: receiptRefs,
-          created_at: order.createdAt,
+          ...base,
+          sku: item?.catalogSnapshot.sku ?? item?.sku ?? "",
+          item_name: item ? orderItemName(item, order.quoteItems) : "",
+          variant_title: item ? orderItemName(item, order.quoteItems) : "",
+          quantity: item?.quantity ?? "",
+          unit_price: item ? amount(item.unitPriceCents) : "",
+          line_total: item ? amount(item.lineTotalCents) : "",
         };
-      } else {
-        for (const item of items) {
-          yield {
-            reference_code: order.referenceCode,
-            lifecycle_status: order.lifecycleStatus,
-            guest_email: order.guestEmail,
-            guest_name: order.guestName,
-            fulfillment_type: order.fulfillmentType,
-            fulfillment_status: order.fulfillmentStatus ?? "",
-            discount_cents: order.discountCents,
-            purchase_total_cents: order.purchaseTotalCents,
-            sku: item.sku,
-            variant_title: item.variantTitle,
-            quantity: item.quantity,
-            unit_price_cents: item.unitPriceCents,
-            line_total_cents: item.lineTotalCents,
-            receipt_references: receiptRefs,
-            created_at: order.createdAt,
-          };
-        }
       }
     }
 
     if (orderRows.length < BATCH) break;
     const last = orderRows[orderRows.length - 1]!;
-    cursor = { id: last.id, timestamp: last.cursorTimestamp };
+    sortCursor = { id: last.id, value: last.cursorValue };
   }
 }
 

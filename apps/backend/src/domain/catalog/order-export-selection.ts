@@ -1,6 +1,7 @@
+import { parseOrderFilters, type OrderFilters } from "./order-filters";
 import { DomainError } from "@/domain/errors";
 
-export interface OrderExportSelection {
+export interface OrderExportSelection extends OrderFilters {
   ids?: string[];
   search?: string;
   status?: "unpaid" | "confirmed" | "completed" | "cancelled";
@@ -29,7 +30,16 @@ export function parseOrderExportSelection(
     ) {
       throw new DomainError("Select between 1 and 50 valid orders to export.");
     }
-    return { ids };
+    return {
+      ids,
+      ...parseOrderFilters(
+        new URLSearchParams(
+          [...parameters].filter(([key]) =>
+            ["sort", "direction"].includes(key),
+          ),
+        ),
+      ),
+    };
   }
   if (scope === "filtered") {
     const search = (parameters.get("q") ?? "").trim();
@@ -41,11 +51,16 @@ export function parseOrderExportSelection(
     )
       throw new DomainError("Choose valid order filters.");
     return {
+      ...parseOrderFilters(parameters),
       ...(search ? { search } : {}),
       ...(status
         ? { status: status as NonNullable<OrderExportSelection["status"]> }
         : {}),
     };
   }
-  return {};
+  return parseOrderFilters(
+    new URLSearchParams(
+      [...parameters].filter(([key]) => ["sort", "direction"].includes(key)),
+    ),
+  );
 }
