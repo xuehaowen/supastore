@@ -43,10 +43,18 @@ export async function listProducts(input: ListProductsInput = {}) {
         ]
       : [];
     const search = input.search?.trim().slice(0, 200);
-    if (search)
+    if (search) {
+      const normalized = sql`public.storefront_search_text(${search})`;
+      const pattern = sql`'%' || replace(replace(replace(${normalized}, chr(92), chr(92) || chr(92)), '%', chr(92) || '%'), '_', chr(92) || '_') || '%'`;
       conditions.push(
-        sql`(${products.searchVector} @@ plainto_tsquery('simple',${search}) OR ${products.title} % ${search} OR ${products.title} ilike ${`%${search.replace(/[\\%_]/g, "\\$&")}%`} OR exists (select 1 from product_translations t where t.product_id=${products.id} and t.locale in (${input.locale || settings?.defaultLocale || "en"}, ${settings?.defaultLocale || "en"}) and t.title ilike ${`%${search.replace(/[\\%_]/g, "\\$&")}%`}))`,
+        sql`(to_tsvector('simple', public.storefront_search_text(coalesce(${products.title}, '') || ' ' || coalesce(${products.description}, ''))) @@ plainto_tsquery('simple', ${normalized})
+          OR public.storefront_search_text(${products.title}) % ${normalized}
+          OR public.storefront_search_text(${products.title}) like ${pattern}
+          OR exists (select 1 from product_translations t where t.product_id=${products.id}
+            and t.locale in (${input.locale || settings?.defaultLocale || "en"}, ${settings?.defaultLocale || "en"})
+            and public.storefront_search_text(t.title) like ${pattern}))`,
       );
+    }
     if (input.categorySlug)
       conditions.push(
         sql`exists(select 1 from product_categories pc join categories c on c.id=pc.category_id where pc.product_id=${products.id} and c.slug=${input.categorySlug})`,
