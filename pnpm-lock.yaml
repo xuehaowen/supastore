@@ -43,6 +43,9 @@ importers:
       '@supastore/shipping':
         specifier: workspace:*
         version: link:packages/shipping
+      '@supastore/ui':
+        specifier: workspace:*
+        version: link:packages/ui
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9

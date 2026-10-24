@@ -86,7 +86,8 @@
     "vitest": "^4.1.11",
     "@supastore/contracts": "workspace:*",
     "@supastore/i18n": "workspace:*",
-    "@supastore/shipping": "workspace:*"
+    "@supastore/shipping": "workspace:*",
+    "@supastore/ui": "workspace:*"
   },
   "engines": {
     "node": ">=22.13.0"
