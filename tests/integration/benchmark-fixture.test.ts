@@ -54,7 +54,7 @@ beforeAll(async () => {
     throw new Error("Isolated integration cluster required.");
   admin = postgres(server, { onnotice: () => {} });
   await admin.unsafe(
-    `CREATE DATABASE "${name}" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C'`,
+    `CREATE DATABASE "${name}" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'PG_UNICODE_FAST'`,
   );
   connection.pathname = `/${name}`;
   url = connection.href;
@@ -191,7 +191,7 @@ it.each([
     const isolatedToken = randomUUID();
     let isolated: ReturnType<typeof postgres> | undefined;
     await admin.unsafe(
-      `CREATE DATABASE "${isolatedName}" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C'`,
+      `CREATE DATABASE "${isolatedName}" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'PG_UNICODE_FAST'`,
     );
     try {
       isolated = postgres(isolatedUrl.href, { onnotice: () => {} });
@@ -255,7 +255,7 @@ it("rolls back the entire seed when a later fixture insert conflicts", async () 
   const isolatedToken = randomUUID();
   let isolated: ReturnType<typeof postgres> | undefined;
   await admin.unsafe(
-    `CREATE DATABASE "${isolatedName}" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C'`,
+    `CREATE DATABASE "${isolatedName}" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'PG_UNICODE_FAST'`,
   );
   try {
     isolated = postgres(isolatedUrl.href, { onnotice: () => {} });
@@ -295,7 +295,7 @@ it("checks ownership before migrations and bootstraps only its owned database", 
   const isolatedToken = randomUUID();
   let isolated: ReturnType<typeof postgres> | undefined;
   await admin.unsafe(
-    `CREATE DATABASE "${isolatedName}" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C'`,
+    `CREATE DATABASE "${isolatedName}" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'PG_UNICODE_FAST'`,
   );
   try {
     isolated = postgres(isolatedUrl.href, { onnotice: () => {} });

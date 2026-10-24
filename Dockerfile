@@ -56,7 +56,7 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s CMD node -e "Promise.all(['/en','/api/health/ready'].map(p=>fetch('http://127.0.0.1:3000'+p))).then(rs=>process.exit(rs.every(r=>r.ok)?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "apps/storefront/server.js"]
 FROM deps AS migration-builder
-COPY scripts/migrate.mjs scripts/runtime-role.mjs scripts/build-migrations.mjs ./scripts/
+COPY scripts/migrate.mjs scripts/runtime-role.mjs scripts/database-settings.mjs scripts/build-migrations.mjs ./scripts/
 RUN node scripts/build-migrations.mjs
 FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS migrations
 WORKDIR /app

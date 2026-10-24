@@ -3,6 +3,7 @@ import { createInterface } from "node:readline/promises";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
+import { reportDatabase } from "./database-settings.mjs";
 
 export function databaseUrl(connection, name) {
   if (!/^[a-z_][a-z0-9_]{0,62}$/.test(name)) {
@@ -24,7 +25,7 @@ export function databaseUrl(connection, name) {
 export async function createDatabase(sql, name) {
   try {
     await sql`CREATE DATABASE ${sql(name)} WITH TEMPLATE template0
-      ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C'`;
+      ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'PG_UNICODE_FAST'`;
     return true;
   } catch (error) {
     if (error.code === "42P04") return false;
@@ -69,6 +70,12 @@ async function main() {
     );
   } finally {
     await sql.end();
+  }
+  const target = postgres(migrationUrl, { max: 1, connect_timeout: 10 });
+  try {
+    await reportDatabase(target);
+  } finally {
+    await target.end();
   }
   const env = {
     ...process.env,

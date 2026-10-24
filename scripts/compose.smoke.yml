@@ -5,6 +5,7 @@ services:
     environment:
       POSTGRES_DB: supastore_smoke
       POSTGRES_USER: postgres
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale-provider=builtin --builtin-locale=PG_UNICODE_FAST"
       POSTGRES_PASSWORD: fixture-only
     healthcheck:
       test: [CMD-SHELL, "pg_isready -U postgres -d supastore_smoke"]

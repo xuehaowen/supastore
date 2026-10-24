@@ -26,6 +26,11 @@ const pg = new EmbeddedPostgres({
   user: "postgres",
   password: "postgres",
   persistent: true,
+  initdbFlags: [
+    "--encoding=UTF8",
+    "--locale-provider=builtin",
+    "--builtin-locale=PG_UNICODE_FAST",
+  ],
   onLog: () => {},
   onError: console.error,
 });
@@ -282,7 +287,7 @@ try {
   );
   try {
     await admin.unsafe(
-      `CREATE DATABASE "${database}" WITH TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C'`,
+      `CREATE DATABASE "${database}" WITH TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'PG_UNICODE_FAST'`,
     );
   } finally {
     await admin.end();

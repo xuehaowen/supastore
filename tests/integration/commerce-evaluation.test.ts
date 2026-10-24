@@ -49,7 +49,7 @@ describe.skipIf(!server)("contextual commerce PostgreSQL", () => {
   beforeAll(async () => {
     admin = postgres(server!);
     await admin.unsafe(
-      `CREATE DATABASE "${name}" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C'`,
+      `CREATE DATABASE "${name}" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'PG_UNICODE_FAST'`,
     );
     const url = new URL(server!);
     url.pathname = `/${name}`;

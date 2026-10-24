@@ -9,7 +9,7 @@ import {
 import { dirname, join, resolve } from "node:path";
 
 export function fixtureDirectory(kind) {
-  if (!["browser", "storefront"].includes(kind))
+  if (!["browser", "storefront", "integration"].includes(kind))
     throw new Error("Invalid fixture kind");
   const workspace = realpathSync(process.cwd());
   const requestedRoot = join(workspace, ".tmp-cuj");

@@ -4,9 +4,11 @@ import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import postgres from "postgres";
 import EmbeddedPostgres from "embedded-postgres";
+import { fixtureDirectory } from "./fixture-directory.mjs";
 
 // Dedicated to integration tests; never attach to the developer's database.
-const databaseDir = "./.test-integration-postgres";
+const fixture = fixtureDirectory("integration");
+const databaseDir = fixture.path;
 // Below Windows' dynamic port range, which Docker/Hyper-V may reserve.
 const port = 25438;
 const databaseUrl = `postgresql://postgres:postgres@127.0.0.1:${port}/supastore_test`;
@@ -16,6 +18,11 @@ const pg = new EmbeddedPostgres({
   user: "postgres",
   password: "postgres",
   persistent: true,
+  initdbFlags: [
+    "--encoding=UTF8",
+    "--locale-provider=builtin",
+    "--builtin-locale=PG_UNICODE_FAST",
+  ],
   onLog: () => {},
   onError: console.error,
 });
@@ -30,11 +37,11 @@ const completed = (child) =>
   });
 let pgCtl, databaseProcess, child;
 let started = false;
+let shutdownSucceeded = false;
 let exitCode = 0;
 async function stop() {
   if (child && child.exitCode === null) child.kill();
   if (!started) return;
-  started = false;
   if (pgCtl)
     await completed(
       spawn(pgCtl, ["-D", databaseDir, "-m", "fast", "-w", "stop"], {
@@ -43,6 +50,8 @@ async function stop() {
       }),
     );
   else await pg.stop();
+  started = false;
+  shutdownSucceeded = true;
 }
 process.once("SIGINT", () => void stop().finally(() => process.exit(130)));
 process.once("SIGTERM", () => void stop().finally(() => process.exit(143)));
@@ -102,7 +111,7 @@ try {
         .length
     )
       await admin.unsafe(
-        "CREATE DATABASE supastore_test WITH TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C'",
+        "CREATE DATABASE supastore_test WITH TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'PG_UNICODE_FAST'",
       );
   } finally {
     await admin.end();
@@ -154,5 +163,10 @@ try {
   }
   if (databaseProcess && databaseProcess.exitCode === null)
     databaseProcess.kill();
+  if (
+    shutdownSucceeded &&
+    (!databaseProcess || databaseProcess.exitCode !== null)
+  )
+    fixture.cleanup();
 }
 process.exit(exitCode);

@@ -23,6 +23,7 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:init": "node scripts/init-db.mjs",
+    "db:check": "node scripts/database-settings.mjs",
     "db:migrate": "node scripts/migrate.mjs",
     "db:studio": "drizzle-kit studio",
     "test:e2e": "node scripts/test-browser.mjs",

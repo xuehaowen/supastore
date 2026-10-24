@@ -48,6 +48,18 @@ it("checks readiness against the instance's configured database and user", () =>
   expect(command).toContain("$${POSTGRES_USER}");
   expect(command).toContain("$${POSTGRES_DB}");
 });
+it.each([
+  "docker-compose.yml",
+  "scripts/compose.demo.yml",
+  "scripts/compose.smoke.yml",
+])("initializes new PostgreSQL volumes with Unicode defaults in %s", (file) => {
+  const configuration = load(readFileSync(file, "utf8")) as {
+    services: { postgres: { environment: Record<string, string> } };
+  };
+  expect(configuration.services.postgres.environment.POSTGRES_INITDB_ARGS).toBe(
+    "--encoding=UTF8 --locale-provider=builtin --builtin-locale=PG_UNICODE_FAST",
+  );
+});
 it("passes recovery delivery-suppression and worker settings into the actual backend", () => {
   expect(compose.services.backend!.environment).toContain(
     "ENABLE_OUTBOX_WORKER=${ENABLE_OUTBOX_WORKER:-true}",

@@ -2,6 +2,7 @@ import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { provisionRuntimeRole } from "./runtime-role.mjs";
+import { reportDatabase } from "./database-settings.mjs";
 // Local pnpm invocation reads .env; deployed environments supply explicit values.
 try {
   process.loadEnvFile();
@@ -16,6 +17,7 @@ const client = postgres(migrationUrl, {
   connect_timeout: 10,
 });
 try {
+  await reportDatabase(client);
   await migrate(drizzle(client), {
     migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
   });
