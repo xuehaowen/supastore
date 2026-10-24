@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { generateOrderReferenceCode } from "../../apps/backend/src/domain/money/reference-code";
 import { checkout, test, expect } from "./fixtures";
 
 test("fulfillment pages retain older work and direct order links", async ({
@@ -12,16 +11,16 @@ test("fulfillment pages retain older work and direct order links", async ({
   const records = Array.from({ length: 110 }, (_, index) => ({
     id: randomUUID(),
     cart_id: randomUUID(),
-    reference_code: generateOrderReferenceCode(),
     created_at: new Date(Date.now() - (110 - index) * 60000).toISOString(),
   }));
   await sql`insert into carts(id,guest_session_id)
     select r.cart_id,'pagination:' || r.cart_id::text from jsonb_to_recordset(${sql.json(records)}) as r(cart_id uuid)`;
   try {
-    await sql`insert into orders(id,source_cart_id,quote_id,reference_code,lifecycle_status,purchase_total_cents,guest_email,guest_name,shipping_address_snapshot,terms_snapshot,created_at)
-      select r.id,r.cart_id,${source!.quote_id},r.reference_code,'confirmed',${source!.purchase_total_cents},'pagination@example.test','Pagination fixture',${sql.json(source!.shipping_address_snapshot)},${sql.json(source!.terms_snapshot)},r.created_at
-      from jsonb_to_recordset(${sql.json(records)}) as r(id uuid,cart_id uuid,reference_code text,created_at timestamptz)`;
-    const oldest = records[0]!;
+    const inserted =
+      await sql`insert into orders(id,source_cart_id,quote_id,lifecycle_status,purchase_total_cents,guest_email,guest_name,shipping_address_snapshot,terms_snapshot,created_at)
+      select r.id,r.cart_id,${source!.quote_id},'confirmed',${source!.purchase_total_cents},'pagination@example.test','Pagination fixture',${sql.json(source!.shipping_address_snapshot)},${sql.json(source!.terms_snapshot)},r.created_at
+      from jsonb_to_recordset(${sql.json(records)}) as r(id uuid,cart_id uuid,created_at timestamptz) returning id,reference_code`;
+    const oldest = inserted.find((row) => row.id === records[0]!.id)!;
     await admin.goto("/admin/fulfillment");
     await expect(admin.locator("#ready details")).toHaveCount(50);
     await expect(

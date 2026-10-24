@@ -76,7 +76,7 @@ Acquire required locks in this order, omitting unused categories:
 
 Resolve immutable owner IDs before locking, then revalidate their associations inside the transaction. Every financial writer locks its order first. A duplicate correction spanning orders acquires all owners before any receipt lock. New-order creation uses the cart lock and unique source-cart constraint. Catalog/quote version changes require a coherent revalidation strategy: lock relevant version rows in a documented sorted order after the store gate and before carts, and make catalog writers follow the same ordering. Do not mix ad hoc lock sequences.
 
-Use unique constraints for source-cart conversion, order references, request identities and normalized incoming/outgoing account references. Generating human-friendly payment references uses a bounded collision retry loop within order creation before failing. Locking prevents aggregate over-allocation; uniqueness prevents duplicate identities. Bounded deadlock/serialization retries rerun the same complete command with the same request key. Never blindly repeat an external payout.
+Use unique constraints for source-cart conversion, order references, request identities and normalized incoming/outgoing account references. Database sequences allocate permanent `ORD-000001` order numbers and `PAY-000001` payment numbers without collision retries. Six digits is a minimum width; gaps after rollbacks are valid. Original transaction references remain separate and unchanged. Locking prevents aggregate over-allocation; uniqueness prevents duplicate identities. Bounded deadlock/serialization retries rerun the same complete command with the same request key. Never blindly repeat an external payout.
 
 ## Request identity
 

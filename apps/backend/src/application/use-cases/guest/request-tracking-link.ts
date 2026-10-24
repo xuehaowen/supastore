@@ -1,4 +1,5 @@
 import { resolvePublicOrigin } from "../../../../../../packages/config/public-origin.mjs";
+import { normalizeDisplayReference } from "@/domain/money/display-reference";
 import { allowRequest } from "@/application/common/rate-limit";
 import { randomBytes } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
@@ -28,7 +29,10 @@ export async function requestTrackingLink(input: {
       .where(
         and(
           sql`lower(${orders.guestEmail}) = ${email}`,
-          eq(orders.referenceCode, input.referenceCode.trim().toUpperCase()),
+          eq(
+            orders.referenceCode,
+            normalizeDisplayReference(input.referenceCode),
+          ),
         ),
       )
       .limit(1);

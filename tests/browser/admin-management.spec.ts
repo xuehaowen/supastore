@@ -395,9 +395,9 @@ test("owner creates a manual order from the orders dialog", async ({
     .selectOption({ label: "Demo bank transfer" });
   await dialog.getByLabel("Product variant").selectOption({ index: 1 });
   await dialog.getByRole("button", { name: "Create order" }).click();
-  await expect(admin).toHaveURL(/\/admin\/orders\?created=SP-/);
+  await expect(admin).toHaveURL(/\/admin\/orders\?created=ORD-/);
   await expect(
-    admin.getByRole("alert").filter({ hasText: "Manual order SP-" }),
+    admin.getByRole("alert").filter({ hasText: "Manual order ORD-" }),
   ).toBeVisible();
   const [created] =
     await sql`select source_cart_id from orders where guest_email='manual@example.test'`;
@@ -457,7 +457,7 @@ for (const scheduled of [false, true]) {
       .selectOption({ label: "Demo bank transfer" });
     await dialog.getByLabel("Product variant").selectOption({ index: 1 });
     await dialog.getByRole("button", { name: "Create order" }).click();
-    await expect(admin).toHaveURL(/\/admin\/orders\?created=SP-/);
+    await expect(admin).toHaveURL(/\/admin\/orders\?created=ORD-/);
     await expect(dialog).toBeHidden();
     const [order] =
       await sql`select fulfillment_type,terms_snapshot from orders where guest_email=${email}`;
@@ -537,7 +537,7 @@ for (const rejection of ["full", "blackout"] as const) {
     ).toHaveLength(0);
     await sql`update pickup_location set blackout_dates='[]'::jsonb, slot_capacity=1 where id=${location!.id}`;
     await dialog.getByRole("button", { name: "Create order" }).click();
-    await expect(admin).toHaveURL(/\/admin\/orders\?created=SP-/);
+    await expect(admin).toHaveURL(/\/admin\/orders\?created=ORD-/);
     await expect(dialog).toBeHidden();
     const orders =
       await sql`select id from orders where source_cart_id=${requestKey}`;

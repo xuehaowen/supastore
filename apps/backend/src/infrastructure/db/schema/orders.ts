@@ -25,7 +25,12 @@ export const orders = pgTable(
       .notNull()
       .unique()
       .references(() => carts.id, { onDelete: "restrict" }),
-    referenceCode: text("reference_code").notNull().unique(), // SP-XXXX-XXXXC
+    referenceCode: text("reference_code")
+      .notNull()
+      .unique()
+      .default(
+        sql`commerce_reference('ORD', nextval('order_reference_sequence'))`,
+      ),
     quoteId: uuid("quote_id")
       .notNull()
       .references(() => quotes.id, { onDelete: "restrict" }),

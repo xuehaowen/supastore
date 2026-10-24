@@ -21,6 +21,7 @@ import {
 import { cancelAdminOrder } from "@/app/actions";
 import { getAdminOrderDetail } from "@/application/use-cases/orders/get-admin-order-detail";
 import { OrderPaymentSection } from "./payment-section";
+import { CopyReference } from "@/app/admin/copy-reference";
 import { OrderFulfillmentSection } from "./fulfillment-section";
 import { OrderRefundSection } from "./refund-section";
 import type { QuoteTerms } from "@/application/use-cases/get-quote";
@@ -74,6 +75,7 @@ export default async function OrderDetail({
           <div>
             <p className="eyebrow">Order details</p>
             <h1>{o.referenceCode}</h1>
+            <CopyReference value={o.referenceCode} />
             <p>
               Placed {o.createdAt.toLocaleString("en-US", { timeZone: "UTC" })}{" "}
               UTC
@@ -198,11 +200,16 @@ export default async function OrderDetail({
                   </article>
                 ))}
               </div>
-              <h3>Recorded receipts</h3>
+              <h3>Recorded payments</h3>
               {data.receipts.length === 0 && <p>No receipts recorded yet.</p>}
               {data.receipts.map((receipt) => (
                 <p key={receipt.id}>
-                  {receipt.rawReference} · {format(receipt.amountCents)}
+                  <strong>{receipt.referenceCode}</strong> ·{" "}
+                  {format(receipt.amountCents)}
+                  <br />
+                  <span className="text-muted-foreground break-all">
+                    Transaction reference: {receipt.rawReference}
+                  </span>
                 </p>
               ))}
               {data.receipts.length > 0 && (

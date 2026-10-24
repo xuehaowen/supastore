@@ -20,6 +20,8 @@ import {
 import { money } from "@/infrastructure/web";
 import type { OperationsScreenProps } from "./operations-types";
 import { QueuePagination } from "./queue-pagination";
+import { CopyReference } from "./copy-reference";
+import { PAYMENT_STATE_LABELS } from "@/domain/money/order-payment-state";
 export function PaymentsView(props: OperationsScreenProps) {
   const { data, query, view, returnTo } = props;
   const { paymentRows, evidence, evidenceHasNext, store } = data;
@@ -41,7 +43,7 @@ export function PaymentsView(props: OperationsScreenProps) {
               <Input
                 name="paymentQ"
                 defaultValue={paymentSearch}
-                placeholder="Customer, order, or reference"
+                placeholder="Customer, order, payment, or transaction"
               />
             </label>
             <label>
@@ -74,11 +76,14 @@ export function PaymentsView(props: OperationsScreenProps) {
                   <TableHead>
                     <span className="sr-only">Payment details</span>
                   </TableHead>
-                  <TableHead>Payment reference</TableHead>
+                  <TableHead>Payment number</TableHead>
                   <TableHead>Order</TableHead>
                   <TableHead>Customer name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Order status</TableHead>
+                  <TableHead title="Payment status across all payments for this order">
+                    Order payment status
+                  </TableHead>
                   <TableHead>Payment type</TableHead>
                   <TableHead>Account</TableHead>
                   <TableHead>Amount</TableHead>
@@ -87,136 +92,161 @@ export function PaymentsView(props: OperationsScreenProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paymentRows.slice(0, 50).map(({ receipt, order, account }) => (
-                  <ExpandableTableRow
-                    key={receipt.id}
-                    columnCount={11}
-                    detailsLabel={`Payment details for ${receipt.normalizedReference}`}
-                    expandLabel={`Show payment ${receipt.normalizedReference}`}
-                    collapseLabel={`Hide payment ${receipt.normalizedReference}`}
-                    details={
-                      <div className="space-y-4">
-                        <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                          <div>
-                            <dt className="text-muted-foreground">
-                              Original reference
-                            </dt>
-                            <dd className="break-words">
-                              {receipt.rawReference}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-muted-foreground">
-                              Receiving account
-                            </dt>
-                            <dd>
-                              {account.accountName} ·{" "}
-                              {account.accountIdentifier}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-muted-foreground">
-                              Recorded at
-                            </dt>
-                            <dd>
-                              <time dateTime={receipt.createdAt.toISOString()}>
-                                {receipt.createdAt.toLocaleString("en-US", {
-                                  timeZone: store?.timezone ?? "UTC",
-                                  timeZoneName: "short",
-                                })}
-                              </time>
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-muted-foreground">
-                              Order total
-                            </dt>
-                            <dd>
-                              {money(
-                                order.purchaseTotalCents,
-                                store?.currency,
-                                store?.precision,
-                              )}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-muted-foreground">
-                              Store credit applied
-                            </dt>
-                            <dd>
-                              {money(
-                                order.creditAppliedCents,
-                                store?.currency,
-                                store?.precision,
-                              )}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-muted-foreground">
-                              Fulfillment
-                            </dt>
-                            <dd className="capitalize">
-                              {order.fulfillmentType.replaceAll("_", " ")}
-                            </dd>
-                          </div>
-                        </dl>
+                {paymentRows
+                  .slice(0, 50)
+                  .map(({ receipt, order, account, paymentState }) => (
+                    <ExpandableTableRow
+                      key={receipt.id}
+                      columnCount={12}
+                      detailsLabel={`Payment details for ${receipt.referenceCode}`}
+                      expandLabel={`Show payment ${receipt.referenceCode}`}
+                      collapseLabel={`Hide payment ${receipt.referenceCode}`}
+                      details={
+                        <div className="space-y-4">
+                          <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            <div>
+                              <dt className="text-muted-foreground">
+                                Transaction reference
+                              </dt>
+                              <dd className="break-words">
+                                {receipt.rawReference}
+                                <CopyReference value={receipt.rawReference} />
+                              </dd>
+                            </div>
+                            <div>
+                              <dt className="text-muted-foreground">
+                                Receiving account
+                              </dt>
+                              <dd>
+                                {account.accountName} ·{" "}
+                                {account.accountIdentifier}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt className="text-muted-foreground">
+                                Recorded at
+                              </dt>
+                              <dd>
+                                <time
+                                  dateTime={receipt.createdAt.toISOString()}
+                                >
+                                  {receipt.createdAt.toLocaleString("en-US", {
+                                    timeZone: store?.timezone ?? "UTC",
+                                    timeZoneName: "short",
+                                  })}
+                                </time>
+                              </dd>
+                            </div>
+                            <div>
+                              <dt className="text-muted-foreground">
+                                Order total
+                              </dt>
+                              <dd>
+                                {money(
+                                  order.purchaseTotalCents,
+                                  store?.currency,
+                                  store?.precision,
+                                )}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt className="text-muted-foreground">
+                                Store credit applied
+                              </dt>
+                              <dd>
+                                {money(
+                                  order.creditAppliedCents,
+                                  store?.currency,
+                                  store?.precision,
+                                )}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt className="text-muted-foreground">
+                                Fulfillment
+                              </dt>
+                              <dd className="capitalize">
+                                {order.fulfillmentType.replaceAll("_", " ")}
+                              </dd>
+                            </div>
+                          </dl>
+                          <a
+                            className="admin-edit-link"
+                            href={`/admin/orders/${order.id}`}
+                          >
+                            View order {order.referenceCode}
+                          </a>
+                        </div>
+                      }
+                    >
+                      <TableCell>
+                        <strong className="whitespace-nowrap font-mono">
+                          {receipt.referenceCode}
+                        </strong>
+                        <CopyReference value={receipt.referenceCode} />
+                      </TableCell>
+                      <TableCell>
                         <a
-                          className="admin-edit-link"
+                          className="admin-edit-link whitespace-nowrap font-mono"
                           href={`/admin/orders/${order.id}`}
                         >
-                          View order {order.referenceCode}
+                          {order.referenceCode}
                         </a>
-                      </div>
-                    }
-                  >
-                    <TableCell>
-                      <strong>{receipt.normalizedReference}</strong>
-                    </TableCell>
-                    <TableCell>{order.referenceCode}</TableCell>
-                    <TableCell>{order.guestName}</TableCell>
-                    <TableCell>{order.guestEmail}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          order.lifecycleStatus === "completed" ||
-                          order.lifecycleStatus === "confirmed"
-                            ? "default"
-                            : order.lifecycleStatus === "cancelled"
-                              ? "destructive"
-                              : "outline"
-                        }
-                      >
-                        {order.lifecycleStatus}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="capitalize">
-                      {account.accountType}
-                    </TableCell>
-                    <TableCell>{account.accountName}</TableCell>
-                    <TableCell>
-                      {money(
-                        receipt.amountCents,
-                        store?.currency,
-                        store?.precision,
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <time dateTime={receipt.createdAt.toISOString()}>
-                        {receipt.createdAt.toLocaleDateString("en-US", {
-                          timeZone: "UTC",
-                        })}
-                      </time>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <a
-                        className="admin-edit-link"
-                        href={`${adminQueueReturnContext("/admin/payments", { ...query, managePayment: order.id })}#payment-${order.id}`}
-                      >
-                        Manage
-                      </a>
-                    </TableCell>
-                  </ExpandableTableRow>
-                ))}
+                        <CopyReference value={order.referenceCode} />
+                      </TableCell>
+                      <TableCell>{order.guestName}</TableCell>
+                      <TableCell>{order.guestEmail}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            order.lifecycleStatus === "completed" ||
+                            order.lifecycleStatus === "confirmed"
+                              ? "default"
+                              : order.lifecycleStatus === "cancelled"
+                                ? "destructive"
+                                : "outline"
+                          }
+                        >
+                          {order.lifecycleStatus}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            paymentState === "paid" ? "default" : "outline"
+                          }
+                        >
+                          {PAYMENT_STATE_LABELS[paymentState]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="capitalize">
+                        {account.accountType}
+                      </TableCell>
+                      <TableCell>{account.accountName}</TableCell>
+                      <TableCell>
+                        {money(
+                          receipt.amountCents,
+                          store?.currency,
+                          store?.precision,
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <time dateTime={receipt.createdAt.toISOString()}>
+                          {receipt.createdAt.toLocaleDateString("en-US", {
+                            timeZone: "UTC",
+                          })}
+                        </time>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <a
+                          className="admin-edit-link"
+                          href={`${adminQueueReturnContext("/admin/payments", { ...query, managePayment: order.id })}#payment-${order.id}`}
+                        >
+                          Manage
+                        </a>
+                      </TableCell>
+                    </ExpandableTableRow>
+                  ))}
               </TableBody>
             </Table>
             {paymentRows.length === 0 && (
@@ -418,15 +448,20 @@ export function PaymentsView(props: OperationsScreenProps) {
                             receiptSummary={
                               recorded.length ? (
                                 <div>
-                                  <h4>Recorded receipts</h4>
+                                  <h4>Recorded payments</h4>
                                   {recorded.map((receipt) => (
                                     <p key={receipt.id}>
-                                      {receipt.rawReference} ·{" "}
+                                      {receipt.referenceCode} ·{" "}
                                       {money(
                                         receipt.amountCents,
                                         currency,
                                         precision,
                                       )}
+                                      <br />
+                                      <span className="text-muted-foreground break-all">
+                                        Transaction reference:{" "}
+                                        {receipt.rawReference}
+                                      </span>
                                     </p>
                                   ))}
                                   <p>

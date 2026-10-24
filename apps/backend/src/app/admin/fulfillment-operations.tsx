@@ -168,7 +168,7 @@ export function FulfillmentOperations(props: OperationsScreenProps) {
                         .map((receipt) => (
                           <div className="mt-4 border-t pt-4" key={receipt.id}>
                             <p>
-                              Receipt: {receipt.normalizedReference} ·{" "}
+                              Payment: {receipt.referenceCode} ·{" "}
                               {money(
                                 receipt.amountCents,
                                 data.store?.currency,

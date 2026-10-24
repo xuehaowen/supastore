@@ -106,7 +106,7 @@ test.describe("request rejection flows", () => {
       input.closest("form")!.noValidate = true;
     });
     await email.fill("not-an-email");
-    await page.getByLabel("Payment reference").fill("SP-NOTFOUND");
+    await page.getByLabel("Payment reference").fill("ORD-99999999999999999999");
     await page.getByRole("button", { name: "Send recovery link" }).click();
     await expect(page.locator('[data-slot="alert"]')).toBeVisible();
     await expect(

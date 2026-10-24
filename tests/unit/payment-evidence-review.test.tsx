@@ -28,6 +28,52 @@ vi.mock("@/infrastructure/web", () => ({
 import { PaymentsView } from "@/app/admin/payments-view";
 import type { OperationsScreenProps } from "@/app/admin/operations-types";
 
+it("shows separate payment and order statuses, linked order numbers, and copy controls", () => {
+  const props = {
+    view: "payments",
+    query: {},
+    returnTo: "/admin/payments",
+    filters: { paymentSearch: "ORD000123", paymentPage: 1, evidencePage: 1 },
+    data: {
+      store: { currency: "USD", precision: 2, timezone: "UTC" },
+      evidence: [],
+      evidenceHasNext: false,
+      paymentRows: [
+        {
+          receipt: {
+            id: "payment-one",
+            referenceCode: "PAY-000123",
+            rawReference: "BANK-ABC",
+            amountCents: 40,
+            createdAt: new Date("2026-10-01"),
+          },
+          order: {
+            id: "order-one",
+            referenceCode: "ORD-000123",
+            guestName: "Buyer",
+            guestEmail: "buyer@example.test",
+            lifecycleStatus: "unpaid",
+            fulfillmentType: "pickup",
+            purchaseTotalCents: 100,
+            creditAppliedCents: 0,
+          },
+          account: { accountType: "venmo", accountName: "Venmo" },
+          paymentState: "partially_paid",
+        },
+      ],
+    },
+  } as unknown as OperationsScreenProps;
+  const html = renderToStaticMarkup(createElement(PaymentsView, props));
+  expect(html).toContain("Order status");
+  expect(html).toContain("Order payment status");
+  expect(html).toContain("Partially paid");
+  expect(html).toContain(">unpaid<");
+  expect(html).toContain('href="/admin/orders/order-one"');
+  expect(html).toContain('aria-label="Copy ORD-000123"');
+  expect(html).toContain('aria-label="Copy PAY-000123"');
+  expect(html).not.toContain("Previously");
+});
+
 it("shows only the reviewed order's items together with evidence, totals, fulfillment, and receipts", () => {
   const props = {
     view: "payments",
@@ -44,7 +90,7 @@ it("shows only the reviewed order's items together with evidence, totals, fulfil
           id: "proof-one",
           order: {
             id: "order-one",
-            referenceCode: "SP-ONE",
+            referenceCode: "ORD-000001",
             guestName: "Buyer One",
             guestEmail: "buyer@example.test",
             lifecycleStatus: "unpaid",
@@ -82,12 +128,14 @@ it("shows only the reviewed order's items together with evidence, totals, fulfil
       evidenceReceipts: [
         {
           id: "receipt-one",
+          referenceCode: "PAY-000123",
           orderId: "order-one",
           rawReference: "TRANSFER-ONE",
           amountCents: 10000,
         },
         {
           id: "receipt-other",
+          referenceCode: "PAY-000124",
           orderId: "order-other",
           rawReference: "OTHER-TRANSFER",
           amountCents: 100,
@@ -99,7 +147,7 @@ it("shows only the reviewed order's items together with evidence, totals, fulfil
   const dialog = html.slice(html.indexOf('<section role="dialog">'));
   for (const text of [
     "/api/evidence/proof-one",
-    "Order details · SP-ONE",
+    "Order details · ORD-000001",
     "Buyer One",
     "buyer@example.test",
     "Original cup",
@@ -113,9 +161,12 @@ it("shows only the reviewed order's items together with evidence, totals, fulfil
     "Main shop",
     "2026-10-25 10:00",
     "TRANSFER-ONE",
+    "PAY-000123",
+    "Transaction reference:",
     "Record receipt",
   ])
     expect(dialog).toContain(text);
   expect(dialog).not.toContain("Other buyer item");
   expect(dialog).not.toContain("OTHER-TRANSFER");
+  expect(dialog).not.toContain("PAY-000124");
 });

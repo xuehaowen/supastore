@@ -98,7 +98,7 @@ Contract: [Authorization boundary](architecture-overview.md#authorization-bounda
   - _Details:_ Application quote use case locking the cart, evaluating current variant prices, computing taxes, snapshotting items and calculations into an immutable `quotes` record with 15-minute TTL.
   - _Verification:_ Quote reflects exact price; updating product price after quote creation does not alter the generated quote snapshot.
 - [x] **`createOrder` use case**
-  - _Details:_ Transactional command converting a valid quote into an unpaid `orders` record before showing payment details. Generates Crockford Base32 checksummed `reference_code` (`SP-XXXX`) with bounded collision retry, locks source cart, updates `converted_order_id`, and emits `order.submitted` outbox event.
+  - _Details:_ Transactional command converting a valid quote into an unpaid `orders` record before showing payment details. Allocates a sequential `reference_code` (`ORD-000001`) through PostgreSQL, locks source cart, updates `converted_order_id`, and emits `order.submitted` outbox event.
   - _Verification:_ Multiple simultaneous requests with same cart ID yield exactly one created order; second request returns the existing order.
 - [x] **`recordReceipt` use case**
   - _Details:_ Staff command taking order ID, payment account ID, amount, and reference. Locks order with `SELECT ... FOR UPDATE`, inserts `payment_receipts`, recomputes financial projection, returns the derived payment balance, and persists audit/request results plus applicable events from the event catalog in the same transaction.

@@ -1,3 +1,5 @@
+import { referenceSearch } from "./reference-search";
+import { getOrderPaymentStates } from "./order-payment-states";
 import type { OrderFilters } from "@/domain/catalog/order-filters";
 import { orderItemName } from "@/domain/catalog/order-item-name";
 import {
@@ -60,10 +62,10 @@ export interface AdminOperationsInput {
 export async function getAdminOperations(input: AdminOperationsInput) {
   const {
     view,
-    search,
+    search: rawSearch,
     status,
     page,
-    paymentSearch,
+    paymentSearch: rawPaymentSearch,
     paymentStatus,
     paymentType,
     paymentPage,
@@ -71,6 +73,8 @@ export async function getAdminOperations(input: AdminOperationsInput) {
     evidencePage,
     failurePage,
   } = input;
+  const search = rawSearch.trim();
+  const paymentSearch = rawPaymentSearch.trim();
   return db.transaction(
     async (tx) => {
       const member = await verifyStaffInTransaction(tx, input.staffUserId);
@@ -90,7 +94,7 @@ export async function getAdminOperations(input: AdminOperationsInput) {
               ...(search
                 ? [
                     or(
-                      ilike(orders.referenceCode, `%${search}%`),
+                      referenceSearch(orders.referenceCode, search),
                       ilike(orders.guestName, `%${search}%`),
                       ilike(orders.guestEmail, `%${search}%`),
                     )!,
@@ -245,7 +249,9 @@ export async function getAdminOperations(input: AdminOperationsInput) {
               or(
                 ilike(orders.guestName, `%${paymentSearch}%`),
                 ilike(orders.guestEmail, `%${paymentSearch}%`),
-                ilike(orders.referenceCode, `%${paymentSearch}%`),
+                referenceSearch(orders.referenceCode, paymentSearch),
+                referenceSearch(paymentReceipts.referenceCode, paymentSearch),
+                ilike(paymentReceipts.rawReference, `%${paymentSearch}%`),
                 ilike(
                   paymentReceipts.normalizedReference,
                   `%${paymentSearch}%`,
@@ -276,6 +282,9 @@ export async function getAdminOperations(input: AdminOperationsInput) {
               .limit(51)
               .offset((paymentPage - 1) * 50)
           : [];
+      const paymentStates = await getOrderPaymentStates(tx, [
+        ...new Set(paymentRows.map((row) => row.order.id)),
+      ]);
       const orderIds = [
         ...new Set([
           ...rows.map((row) => row.id),
@@ -452,7 +461,10 @@ export async function getAdminOperations(input: AdminOperationsInput) {
         fulfillmentHasNext: view === "fulfillment" && resultRows.length > 50,
         accounts,
         receipts,
-        paymentRows,
+        paymentRows: paymentRows.map((row) => ({
+          ...row,
+          paymentState: paymentStates.get(row.order.id)!,
+        })),
         allocations: allocations.slice(0, 50),
         payoutHasNext: allocations.length > 50,
         attempts,

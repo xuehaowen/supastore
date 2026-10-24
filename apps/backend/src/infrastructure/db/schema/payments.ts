@@ -34,6 +34,12 @@ export const paymentReceipts = pgTable(
   "payment_receipts",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    referenceCode: text("reference_code")
+      .notNull()
+      .unique()
+      .default(
+        sql`commerce_reference('PAY', nextval('payment_reference_sequence'))`,
+      ),
     orderId: uuid("order_id")
       .notNull()
       .references(() => orders.id, { onDelete: "restrict" }),

@@ -3,6 +3,7 @@ import {
   orderSort,
   orderPickupLocation,
 } from "@/application/queries/order-filters";
+import { referenceSearch } from "@/application/queries/reference-search";
 import { minorToDecimal } from "@/domain/money/decimal-input";
 import { orderItemName } from "@/domain/catalog/order-item-name";
 import type { QuoteTerms } from "@supastore/contracts";
@@ -152,6 +153,7 @@ export const ORDER_EXPORT_COLUMNS = [
   "shipping_region",
   "shipping_postal_code",
   "shipping_country",
+  "payment_numbers",
 ] as const;
 
 export type OrderExportRow = Record<
@@ -240,8 +242,8 @@ async function* streamSnapshotOrderRows(
             : undefined,
           selection.search
             ? or(
-                ilike(orders.referenceCode, `%${selection.search}%`),
-                ilike(orders.guestName, `%${selection.search}%`),
+                referenceSearch(orders.referenceCode, selection.search),
+                ilike(orders.guestName, `%${selection.search.trim()}%`),
                 ilike(orders.guestEmail, `%${selection.search}%`),
               )
             : undefined,
@@ -277,6 +279,7 @@ async function* streamSnapshotOrderRows(
     const receiptRows = await database
       .select({
         orderId: paymentReceipts.orderId,
+        referenceCode: paymentReceipts.referenceCode,
         rawReference: paymentReceipts.rawReference,
       })
       .from(paymentReceipts)
@@ -307,6 +310,10 @@ async function* streamSnapshotOrderRows(
         discount: amount(order.discountCents),
         purchase_total: amount(order.purchaseTotalCents),
         receipt_references: receiptRefs,
+        payment_numbers: receiptRows
+          .filter((receipt) => receipt.orderId === order.id)
+          .map((receipt) => receipt.referenceCode)
+          .join("; "),
         created_at: order.createdAt,
         currency: terms.currency ?? store?.currency ?? "USD",
         pickup_location:

@@ -2,7 +2,6 @@ import postgres from "postgres";
 import { assertFixtureTarget } from "./fixture-target";
 import { fixtureProfile } from "./protocol";
 import { benchmarkImages } from "./images.mjs";
-import { computeCrockfordChecksum } from "../../apps/backend/src/domain/money/reference-code";
 import {
   buildVariantCombinations,
   type GenerationOption,
@@ -122,19 +121,6 @@ export async function seedRepresentativeFixture(
           case when ${profile.fulfillment}='pickup' or (${profile.fulfillment}='mixed' and n%2=0) then 'pickup' else 'shipping' end as fulfillment,
           '2026-01-01'::timestamptz+n*interval '15 minutes' as created
         from generate_series(1,${profile.historicalOrders}::int) n`;
-      // Checksummed references use the real domain algorithm, deterministically.
-      const references = Array.from(
-        { length: profile.historicalOrders },
-        (_, index) => {
-          const body = String(index + 1).padStart(8, "0");
-          return {
-            n: index + 1,
-            code: `SP-${body.slice(0, 4)}-${body.slice(4)}${computeCrockfordChecksum(body)}`,
-          };
-        },
-      );
-      await tx`create temporary table benchmark_references(n int primary key,code text) on commit drop`;
-      await tx`insert into benchmark_references ${tx(references, "n", "code")}`;
       await tx`insert into carts(id,guest_session_id,revision,created_at,updated_at)
         select pg_temp.bench_id('cart',n),'benchmark-history-'||n,1,created,created from benchmark_history`;
       await tx`insert into cart_items(id,cart_id,variant_id,quantity,created_at,updated_at)
@@ -154,10 +140,10 @@ export async function seedRepresentativeFixture(
               'pickupTime','','paymentAccountId',pg_temp.bench_id('bank',1),'promotionCode','','deliveryAreaId','')),
           h.created+interval '15 minutes',h.created
         from benchmark_history h join product_variants v on v.id=h.variant_id`;
-      await tx`insert into orders(id,source_cart_id,reference_code,quote_id,lifecycle_status,purchase_total_cents,guest_email,guest_name,fulfillment_type,shipping_address_snapshot,terms_snapshot,created_at,updated_at)
-        select pg_temp.bench_id('order',h.n),q.cart_id,r.code,q.id,case when h.completed then 'completed' else 'cancelled' end,q.total_payable_cents,
+      await tx`insert into orders(id,source_cart_id,quote_id,lifecycle_status,purchase_total_cents,guest_email,guest_name,fulfillment_type,shipping_address_snapshot,terms_snapshot,created_at,updated_at)
+        select pg_temp.bench_id('order',h.n),q.cart_id,q.id,case when h.completed then 'completed' else 'cancelled' end,q.total_payable_cents,
           'history-'||h.n||'@example.test','Synthetic buyer '||h.n,h.fulfillment,q.terms_snapshot->'shippingAddress',q.terms_snapshot,h.created,h.created+interval '1 hour'
-        from benchmark_history h join quotes q on q.id=pg_temp.bench_id('quote',h.n) join benchmark_references r on r.n=h.n`;
+        from benchmark_history h join quotes q on q.id=pg_temp.bench_id('quote',h.n)`;
       await tx`update carts c set converted_order_id=o.id from orders o where o.source_cart_id=c.id`;
       await tx`insert into order_items(id,order_id,variant_id,quantity,unit_price_cents,line_total_cents,catalog_snapshot,created_at)
         select pg_temp.bench_id('order-item',h.n),pg_temp.bench_id('order',h.n),v.id,h.quantity,v.price_cents,v.price_cents*h.quantity,

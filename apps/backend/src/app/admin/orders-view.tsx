@@ -1,3 +1,4 @@
+import { CopyReference } from "./copy-reference";
 import { ORDER_SORTS } from "@/domain/catalog/order-filters";
 import type { QuoteTerms } from "@supastore/contracts";
 import { ExpandableOrderRow } from "./expandable-order-row";
@@ -241,8 +242,11 @@ export function OrdersView(props: OperationsScreenProps) {
                       <a
                         href={`/admin/orders/${order.id}?back=${encodeURIComponent(back)}`}
                       >
-                        <strong>{order.referenceCode}</strong>
+                        <strong className="whitespace-nowrap font-mono">
+                          {order.referenceCode}
+                        </strong>
                       </a>
+                      <CopyReference value={order.referenceCode} />
                     </TableCell>
                     <TableCell>{order.guestName}</TableCell>
                     <TableCell>{order.guestEmail}</TableCell>

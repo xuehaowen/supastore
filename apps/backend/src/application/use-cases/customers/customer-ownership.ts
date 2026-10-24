@@ -1,3 +1,4 @@
+import { normalizeDisplayReference } from "@/domain/money/display-reference";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
@@ -86,7 +87,7 @@ export async function customerAccount(
   reference = "",
   creditPage = 1,
 ) {
-  const searchReference = reference.trim();
+  const searchReference = normalizeDisplayReference(reference);
   if (searchReference.length > 100)
     throw new DomainError("Order reference is too long.");
   return db.transaction(async (tx) => {

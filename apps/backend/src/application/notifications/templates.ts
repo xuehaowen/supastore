@@ -286,7 +286,7 @@ export function previewValues(): Record<string, string> {
   return {
     "store.name": PLATFORM_NAME,
     "support.email": "support@example.test",
-    "order.reference": "SP-PREVIEW",
+    "order.reference": "ORD-000123",
     "order.url": "https://store.example/en/recover",
     "order.total": "$32.00",
     "order.received": "$20.00",

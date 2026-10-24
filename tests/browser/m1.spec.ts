@@ -70,7 +70,7 @@ test("C1 language and C8 generic recovery response", async ({ page, sql }) => {
   ).toBeVisible();
   await page.goto("/recover");
   await page.getByLabel("Email", { exact: true }).fill("nobody@example.test");
-  await page.getByLabel("Payment reference").fill("SP-NOTFOUND");
+  await page.getByLabel("Payment reference").fill("ORD-99999999999999999999");
   await page.getByRole("button", { name: "Send recovery link" }).click();
   await expect(page.getByRole("status")).toHaveText(
     "If an order was found, a recovery link has been sent.",

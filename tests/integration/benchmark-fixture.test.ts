@@ -10,7 +10,6 @@ import {
 } from "../../scripts/benchmark/protocol";
 import { seedRepresentativeFixture } from "../../scripts/benchmark/seed";
 import { prepareRepresentativeFixture } from "../../scripts/benchmark/prepare";
-import { validateOrderReferenceCode } from "@/domain/money/reference-code";
 import { buildVariantCombinations } from "@/domain/catalog/variant-combinations";
 import { parseCustomerPage } from "@supastore/contracts/customer-page-validation";
 import { pages } from "../fixtures/customer-pages";
@@ -153,7 +152,7 @@ it("seeds the standard catalog and established history with balanced ledgers", a
   const references =
     await client`select reference_code from orders order by reference_code limit 30`;
   expect(
-    references.every((row) => validateOrderReferenceCode(row.reference_code)),
+    references.every((row) => /^ORD-\d{6,}$/.test(row.reference_code)),
   ).toBe(true);
   expect(
     (

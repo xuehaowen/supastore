@@ -1,6 +1,7 @@
+import { referenceSearch } from "@/application/queries/reference-search";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, or, ilike, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import { orders, orderReturns } from "@/infrastructure/db/schema";
 import { staffIdentity } from "@/infrastructure/web";
@@ -52,7 +53,10 @@ export default async function ReturnsPage({
       .innerJoin(orders, eq(orders.id, orderReturns.orderId))
       .where(
         and(
-          sql`(${orders.referenceCode} ilike ${pattern} or ${orders.guestEmail} ilike ${pattern})`,
+          or(
+            referenceSearch(orders.referenceCode, search),
+            ilike(orders.guestEmail, pattern),
+          ),
           status ? sql`${orderReturns.status} = ${status}` : undefined,
         ),
       )

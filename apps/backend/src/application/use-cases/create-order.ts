@@ -7,7 +7,6 @@ import {
 import { emitOrderEvent } from "@/application/common/events";
 import { parseActionInteger } from "@/application/common/request-validation";
 import { commercePolicy } from "@/domain/commerce-policy";
-import { generateOrderReferenceCode } from "@/domain/money/reference-code";
 import { createRewardSnapshot, type RewardComponent } from "@/domain/rewards";
 import { stripeCurrencyIssue } from "@/domain/stripe-currency";
 import { verifyStaffInTransaction } from "@/infrastructure/auth/session";
@@ -169,7 +168,6 @@ export async function createOrderInTransaction(
     throw new InvariantViolationError(
       "Prices or fulfillment terms changed. Review the final total again before ordering.",
     );
-  let order: typeof orders.$inferSelect | undefined;
   const customer = input.customerUserId
     ? await verifiedCustomer(tx, input.customerUserId)
     : undefined;
@@ -247,33 +245,27 @@ export async function createOrderInTransaction(
     )
       smsPreferenceId = preference.id;
   }
-  for (let attempt = 0; attempt < 10 && !order; attempt++) {
-    [order] = await tx
-      .insert(orders)
-      .values({
-        sourceCartId: cart.id,
-        referenceCode: generateOrderReferenceCode("SP"),
-        quoteId: quote.id,
-        lifecycleStatus:
-          quote.totalPayableCents === creditAppliedCents
-            ? "confirmed"
-            : "unpaid",
-        creditAppliedCents,
-        purchaseTotalCents: quote.totalPayableCents,
-        discountCents: quote.discountCents,
-        guestEmail: email,
-        guestName: name,
-        smsPreferenceId,
-        notificationLocale: input.locale === "zh" ? "zh" : "en",
-        customerId: customer?.id ?? null,
-        fulfillmentType: terms.fulfillmentType,
-        shippingAddressSnapshot: terms.shippingAddress,
-        termsSnapshot: terms,
-        rewardSnapshot,
-      })
-      .onConflictDoNothing()
-      .returning();
-  }
+  const [order] = await tx
+    .insert(orders)
+    .values({
+      sourceCartId: cart.id,
+      quoteId: quote.id,
+      lifecycleStatus:
+        quote.totalPayableCents === creditAppliedCents ? "confirmed" : "unpaid",
+      creditAppliedCents,
+      purchaseTotalCents: quote.totalPayableCents,
+      discountCents: quote.discountCents,
+      guestEmail: email,
+      guestName: name,
+      smsPreferenceId,
+      notificationLocale: input.locale === "zh" ? "zh" : "en",
+      customerId: customer?.id ?? null,
+      fulfillmentType: terms.fulfillmentType,
+      shippingAddressSnapshot: terms.shippingAddress,
+      termsSnapshot: terms,
+      rewardSnapshot,
+    })
+    .returning();
   if (!order)
     throw new InvariantViolationError(
       "Unable to allocate an order reference. Please retry.",

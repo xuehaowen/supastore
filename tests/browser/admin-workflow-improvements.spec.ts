@@ -7,7 +7,6 @@ import {
   record,
   confirm,
 } from "./fixtures";
-import { generateOrderReferenceCode } from "../../apps/backend/src/domain/money/reference-code";
 
 test("cash account choices exclude banks and forged non-cash receipts are rejected", async ({
   page,
@@ -98,12 +97,12 @@ test("fulfillment separates task queues from history and preserves the return fi
       ["fulfilled", "completed", "shipping"],
     ]) {
       const id = randomUUID(),
-        cart = randomUUID(),
-        reference = generateOrderReferenceCode();
+        cart = randomUUID();
       await sql`insert into carts(id,guest_session_id) values(${cart},${cart})`;
-      await sql`insert into orders(id,source_cart_id,quote_id,reference_code,lifecycle_status,fulfillment_type,purchase_total_cents,guest_email,guest_name,shipping_address_snapshot,terms_snapshot)
-        values(${id},${cart},${source!.quote_id},${reference},${lifecycle!},${type!},${source!.purchase_total_cents},'queue@example.test',${marker},${sql.json(source!.shipping_address_snapshot)},${sql.json(source!.terms_snapshot)})`;
-      records.push({ id, cart, reference });
+      const [created] =
+        await sql`insert into orders(id,source_cart_id,quote_id,lifecycle_status,fulfillment_type,purchase_total_cents,guest_email,guest_name,shipping_address_snapshot,terms_snapshot)
+        values(${id},${cart},${source!.quote_id},${lifecycle!},${type!},${source!.purchase_total_cents},'queue@example.test',${marker},${sql.json(source!.shipping_address_snapshot)},${sql.json(source!.terms_snapshot)}) returning reference_code`;
+      records.push({ id, cart, reference: created!.reference_code });
       await sql`insert into order_fulfillments(order_id,status) values(${id},${status!})`;
     }
     await admin.goto(`/admin/fulfillment?q=${marker}`);

@@ -1,5 +1,42 @@
 # Order and payment workflow updates
 
+## Order and payment numbers
+
+Orders display a permanent number such as `ORD-000001`; each recorded payment
+displays its own number such as `PAY-000001`, including cash and online payments.
+PostgreSQL sequences allocate numbers safely during concurrent writes. Six digits
+is the minimum width; numbers grow past `999999` and may have gaps after rollbacks.
+Numbers are identifiers, while access still requires the existing authorization.
+
+Migration `0051_commerce_references` assigns numbers to existing pre-launch records
+in creation order (with UUID as a tie breaker). Order numbers replace the previous
+format in place; no legacy aliases or lookup behavior are retained. UUIDs, links,
+payment amounts, bank references, Stripe IDs, and cash receipt numbers are preserved.
+
+The payment ledger shows the payment number first, with the original transaction
+reference in its expanded details. Both numbers and transaction references are
+searchable. Copy buttons are available for order numbers on order details and for
+payment numbers and transaction references in the ledger. Customer screens,
+new notifications, exports, and packing slips use the order number through the
+existing `referenceCode` contract. Apply the migration with the corresponding app
+release; this schema change requires coordinated deployment.
+
+Reference search also accepts numbers without their hyphen, lowercase text,
+spaces, and shorter numeric portions after the prefix: `ord123`, `ORD000123`, and
+`ORD 000 123` resolve to `ORD-000123`. The same normalization is used in admin
+search, filtered exports, returns, account history, and guest recovery. Recovery
+still requires the matching email and issues the existing scoped access token.
+Order rows include copy controls, and order numbers in the payment ledger link
+directly to their order details.
+
+The ledger shows **Order payment status** separately from order lifecycle status.
+Funding includes all corrected receipts for that order and applied store credit,
+less settled non-purchase returns. A deposit can therefore show **Partially paid**
+while the lifecycle remains unpaid. Actual settled purchase refunds, including
+store-credit settlements, show **Partially refunded** or **Refunded**; pending
+authorizations do not. Non-purchase returns remain distinct from purchase refunds.
+The existing Order status filter continues to filter lifecycle status.
+
 ## Reference patterns
 
 - [Medusa payment management](https://docs.medusajs.com/user-guide/orders/payments): payment status and explicit payment actions in the order workspace.
