@@ -8,7 +8,7 @@ import { LoaderCircle, LockKeyhole, Mail, UserRound } from "lucide-react";
 import { Alert, AlertDescription } from "@supastore/ui/alert";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@supastore/ui/tabs";
 import { Button } from "@supastore/ui/button";
-import { Input } from "@supastore/ui/input";
+import { CustomerForm, CustomerInput as Input } from "./customer-form";
 import { Label } from "@supastore/ui/label";
 import {
   authenticate,
@@ -62,7 +62,9 @@ export function Uploader({
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   return (
-    <form
+    <CustomerForm
+      locale={locale}
+      busy={busy}
       className="grid gap-4"
       onSubmit={async (event) => {
         event.preventDefault();
@@ -107,7 +109,7 @@ export function Uploader({
       >
         {message}
       </p>
-    </form>
+    </CustomerForm>
   );
 }
 
@@ -143,7 +145,14 @@ export function AuthForm({
         setMessage("");
       }}
     >
-      <form
+      <CustomerForm
+        locale={locale}
+        busy={busy}
+        error={
+          message && message !== textFor(locale).common.accountCreated
+            ? message
+            : undefined
+        }
         className="grid gap-4"
         onSubmit={async (event) => {
           event.preventDefault();
@@ -263,7 +272,7 @@ export function AuthForm({
               {textFor(locale).common.verifiedNotice}
             </p>
           )}
-          {message && (
+          {message && message === textFor(locale).common.accountCreated && (
             <Alert
               variant={
                 message === textFor(locale).common.accountCreated
@@ -275,33 +284,46 @@ export function AuthForm({
             </Alert>
           )}
         </TabsContent>
-      </form>
+      </CustomerForm>
     </Tabs>
   );
 }
 
 export function SignOutButton({ locale }: { locale: string }) {
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   return (
-    <Button
-      type="button"
-      variant="outline"
-      disabled={busy}
-      onClick={async () => {
-        setBusy(true);
-        try {
-          const response = await signOutSession();
-          if (response.ok) window.location.assign(`/${locale}`);
-          else setBusy(false);
-        } catch {
-          setBusy(false);
-        }
-      }}
-    >
-      {busy
-        ? textFor(locale).common.signingOut
-        : textFor(locale).account.signOut}
-    </Button>
+    <span className="grid gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setError("");
+          try {
+            const response = await signOutSession();
+            if (response.ok) window.location.assign(`/${locale}`);
+            else {
+              setBusy(false);
+              setError(textFor(locale).ui.signOutFailed);
+            }
+          } catch {
+            setBusy(false);
+            setError(textFor(locale).ui.signOutFailed);
+          }
+        }}
+      >
+        {busy
+          ? textFor(locale).common.signingOut
+          : textFor(locale).account.signOut}
+      </Button>
+      {error && (
+        <span role="alert" className="text-sm text-destructive">
+          {error}
+        </span>
+      )}
+    </span>
   );
 }
 

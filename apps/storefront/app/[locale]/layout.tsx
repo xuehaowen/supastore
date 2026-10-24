@@ -120,6 +120,9 @@ export default async function ShopLayout({
           <LanguageLink locale={locale} />
         </nav>
         <div className="storefront-mobile-actions">
+          <Link href={`/${locale}/search`} aria-label={m.search}>
+            <Search size={19} aria-hidden="true" />
+          </Link>
           <LanguageLink locale={locale} />
           <Link
             href={`/${locale}/cart`}

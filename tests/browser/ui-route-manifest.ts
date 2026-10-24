@@ -58,6 +58,7 @@ export const storefrontPageRoutes = [
   "/[locale]/categories/[slug]",
   "/[locale]/checkout",
   "/[locale]/collections/[handle]",
+  "/[locale]/collections",
   "/[locale]/orders/[id]",
   "/[locale]/pages/[slug]",
   "/[locale]/products/[handle]",

@@ -1,10 +1,18 @@
 "use client";
 import Link from "next/link";
-import { Package } from "lucide-react";
+import { Package, ZoomIn } from "lucide-react";
 import { designCopy } from "../lib/design-copy";
 import { MAX_ITEM_QUANTITY } from "@supastore/contracts";
 import { textFor } from "@supastore/i18n/messages";
-import { startTransition, useActionState, useState, useRef } from "react";
+import {
+  startTransition,
+  useActionState,
+  useState,
+  useRef,
+  useId,
+  useEffect,
+  type RefObject,
+} from "react";
 import Image from "next/image";
 import type { ProductDetail, CommercePreview } from "@supastore/contracts";
 import dynamic from "next/dynamic";
@@ -12,6 +20,9 @@ import type { DestinationOptions } from "./shopping-preview";
 const ProductVariantOptions = dynamic(
   () => import("./product-variant-options"),
 );
+const ProductImageZoom = dynamic(() => import("./product-image-zoom"), {
+  ssr: false,
+});
 const ShoppingPreview = dynamic(() =>
   import("./shopping-preview").then((module) => module.ShoppingPreview),
 );
@@ -30,6 +41,7 @@ export function ProductPurchase({
   labels,
   hasContextualRules = false,
   destinations,
+  specifications = [],
 }: {
   product: ProductDetail;
   availableQuantities?: Record<string, number>;
@@ -39,6 +51,7 @@ export function ProductPurchase({
   labels: { quantity: string; add: string; unavailable: string };
   hasContextualRules?: boolean;
   destinations?: DestinationOptions;
+  specifications?: { valueId: string; name: string; label: string }[];
 }) {
   const m = textFor(locale).commercePreview;
   const copy = designCopy(locale);
@@ -50,6 +63,34 @@ export function ProductPurchase({
   const [variantId, setVariantId] = useState(initial?.id || "");
   const [activeImageKey, setActiveImageKey] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [zoomOpen, setZoomOpen] = useState(false);
+  const [zoomLoaded, setZoomLoaded] = useState(false);
+  const zoomTrigger = useRef<HTMLButtonElement>(null);
+  const purchaseButton = useRef<HTMLButtonElement>(null);
+  const purchaseFormId = useId();
+  const [showSticky, setShowSticky] = useState(false);
+  useEffect(() => {
+    const button = purchaseButton.current;
+    if (!button) return;
+    let frame = 0;
+    const update = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() =>
+        setShowSticky(button.getBoundingClientRect().bottom < 0),
+      );
+    };
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    const observer = new ResizeObserver(update);
+    observer.observe(button);
+    update();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
   const [shopping, setShopping] = useState<CommercePreview | null>(null);
   const current = product.variants.find((v) => v.id === variantId);
   const evaluated = shopping?.evaluation.items.find(
@@ -151,6 +192,22 @@ export function ProductPurchase({
               nextImage(dx < 0 ? 1 : -1);
           }}
         >
+          {activeImage && (
+            <Button
+              ref={zoomTrigger}
+              className="product-zoom-trigger"
+              type="button"
+              variant="outline"
+              aria-label={textFor(locale).ui.enlargeImage}
+              onClick={() => {
+                setZoomLoaded(true);
+                setZoomOpen(true);
+              }}
+            >
+              <ZoomIn aria-hidden="true" />
+              {textFor(locale).ui.enlargeImage}
+            </Button>
+          )}
           {activeImage ? (
             <Image
               className="size-full object-cover transition-all duration-300"
@@ -167,6 +224,18 @@ export function ProductPurchase({
             </span>
           )}
         </div>
+        {zoomLoaded && (
+          <ProductImageZoom
+            open={zoomOpen}
+            onOpenChange={setZoomOpen}
+            triggerRef={zoomTrigger}
+            images={product.images}
+            index={imageIndex}
+            title={product.title}
+            locale={locale}
+            onNavigate={nextImage}
+          />
+        )}
         {product.images.length > 1 && (
           <>
             <div
@@ -244,6 +313,29 @@ export function ProductPurchase({
             .join("")}
           {Array.from(product.description || "").length > 180 ? "…" : ""}
         </p>
+        {specifications.length > 0 && (
+          <section
+            className="product-key-specs"
+            aria-labelledby="product-specifications"
+          >
+            <h2 id="product-specifications">
+              {textFor(locale).ui.specifications}
+            </h2>
+            <dl>
+              {specifications.slice(0, 4).map((spec) => (
+                <div key={spec.valueId}>
+                  <dt>{spec.name}</dt>
+                  <dd>{spec.label}</dd>
+                </div>
+              ))}
+            </dl>
+            {specifications.length > 4 && (
+              <a href="#all-specifications">
+                {textFor(locale).ui.allSpecifications}
+              </a>
+            )}
+          </section>
+        )}
         {hasContextualRules && current && (
           <ShoppingPreview
             items={[{ variantId, quantity: selectedQuantity }]}
@@ -253,6 +345,7 @@ export function ProductPurchase({
           />
         )}
         <form
+          id={purchaseFormId}
           className="grid gap-6"
           action={addAction}
           onSubmit={(event) => {
@@ -396,6 +489,7 @@ export function ProductPurchase({
             </div>
           </div>
           <AddToCartButton
+            buttonRef={purchaseButton}
             available={canPurchase}
             pending={adding}
             labels={labels}
@@ -415,6 +509,32 @@ export function ProductPurchase({
             </div>
           )}
         </form>
+        {showSticky && (
+          <aside
+            className="mobile-purchase-bar"
+            aria-label={textFor(locale).ui.quickPurchase}
+          >
+            <div>
+              <p className="font-medium">{product.title}</p>
+              <p className="text-sm">
+                {price} · {labels.quantity}: {selectedQuantity}
+              </p>
+            </div>
+            <Button
+              type="submit"
+              form={purchaseFormId}
+              size="lg"
+              disabled={!canPurchase || adding}
+              aria-busy={adding}
+            >
+              {adding
+                ? textFor(locale).common.wait
+                : canPurchase
+                  ? labels.add
+                  : labels.unavailable}
+            </Button>
+          </aside>
+        )}
         <Separator className="mt-8" />
         <aside className="pt-5 text-sm leading-6 text-muted-foreground">
           {
@@ -441,11 +561,13 @@ export function ProductPurchase({
 }
 
 function AddToCartButton({
+  buttonRef,
   available,
   labels,
   wait,
   pending,
 }: {
+  buttonRef: RefObject<HTMLButtonElement | null>;
   available: boolean;
   labels: { add: string; unavailable: string };
   wait: string;
@@ -453,6 +575,7 @@ function AddToCartButton({
 }) {
   return (
     <Button
+      ref={buttonRef}
       className="w-full sm:w-auto"
       size="lg"
       type="submit"

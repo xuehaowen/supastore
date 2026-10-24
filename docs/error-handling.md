@@ -111,6 +111,13 @@ nonzero CLI status, while skipped connectivity checks remain explicit.
 | Worker supervision                    | Job isolation, partial/deferred failures, recovery, stalls, review backlog                                               | Unit: `worker-runner`, `health`                                                                                                                                       |
 | Inventory/returns/fulfillment/reports | Domain rejection, rollback and safe action diagnostics                                                                   | `server-actions`, domain unit and integration suites                                                                                                                  |
 
+Bag edits disable competing controls while a mutation is pending. Decreasing a
+quantity stops at one; explicit removal keeps a one-item undo opportunity even
+when the bag is empty. Failed updates and undo attempts retain the item/undo
+state and show the safe backend error and validated request reference. Unit
+`storefront-add-item` covers success/failure correlation; browser
+`storefront-shopping-ux` covers removal and restoration of the last item.
+
 Storefront server actions retain backend request IDs and render validated references
 on checkout and redirect error notices. Unit tests `server-request` and `notice`
 cover correlation/privacy; browser `error-handling` covers the visible reference.
@@ -157,3 +164,15 @@ Migration `0039_failure_recovery` adds diagnostic/expiry fields and Stripe retry
 schedules. Apply it before starting updated backends; update backend replicas
 together because older workers ignore the reservations. No new credentials are
 required.
+
+Customer forms add localized inline validation and focus the first invalid
+field. Allowlisted backend checkout validation messages map to their fields;
+unknown failures retain the summary and support reference. Pending actions
+disable their submit buttons and announce progress. Failed sign-out remains
+visible and can be retried.
+
+Shopping options load actual configured fulfillment methods. A failed options
+request disables checking and offers an explicit retry; changed cart contents
+cancel obsolete requests and invalidate previous estimates. Customer-experience
+browser checks cover these states alongside checkout focus, gallery keyboard
+return, shipping estimates and current order address/tracking details.

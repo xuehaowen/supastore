@@ -1,4 +1,5 @@
 import { translatedField } from "./localize";
+import { catalogAvailability } from "@/domain/catalog/catalog-availability";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/infrastructure/db";
 import {
@@ -7,6 +8,7 @@ import {
   productTranslations,
   productImages,
   storeSettings,
+  variantStock,
 } from "@/infrastructure/db/schema";
 export interface ListProductsInput {
   locale?: string;
@@ -80,9 +82,9 @@ export async function listProducts(input: ListProductsInput = {}) {
       .orderBy(
         ...editorialOrder,
         input.sort === "price-low"
-          ? sql`(select min(v.price_cents) from product_variants v where v.product_id=${products.id} and v.is_available) asc nulls last`
+          ? sql`(select min(v.price_cents) from product_variants v left join variant_stock s on s.variant_id=v.id where v.product_id=${products.id} and v.is_available and (s.tracking_enabled is not true or s.on_hand > s.reserved)) asc nulls last`
           : input.sort === "price-high"
-            ? sql`(select min(v.price_cents) from product_variants v where v.product_id=${products.id} and v.is_available) desc nulls last`
+            ? sql`(select min(v.price_cents) from product_variants v left join variant_stock s on s.variant_id=v.id where v.product_id=${products.id} and v.is_available and (s.tracking_enabled is not true or s.on_hand > s.reserved)) desc nulls last`
             : input.sort === "newest"
               ? sql`${products.createdAt} desc`
               : input.collectionHandle
@@ -101,8 +103,19 @@ export async function listProducts(input: ListProductsInput = {}) {
       : [];
     const variants = ids.length
       ? await tx
-          .select()
+          .select({
+            productId: productVariants.productId,
+            priceCents: productVariants.priceCents,
+            isAvailable: productVariants.isAvailable,
+            trackingEnabled: variantStock.trackingEnabled,
+            onHand: variantStock.onHand,
+            reserved: variantStock.reserved,
+          })
           .from(productVariants)
+          .leftJoin(
+            variantStock,
+            eq(variantStock.variantId, productVariants.id),
+          )
           .where(inArray(productVariants.productId, ids))
       : [];
     const images = ids.length
@@ -118,11 +131,11 @@ export async function listProducts(input: ListProductsInput = {}) {
       group.push(translation);
       translationsByProduct.set(translation.productId, group);
     }
-    const pricesByProduct = new Map<string, number[]>();
+    const variantsByProduct = new Map<string, typeof variants>();
     for (const variant of variants) {
-      const prices = pricesByProduct.get(variant.productId) ?? [];
-      prices.push(variant.priceCents);
-      pricesByProduct.set(variant.productId, prices);
+      const group = variantsByProduct.get(variant.productId) ?? [];
+      group.push(variant);
+      variantsByProduct.set(variant.productId, group);
     }
     const coverByProduct = new Map<string, string>();
     const previewByProduct = new Map<string, string>();
@@ -142,7 +155,7 @@ export async function listProducts(input: ListProductsInput = {}) {
         const productTranslations = translationsByProduct.get(p.id) ?? [];
         const defaultLocale = settings?.defaultLocale ?? "en";
         const locale = input.locale ?? defaultLocale;
-        const prices = pricesByProduct.get(p.id) ?? [];
+        const productVariants = variantsByProduct.get(p.id) ?? [];
         return {
           id: p.id,
           handle: p.handle,
@@ -163,8 +176,8 @@ export async function listProducts(input: ListProductsInput = {}) {
           isPublished: p.isPublished,
           coverImageKey: coverByProduct.get(p.id) ?? null,
           previewImageKey: previewByProduct.get(p.id) ?? null,
-          lowestPriceCents: prices.length ? Math.min(...prices) : null,
-          variantCount: prices.length,
+          ...catalogAvailability(productVariants),
+          variantCount: productVariants.length,
         };
       }),
     };

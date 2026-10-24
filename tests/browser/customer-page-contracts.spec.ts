@@ -44,6 +44,7 @@ test("actual serialized backend responses match every customer page decoder", as
     const order = await checkout(page, sql);
     const [saved] = await sql`select quote_id from orders where id=${order.id}`;
     const queries: Record<keyof CustomerPageModels, string> = {
+      collections: "",
       layout: "",
       catalog: "",
       product: "&handle=studio-cup",

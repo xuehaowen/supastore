@@ -18,6 +18,12 @@ export function CommerceSummary({
     }).format(value / 10 ** preview.precision);
   return (
     <div className="grid gap-2 text-sm" role="status" aria-live="polite">
+      {preview.deliveryEstimateCents != null && (
+        <p>
+          {textFor(locale).ui.deliveryEstimate}:{" "}
+          <strong>{money(preview.deliveryEstimateCents)}</strong>
+        </p>
+      )}
       {e.items.some((item) => item.pending) ? (
         <p>{m.completeDestination}</p>
       ) : (

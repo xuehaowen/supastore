@@ -45,8 +45,9 @@ test("C3 unsupported destination preserves cart and explains next action", async
     await page.getByRole("button", { name: "Add to bag" }).click();
     await page.getByRole("link", { name: "View bag", exact: true }).click();
     await page.getByRole("link", { name: "Continue to checkout" }).click();
-    await page.getByLabel("Country", { exact: true }).selectOption("AQ");
     await page.getByLabel("Street address").fill("1 Test Street");
+    await page.getByLabel("Country", { exact: true }).selectOption("AQ");
+    await expect(page.getByLabel("Country", { exact: true })).toHaveValue("AQ");
     await page
       .getByLabel("Payment method")
       .selectOption({ label: "Demo bank transfer" });

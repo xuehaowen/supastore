@@ -64,6 +64,9 @@ export function accountView(
 }
 export function orderView(result: Awaited<ReturnType<typeof trackOrder>>) {
   const { order, proposal, fulfillment } = result;
+  const shippingAddress = customerShippingAddress(
+    order.shippingAddressSnapshot,
+  );
   return {
     order: {
       referenceCode: order.referenceCode,
@@ -72,6 +75,7 @@ export function orderView(result: Awaited<ReturnType<typeof trackOrder>>) {
       creditAppliedCents: order.creditAppliedCents,
       termsSnapshot: order.termsSnapshot,
       isClaimed: Boolean(order.customerId),
+      ...(shippingAddress ? { shippingAddress } : {}),
     },
     items: result.items.map((item) => ({
       id: item.id,
@@ -87,7 +91,13 @@ export function orderView(result: Awaited<ReturnType<typeof trackOrder>>) {
           proposedTotalCents: proposal.proposedTotalCents,
         }
       : null,
-    fulfillment: fulfillment ? { status: fulfillment.status } : null,
+    fulfillment: fulfillment
+      ? {
+          status: fulfillment.status,
+          carrier: fulfillment.carrier,
+          trackingNumber: fulfillment.trackingNumber,
+        }
+      : null,
     receivedCents: result.receivedCents,
     goodsReturns: result.goodsReturns.map(
       ({ id, status, reason, reviewReason }) => ({
@@ -107,4 +117,27 @@ export function orderView(result: Awaited<ReturnType<typeof trackOrder>>) {
     evidence: result.evidence.map(({ id }) => ({ id })),
     refunds: result.refunds,
   };
+}
+
+/** Expose only address fields from the current, correctable fulfillment snapshot. */
+export function customerShippingAddress(
+  value: unknown,
+): QuoteTerms["shippingAddress"] | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return;
+  const source = value as Record<string, unknown>;
+  if (typeof source.country !== "string" || typeof source.address !== "string")
+    return;
+  const result: QuoteTerms["shippingAddress"] = {
+    country: source.country,
+    address: source.address,
+  };
+  for (const key of [
+    "recipientName",
+    "line2",
+    "city",
+    "region",
+    "postalCode",
+  ] as const)
+    if (typeof source[key] === "string") result[key] = source[key];
+  return result;
 }

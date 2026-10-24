@@ -18,6 +18,9 @@ const strings = v.array(text);
 const address = v.object({
   country: text,
   address: text,
+  recipientName: v.exactOptional(text),
+  line2: v.exactOptional(text),
+  city: v.exactOptional(text),
   region: v.exactOptional(text),
   postalCode: v.exactOptional(text),
 });
@@ -190,6 +193,8 @@ const catalog = v.object({
       coverImageKey: v.nullable(text),
       previewImageKey: v.exactOptional(v.nullable(text)),
       lowestPriceCents: v.nullable(amount),
+      highestPriceCents: v.exactOptional(v.nullable(amount)),
+      isAvailable: v.exactOptional(v.boolean()),
       variantCount: amount,
     }),
   ),
@@ -240,6 +245,14 @@ const quote = v.object({
 
 /** Unknown additive fields are discarded; consumed fields are never coerced. */
 export const customerPageSchemas = {
+  collections: v.object({
+    store,
+    collections: v.array(collection),
+    collectionTitles: v.array(translation),
+    page: positive,
+    pageSize: positive,
+    total: amount,
+  }),
   layout: v.object({
     store,
     session: v.nullable(
@@ -261,6 +274,7 @@ export const customerPageSchemas = {
         name: text,
         parentId: v.nullable(text),
         sortOrder: integer,
+        depth: v.exactOptional(amount),
         createdAt: timestamp,
         updatedAt: timestamp,
       }),
@@ -368,6 +382,7 @@ export const customerPageSchemas = {
     store,
     result: v.object({
       order: v.object({
+        shippingAddress: v.exactOptional(address),
         referenceCode: text,
         lifecycleStatus: lifecycle,
         purchaseTotalCents: amount,
@@ -389,6 +404,8 @@ export const customerPageSchemas = {
       ),
       fulfillment: v.nullable(
         v.object({
+          carrier: v.exactOptional(v.nullable(text)),
+          trackingNumber: v.exactOptional(v.nullable(text)),
           status: v.picklist([
             "unfulfilled",
             "preparing",

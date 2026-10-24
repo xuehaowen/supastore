@@ -1,7 +1,7 @@
 "use client";
 import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "@supastore/contracts";
 import { textFor } from "@supastore/i18n/messages";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import {
   Accordion,
@@ -10,7 +10,7 @@ import {
   AccordionContent,
 } from "@supastore/ui/accordion";
 import { Button } from "@supastore/ui/button";
-import { Input } from "@supastore/ui/input";
+import { CustomerForm, CustomerInput as Input } from "./customer-form";
 import { customerAuthRequest } from "./customer-auth-requests";
 import { saveProfileAction } from "./customer-actions";
 import { customerError } from "@supastore/i18n/customer";
@@ -33,6 +33,11 @@ export function CustomerAuthTools({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [done, setDone] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const feedback = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (failed) feedback.current?.focus();
+  }, [failed, message]);
   async function submit(
     event: React.FormEvent<HTMLFormElement>,
     operation: "profile" | "change" | "forgot" | "verify" | "reset",
@@ -41,6 +46,7 @@ export function CustomerAuthTools({
     const data = new FormData(event.currentTarget);
     setBusy(true);
     setMessage("");
+    setFailed(false);
     try {
       const email = String(data.get("email") || "").trim();
       const password = String(data.get("password") || "");
@@ -83,6 +89,7 @@ export function CustomerAuthTools({
       );
       if (operation === "profile") window.location.reload();
     } catch (error) {
+      setFailed(true);
       setMessage(customerError(error, locale));
     } finally {
       setBusy(false);
@@ -116,7 +123,11 @@ export function CustomerAuthTools({
   );
   return (
     <div className="grid gap-5">
-      {message && <p role="status">{message}</p>}
+      {message && (
+        <p ref={feedback} tabIndex={-1} role={failed ? "alert" : "status"}>
+          {message}
+        </p>
+      )}
       {reset ? (
         <>
           {(!token || invalidToken) && (
@@ -125,12 +136,19 @@ export function CustomerAuthTools({
             </p>
           )}
           {token && !invalidToken && !done && (
-            <form className="grid gap-3" onSubmit={(e) => submit(e, "reset")}>
+            <CustomerForm
+              locale={locale}
+              busy={busy}
+              className="grid gap-3"
+              onSubmit={(e) => submit(e, "reset")}
+            >
               {passwords}
               <Button type="submit" disabled={busy}>
-                {textFor(locale).auth.resetPassword}
+                {busy
+                  ? textFor(locale).common.wait
+                  : textFor(locale).auth.resetPassword}
               </Button>
-            </form>
+            </CustomerForm>
           )}
           <Link href={`/${locale}/account`}>
             {textFor(locale).auth.returnToSignIn}
@@ -138,7 +156,12 @@ export function CustomerAuthTools({
         </>
       ) : name !== undefined ? (
         <>
-          <form className="grid gap-3" onSubmit={(e) => submit(e, "profile")}>
+          <CustomerForm
+            locale={locale}
+            busy={busy}
+            className="grid gap-3"
+            onSubmit={(e) => submit(e, "profile")}
+          >
             <label>
               {textFor(locale).profile.name}
               <Input
@@ -160,12 +183,16 @@ export function CustomerAuthTools({
               />
             </label>
             <Button type="submit" disabled={busy}>
-              {textFor(locale).profile.saveProfile}
+              {busy
+                ? textFor(locale).common.wait
+                : textFor(locale).profile.saveProfile}
             </Button>
-          </form>
+          </CustomerForm>
           <details>
             <summary>{textFor(locale).auth.changePassword}</summary>
-            <form
+            <CustomerForm
+              locale={locale}
+              busy={busy}
               className="grid gap-3 mt-3"
               onSubmit={(e) => submit(e, "change")}
             >
@@ -180,9 +207,11 @@ export function CustomerAuthTools({
               </label>
               {passwords}
               <Button type="submit" disabled={busy}>
-                {textFor(locale).auth.changePassword}
+                {busy
+                  ? textFor(locale).common.wait
+                  : textFor(locale).auth.changePassword}
               </Button>
-            </form>
+            </CustomerForm>
           </details>
         </>
       ) : (
@@ -197,7 +226,9 @@ export function CustomerAuthTools({
                     : textFor(locale).auth.resendVerification}
                 </AccordionTrigger>
                 <AccordionContent>
-                  <form
+                  <CustomerForm
+                    locale={locale}
+                    busy={busy}
                     className="grid gap-3 mt-3"
                     onSubmit={(e) => submit(e, operation)}
                   >
@@ -213,9 +244,11 @@ export function CustomerAuthTools({
                       />
                     </label>
                     <Button type="submit" disabled={busy}>
-                      {textFor(locale).auth.sendLink}
+                      {busy
+                        ? textFor(locale).common.wait
+                        : textFor(locale).auth.sendLink}
                     </Button>
-                  </form>
+                  </CustomerForm>
                 </AccordionContent>
               </AccordionItem>
             ))}

@@ -1,16 +1,18 @@
 import { localizedStorefrontHero } from "@supastore/contracts";
 import { designCopy } from "../lib/design-copy";
 import { CatalogFilters } from "./catalog-filters";
+import { CategoryNavigation } from "./category-navigation";
 import { readRequestPage } from "../lib/page-data";
 import { textFor } from "@supastore/i18n/messages";
 import Link from "next/link";
 import Image from "next/image";
 import { policyPresentation } from "../lib/page-metadata";
-import Form from "next/form";
+
 import { ProductCard } from "./product-card";
-import { NativeSelect } from "@supastore/ui/native-select";
+import { catalogHref } from "../lib/catalog-navigation";
+import { CatalogSort } from "./catalog-sort";
 import { getTranslations } from "next-intl/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Alert, AlertDescription } from "@supastore/ui/alert";
 import { Button } from "@supastore/ui/button";
 import { Input } from "@supastore/ui/input";
@@ -73,6 +75,8 @@ export default async function Catalog({
     selectedOptions.forEach((value) => state.append("options", value));
     return `?${state}`;
   };
+  const lastPage = Math.max(1, Math.ceil(result.total / result.pageSize));
+  if (result.page > lastPage) redirect(pageHref(lastPage));
   return (
     <>
       {showHero ? (
@@ -194,9 +198,16 @@ export default async function Catalog({
               ))}
           </nav>
         )}
+        <a
+          className="collection-directory-link"
+          href={`/${locale}/collections`}
+        >
+          {textFor(locale).ui.viewAllCollections}{" "}
+          <span aria-hidden="true">→</span>
+        </a>
         <div className="storefront-catalog-tools">
           <h2>{m.collection}</h2>
-          <Form
+          <form
             className="flex gap-2 max-sm:w-full"
             action={"/" + locale + "/search"}
           >
@@ -212,56 +223,41 @@ export default async function Catalog({
             {query.category && (
               <input type="hidden" name="category" value={query.category} />
             )}
-            <label className="grid gap-2">
-              {textFor(locale).ui.sort}
-              <NativeSelect name="sort" defaultValue={query.sort || "newest"}>
-                <option value="newest">{textFor(locale).ui.newest}</option>
-                <option value="price-low">
-                  {textFor(locale).ui.priceLowToHigh}
-                </option>
-                <option value="price-high">
-                  {textFor(locale).ui.priceHighToLow}
-                </option>
-              </NativeSelect>
-            </label>
+            {query.sort && (
+              <input type="hidden" name="sort" value={query.sort} />
+            )}
             {selectedOptions.map((value) => (
               <input key={value} type="hidden" name="options" value={value} />
             ))}
             <Button type="submit">{t("searchButton")}</Button>
-          </Form>
+          </form>
+          <CatalogSort
+            locale={locale}
+            query={{
+              q: query.q || "",
+              category: query.category || "",
+              sort: query.sort || "",
+              options: selectedOptions,
+            }}
+          />
         </div>
         <nav
           className="catalog-category-nav"
           aria-label={textFor(locale).common.categories}
         >
-          <Link
+          <a
             className={
               "rounded-full border px-3 py-1.5 no-underline transition-colors " +
               (!query.category
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-transparent hover:border-border hover:bg-muted")
             }
-            href={"/" + locale}
+            href={catalogHref(locale, query, { category: "" })}
             aria-current={query.category ? undefined : "page"}
           >
             {t("all")}
-          </Link>
-          {groups.map((g) => (
-            <Link
-              className={
-                "rounded-full border px-3 py-1.5 no-underline transition-colors " +
-                (query.category === g.slug
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-transparent hover:border-border hover:bg-muted")
-              }
-              key={g.id}
-              href={"/" + locale + "/search?category=" + g.slug}
-              aria-current={query.category === g.slug ? "page" : undefined}
-            >
-              {g.parentId ? <span aria-hidden="true">↳ </span> : null}
-              {g.name}
-            </Link>
-          ))}
+          </a>
+          <CategoryNavigation groups={groups} locale={locale} query={query} />
         </nav>
         <CatalogFilters
           key={JSON.stringify([
@@ -277,6 +273,38 @@ export default async function Catalog({
           sort={query.sort || "newest"}
           category={query.category || ""}
         />
+        {(query.category || selectedOptions.length > 0) && (
+          <nav
+            className="catalog-active-filters"
+            aria-label={textFor(locale).ui.activeFilters}
+          >
+            {query.category && (
+              <a href={catalogHref(locale, query, { category: "" })}>
+                {groups.find((group) => group.slug === query.category)?.name ??
+                  query.category}
+                <span className="sr-only"> · {t("remove")}</span>{" "}
+                <span aria-hidden="true">×</span>
+              </a>
+            )}
+            {selectedOptions.map((option) => (
+              <a
+                key={option}
+                href={catalogHref(locale, query, {
+                  options: selectedOptions.filter((value) => value !== option),
+                })}
+              >
+                {facets.find(
+                  (facet) => `${facet.attribute}:${facet.value}` === option,
+                )?.label ?? option}
+                <span className="sr-only"> · {t("remove")}</span>{" "}
+                <span aria-hidden="true">×</span>
+              </a>
+            ))}
+            <a href={catalogHref(locale, query, { category: "", options: [] })}>
+              {textFor(locale).ui.clearFilters}
+            </a>
+          </nav>
+        )}
         <div className="storefront-product-grid">
           {result.items.map((product) => (
             <ProductCard
@@ -293,22 +321,76 @@ export default async function Catalog({
           <Alert className="storefront-empty">
             <AlertDescription>
               {textFor(locale).common.noProducts}
-              <Link href={"/" + locale}>{t("all")}</Link>
+              {query.q && <p>{textFor(locale).ui.searchRecovery}</p>}
+              {(query.category || selectedOptions.length > 0) && (
+                <a
+                  href={catalogHref(locale, query, {
+                    category: "",
+                    options: [],
+                  })}
+                >
+                  {textFor(locale).ui.clearFilters}
+                </a>
+              )}
+              <a href={"/" + locale}>{t("all")}</a>
+              {query.q && groups.length > 0 && (
+                <nav
+                  className="search-recovery-categories"
+                  aria-label={textFor(locale).ui.browseCategories}
+                >
+                  <p>{textFor(locale).ui.browseCategories}</p>
+                  {groups.slice(0, 6).map((group) => (
+                    <a
+                      key={group.id}
+                      href={catalogHref(locale, {
+                        category: group.slug,
+                        sort: query.sort || "",
+                      })}
+                    >
+                      {group.name}
+                    </a>
+                  ))}
+                </nav>
+              )}
             </AlertDescription>
           </Alert>
         )}
-        <div className="storefront-pagination">
+        <nav
+          className="storefront-pagination"
+          aria-label={textFor(locale).ui.pagination}
+        >
           {result.page > 1 && (
-            <Link href={pageHref(result.page - 1)}>
+            <a href={pageHref(result.page - 1)}>
               ← {textFor(locale).common.previous}
-            </Link>
+            </a>
           )}
           {result.page * result.pageSize < result.total && (
-            <Link href={pageHref(result.page + 1)}>
+            <a href={pageHref(result.page + 1)}>
               {textFor(locale).common.next} →
-            </Link>
+            </a>
           )}
-        </div>
+          {result.total > 0 && (
+            <p className="catalog-page-position">
+              {textFor(locale)
+                .ui.pagePosition.replace("{page}", String(result.page))
+                .replace(
+                  "{pages}",
+                  String(Math.ceil(result.total / result.pageSize)),
+                )}{" "}
+              ·{" "}
+              {textFor(locale)
+                .ui.resultRange.replace(
+                  "{first}",
+                  String((result.page - 1) * result.pageSize + 1),
+                )
+                .replace(
+                  "{last}",
+                  String(Math.min(result.page * result.pageSize, result.total)),
+                )
+                .replace("{total}", String(result.total))}
+            </p>
+          )}
+        </nav>
       </section>
     </>
   );

@@ -12,6 +12,7 @@ import { BackendApiError } from "../../../../lib/api";
 import { readProductPage } from "../../../../lib/page-data";
 import { textFor } from "@supastore/i18n/messages";
 import { ProductPurchase } from "../../../product-purchase";
+import { RecentlyViewed } from "../../../recently-viewed";
 import { getTranslations } from "next-intl/server";
 import { variantCanBePurchased } from "../../../../lib/product-availability";
 import { countryOptions, stateOptions } from "@supastore/shipping/destination";
@@ -71,6 +72,7 @@ export default async function Product({
         </BreadcrumbList>
       </Breadcrumb>
       <ProductPurchase
+        specifications={specs}
         product={purchasable}
         hasContextualRules={store?.hasContextualRules ?? false}
         destinations={
@@ -91,8 +93,12 @@ export default async function Product({
           unavailable: t("unavailable"),
         }}
       />
-      {specs.length > 0 && (
-        <section className="md:col-span-2">
+      {specs.length > 4 && (
+        <section
+          id="all-specifications"
+          className="md:col-span-2 scroll-mt-6"
+          tabIndex={-1}
+        >
           <h2 className="mb-4 text-lg font-medium">
             {textFor(locale).ui.specifications}
           </h2>
@@ -106,6 +112,7 @@ export default async function Product({
           </dl>
         </section>
       )}
+      <RecentlyViewed locale={locale} handle={handle} title={p.title} />
     </section>
   );
 }

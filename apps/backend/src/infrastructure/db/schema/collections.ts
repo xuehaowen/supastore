@@ -18,6 +18,7 @@ export const productCollections = pgTable("product_collections", {
   imageKey: text("image_key"),
   imageAlt: text("image_alt").notNull().default(""),
   isPublished: boolean("is_published").notNull().default(false),
+  sortOrder: integer("sort_order").notNull().default(0),
   revision: integer("revision").notNull().default(1),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

@@ -16,6 +16,11 @@ export async function POST(request: Request) {
       shippingAddress: {
         country: fields.country,
         address: fields.address,
+        ...(fields.recipientName
+          ? { recipientName: fields.recipientName }
+          : {}),
+        ...(fields.line2 ? { line2: fields.line2 } : {}),
+        ...(fields.city ? { city: fields.city } : {}),
         region: fields.region,
         postalCode: fields.postalCode,
       },

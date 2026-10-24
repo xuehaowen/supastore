@@ -2,7 +2,6 @@
 import { textFor } from "@supastore/i18n/messages";
 
 import { useRef, useState } from "react";
-import Link from "next/link";
 import { SlidersHorizontal } from "lucide-react";
 import dynamic from "next/dynamic";
 const StorefrontSheet = dynamic(() => import("./storefront-sheet"), {
@@ -11,6 +10,7 @@ const StorefrontSheet = dynamic(() => import("./storefront-sheet"), {
 import { NativeSelect } from "@supastore/ui/native-select";
 import { Button } from "@supastore/ui/button";
 import { designCopy } from "../lib/design-copy";
+import { catalogHref } from "../lib/catalog-navigation";
 
 type Facet = { attribute: string; name: string; value: string; label: string };
 export function CatalogFilters({
@@ -59,12 +59,12 @@ export function CatalogFilters({
         </label>
       ))}
       <Button type="submit">{m.apply}</Button>
-      <Link
+      <a
         className="text-sm underline"
-        href={`/${locale}/search?${new URLSearchParams({ q: query, category, sort })}`}
+        href={catalogHref(locale, { q: query, category, sort })}
       >
         {m.clear}
-      </Link>
+      </a>
     </>
   );
   return (

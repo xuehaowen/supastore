@@ -108,12 +108,22 @@ export type CatalogResult = {
     coverImageKey: null | string;
     previewImageKey?: null | string;
     lowestPriceCents: null | number;
+    highestPriceCents?: null | number;
+    isAvailable?: boolean;
     variantCount: number;
   }>;
 };
 
 /** Public customer page response shapes. Dates are ISO strings on the wire. */
 export interface CustomerPageModels {
+  collections: {
+    store?: CustomerStore | undefined;
+    collections: CustomerPageModels["catalog"]["collections"];
+    collectionTitles: CustomerPageModels["catalog"]["collectionTitles"];
+    page: number;
+    pageSize: number;
+    total: number;
+  };
   layout: {
     store?: CustomerStore | undefined;
     session: null | {
@@ -159,6 +169,7 @@ export interface CustomerPageModels {
       name: string;
       parentId: null | string;
       sortOrder: number;
+      depth?: number;
       createdAt: string;
       updatedAt: string;
     }>;
@@ -299,6 +310,9 @@ export interface CustomerPageModels {
           shippingAddress: {
             country: string;
             address: string;
+            recipientName?: string;
+            line2?: string;
+            city?: string;
             region?: string;
             postalCode?: string;
           };
@@ -332,6 +346,9 @@ export interface CustomerPageModels {
             shippingAddress: {
               country: string;
               address: string;
+              recipientName?: string;
+              line2?: string;
+              city?: string;
               region?: string;
               postalCode?: string;
             };
@@ -357,6 +374,7 @@ export interface CustomerPageModels {
   order: {
     result: {
       order: {
+        shippingAddress?: QuoteTerms["shippingAddress"];
         referenceCode: string;
         lifecycleStatus: "unpaid" | "confirmed" | "completed" | "cancelled";
         purchaseTotalCents: number;
@@ -377,6 +395,8 @@ export interface CustomerPageModels {
         proposedTotalCents: number;
       };
       fulfillment: null | {
+        carrier?: string | null;
+        trackingNumber?: string | null;
         status:
           | "unfulfilled"
           | "preparing"
@@ -453,6 +473,9 @@ export type QuoteTerms = {
   shippingAddress: {
     country: string;
     address: string;
+    recipientName?: string;
+    line2?: string;
+    city?: string;
     region?: string;
     postalCode?: string;
   };
@@ -486,6 +509,9 @@ export type QuoteTerms = {
     shippingAddress: {
       country: string;
       address: string;
+      recipientName?: string;
+      line2?: string;
+      city?: string;
       region?: string;
       postalCode?: string;
     };

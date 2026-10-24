@@ -11,6 +11,7 @@ import { CatalogTabs } from "@/app/admin/catalog-tabs";
 import { AdminDialog } from "@/app/admin/admin-dialog";
 import { deleteCategory, editCategory, saveCategory } from "@/app/actions";
 import { Button } from "@supastore/ui/button";
+import { NavigationOrder } from "../navigation-order";
 import { NativeSelect } from "@supastore/ui/native-select";
 import {
   Table,
@@ -115,6 +116,8 @@ export default async function CategoriesPage({
         <h1>Categories</h1>
         <p className="admin-description">
           Organize products and maintain category handles and hierarchy.
+          Storefront order uses lower numbers first within each parent. Ties use
+          the category handle. Children stay under their parent.
         </p>
         <div className="admin-page-actions">
           <AdminDialog
@@ -183,6 +186,7 @@ export default async function CategoriesPage({
                   <TableHead>Category</TableHead>
                   <TableHead>Handle</TableHead>
                   <TableHead>Products</TableHead>
+                  <TableHead>Storefront order</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -197,6 +201,16 @@ export default async function CategoriesPage({
                     </TableCell>
                     <TableCell>/{category.slug}</TableCell>
                     <TableCell>{productCount}</TableCell>
+                    <TableCell>
+                      <NavigationOrder
+                        kind="category"
+                        id={category.id}
+                        name={category.name}
+                        position={category.sortOrder}
+                        search={search}
+                        page={page}
+                      />
+                    </TableCell>
                     <TableCell>
                       <div className="table-actions">
                         <AdminDialog

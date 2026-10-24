@@ -2,7 +2,9 @@
 import { customerError } from "@supastore/i18n/customer";
 import { parsePaymentCheckoutDto } from "@supastore/contracts";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { Button } from "@supastore/ui/button";
+import { textFor } from "@supastore/i18n/messages";
 import { request } from "../lib/client";
 import { getStorefrontMessages } from "../lib/i18n";
 
@@ -21,8 +23,9 @@ export function OrderPayment({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [refreshing, startRefresh] = useTransition();
   useEffect(() => {
-    if (!["creating", "open"].includes(status || "")) return;
+    if (!["creating", "open", "paid"].includes(status || "")) return;
     const timer = setInterval(() => {
       if (document.visibilityState === "visible") router.refresh();
     }, 5000);
@@ -39,12 +42,23 @@ export function OrderPayment({
               : m.processingPayment}
         </p>
       )}
-      <button onClick={() => router.refresh()}>{m.refreshStatus}</button>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={refreshing}
+        aria-busy={refreshing}
+        onClick={() => startRefresh(() => router.refresh())}
+      >
+        {refreshing ? textFor(locale).common.wait : m.refreshStatus}
+      </Button>
       {enabled && !["review", "expired", "paid"].includes(status || "") && (
-        <button
+        <Button
+          type="button"
+          aria-busy={busy}
           disabled={busy}
           onClick={async () => {
             setBusy(true);
+            setError("");
             try {
               const result = await request(
                 "v1/payments/checkout",
@@ -65,8 +79,8 @@ export function OrderPayment({
             }
           }}
         >
-          {m.paySecurely}
-        </button>
+          {busy ? textFor(locale).ui.openingPayment : m.paySecurely}
+        </Button>
       )}
       {error && <p role="alert">{error}</p>}
     </section>

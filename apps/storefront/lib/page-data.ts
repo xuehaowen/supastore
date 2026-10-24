@@ -17,7 +17,8 @@ export async function readPage<K extends keyof PageModels>(
       if (item !== undefined) search.append(key, item);
     }
   }
-  const read = page === "catalog" ? readPublicApi : readApi;
+  const read =
+    page === "catalog" || page === "collections" ? readPublicApi : readApi;
   return read(`customer-pages/${page}?${search}`, (data) =>
     parseCustomerPage(page, data),
   ).catch((error) => {

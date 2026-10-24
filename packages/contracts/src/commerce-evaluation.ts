@@ -48,6 +48,7 @@ export function parseCommercePreviewRequest(value: unknown) {
   return v.parse(requestSchema, value);
 }
 const responseSchema = v.object({
+  deliveryEstimateCents: v.optional(v.nullable(amount)),
   currency: v.pipe(v.string(), v.regex(/^[A-Z]{3}$/)),
   precision: v.pipe(amount, v.maxValue(4)),
   revision: amount,

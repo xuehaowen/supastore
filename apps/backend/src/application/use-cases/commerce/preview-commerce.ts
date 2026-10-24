@@ -160,6 +160,7 @@ export async function previewCommerce(raw: CommercePreviewRequest) {
       evaluation.shipping.remainingCents = null;
     }
     const context = evaluation.context;
+    let deliveryEstimateCents: number | null = null;
     if (context.fulfillmentType === "shipping") {
       const required = shippingRequiredFields(zones, context.country ?? "");
       const pending =
@@ -188,6 +189,7 @@ export async function previewCommerce(raw: CommercePreviewRequest) {
         );
         evaluation.shipping.freeThresholdCents = selected.freeThresholdCents;
         evaluation.shipping.remainingCents = selected.remainingCents;
+        deliveryEstimateCents = selected.amountCents;
       }
     } else if (
       context.fulfillmentType === "pickup" ||
@@ -195,6 +197,7 @@ export async function previewCommerce(raw: CommercePreviewRequest) {
     ) {
       evaluation.shipping.remainingCents = null;
       evaluation.shipping.pending = !context.fulfillmentType;
+      if (context.fulfillmentType === "pickup") deliveryEstimateCents = 0;
     } else {
       evaluation.shipping.remainingCents = null;
       if (!context.country || !context.postalCode) {
@@ -225,10 +228,16 @@ export async function previewCommerce(raw: CommercePreviewRequest) {
             threshold === null
               ? null
               : Math.max(0, threshold - evaluation.merchandiseSubtotalCents!);
+          deliveryEstimateCents =
+            threshold !== null &&
+            evaluation.merchandiseSubtotalCents! >= threshold
+              ? 0
+              : matching[0]!.rateCents;
         }
       }
     }
     return parseCommercePreview({
+      deliveryEstimateCents,
       currency: store.currency,
       precision: store.precision,
       revision: store.quoteVersion,

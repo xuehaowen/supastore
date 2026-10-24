@@ -11,7 +11,7 @@ import {
 import { Card, CardContent } from "@supastore/ui/card";
 import { openOwnedOrderAction } from "../../customer-actions";
 import { Hidden, Notice } from "../../components";
-import { Button } from "@supastore/ui/button";
+import { CustomerSubmit as Button } from "../../customer-submit";
 import { money } from "../../../lib/web";
 import { AddressBook } from "../../address-book";
 import { CustomerAuthTools } from "../../customer-auth";
@@ -196,7 +196,7 @@ export default async function Account({
                     maxLength={100}
                   />
                 </label>
-                <Button type="submit">
+                <Button locale={locale}>
                   {textFor(locale ?? "en").customerCopy.searchOrders}
                 </Button>
               </form>
@@ -221,7 +221,7 @@ export default async function Account({
                         locale,
                       )}
                     </span>
-                    <Button type="submit" variant="outline">
+                    <Button locale={locale} variant="outline">
                       {t("account.viewOrder")}
                     </Button>
                   </form>

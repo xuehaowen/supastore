@@ -41,6 +41,9 @@ export function ShoppingPreview({
   const [busy, setBusy] = useState(false);
   const [method, setMethod] = useState("");
   const [country, setCountry] = useState("");
+  const [loadingOptions, setLoadingOptions] = useState(true);
+  const [optionsFailed, setOptionsFailed] = useState(false);
+  const [optionsRevision, setOptionsRevision] = useState(0);
   const [options, setOptions] = useState<Pick<
     CommercePreview,
     "methods" | "locations"
@@ -61,6 +64,37 @@ export function ShoppingPreview({
     setBusy(false);
     return cancel;
   }, [itemKey, cancel]);
+  useEffect(() => {
+    const active = new AbortController();
+    setLoadingOptions(true);
+    setOptionsFailed(false);
+    setOptions(null);
+    void (async () => {
+      try {
+        const { response, data } = await fetchJson("/api/v1/evaluation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items: JSON.parse(itemKey), context: {} }),
+          cache: "no-store",
+          signal: active.signal,
+        });
+        if (!response.ok) throw new Error("Options unavailable");
+        const result = parseCommercePreview(responseData(data, true));
+        if (active.signal.aborted) return;
+        setOptions(result);
+        setMethod((current) =>
+          result.methods.some((value) => value === current)
+            ? current
+            : (result.methods[0] ?? ""),
+        );
+      } catch {
+        if (!active.signal.aborted) setOptionsFailed(true);
+      } finally {
+        if (!active.signal.aborted) setLoadingOptions(false);
+      }
+    })();
+    return () => active.abort();
+  }, [itemKey, locale, optionsRevision]);
   function invalidate() {
     sequence.current++;
     controller.current?.abort();
@@ -148,21 +182,20 @@ export function ShoppingPreview({
         <label className="grid gap-1 text-sm">
           {m.fulfillment}
           <NativeSelect
+            disabled={loadingOptions || !options?.methods.length}
             value={method}
             onChange={(event) => setMethod(event.target.value)}
           >
             <option value="">{m.chooseMethod}</option>
-            {(options?.methods ?? ["shipping", "pickup", "local_delivery"]).map(
-              (value) => (
-                <option key={value} value={value}>
-                  {value === "pickup"
-                    ? m.pickup
-                    : value === "shipping"
-                      ? m.shipping
-                      : m.localDelivery}
-                </option>
-              ),
-            )}
+            {(options?.methods ?? []).map((value) => (
+              <option key={value} value={value}>
+                {value === "pickup"
+                  ? m.pickup
+                  : value === "shipping"
+                    ? m.shipping
+                    : m.localDelivery}
+              </option>
+            ))}
           </NativeSelect>
         </label>
         {method === "pickup" ? (
@@ -225,11 +258,31 @@ export function ShoppingPreview({
           <Input name="promotionCode" maxLength={40} />
         </label>
         <div className="sm:col-span-2">
-          <Button type="submit" variant="outline" disabled={busy}>
+          <Button
+            type="submit"
+            variant="outline"
+            disabled={busy || loadingOptions || !options?.methods.length}
+            aria-busy={busy || loadingOptions}
+          >
             {busy ? m.checking : m.checkOptions}
           </Button>
         </div>
       </form>
+      {optionsFailed && (
+        <div className="mt-3 grid gap-2">
+          <p role="alert">{m.shoppingCheckFailed}</p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setOptionsRevision((value) => value + 1)}
+          >
+            {textFor(locale).ui.retryOptions}
+          </Button>
+        </div>
+      )}
+      {options && !options.methods.length && (
+        <p role="status">{textFor(locale).checkoutDetails.noFulfillment}</p>
+      )}
       {message && (
         <p role="alert" className="mt-3 text-sm">
           {message}

@@ -30,7 +30,8 @@ export function readPublicApi<T>(
     route === "store" ||
     route === "catalog" ||
     route === "sitemap" ||
-    route === "customer-pages/catalog";
+    route === "customer-pages/catalog" ||
+    route === "customer-pages/collections";
   if (route.startsWith("products/")) {
     try {
       const handle = decodeURIComponent(route.slice("products/".length));

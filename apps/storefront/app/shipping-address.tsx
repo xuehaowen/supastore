@@ -6,6 +6,9 @@ export function ShippingAddress({
 }: {
   address: {
     address: string;
+    recipientName?: string;
+    line2?: string;
+    city?: string;
     country: string;
     region?: string;
     postalCode?: string;
@@ -22,7 +25,15 @@ export function ShippingAddress({
       : address.region;
   return (
     <p>
-      {[address.address, region, address.postalCode, country]
+      {[
+        address.recipientName,
+        address.address,
+        address.line2,
+        address.city,
+        region,
+        address.postalCode,
+        country,
+      ]
         .filter(Boolean)
         .join(", ")}
     </p>

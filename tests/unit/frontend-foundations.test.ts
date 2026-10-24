@@ -1,9 +1,16 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+vi.mock("../../apps/storefront/app/actions", () => ({
+  addItem: vi.fn(),
+  updateCartItem: vi.fn(),
+}));
+import { CartContents } from "../../apps/storefront/app/cart-contents";
+import { CategoryNavigation } from "../../apps/storefront/app/category-navigation";
+import { textFor } from "@supastore/i18n/messages";
 import {
   OrderSelection,
   OrderExportToolbar,
@@ -58,9 +65,26 @@ describe("frontend visual foundations", () => {
     expect(catalog).toContain(
       'aria-current={query.category ? undefined : "page"}',
     );
-    expect(catalog).toContain(
-      'aria-current={query.category === g.slug ? "page" : undefined}',
+    const markup = renderToStaticMarkup(
+      createElement(CategoryNavigation, {
+        locale: "en",
+        query: { category: "cups" },
+        groups: [
+          {
+            id: "cups",
+            slug: "cups",
+            name: "Cups",
+            parentId: null,
+            depth: 0,
+            sortOrder: 0,
+            createdAt: "2026-10-23T00:00:00Z",
+            updatedAt: "2026-10-23T00:00:00Z",
+          },
+        ],
+      }),
     );
+    expect(markup).toContain('aria-current="page"');
+    expect(markup).toContain("category=cups");
   });
 
   it("provides responsive image sizing on product detail pages", async () => {
@@ -72,13 +96,38 @@ describe("frontend visual foundations", () => {
     expect(productPage).toContain('sizes="(max-width: 767px) 88vw, 50vw"');
   });
 
-  it("uses an order-summary landmark in the cart", async () => {
-    const cartPage = await readFile(
-      path.join(workspaceRoot, "apps/storefront/app/[locale]/cart/page.tsx"),
-      "utf8",
+  it("uses an order-summary landmark in the cart", () => {
+    const html = renderToStaticMarkup(
+      createElement(CartContents, {
+        locale: "en",
+        currency: "USD",
+        precision: 2,
+        cart: {
+          id: "cart",
+          revision: 1,
+          subtotalCents: 1000,
+          itemCount: 1,
+          items: [
+            {
+              id: "item",
+              variantId: "variant",
+              sku: "SKU",
+              title: "Blue",
+              productTitle: "Cup",
+              productHandle: "cup",
+              priceCents: 1000,
+              quantity: 1,
+              lineTotalCents: 1000,
+              isAvailable: true,
+              imageKey: null,
+            },
+          ],
+        },
+      }),
     );
-
-    expect(cartPage).toContain("aria-label={textFor(locale).common.summary}");
+    expect(html).toContain(
+      `<aside aria-label="${textFor("en").common.summary}"`,
+    );
   });
 
   it("requires an explicit order selection before CSV or XLSX export", () => {

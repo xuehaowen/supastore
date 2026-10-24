@@ -49,6 +49,9 @@ export interface GetQuoteInput {
   shippingAddress: {
     country: string;
     address: string;
+    recipientName?: string;
+    line2?: string;
+    city?: string;
     region?: string;
     postalCode?: string;
   };

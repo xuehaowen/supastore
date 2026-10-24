@@ -1,5 +1,6 @@
 import { accountView, cartView, orderView } from "./customer-page-view";
 import { localizeCategories } from "@/application/use-cases/catalog/localize";
+import { categoryNavigation } from "@/domain/catalog/category-navigation";
 import { listProducts } from "@/application/use-cases/catalog/list-products";
 import { db } from "@/infrastructure/db";
 import {
@@ -50,6 +51,7 @@ type Serialized<T> = T extends Date
 type MatchesPublicContracts<T extends CustomerPageModels> = T;
 /** Fail compilation when a backend response no longer implements its HTTP contract. */
 export type CustomerPageContractCheck = MatchesPublicContracts<{
+  collections: Serialized<Awaited<ReturnType<typeof collectionsPage>>>;
   layout: Serialized<Awaited<ReturnType<typeof layoutPage>>>;
   catalog: Serialized<Awaited<ReturnType<typeof catalogPage>>>;
   product: Serialized<Awaited<ReturnType<typeof productPage>>>;
@@ -175,7 +177,9 @@ export async function catalogPage(locale: string, query: PageQuery = {}) {
       .where(eq(productCollections.isPublished, true))
       .orderBy(
         sql`case when exists(select 1 from store_settings s, jsonb_array_elements_text(coalesce(s.storefront_hero->'featuredCollectionIds', '[]'::jsonb)) f(id) where f.id=${productCollections.id}::text) then 0 else 1 end`,
-        productCollections.title,
+        productCollections.sortOrder,
+        productCollections.handle,
+        productCollections.id,
       )
       .limit(25),
     db.select().from(categories).orderBy(categories.sortOrder, categories.slug),
@@ -195,10 +199,60 @@ export async function catalogPage(locale: string, query: PageQuery = {}) {
             ),
           )
       : [],
-    localizeCategories(categoryRows, locale, store?.defaultLocale ?? "en"),
+    localizeCategories(
+      categoryNavigation(categoryRows),
+      locale,
+      store?.defaultLocale ?? "en",
+    ),
   ]);
 
   return { result, store, facets, collections, collectionTitles, groups };
+}
+
+export async function collectionsPage(
+  locale: string,
+  query: { page?: string },
+) {
+  const pageSize = 24;
+  const requested = Number(query.page || "1");
+  const [count] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(productCollections)
+    .where(eq(productCollections.isPublished, true));
+  const total = count?.total ?? 0;
+  const page = Math.min(
+    Math.max(1, Number.isSafeInteger(requested) ? requested : 1),
+    Math.max(1, Math.ceil(total / pageSize)),
+  );
+  const [collections, store] = await Promise.all([
+    db
+      .select()
+      .from(productCollections)
+      .where(eq(productCollections.isPublished, true))
+      .orderBy(
+        productCollections.sortOrder,
+        productCollections.handle,
+        productCollections.id,
+      )
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+    publicStore(),
+  ]);
+  const collectionTitles = collections.length
+    ? await db
+        .select()
+        .from(collectionTranslations)
+        .where(
+          and(
+            eq(collectionTranslations.locale, locale),
+            inArray(
+              collectionTranslations.collectionId,
+              collections.map((item) => item.id),
+            ),
+          ),
+        )
+    : [];
+  return { collections, collectionTitles, store, page, pageSize, total };
 }
 export async function cartPage(locale: string) {
   const identity = await guestIdentity();

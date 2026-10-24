@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Label } from "@supastore/ui/label";
-import { Input } from "@supastore/ui/input";
+import { CustomerInput as Input } from "./customer-form";
 import { textFor } from "@supastore/i18n/messages";
 export function CheckoutCredit({
   availableCents,

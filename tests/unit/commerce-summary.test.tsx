@@ -49,6 +49,21 @@ it("shows shopping estimates without promising reserved stock or earned credit",
   expect(html).toContain("not reserved");
   expect(html).toContain("verified account");
 });
+it("shows a delivery cost including free delivery without inventing missing estimates", () => {
+  const result = preview();
+  result.deliveryEstimateCents = 800;
+  expect(
+    renderToStaticMarkup(<CommerceSummary preview={result} locale="en" />),
+  ).toContain("$8.00");
+  result.deliveryEstimateCents = 0;
+  expect(
+    renderToStaticMarkup(<CommerceSummary preview={result} locale="en" />),
+  ).toContain("$0.00");
+  result.deliveryEstimateCents = null;
+  expect(
+    renderToStaticMarkup(<CommerceSummary preview={result} locale="en" />),
+  ).not.toContain("Estimated delivery cost");
+});
 it("asks for missing context without displaying a fabricated price and supports Chinese", () => {
   const html = renderToStaticMarkup(
     <CommerceSummary preview={preview(true)} locale="en" />,

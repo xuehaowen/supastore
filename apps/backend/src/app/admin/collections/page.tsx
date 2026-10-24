@@ -21,6 +21,7 @@ import {
 } from "@supastore/ui/table";
 import { Badge } from "@supastore/ui/badge";
 import { saveCollectionAction } from "@/app/admin/catalog-actions";
+import { NavigationOrder } from "../navigation-order";
 export default async function Collections({
   searchParams,
 }: {
@@ -42,7 +43,11 @@ export default async function Collections({
       })
       .from(productCollections)
       .where(sql`${productCollections.title} ilike ${pattern}`)
-      .orderBy(asc(productCollections.title), asc(productCollections.id))
+      .orderBy(
+        asc(productCollections.sortOrder),
+        asc(productCollections.handle),
+        asc(productCollections.id),
+      )
       .limit(26)
       .offset((page - 1) * 25);
   });
@@ -55,7 +60,9 @@ export default async function Collections({
         <h1>Collections</h1>
         <p className="admin-description">
           Curate product groups for your storefront. Products can belong to
-          multiple collections.
+          multiple collections. Storefront order uses lower numbers first; ties
+          use the handle. Homepage featured collections keep their separate
+          order in Storefront settings.
         </p>
         <div className="admin-page-actions">
           <AdminDialog trigger="Add collection" title="Add collection">
@@ -89,6 +96,7 @@ export default async function Collections({
                 <TableHead>Handle</TableHead>
                 <TableHead>Products</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Storefront order</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -106,6 +114,16 @@ export default async function Collections({
                     </Badge>
                   </TableCell>
                   <TableCell>
+                    <NavigationOrder
+                      kind="collection"
+                      id={collection.id}
+                      name={collection.title}
+                      position={collection.sortOrder}
+                      search={search}
+                      page={page}
+                    />
+                  </TableCell>
+                  <TableCell>
                     <Link href={`/admin/collections/${collection.id}`}>
                       Manage
                     </Link>
@@ -114,7 +132,7 @@ export default async function Collections({
               ))}
               {!rows.length && (
                 <TableRow>
-                  <TableCell colSpan={5}>
+                  <TableCell colSpan={6}>
                     No collections match this search.
                   </TableCell>
                 </TableRow>

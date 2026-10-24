@@ -2,8 +2,11 @@
 
 import { useState, useMemo } from "react";
 import { Button } from "@supastore/ui/button";
-import { NativeSelect } from "@supastore/ui/native-select";
-import { Input } from "@supastore/ui/input";
+import {
+  CustomerInput as Input,
+  CustomerSelect as NativeSelect,
+  CustomerFieldError,
+} from "./customer-form";
 import { textFor } from "@supastore/i18n/messages";
 import type { CheckoutDefaults } from "./checkout-state";
 import {
@@ -244,6 +247,7 @@ function PickupCalendar({
         )}
       </div>
       <input type="hidden" name="pickupDate" value={selectedDate} required />
+      {!selectedDate && <CustomerFieldError name="pickupDate" />}
     </div>
   );
 }
@@ -296,6 +300,11 @@ export function CheckoutFields({
     retainSchedule ? (initial.pickupTime ?? "") : "",
   );
   const [street, setStreet] = useState(initial.address ?? "");
+  const [recipientName, setRecipientName] = useState(
+    initial.recipientName ?? "",
+  );
+  const [line2, setLine2] = useState(initial.line2 ?? "");
+  const [city, setCity] = useState(initial.city ?? "");
   const [country, setCountry] = useState(initial.country || "US");
   const [region, setRegion] = useState(initial.region ?? "");
   const [postalCode, setPostalCode] = useState(initial.postalCode ?? "");
@@ -345,23 +354,18 @@ export function CheckoutFields({
                     (a) => a.id === event.target.value,
                   );
                   if (saved) {
-                    setStreet(
-                      [
-                        saved.address.name,
-                        saved.address.line1,
-                        saved.address.line2,
-                        saved.address.city,
-                        saved.address.region,
-                        saved.address.postalCode,
-                      ]
-                        .filter(Boolean)
-                        .join(", "),
-                    );
+                    setStreet(saved.address.line1 || "");
+                    setRecipientName(saved.address.name || "");
+                    setLine2(saved.address.line2 || "");
+                    setCity(saved.address.city || "");
                     setCountry(saved.address.country || "US");
                     setRegion(saved.address.region || "");
                     setPostalCode(saved.address.postalCode || "");
                   } else {
                     setStreet("");
+                    setRecipientName("");
+                    setLine2("");
+                    setCity("");
                     setCountry("US");
                     setRegion("");
                     setPostalCode("");
@@ -378,13 +382,44 @@ export function CheckoutFields({
             </label>
           )}
           <label>
+            {labels.address.name}
+            <Input
+              name="recipientName"
+              autoComplete="shipping name"
+              maxLength={200}
+              value={recipientName}
+              onChange={(event) => setRecipientName(event.target.value)}
+            />
+          </label>
+          <label>
             {labels.streetAddress}
             <Input
               name="address"
               required
-              autoComplete="street-address"
+              autoComplete="shipping address-line1"
+              maxLength={2000}
               value={street}
               onChange={(event) => setStreet(event.target.value)}
+            />
+          </label>
+          <label>
+            {labels.address.line2}
+            <Input
+              name="line2"
+              autoComplete="shipping address-line2"
+              maxLength={200}
+              value={line2}
+              onChange={(event) => setLine2(event.target.value)}
+            />
+          </label>
+          <label>
+            {labels.address.city}
+            <Input
+              name="city"
+              autoComplete="shipping address-level2"
+              maxLength={200}
+              value={city}
+              onChange={(event) => setCity(event.target.value)}
             />
           </label>
           <label>

@@ -21,6 +21,8 @@ export function ProductCard({
     coverImageKey: string | null;
     previewImageKey?: string | null;
     lowestPriceCents: number | null;
+    highestPriceCents?: number | null;
+    isAvailable?: boolean;
   };
   locale: string;
   currency?: string | undefined;
@@ -77,7 +79,12 @@ export function ProductCard({
             )}
             {product.lowestPriceCents === null
               ? "—"
-              : money(product.lowestPriceCents, currency, precision, locale)}
+              : `${product.highestPriceCents != null && product.highestPriceCents > product.lowestPriceCents ? `${textFor(locale).ui.priceFrom} ` : ""}${money(product.lowestPriceCents, currency, precision, locale)}`}
+            {product.isAvailable === false && (
+              <small className="block text-xs text-muted-foreground">
+                {textFor(locale).unavailable}
+              </small>
+            )}
           </span>
         </div>
         <NavigationPending label={textFor(locale).common.wait} />

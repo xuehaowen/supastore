@@ -37,7 +37,9 @@ test("evaluated free pickup works without payment methods while a paid quote req
       .check();
     await page.getByRole("button", { name: /Review your order/ }).click();
     await expect(
-      page.getByText(/Choose an active payment method/),
+      page
+        .locator('[data-slot="alert"]')
+        .filter({ hasText: "Choose an active payment method" }),
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: /Accept total & place order/ }),

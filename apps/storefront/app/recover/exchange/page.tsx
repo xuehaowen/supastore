@@ -4,7 +4,7 @@ import { DocumentLanguage } from "../../../../../packages/i18n/src/document-lang
 import { exchangeLink } from "../../actions";
 import { localeOf } from "../../../lib/web";
 import { Hidden } from "../../components";
-import { Button } from "@supastore/ui/button";
+import { CustomerSubmit as Button } from "../../customer-submit";
 import { Card, CardContent } from "@supastore/ui/card";
 export const metadata = { robots: { index: false, follow: false } };
 export default async function Exchange({
@@ -27,7 +27,7 @@ export default async function Exchange({
           <form className="grid gap-4" action={exchangeLink}>
             <Hidden name="token" value={token ?? ""} />
             <Hidden name="locale" value={locale} />
-            <Button type="submit">
+            <Button locale={locale}>
               {textFor(locale).common.continueToOrder}
             </Button>
           </form>

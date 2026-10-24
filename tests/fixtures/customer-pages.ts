@@ -62,6 +62,14 @@ const collection = {
   updatedAt: timestamp,
 };
 export const pages = {
+  collections: {
+    store,
+    collections: [collection],
+    collectionTitles: [],
+    page: 1,
+    pageSize: 24,
+    total: 1,
+  },
   layout: { store, session: null },
   catalog: {
     store,

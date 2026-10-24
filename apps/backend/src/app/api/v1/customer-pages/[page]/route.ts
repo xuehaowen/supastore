@@ -4,6 +4,7 @@ import {
   catalogPage,
   checkoutPage,
   collectionPage,
+  collectionsPage,
   layoutPage,
   orderPage,
   productPage,
@@ -29,6 +30,8 @@ export async function GET(
         return layoutPage();
       case "catalog":
         return catalogPage(locale, { ...query, options });
+      case "collections":
+        return collectionsPage(locale, query);
       case "product":
         return productPage(locale, apiText(query, "handle", 120));
       case "cart":

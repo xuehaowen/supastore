@@ -1,16 +1,18 @@
 import { BackendApiError } from "../../../../lib/api";
 import { readPage } from "../../../../lib/page-data";
 import { acceptProposal } from "../../../actions";
-import { Field, Hidden, Notice } from "../../../components";
+import { Hidden, Notice } from "../../../components";
+import { CustomerField as Field } from "../../../customer-field";
+import { CustomerForm, CustomerInput as Input } from "../../../customer-form";
+import { CustomerSubmit as Button } from "../../../customer-submit";
+import { ShippingAddress } from "../../../shipping-address";
 import { claimOrderAction } from "../../../customer-actions";
 import { CopyButton, Uploader } from "../../../interactive";
 import { requestReturnAction } from "../../../return-actions";
 import type { QuoteTerms } from "@supastore/contracts";
 import { Alert, AlertDescription, AlertTitle } from "@supastore/ui/alert";
 import { Badge } from "@supastore/ui/badge";
-import { Button } from "@supastore/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@supastore/ui/card";
-import { Input } from "@supastore/ui/input";
 import { formatLocalDate, statusLabel } from "@supastore/i18n/customer";
 import { textFor } from "@supastore/i18n/messages";
 import { money } from "../../../../lib/web";
@@ -144,7 +146,11 @@ export default async function OrderPage({
                 current: false,
               },
             ].map((item, idx) => (
-              <div key={idx} className="flex flex-col items-center">
+              <div
+                key={idx}
+                className="flex flex-col items-center"
+                aria-current={item.current ? "step" : undefined}
+              >
                 <div
                   className={`flex size-7 items-center justify-center rounded-full text-xs font-semibold ${
                     item.done
@@ -175,7 +181,7 @@ export default async function OrderPage({
         <form action={claimOrderAction} className="mb-5">
           <Hidden name="locale" value={locale} />
           <Hidden name="orderId" value={id} />
-          <Button type="submit" variant="outline">
+          <Button locale={locale} variant="outline">
             {t("order.addToAccount")}
           </Button>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -187,6 +193,56 @@ export default async function OrderPage({
         {statusLabel(order.lifecycleStatus, locale)} ·{" "}
         {statusLabel(fulfillment?.status, locale)}
       </Badge>
+      <section
+        className="mb-6 rounded-xl border p-5"
+        aria-labelledby="order-fulfillment-details"
+      >
+        <h2 id="order-fulfillment-details" className="mb-3 font-medium">
+          {textFor(locale).ui.fulfillmentDetails}
+        </h2>
+        <p className="mb-2">
+          {terms.fulfillmentType === "pickup"
+            ? textFor(locale).pickup
+            : terms.fulfillmentType === "local_delivery"
+              ? textFor(locale).checkoutDetails.localDelivery
+              : textFor(locale).shipping}
+        </p>
+        {terms.fulfillmentType !== "pickup" && (
+          <ShippingAddress
+            address={order.shippingAddress ?? terms.shippingAddress}
+            locale={locale}
+          />
+        )}
+        {terms.pickup && (
+          <p>
+            {terms.pickup.address}
+            <br />
+            {terms.pickup.date &&
+              formatLocalDate(terms.pickup.date, locale)}{" "}
+            {terms.pickup.startTime} – {terms.pickup.endTime} {store?.timezone}
+          </p>
+        )}
+        {terms.delivery?.date && (
+          <p>
+            {formatLocalDate(terms.delivery.date, locale)}{" "}
+            {terms.delivery.startTime} – {terms.delivery.endTime}{" "}
+            {store?.timezone}
+          </p>
+        )}
+        {fulfillment?.trackingNumber && (
+          <div className="mt-4 grid gap-2">
+            <p>
+              {fulfillment.carrier} · {textFor(locale).ui.trackingNumber}:{" "}
+              <span className="break-all">{fulfillment.trackingNumber}</span>
+            </p>
+            <CopyButton
+              value={fulfillment.trackingNumber}
+              label={textFor(locale).ui.copyTracking}
+              locale={locale}
+            />
+          </div>
+        )}
+      </section>
       <dl className="grid grid-cols-2 gap-4 border-t pt-5">
         <dt>{t("order.total")}</dt>
         <dd className="m-0 text-right">
@@ -293,7 +349,11 @@ export default async function OrderPage({
               <CardTitle>{t("order.requestReturn")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <form action={requestReturnAction} className="grid gap-4">
+              <CustomerForm
+                locale={locale}
+                action={requestReturnAction}
+                className="grid gap-4"
+              >
                 <Hidden name="locale" value={locale} />
                 <Hidden name="orderId" value={id} />
                 <Hidden name="requestKey" value={randomUUID()} />
@@ -319,8 +379,8 @@ export default async function OrderPage({
                   ) : null;
                 })}
                 <Field name="reason" label={t("order.returnReason")} />
-                <Button type="submit">{t("order.submitReturn")}</Button>
-              </form>
+                <Button locale={locale}>{t("order.submitReturn")}</Button>
+              </CustomerForm>
             </CardContent>
           </Card>
         )}
@@ -345,7 +405,7 @@ export default async function OrderPage({
               <Hidden name="locale" value={locale} />
               <Hidden name="orderId" value={id} />
               <Hidden name="proposalId" value={proposal.id} />
-              <Button type="submit">
+              <Button locale={locale}>
                 {textFor(locale).common.acceptNewTotal}
               </Button>
             </form>

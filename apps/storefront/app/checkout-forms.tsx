@@ -16,11 +16,15 @@ const CheckoutCredit = dynamic(() =>
   import("./checkout-credit").then((module) => module.CheckoutCredit),
 );
 import type { CheckoutDefaults, CheckoutActionState } from "./checkout-state";
-import { Hidden, Notice } from "./components";
+import { Hidden } from "./components";
+import {
+  CustomerForm,
+  CustomerInput as Input,
+  CustomerSelect as NativeSelect,
+  CustomerCheckbox,
+} from "./customer-form";
 import { Button } from "@supastore/ui/button";
-import { Input } from "@supastore/ui/input";
 import { Label } from "@supastore/ui/label";
-import { NativeSelect } from "@supastore/ui/native-select";
 import { textFor } from "@supastore/i18n/messages";
 import type {
   ShippingDestinationRule,
@@ -82,13 +86,17 @@ export function CheckoutDetailsForm({
   const m = t.checkoutDetails;
   const [previewRevision, setPreviewRevision] = useState(0);
   return (
-    <form
+    <CustomerForm
+      locale={locale}
+      error={state.error}
+      fieldErrors={state.fieldErrors}
+      requestId={state.requestId}
+      busy={pending}
       className="grid gap-5"
       action={action}
       onSubmit={(event) => submitCheckout(event, action)}
       onChange={() => setPreviewRevision((value) => value + 1)}
     >
-      <Notice error={state.error} locale={locale} requestId={state.requestId} />
       <Hidden name="locale" value={locale} />
       <Hidden name="cartId" value={cartId} />
       <CheckoutFields
@@ -135,9 +143,9 @@ export function CheckoutDetailsForm({
         />
       )}
       <Button type="submit" size="lg" disabled={pending || !methods.length}>
-        {t.review} →
+        {pending ? t.form.reviewing : t.review} →
       </Button>
-    </form>
+    </CustomerForm>
   );
 }
 
@@ -170,12 +178,16 @@ export function CheckoutOrderForm({
   const [accepted, setAccepted] = useState(false);
   const t = textFor(locale);
   return (
-    <form
+    <CustomerForm
+      locale={locale}
+      error={state.error}
+      fieldErrors={state.fieldErrors}
+      requestId={state.requestId}
+      busy={pending}
       className="grid gap-4"
       action={action}
       onSubmit={(event) => submitCheckout(event, action)}
     >
-      <Notice error={state.error} locale={locale} requestId={state.requestId} />
       <Hidden name="locale" value={locale} />
       <Hidden name="quoteId" value={quoteId} />
       <Label className="grid gap-2">
@@ -221,21 +233,19 @@ export function CheckoutOrderForm({
           }
         />
       )}
-      <Label className="flex items-start gap-3 font-normal">
-        <input
-          className="mt-0.5 size-4 shrink-0"
-          type="checkbox"
-          name="accepted"
-          value="yes"
-          required
-          checked={accepted}
-          onChange={(event) => setAccepted(event.target.checked)}
-        />
-        {t.acceptTerms}
-      </Label>
+      <CustomerCheckbox
+        label={t.acceptTerms}
+        className="mt-0.5 size-4 shrink-0"
+        type="checkbox"
+        name="accepted"
+        value="yes"
+        required
+        checked={accepted}
+        onChange={(event) => setAccepted(event.target.checked)}
+      />
       <Button type="submit" disabled={pending}>
-        {t.place}
+        {pending ? t.form.placing : t.place}
       </Button>
-    </form>
+    </CustomerForm>
   );
 }

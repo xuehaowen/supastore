@@ -5,6 +5,7 @@ import { serverRequest, actionFailure } from "../lib/server-request";
 import { localeOf } from "../lib/web";
 import { customerError } from "@supastore/i18n/customer";
 import type { CheckoutActionState } from "./checkout-state";
+import { checkoutFieldErrors } from "../lib/checkout-field-errors";
 
 const text = (form: FormData, key: string) =>
   String(form.get(key) ?? "").trim();
@@ -66,6 +67,29 @@ export async function changeItem(form: FormData) {
     );
   });
 }
+export async function updateCartItem(
+  form: FormData,
+): Promise<{ saved?: boolean; error?: string; requestId?: string }> {
+  try {
+    await serverRequest(
+      "cart",
+      {
+        locale: locale(form),
+        itemId: text(form, "itemId"),
+        quantity: Number(text(form, "quantity")),
+      },
+      "PATCH",
+    );
+    revalidatePath("/[locale]", "layout");
+    return { saved: true };
+  } catch (error) {
+    const failure = actionFailure(error, "storefront.update-cart-item");
+    return {
+      error: customerError(failure.message, locale(form)),
+      ...(failure.requestId ? { requestId: failure.requestId } : {}),
+    };
+  }
+}
 export async function quoteCheckout(
   _previous: CheckoutActionState,
   form: FormData,
@@ -75,8 +99,10 @@ export async function quoteCheckout(
     id = resultId(await serverRequest("quotes", Object.fromEntries(form)));
   } catch (error) {
     const failure = actionFailure(error, "checkout.quote");
+    const fieldErrors = checkoutFieldErrors(failure.message, locale(form));
     return {
       error: customerError(failure.message, locale(form)),
+      ...(fieldErrors ? { fieldErrors } : {}),
       ...(failure.requestId ? { requestId: failure.requestId } : {}),
     };
   }
@@ -97,8 +123,10 @@ export async function placeCheckout(
     );
   } catch (error) {
     const failure = actionFailure(error, "checkout.place");
+    const fieldErrors = checkoutFieldErrors(failure.message, locale(form));
     return {
       error: customerError(failure.message, locale(form)),
+      ...(fieldErrors ? { fieldErrors } : {}),
       ...(failure.requestId ? { requestId: failure.requestId } : {}),
     };
   }

@@ -22,6 +22,9 @@ export function parseQuoteRequest(
   const pickupLocationId = optionalUuid("pickupLocationId");
   const paymentAccountId = optionalUuid("paymentAccountId");
   const deliveryAreaId = optionalUuid("deliveryAreaId");
+  const recipientName = text("recipientName", 200);
+  const line2 = text("line2", 200);
+  const city = text("city", 200);
   return {
     cartId: parseActionUuid(text("cartId", 36, true), "Cart"),
     fulfillmentType: parseActionEnum(
@@ -31,6 +34,9 @@ export function parseQuoteRequest(
     ),
     country: text("country", 2).toUpperCase(),
     address: text("address", 2000),
+    ...(recipientName ? { recipientName } : {}),
+    ...(line2 ? { line2 } : {}),
+    ...(city ? { city } : {}),
     region: text("region", 12).toUpperCase(),
     postalCode: text("postalCode", 40),
     pickupDate: text("pickupDate", 10),

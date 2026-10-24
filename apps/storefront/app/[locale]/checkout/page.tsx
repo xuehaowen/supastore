@@ -354,6 +354,10 @@ export default async function Checkout({
                       ? {
                           ...initial.input,
                           address: initial.shippingAddress.address,
+                          recipientName:
+                            initial.shippingAddress.recipientName ?? "",
+                          line2: initial.shippingAddress.line2 ?? "",
+                          city: initial.shippingAddress.city ?? "",
                           country: initial.shippingAddress.country,
                           region: initial.shippingAddress.region ?? "",
                           postalCode: initial.shippingAddress.postalCode ?? "",
