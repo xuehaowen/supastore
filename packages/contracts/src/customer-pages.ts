@@ -276,7 +276,12 @@ export interface CustomerPageModels {
           inclusiveTaxCents: number;
           totalPayableCents: number;
           discountCents: number;
-          itemsSnapshot: unknown;
+          itemsSnapshot: Array<{
+            variantId: string;
+            title: string;
+            quantity: number;
+            unitPriceCents: number;
+          }>;
           shippingSnapshot: unknown;
           expiresAt: string;
           createdAt: string;
@@ -294,7 +299,12 @@ export interface CustomerPageModels {
           inclusiveTaxCents: number;
           totalPayableCents: number;
           discountCents: number;
-          itemsSnapshot: unknown;
+          itemsSnapshot: Array<{
+            variantId: string;
+            title: string;
+            quantity: number;
+            unitPriceCents: number;
+          }>;
           shippingSnapshot: unknown;
           expiresAt: string;
           createdAt: string;

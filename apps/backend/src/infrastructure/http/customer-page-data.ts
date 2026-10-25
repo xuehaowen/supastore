@@ -40,6 +40,8 @@ import { commercePolicy } from "@/domain/commerce-policy";
 import { pickupAvailability } from "@/domain/pickup-availability";
 import { parseActionUuid } from "@/application/common/request-validation";
 import type { CustomerPageModels } from "@supastore/contracts";
+import { parse } from "valibot";
+import { quoteItemsSnapshotSchema } from "@supastore/contracts/customer-page-validation";
 import { smsReadiness } from "@supastore/contracts";
 import { smsEnrollmentAvailable } from "@/infrastructure/bootstrap/notification-providers";
 
@@ -400,7 +402,15 @@ export async function checkoutPage(locale: string, query: PageQuery = {}) {
             ),
           )
       : [];
-  const savedQuote = ownedQuote?.quote;
+  const savedQuote = ownedQuote?.quote
+    ? {
+        ...ownedQuote.quote,
+        itemsSnapshot: parse(
+          quoteItemsSnapshotSchema,
+          ownedQuote.quote.itemsSnapshot,
+        ),
+      }
+    : undefined;
   const quote = query.edit === "1" ? undefined : savedQuote;
   const initial = savedQuote?.termsSnapshot as QuoteTerms | undefined;
   const customerUserId = await customerIdentity();

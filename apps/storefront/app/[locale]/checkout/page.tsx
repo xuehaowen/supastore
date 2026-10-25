@@ -92,6 +92,29 @@ export default async function Checkout({
               <CardTitle>{t("finalOrderTotal")}</CardTitle>
             </CardHeader>
             <CardContent>
+              <section className="mb-6" aria-label={designCopy(locale).summary}>
+                <h2 className="mb-3">{designCopy(locale).summary}</h2>
+                <ul className="space-y-3">
+                  {quote.itemsSnapshot.map((item) => (
+                    <li
+                      key={item.variantId}
+                      className="flex justify-between gap-4 text-sm"
+                    >
+                      <span>
+                        {item.quantity} × {item.title}
+                      </span>
+                      <span className="shrink-0 tabular-nums">
+                        {money(
+                          item.unitPriceCents * item.quantity,
+                          store?.currency,
+                          store?.precision,
+                          locale,
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
               <a href={`/${locale}/checkout?quote=${quote.id}&edit=1`}>
                 {t("editFulfillment")}
               </a>
@@ -295,6 +318,11 @@ export default async function Checkout({
                     >
                       <span>
                         {item.quantity} × {item.productTitle}
+                        {item.title && (
+                          <span className="block text-muted-foreground">
+                            {item.title}
+                          </span>
+                        )}
                       </span>
                       <span className="shrink-0 tabular-nums">
                         {money(
@@ -396,6 +424,11 @@ export default async function Checkout({
                     >
                       <span>
                         {item.quantity} × {item.productTitle}
+                        {item.title && (
+                          <span className="block text-muted-foreground">
+                            {item.title}
+                          </span>
+                        )}
                       </span>
                       <span className="shrink-0 tabular-nums">
                         {money(

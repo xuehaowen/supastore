@@ -225,6 +225,14 @@ const dates = v.array(
   }),
 );
 const schedule = v.record(text, v.array(v.tuple([text, text])));
+export const quoteItemsSnapshotSchema = v.array(
+  v.object({
+    variantId: id,
+    title: text,
+    quantity: amount,
+    unitPriceCents: amount,
+  }),
+);
 const quote = v.object({
   id,
   cartId: id,
@@ -236,8 +244,7 @@ const quote = v.object({
   inclusiveTaxCents: amount,
   totalPayableCents: amount,
   discountCents: amount,
-  // Opaque persisted snapshots are not rendered directly by customer pages.
-  itemsSnapshot: v.array(v.unknown()),
+  itemsSnapshot: quoteItemsSnapshotSchema,
   shippingSnapshot: v.record(text, v.unknown()),
   expiresAt: timestamp,
   createdAt: timestamp,

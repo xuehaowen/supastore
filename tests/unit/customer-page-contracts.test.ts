@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parseCustomerPage } from "@supastore/contracts/customer-page-validation";
+import {
+  parseCustomerPage,
+  quoteItemsSnapshotSchema,
+} from "@supastore/contracts/customer-page-validation";
+import { parse } from "valibot";
 
 import { pages, store, timestamp } from "../fixtures/customer-pages";
 
@@ -103,4 +107,23 @@ describe("customer page HTTP contracts", () => {
       session: null,
     });
   });
+});
+
+it("validates the quoted item fields rendered in checkout without exposing pricing internals", () => {
+  const item = {
+    variantId: "shirt-m",
+    title: "Everyday shirt — Natural / M",
+    quantity: 2,
+    unitPriceCents: 3200,
+  };
+  expect(
+    parse(quoteItemsSnapshotSchema, [{ ...item, taxRateBasisPoints: 1000 }]),
+  ).toEqual([item]);
+  for (const invalid of [
+    { ...item, title: null },
+    { ...item, quantity: "2" },
+    { ...item, unitPriceCents: -1 },
+  ]) {
+    expect(() => parse(quoteItemsSnapshotSchema, [invalid])).toThrow();
+  }
 });
