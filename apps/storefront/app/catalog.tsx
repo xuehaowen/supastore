@@ -1,7 +1,7 @@
 import { localizedStorefrontHero } from "@supastore/contracts";
 import { designCopy } from "../lib/design-copy";
+import { HomeProducts } from "./home-products";
 import { CatalogFilters } from "./catalog-filters";
-import { CategoryNavigation } from "./category-navigation";
 import { readRequestPage } from "../lib/page-data";
 import { textFor } from "@supastore/i18n/messages";
 import Link from "./shopping-link";
@@ -41,11 +41,12 @@ export default async function Catalog({
   )
     .filter(Boolean)
     .slice(0, 4);
+  const catalog = await readRequestPage("catalog", locale, {
+    ...query,
+    home: showHero ? "1" : undefined,
+  });
   const { result, store, facets, collections, collectionTitles, groups } =
-    await readRequestPage("catalog", locale, {
-      ...query,
-      home: showHero ? "1" : undefined,
-    });
+    catalog;
   const m = designCopy(locale);
   const navigation = { ...query, collectionPage };
   const selectedCollection = collections.find(
@@ -67,12 +68,12 @@ export default async function Catalog({
     locale,
     branding?.defaultLocale,
   );
-  const featuredCollections = showHero
-    ? (branding?.storefrontHero?.featuredCollectionIds ?? []).flatMap((id) => {
-        const collection = collections.find((item) => item.id === id);
-        return collection ? [collection] : [];
+  const homeProducts = showHero
+    ? await HomeProducts({
+        locale,
+        catalog,
       })
-    : [];
+    : null;
   const about = policyPresentation(branding, locale, "about")?.content;
   const introductionCharacters = Array.from(
     (about || t("subtitle")).replace(/\s+/g, " ").trim(),
@@ -99,7 +100,7 @@ export default async function Catalog({
     <>
       {collectionPage && selectedCollection ? (
         <header className="storefront-collection storefront-collection-heading">
-          <Link href={`/${locale}`}>← {textFor(locale).all}</Link>
+          <Link href={`/${locale}/search`}>← {textFor(locale).all}</Link>
           <h1>{selectedCollectionTitle?.title ?? selectedCollection.title}</h1>
           <p>
             {selectedCollectionTitle?.description ??
@@ -135,7 +136,7 @@ export default async function Catalog({
             <p className="catalog-hero-description">
               {hero?.body || introduction}
             </p>
-            <a className="catalog-hero-link" href="#collection">
+            <a className="catalog-hero-link" href="#products">
               {m.browse} <span aria-hidden="true">↓</span>
             </a>
           </div>
@@ -174,309 +175,235 @@ export default async function Catalog({
           </p>
         </header>
       )}
-      <section id="collection">
-        {featuredCollections.length > 0 && (
-          <section
-            className="catalog-featured-collections"
-            aria-labelledby="featured-collections-heading"
-          >
-            <h2 id="featured-collections-heading">{m.featuredCollections}</h2>
-            <div>
-              {featuredCollections.map((collection) => {
-                const translated = collectionTitles.find(
-                  (item) => item.collectionId === collection.id,
-                );
-                return (
-                  <Link
-                    key={collection.id}
-                    href={`/${locale}/collections/${collection.handle}`}
-                  >
-                    {collection.imageKey && (
-                      <Image
-                        src={`/api/assets?key=${encodeURIComponent(collection.imageKey)}&inline=1`}
-                        alt={
-                          collection.imageAlt ||
-                          translated?.title ||
-                          collection.title
-                        }
-                        width={600}
-                        height={400}
-                        sizes="(max-width: 767px) 90vw, 30vw"
-                      />
-                    )}
-                    <span>
-                      {translated?.title || collection.title}
-                      <span aria-hidden="true">↗</span>
-                    </span>
-                    {(translated?.description || collection.description) && (
-                      <p>{translated?.description || collection.description}</p>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          </section>
-        )}
-        {!collectionPage &&
-          collections.some(
-            (collection) =>
-              !featuredCollections.some((item) => item.id === collection.id),
-          ) && (
-            <nav
-              className="catalog-collection-nav"
-              aria-label={textFor(locale).ui.collections}
-            >
-              {collections
-                .filter(
-                  (collection) =>
-                    !featuredCollections.some(
-                      (item) => item.id === collection.id,
-                    ),
-                )
-                .map((collection) => (
-                  <Link
-                    key={collection.id}
-                    href={catalogHref(locale, navigation, {
-                      collection: collection.handle,
-                      collectionPage: true,
-                    })}
-                  >
-                    {collectionTitles.find(
-                      (item) => item.collectionId === collection.id,
-                    )?.title ?? collection.title}
-                  </Link>
-                ))}
-            </nav>
-          )}
-        {!collectionPage && (
-          <a
-            className="collection-directory-link"
-            href={`/${locale}/collections`}
-          >
-            {textFor(locale).ui.viewAllCollections}{" "}
-            <span aria-hidden="true">→</span>
-          </a>
-        )}
-        <div className="storefront-catalog-tools">
-          <h2>{m.collection}</h2>
-          <form
-            className="flex gap-2 max-sm:w-full"
-            action={catalogPath(locale, navigation)}
-          >
-            <label className="sr-only" htmlFor="search">
-              {t("search")}
-            </label>
-            <Input
-              id="search"
-              name="q"
-              placeholder={t("search")}
-              defaultValue={query.q}
-            />
-            {query.category && (
-              <input type="hidden" name="category" value={query.category} />
-            )}
-            {query.collection && !collectionPage && (
-              <input type="hidden" name="collection" value={query.collection} />
-            )}
-            {query.sort && (
-              <input type="hidden" name="sort" value={query.sort} />
-            )}
-            {selectedOptions.map((value) => (
-              <input key={value} type="hidden" name="options" value={value} />
-            ))}
-            <Button type="submit">{t("searchButton")}</Button>
-          </form>
-          <CatalogSort
-            locale={locale}
-            query={{
-              q: query.q || "",
-              category: query.category || "",
-              collection: query.collection || "",
-              collectionPage,
-              sort: query.sort || "",
-              options: selectedOptions,
-            }}
-          />
-        </div>
-        <nav
-          className="catalog-category-nav"
-          aria-label={textFor(locale).common.categories}
-        >
-          <a
-            className={
-              "rounded-full border px-3 py-1.5 no-underline transition-colors " +
-              (!query.category
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-transparent hover:border-border hover:bg-muted")
-            }
-            href={catalogHref(locale, navigation, { category: "" })}
-            aria-current={query.category ? undefined : "page"}
-          >
-            {t("all")}
-          </a>
-          <CategoryNavigation
-            groups={groups}
-            locale={locale}
-            query={navigation}
-          />
-        </nav>
-        <CatalogFilters
-          key={JSON.stringify([
-            query.q,
-            query.category,
-            query.collection,
-            query.sort,
-            selectedOptions,
-          ])}
-          locale={locale}
-          facets={facets}
-          selected={selectedOptions}
-          query={query.q || ""}
-          sort={query.sort || "recommended"}
-          category={query.category || ""}
-          collection={query.collection || ""}
-          collectionPage={collectionPage}
-          categories={groups}
-          collections={collections.map((collection) => ({
-            handle: collection.handle,
-            title:
-              collectionTitles.find(
-                (item) => item.collectionId === collection.id,
-              )?.title ?? collection.title,
-          }))}
-        />
-        {(query.category ||
-          (!collectionPage && query.collection) ||
-          selectedOptions.length > 0) && (
-          <nav
-            className="catalog-active-filters"
-            aria-label={textFor(locale).ui.activeFilters}
-          >
-            {query.category && (
-              <a href={catalogHref(locale, navigation, { category: "" })}>
-                {groups.find((group) => group.slug === query.category)?.name ??
-                  query.category}
-                <span className="sr-only"> · {t("remove")}</span>{" "}
-                <span aria-hidden="true">×</span>
-              </a>
-            )}
-            {!collectionPage && selectedCollection && (
-              <a href={catalogHref(locale, navigation, { collection: "" })}>
-                {selectedCollectionTitle?.title ?? selectedCollection.title}
-                <span className="sr-only"> · {t("remove")}</span>{" "}
-                <span aria-hidden="true">×</span>
-              </a>
-            )}
-            {selectedOptions.map((option) => (
-              <a
-                key={option}
-                href={catalogHref(locale, navigation, {
-                  options: selectedOptions.filter((value) => value !== option),
-                })}
+      {showHero ? (
+        homeProducts
+      ) : (
+        <section id="collection">
+          <div className="catalog-controls">
+            <div className="storefront-catalog-tools">
+              <form
+                className="flex gap-2 max-sm:w-full"
+                action={catalogPath(locale, navigation)}
               >
-                {facets.find(
-                  (facet) => `${facet.attribute}:${facet.value}` === option,
-                )?.label ?? option}
-                <span className="sr-only"> · {t("remove")}</span>{" "}
-                <span aria-hidden="true">×</span>
-              </a>
-            ))}
-            <a href={catalogHref(locale, navigation, clearFilters)}>
-              {textFor(locale).ui.clearFilters}
-            </a>
-          </nav>
-        )}
-        <div className="storefront-product-grid">
-          {result.items.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              hasContextualRules={store?.hasContextualRules ?? false}
-              locale={locale}
-              currency={store?.currency}
-              precision={store?.precision}
-            />
-          ))}
-        </div>
-        {!result.items.length && (
-          <Alert className="storefront-empty">
-            <AlertDescription>
-              {textFor(locale).common.noProducts}
-              {query.q && <p>{textFor(locale).ui.searchRecovery}</p>}
+                <label className="sr-only" htmlFor="search">
+                  {m.searchProducts}
+                </label>
+                <Input
+                  id="search"
+                  name="q"
+                  placeholder={m.searchProducts}
+                  defaultValue={query.q}
+                />
+                {query.category && (
+                  <input type="hidden" name="category" value={query.category} />
+                )}
+                {query.collection && !collectionPage && (
+                  <input
+                    type="hidden"
+                    name="collection"
+                    value={query.collection}
+                  />
+                )}
+                {query.sort && (
+                  <input type="hidden" name="sort" value={query.sort} />
+                )}
+                {selectedOptions.map((value) => (
+                  <input
+                    key={value}
+                    type="hidden"
+                    name="options"
+                    value={value}
+                  />
+                ))}
+                <Button type="submit">{t("searchButton")}</Button>
+              </form>
+              {!showHero && (
+                <CatalogSort
+                  locale={locale}
+                  query={{
+                    q: query.q || "",
+                    category: query.category || "",
+                    collection: query.collection || "",
+                    collectionPage,
+                    sort: query.sort || "",
+                    options: selectedOptions,
+                  }}
+                />
+              )}
+            </div>
+            {!showHero && (
+              <CatalogFilters
+                key={JSON.stringify([
+                  query.q,
+                  query.category,
+                  query.collection,
+                  query.sort,
+                  selectedOptions,
+                ])}
+                locale={locale}
+                facets={facets}
+                selected={selectedOptions}
+                query={query.q || ""}
+                sort={query.sort || "recommended"}
+                category={query.category || ""}
+                collection={query.collection || ""}
+                collectionPage={collectionPage}
+                categories={groups}
+                collections={collections.map((collection) => ({
+                  handle: collection.handle,
+                  title:
+                    collectionTitles.find(
+                      (item) => item.collectionId === collection.id,
+                    )?.title ?? collection.title,
+                }))}
+              />
+            )}
+          </div>
+          {(query.category ||
+            (!collectionPage && query.collection) ||
+            selectedOptions.length > 0) && (
+            <nav
+              className="catalog-active-filters"
+              aria-label={textFor(locale).ui.activeFilters}
+            >
               {query.category && (
                 <a href={catalogHref(locale, navigation, { category: "" })}>
-                  {textFor(locale).ui.removeCategory}
+                  {groups.find((group) => group.slug === query.category)
+                    ?.name ?? query.category}
+                  <span className="sr-only"> · {t("remove")}</span>{" "}
+                  <span aria-hidden="true">×</span>
                 </a>
               )}
-              {(query.category ||
-                query.collection ||
-                selectedOptions.length > 0) && (
-                <a href={catalogHref(locale, navigation, clearFilters)}>
-                  {textFor(locale).ui.clearFilters}
+              {!collectionPage && selectedCollection && (
+                <a href={catalogHref(locale, navigation, { collection: "" })}>
+                  {selectedCollectionTitle?.title ?? selectedCollection.title}
+                  <span className="sr-only"> · {t("remove")}</span>{" "}
+                  <span aria-hidden="true">×</span>
                 </a>
               )}
-              <a href={"/" + locale}>{t("all")}</a>
-              {query.q && groups.length > 0 && (
-                <nav
-                  className="search-recovery-categories"
-                  aria-label={textFor(locale).ui.browseCategories}
+              {selectedOptions.map((option) => (
+                <a
+                  key={option}
+                  href={catalogHref(locale, navigation, {
+                    options: selectedOptions.filter(
+                      (value) => value !== option,
+                    ),
+                  })}
                 >
-                  <p>{textFor(locale).ui.browseCategories}</p>
-                  {groups.slice(0, 6).map((group) => (
-                    <a
-                      key={group.id}
-                      href={catalogHref(locale, {
-                        ...navigation,
-                        q: "",
-                        category: group.slug,
-                        options: [],
-                      })}
-                    >
-                      {group.name}
-                    </a>
-                  ))}
-                </nav>
-              )}
-            </AlertDescription>
-          </Alert>
-        )}
-        <nav
-          className="storefront-pagination"
-          aria-label={textFor(locale).ui.pagination}
-        >
-          {result.page > 1 && (
-            <a href={pageHref(result.page - 1)}>
-              ← {textFor(locale).common.previous}
-            </a>
+                  {facets.find(
+                    (facet) => `${facet.attribute}:${facet.value}` === option,
+                  )?.label ?? option}
+                  <span className="sr-only"> · {t("remove")}</span>{" "}
+                  <span aria-hidden="true">×</span>
+                </a>
+              ))}
+              <a href={catalogHref(locale, navigation, clearFilters)}>
+                {textFor(locale).ui.clearFilters}
+              </a>
+            </nav>
           )}
-          {result.page * result.pageSize < result.total && (
-            <a href={pageHref(result.page + 1)}>
-              {textFor(locale).common.next} →
-            </a>
+          <div className="storefront-product-grid">
+            {result.items.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                hasContextualRules={store?.hasContextualRules ?? false}
+                locale={locale}
+                currency={store?.currency}
+                precision={store?.precision}
+              />
+            ))}
+          </div>
+          {!result.items.length && (
+            <Alert className="storefront-empty">
+              <AlertDescription>
+                {textFor(locale).common.noProducts}
+                {query.q && <p>{textFor(locale).ui.searchRecovery}</p>}
+                {query.category && (
+                  <a href={catalogHref(locale, navigation, { category: "" })}>
+                    {textFor(locale).ui.removeCategory}
+                  </a>
+                )}
+                {(query.category ||
+                  query.collection ||
+                  selectedOptions.length > 0) && (
+                  <a href={catalogHref(locale, navigation, clearFilters)}>
+                    {textFor(locale).ui.clearFilters}
+                  </a>
+                )}
+                <a href={`/${locale}/search`}>{t("all")}</a>
+                {query.q && groups.length > 0 && (
+                  <nav
+                    className="search-recovery-categories"
+                    aria-label={textFor(locale).ui.browseCategories}
+                  >
+                    <p>{textFor(locale).ui.browseCategories}</p>
+                    {groups.slice(0, 6).map((group) => (
+                      <a
+                        key={group.id}
+                        href={catalogHref(locale, {
+                          ...navigation,
+                          q: "",
+                          category: group.slug,
+                          options: [],
+                        })}
+                      >
+                        {group.name}
+                      </a>
+                    ))}
+                  </nav>
+                )}
+              </AlertDescription>
+            </Alert>
           )}
-          {result.total > 0 && (
-            <p className="catalog-page-position">
-              {textFor(locale)
-                .ui.pagePosition.replace("{page}", String(result.page))
-                .replace(
-                  "{pages}",
-                  String(Math.ceil(result.total / result.pageSize)),
-                )}{" "}
-              ·{" "}
-              {textFor(locale)
-                .ui.resultRange.replace(
-                  "{first}",
-                  String((result.page - 1) * result.pageSize + 1),
-                )
-                .replace(
-                  "{last}",
-                  String(Math.min(result.page * result.pageSize, result.total)),
-                )
-                .replace("{total}", String(result.total))}
-            </p>
+          <nav
+            className="storefront-pagination"
+            aria-label={textFor(locale).ui.pagination}
+          >
+            {result.page > 1 && (
+              <a href={pageHref(result.page - 1)}>
+                ← {textFor(locale).common.previous}
+              </a>
+            )}
+            {result.page * result.pageSize < result.total && (
+              <a href={pageHref(result.page + 1)}>
+                {textFor(locale).common.next} →
+              </a>
+            )}
+            {result.total > 0 && (
+              <p className="catalog-page-position">
+                {textFor(locale)
+                  .ui.pagePosition.replace("{page}", String(result.page))
+                  .replace(
+                    "{pages}",
+                    String(Math.ceil(result.total / result.pageSize)),
+                  )}{" "}
+                ·{" "}
+                {textFor(locale)
+                  .ui.resultRange.replace(
+                    "{first}",
+                    String((result.page - 1) * result.pageSize + 1),
+                  )
+                  .replace(
+                    "{last}",
+                    String(
+                      Math.min(result.page * result.pageSize, result.total),
+                    ),
+                  )
+                  .replace("{total}", String(result.total))}
+              </p>
+            )}
+          </nav>
+          {!collectionPage && collections.length > 0 && (
+            <Link
+              className="collection-directory-link"
+              href={`/${locale}/collections`}
+            >
+              {textFor(locale).ui.viewAllCollections} →
+            </Link>
           )}
-        </nav>
-      </section>
+        </section>
+      )}
     </>
   );
 }

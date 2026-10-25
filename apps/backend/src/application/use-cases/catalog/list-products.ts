@@ -20,22 +20,39 @@ export interface ListProductsInput {
   sort?: "recommended" | "newest" | "price-low" | "price-high";
   optionValues?: { attribute: string; value: string }[];
   featuredFirst?: boolean;
+  homepage?: boolean;
 }
 export async function listProducts(input: ListProductsInput = {}) {
   return db.transaction(async (tx) => {
     await tx.execute(sql`set local pg_trgm.similarity_threshold = 0.15`);
-    const page = Math.max(1, Math.floor(input.page || 1));
+    const page = input.homepage ? 1 : Math.max(1, Math.floor(input.page || 1));
     const pageSize = Math.max(
       1,
-      Math.min(100, Math.floor(input.pageSize || 24)),
+      Math.min(100, Math.floor(input.homepage ? 6 : input.pageSize || 24)),
     );
     const conditions = [eq(products.isPublished, true)];
     const [settings] = await tx.select().from(storeSettings).limit(1);
-    const recommended = !input.sort || input.sort === "recommended";
+    const recommended =
+      !input.homepage && (!input.sort || input.sort === "recommended");
     const featured =
-      input.featuredFirst && recommended
+      input.homepage || (input.featuredFirst && recommended)
         ? (settings?.storefrontHero?.featuredProductIds ?? [])
         : [];
+    if (input.homepage && featured.length) {
+      const published = await tx
+        .select({ id: products.id })
+        .from(products)
+        .where(
+          and(eq(products.isPublished, true), inArray(products.id, featured)),
+        );
+      if (published.length)
+        conditions.push(
+          inArray(
+            products.id,
+            published.map((item) => item.id),
+          ),
+        );
+    }
     const editorialOrder = featured.length
       ? [
           sql`array_position(ARRAY[${sql.join(

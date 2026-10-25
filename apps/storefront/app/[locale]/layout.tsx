@@ -86,9 +86,9 @@ export default async function ShopLayout({
               locale={locale}
               shop
               className="transition-colors hover:text-muted-foreground"
-              href={"/" + locale}
+              href={`/${locale}/search`}
             >
-              {t("shop")}
+              {t("all")}
             </StorefrontNavLink>
             <StorefrontNavLink
               locale={locale}

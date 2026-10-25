@@ -21,10 +21,11 @@ export function StorefrontNavLink({
 }) {
   const pathname = usePathname();
   const path = href.split("?", 1)[0]!;
+  const shopRoot = `/${locale}`;
   const active = shop
     ? pathname === path ||
       ["search", "products", "collections", "categories"].some((section) =>
-        pathname.startsWith(`${path}/${section}`),
+        pathname.startsWith(`${shopRoot}/${section}`),
       )
     : pathname === path || pathname.startsWith(`${path}/`);
   return (

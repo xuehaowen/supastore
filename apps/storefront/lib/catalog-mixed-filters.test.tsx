@@ -65,7 +65,8 @@ it("offers a collection selector without requiring variant facets", () => {
   expect(html).toContain('value="bread" selected=""');
   expect(html).toContain("All collections");
   expect(html).toContain("Filters (2)");
-  expect(html).toContain('name="category" value="loaves"');
+  expect(html).toContain('id="desktop-category"');
+  expect(html).toContain('value="loaves" selected=""');
 });
 it("keeps sort submissions within the collection and provides recommended ordering", () => {
   const html = renderToStaticMarkup(
@@ -133,4 +134,6 @@ it("shows a removable collection chip in search and preserves scope in empty-res
     'href="/en/collections/bread?q=unfindable">Remove category',
   );
   expect(empty).toContain("/en/collections/bread?category=loaves");
+  expect(empty).toContain('href="/en/search">all</a>');
+  expect(empty).not.toContain('href="/en">all</a>');
 });

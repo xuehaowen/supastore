@@ -62,8 +62,9 @@ describe("frontend visual foundations", () => {
       "utf8",
     );
 
+    expect(catalog).toContain("catalog-active-filters");
     expect(catalog).toContain(
-      'aria-current={query.category ? undefined : "page"}',
+      "aria-label={textFor(locale).ui.activeFilters}",
     );
     const markup = renderToStaticMarkup(
       createElement(CategoryNavigation, {

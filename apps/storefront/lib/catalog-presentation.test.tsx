@@ -6,32 +6,60 @@ const state = vi.hoisted(() => ({
   image: "catalog/loaf.png",
   about: "Our small bakery's current collection.",
   latestName: "Fixture bakery",
+  featured: [] as string[],
+  noCollections: false,
+  read: vi.fn(),
 }));
 vi.mock("./page-data", () => ({
-  readRequestPage: async (page: string) => ({
-    ...pages.catalog,
-    store: {
-      ...pages.catalog.store,
-      storeName: page === "layout" ? state.latestName : "Fixture bakery",
-      storefrontHero: {
-        imageKey: state.image || null,
-        en: { heading: "", body: "", imageAlt: "Morning loaf" },
-      },
-      publicContent: { en: { about: state.about } },
-    },
-    result: {
-      ...pages.catalog.result,
-      items: [
-        {
-          id: "loaf",
-          handle: "loaf",
-          title: "Morning loaf",
-          coverImageKey: state.image,
-          lowestPriceCents: 500,
+  readRequestPage: async (page: string, locale: string, query: unknown) => {
+    state.read(page, locale, query);
+    return {
+      ...pages.catalog,
+      store: {
+        ...pages.catalog.store,
+        storeName: page === "layout" ? state.latestName : "Fixture bakery",
+        storefrontHero: {
+          imageKey: state.image || null,
+          en: { heading: "", body: "", imageAlt: "Morning loaf" },
+          featuredCollectionIds: state.featured,
         },
+        publicContent: { en: { about: state.about } },
+      },
+      collections: state.noCollections
+        ? []
+        : [
+            {
+              id: "home",
+              handle: "at-home",
+              title: "At home",
+              description: "For home",
+              imageKey: null,
+            },
+            {
+              id: "out",
+              handle: "outdoors",
+              title: "Outdoors",
+              description: "For outside",
+              imageKey: null,
+            },
+          ],
+      groups: [
+        { id: "bakery", slug: "bakery", name: "Bakery", parentId: null },
       ],
-    },
-  }),
+      result: {
+        ...pages.catalog.result,
+        items: [
+          {
+            id: "loaf",
+            handle: "loaf",
+            title: "Morning loaf",
+            coverImageKey: state.image,
+            lowestPriceCents: 500,
+          },
+        ],
+      },
+    };
+  },
 }));
 vi.mock("next-intl/server", () => ({
   getTranslations: async () => (key: string) => key,
@@ -41,6 +69,33 @@ beforeEach(() => {
   state.image = "catalog/loaf.png";
   state.about = "Our small bakery's current collection.";
   state.latestName = "Fixture bakery";
+  state.featured = [];
+  state.noCollections = false;
+  state.read.mockReset();
+});
+it("keeps a single homepage product grid and puts search/filter controls on the products page", async () => {
+  const home = renderToStaticMarkup(
+    await Catalog({ locale: "en", showHero: true }),
+  );
+  expect(home).toContain('href="#products"');
+  expect(home).toContain("Latest products");
+  expect(home).toContain('href="/en/search"');
+  expect(home).not.toContain("catalog-category-nav");
+  expect(home).not.toContain("catalog-collection-nav");
+  expect(home).not.toContain("catalog-sort-form");
+  expect(home).not.toContain("catalog-desktop-filters");
+  expect(home).not.toContain("home-product-section");
+  expect(state.read).toHaveBeenCalledTimes(2);
+  const catalog = renderToStaticMarkup(await Catalog({ locale: "en" }));
+  expect(catalog).toContain("catalog-sort-form");
+  expect(catalog).toContain("catalog-desktop-filters");
+});
+it("localizes the simplified homepage labels", async () => {
+  const html = renderToStaticMarkup(
+    await Catalog({ locale: "zh", showHero: true }),
+  );
+  for (const label of ["立即选购", "选购全部商品", "最新商品"])
+    expect(html).toContain(label);
 });
 it("keeps hero branding current when the anonymous product catalog is cached", async () => {
   state.latestName = "Current bakery name";

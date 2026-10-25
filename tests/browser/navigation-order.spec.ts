@@ -56,18 +56,15 @@ test("owners order siblings while storefront categories stay grouped across lang
     );
     for (const locale of ["en", "zh"]) {
       await page.goto(`/${locale}/search?q=${token}`);
-      const nav = page.locator(".catalog-category-nav");
+      await page.setViewportSize({ width: 1280, height: 900 });
+      const nav = page.locator('.catalog-desktop-filters [name="category"]');
       const order = await nav
-        .locator("a")
+        .locator("option")
         .evaluateAll(
-          (links, prefix) =>
-            links
-              .map((link) =>
-                new URL((link as HTMLAnchorElement).href).searchParams.get(
-                  "category",
-                ),
-              )
-              .filter((value) => value?.startsWith(prefix)),
+          (options, prefix) =>
+            options
+              .map((option) => (option as HTMLOptionElement).value)
+              .filter((value) => value.startsWith(prefix)),
           token,
         );
       expect(order).toEqual(
@@ -75,18 +72,18 @@ test("owners order siblings while storefront categories stay grouped across lang
           (key) => `${token}-${key}`,
         ),
       );
-      const parent = nav.getByRole("link", {
-        name:
-          locale === "en" ? "Navigation parent A" : "中文 Navigation parent A",
-        exact: true,
+      const child = nav.locator("option").filter({
+        hasText:
+          locale === "en" ? "Navigation child A" : "中文 Navigation child A",
       });
-      await expect(
-        parent.locator("..").getByRole("link", {
-          name:
-            locale === "en" ? "Navigation child A" : "中文 Navigation child A",
-          exact: true,
-        }),
-      ).toBeVisible();
+      await expect(child).toHaveText(
+        new RegExp(
+          "— " +
+            (locale === "en"
+              ? "Navigation child A"
+              : "中文 Navigation child A"),
+        ),
+      );
       await page.setViewportSize({ width: 375, height: 812 });
       expect(
         await page.evaluate(
@@ -123,6 +120,10 @@ test("collection positions persist, featured choices stay separate, and all publ
     }
     await sql`insert into product_collections(handle,title,is_published,sort_order) values(${`${token}-draft`},'Hidden navigation draft',false,0)`;
     await sql`update store_settings set storefront_hero=${sql.json({ ...(saved!.storefront_hero ?? {}), featuredCollectionIds: [items[1]!.id, items[0]!.id] })}`;
+    const [product] =
+      await sql`select id from products where handle='studio-cup'`;
+    for (const item of items.slice(0, 2))
+      await sql`insert into product_collection_memberships(collection_id,product_id) values(${item.id},${product!.id})`;
     const last = items.at(-1)!;
     await admin.goto(`/admin/collections?q=${encodeURIComponent(last.title)}`);
     await admin
@@ -146,12 +147,9 @@ test("collection positions persist, featured choices stay separate, and all publ
       }),
     ).toHaveValue("0");
     await page.goto("/en");
-    await expect(
-      page.locator(".catalog-featured-collections a").first(),
-    ).toHaveAttribute("href", `/en/collections/${items[1]!.handle}`);
-    await expect(
-      page.locator(".catalog-featured-collections a").nth(1),
-    ).toHaveAttribute("href", `/en/collections/${items[0]!.handle}`);
+    await page
+      .getByRole("link", { name: "Shop all products", exact: false })
+      .click();
     await page.getByRole("link", { name: "View all collections" }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
       "Collections",

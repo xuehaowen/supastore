@@ -317,7 +317,7 @@
     "photo": "Photo",
     "previousPhoto": "Previous photo",
     "nextPhoto": "Next photo",
-    "featuredCollections": "Collections, considered",
+    "featuredCollections": "Shop by collection",
     "menu": "Menu",
     "close": "Close",
     "shop": "Shop",
@@ -330,8 +330,8 @@
     "filters": "Filters",
     "apply": "Apply filters",
     "clear": "Clear filters",
-    "browse": "Shop the collection",
-    "edit": "A considered collection",
+    "browse": "Shop now",
+    "edit": "Everyday essentials",
     "noImage": "Image coming soon",
     "added": "Added to your bag",
     "viewBag": "View bag",
@@ -344,6 +344,11 @@
     "collection": "Explore the collection",
     "pending": "Adding to your bag…",
     "loading": "Loading the shop…",
-    "subtotalNote": "Shipping, tax and fulfillment options are confirmed at checkout."
+    "subtotalNote": "Shipping, tax and fulfillment options are confirmed at checkout.",
+    "shopAllProducts": "Shop all products",
+    "searchProducts": "Search products",
+    "viewAll": "View all",
+    "selectedProducts": "Selected products",
+    "latestProducts": "Latest products"
   }
 }

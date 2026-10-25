@@ -317,7 +317,7 @@
     "photo": "图片",
     "previousPhoto": "上一张图片",
     "nextPhoto": "下一张图片",
-    "featuredCollections": "用心挑选的系列",
+    "featuredCollections": "按系列选购",
     "menu": "菜单",
     "close": "关闭",
     "shop": "商店",
@@ -330,8 +330,8 @@
     "filters": "筛选",
     "apply": "应用筛选",
     "clear": "清除筛选",
-    "browse": "选购系列",
-    "edit": "用心挑选的日常好物",
+    "browse": "立即选购",
+    "edit": "日常好物",
     "noImage": "图片待更新",
     "added": "已加入购物袋",
     "viewBag": "查看购物袋",
@@ -344,6 +344,11 @@
     "collection": "探索商品系列",
     "pending": "正在加入购物袋…",
     "loading": "正在加载商店…",
-    "subtotalNote": "配送费用、税费及收货方式将在结账时确认。"
+    "subtotalNote": "配送费用、税费及收货方式将在结账时确认。",
+    "shopAllProducts": "选购全部商品",
+    "searchProducts": "搜索商品",
+    "viewAll": "查看全部",
+    "selectedProducts": "精选商品",
+    "latestProducts": "最新商品"
   }
 }

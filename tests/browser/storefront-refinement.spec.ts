@@ -75,9 +75,6 @@ test("owner previews unsaved bilingual crops and orders published homepage merch
         .getByRole("button", { name: /^Remove / })
         .first()
         .click();
-    await editor
-      .getByLabel("Add collection", { exact: true })
-      .selectOption(collection.id);
     for (const product of products)
       await editor
         .getByLabel("Add product", { exact: true })
@@ -115,15 +112,14 @@ test("owner previews unsaved bilingual crops and orders published homepage merch
       "bottom",
     );
     await expect(
-      page
-        .locator(".catalog-featured-collections")
-        .getByRole("link", { name: /Daily rituals/ }),
+      page.getByRole("heading", { name: "Selected products", exact: true }),
     ).toBeVisible();
+    await expect(page.locator(".storefront-product-card")).toHaveCount(2);
     await expect(
       page.locator(".storefront-product-card h3").first(),
     ).toHaveText(products[1]!.title);
     await page.goto("/en/search?q=studio");
-    await expect(page.locator(".catalog-featured-collections")).toHaveCount(0);
+    await expect(page.locator(".home-product-section")).toHaveCount(0);
     await expect(page.locator(".storefront-product-card h3")).toHaveText([
       "Studio cup",
     ]);

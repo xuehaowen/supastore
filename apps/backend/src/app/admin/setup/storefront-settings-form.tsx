@@ -34,8 +34,9 @@ function FeaturedPicker({
     <fieldset className="grid gap-3 rounded-lg border p-4">
       <legend>Featured {kind.toLowerCase()}s</legend>
       <p className="text-sm text-muted-foreground">
-        Choose up to {max}, in display order. Products lead the homepage
-        catalog; collections appear above it.
+        Choose up to {max} products, in display order. Only these products
+        appear on the homepage. Leave this empty to show the six latest
+        published products.
       </p>
       <ol className="grid gap-3">
         {ids.map((id, index) => (
@@ -106,20 +107,15 @@ export function StorefrontSettingsForm({
   defaultLocale,
   images,
   products,
-  collections,
 }: {
   hero: StorefrontHero;
   storeName: string;
   defaultLocale: string;
   images: { key: string; title: string }[];
   products: Choice[];
-  collections: Choice[];
 }) {
   const [draft, setDraft] = useState<StorefrontHero>(hero);
   const [productIds, setProductIds] = useState(hero?.featuredProductIds ?? []);
-  const [collectionIds, setCollectionIds] = useState(
-    hero?.featuredCollectionIds ?? [],
-  );
   const [locale, setLocale] = useState(defaultLocale === "zh" ? "zh" : "en");
   const [width, setWidth] = useState(1440);
   const [space, setSpace] = useState(0);
@@ -208,13 +204,6 @@ export function StorefrontSettingsForm({
         </fieldset>
       ))}
       <FeaturedPicker
-        kind="Collection"
-        ids={collectionIds}
-        setIds={setCollectionIds}
-        choices={collections}
-        max={3}
-      />
-      <FeaturedPicker
         kind="Product"
         ids={productIds}
         setIds={setProductIds}
@@ -227,8 +216,8 @@ export function StorefrontSettingsForm({
       >
         <h3>Preview before saving</h3>
         <p className="text-sm text-muted-foreground">
-          A scaled preview of your unsaved hero and collection links. Product
-          order is applied when you save.
+          A scaled preview of your unsaved hero and selected product titles.
+          Product choices and order are applied when you save.
         </p>
         <div className="flex flex-wrap items-end gap-2">
           <Button
@@ -280,9 +269,8 @@ export function StorefrontSettingsForm({
                 locale,
                 defaultLocale,
                 storeName,
-                collectionIds.map(
-                  (id) =>
-                    collections.find((item) => item.id === id)?.title ?? "",
+                productIds.map(
+                  (id) => products.find((item) => item.id === id)?.title ?? "",
                 ),
               )}
             />

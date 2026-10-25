@@ -5,9 +5,11 @@ import {
   policyPresentation,
 } from "../../lib/page-metadata";
 import { textFor } from "@supastore/i18n/messages";
+import { redirect } from "next/navigation";
 type Query = {
   q?: string;
   category?: string;
+  collection?: string;
   page?: string;
   sort?: string;
   options?: string | string[];
@@ -52,11 +54,22 @@ export default async function Page({
   params: Promise<{ locale: string }>;
   searchParams: Promise<Query>;
 }) {
-  return (
-    <Catalog
-      showHero
-      locale={(await params).locale}
-      query={await searchParams}
-    />
-  );
+  const { locale } = await params;
+  const query = await searchParams;
+  const search = new URLSearchParams();
+  for (const key of [
+    "q",
+    "category",
+    "collection",
+    "page",
+    "sort",
+    "options",
+  ] as const) {
+    const value = query[key];
+    for (const item of Array.isArray(value) ? value : [value]) {
+      if (item) search.append(key, item);
+    }
+  }
+  if (search.size) redirect(`/${locale}/search?${search}`);
+  return <Catalog showHero locale={locale} />;
 }

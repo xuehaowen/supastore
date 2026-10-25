@@ -44,6 +44,35 @@ describe.skipIf(!server)("storefront hero settings", () => {
       await admin.end();
     }
   });
+  it("homepage selection shows only chosen published products and otherwise the six latest", async () => {
+    const rows = [];
+    for (let index = 0; index < 8; index++) {
+      const [row] =
+        await client`insert into products(handle,title,is_published,created_at,is_pinned,sort_order) values(${`home-${index}`},${`Home ${index}`},true,${new Date(Date.UTC(2026, 0, index + 1)).toISOString()},${index === 0},${index}) returning id`;
+      rows.push(row!);
+    }
+    await client`update store_settings set storefront_hero=${JSON.stringify({ imageKey: null, featuredProductIds: [rows[2]!.id, rows[0]!.id] })}::jsonb`;
+    const selected = await listProducts({ homepage: true });
+    expect(selected.items.map((item) => item.id)).toEqual([
+      rows[2]!.id,
+      rows[0]!.id,
+    ]);
+    expect(selected.total).toBe(2);
+    await client`update products set is_published=false where id=${rows[2]!.id}`;
+    expect(
+      (await listProducts({ homepage: true })).items.map((item) => item.id),
+    ).toEqual([rows[0]!.id]);
+    await client`update products set is_published=false where id=${rows[0]!.id}`;
+    expect(
+      (await listProducts({ homepage: true })).items.map((item) => item.handle),
+    ).toEqual(["home-7", "home-6", "home-5", "home-4", "home-3", "home-1"]);
+    await client`update products set is_published=true`;
+    await client`update store_settings set storefront_hero=null`;
+    expect(
+      (await listProducts({ homepage: true })).items.map((item) => item.handle),
+    ).toEqual(["home-7", "home-6", "home-5", "home-4", "home-3", "home-2"]);
+    await client`delete from products where id in ${client(rows.map((row) => row.id))}`;
+  });
   it("migrates existing stores with a null hero and permits clearing without changing quote version", async () => {
     const [before] =
       await client`select storefront_hero,quote_version from store_settings`;

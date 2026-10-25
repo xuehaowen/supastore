@@ -115,10 +115,6 @@ export async function StorefrontSettings({
           (image): image is { key: string; title: string } => !!image.key,
         )}
         products={productChoices}
-        collections={collections.map((collection) => ({
-          id: collection.id,
-          title: collection.title,
-        }))}
       />
     </section>
   );

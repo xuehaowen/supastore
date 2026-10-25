@@ -52,7 +52,24 @@ export function CatalogFilters({
     <>
       <input type="hidden" name="q" value={query} />
       <input type="hidden" name="sort" value={sort} />
-      {prefix === "mobile" && categories.length ? (
+      {!collectionPage && collections.length > 0 && (
+        <label className="grid gap-2" htmlFor={`${prefix}-collection`}>
+          {textFor(locale).ui.collectionFilter}
+          <NativeSelect
+            id={`${prefix}-collection`}
+            name="collection"
+            defaultValue={collection}
+          >
+            <option value="">{textFor(locale).ui.allCollections}</option>
+            {collections.map((item) => (
+              <option key={item.handle} value={item.handle}>
+                {item.title}
+              </option>
+            ))}
+          </NativeSelect>
+        </label>
+      )}
+      {categories.length ? (
         <label className="grid gap-2" htmlFor={`${prefix}-category`}>
           {textFor(locale).ui.categoryFilter}
           <NativeSelect
@@ -71,23 +88,6 @@ export function CatalogFilters({
         </label>
       ) : (
         <input type="hidden" name="category" value={category} />
-      )}
-      {!collectionPage && collections.length > 0 && (
-        <label className="grid gap-2" htmlFor={`${prefix}-collection`}>
-          {textFor(locale).ui.collectionFilter}
-          <NativeSelect
-            id={`${prefix}-collection`}
-            name="collection"
-            defaultValue={collection}
-          >
-            <option value="">{textFor(locale).ui.allCollections}</option>
-            {collections.map((item) => (
-              <option key={item.handle} value={item.handle}>
-                {item.title}
-              </option>
-            ))}
-          </NativeSelect>
-        </label>
       )}
       {axes.map((axis) => (
         <label className="grid gap-2" key={axis} htmlFor={`${prefix}-${axis}`}>
@@ -123,7 +123,14 @@ export function CatalogFilters({
   );
   return (
     <>
-      {(axes.length > 0 || collectionSelector) && (
+      <noscript>
+        <style>{`@media (max-width: 767px) {
+          .catalog-desktop-filters { display: flex; flex-wrap: wrap; gap: 16px; grid-column: 1 / -1; padding: 16px; }
+          .catalog-desktop-filters label { flex: 1 1 120px; min-width: 0; }
+          .catalog-mobile-filters { display: none; }
+        }`}</style>
+      </noscript>
+      {(axes.length > 0 || collectionSelector || categories.length > 0) && (
         <form
           action={catalogPath(locale, state)}
           className="catalog-desktop-filters"

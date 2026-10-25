@@ -10,6 +10,7 @@ const StorefrontSheet = dynamic(() => import("./storefront-sheet"), {
   ssr: false,
 });
 import { Button } from "@supastore/ui/button";
+import { textFor } from "@supastore/i18n/messages";
 import { designCopy } from "../lib/design-copy";
 
 export function StorefrontMenu({
@@ -60,7 +61,7 @@ export function StorefrontMenu({
               {m.shop}
             </Link>
             <Link className="border-b py-4" href={`/${locale}/search`}>
-              {m.search}
+              {textFor(locale).all}
             </Link>
             <Link className="border-b py-4" href={`/${locale}/account`}>
               {accountLabel}

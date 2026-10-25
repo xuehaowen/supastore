@@ -144,7 +144,7 @@ export async function catalogPage(locale: string, query: PageQuery = {}) {
   const [result, store, facets, collections, categoryRows] = await Promise.all([
     listProducts({
       locale,
-      featuredFirst:
+      homepage:
         query.home === "1" &&
         !query.q &&
         !query.category &&
