@@ -127,7 +127,7 @@ describe("backend inline record details", () => {
     expect(expanded).toContain("$22.50");
     expect(expanded).toContain("$10.00");
     expect(expanded).toContain("/admin/orders/order-one");
-    expect(expanded).toContain('colSpan="11"');
+    expect(expanded).toContain('colSpan="12"');
     expect(expanded).toContain("Manage");
   });
   it("keeps customer phone details collapsed until the row is opened", async () => {

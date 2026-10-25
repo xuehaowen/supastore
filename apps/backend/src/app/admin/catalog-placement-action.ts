@@ -5,7 +5,18 @@ import { staffIdentity } from "@/infrastructure/web";
 import { changeCatalogPlacement } from "@/application/use-cases/catalog/change-catalog-placement";
 import { field, perform } from "@/app/actions/common";
 
-export async function saveCatalogPlacement(form: FormData) {
+export async function saveCatalogPlacement(
+  operationOrForm: FormData | string,
+  maybeForm?: FormData,
+) {
+  const form =
+    maybeForm instanceof FormData
+      ? maybeForm
+      : operationOrForm instanceof FormData
+        ? operationOrForm
+        : new FormData();
+  const boundOperation =
+    typeof operationOrForm === "string" ? operationOrForm : undefined;
   const kind = field(form, "kind");
   const scopeId = field(form, "scopeId");
   const path =
@@ -25,7 +36,7 @@ export async function saveCatalogPlacement(form: FormData) {
       kind,
       scopeId,
       id: field(form, "id"),
-      operation: field(form, "operation"),
+      operation: boundOperation || field(form, "operation") || "save",
       position: field(form, "position"),
       expectedPosition: field(form, "expectedPosition"),
       expectedPinned: field(form, "expectedPinned"),

@@ -98,9 +98,9 @@ export function PaymentsView(props: OperationsScreenProps) {
                     <ExpandableTableRow
                       key={receipt.id}
                       columnCount={12}
-                      detailsLabel={`Payment details for ${receipt.referenceCode}`}
-                      expandLabel={`Show payment ${receipt.referenceCode}`}
-                      collapseLabel={`Hide payment ${receipt.referenceCode}`}
+                      detailsLabel={`Payment details for ${receipt.referenceCode ?? receipt.normalizedReference ?? receipt.id}`}
+                      expandLabel={`Show payment ${receipt.referenceCode ?? receipt.normalizedReference ?? receipt.id}`}
+                      collapseLabel={`Hide payment ${receipt.referenceCode ?? receipt.normalizedReference ?? receipt.id}`}
                       details={
                         <div className="space-y-4">
                           <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -181,9 +181,15 @@ export function PaymentsView(props: OperationsScreenProps) {
                     >
                       <TableCell>
                         <strong className="whitespace-nowrap font-mono">
-                          {receipt.referenceCode}
+                          {receipt.referenceCode ?? receipt.normalizedReference}
                         </strong>
-                        <CopyReference value={receipt.referenceCode} />
+                        <CopyReference
+                          value={
+                            receipt.referenceCode ??
+                            receipt.normalizedReference ??
+                            ""
+                          }
+                        />
                       </TableCell>
                       <TableCell>
                         <a

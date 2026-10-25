@@ -47,6 +47,7 @@ export function CatalogPlacement({
       />
       <Button
         type="submit"
+        formAction={saveCatalogPlacement.bind(null, "save")}
         name="operation"
         value="save"
         variant="outline"
@@ -57,6 +58,7 @@ export function CatalogPlacement({
       </Button>
       <Button
         type="submit"
+        formAction={saveCatalogPlacement.bind(null, "up")}
         name="operation"
         value="up"
         variant="ghost"
@@ -68,6 +70,7 @@ export function CatalogPlacement({
       </Button>
       <Button
         type="submit"
+        formAction={saveCatalogPlacement.bind(null, "down")}
         name="operation"
         value="down"
         variant="ghost"
@@ -79,6 +82,7 @@ export function CatalogPlacement({
       </Button>
       <Button
         type="submit"
+        formAction={saveCatalogPlacement.bind(null, "top")}
         name="operation"
         value="top"
         variant="outline"
@@ -90,6 +94,7 @@ export function CatalogPlacement({
       </Button>
       <Button
         type="submit"
+        formAction={saveCatalogPlacement.bind(null, pinned ? "unpin" : "pin")}
         name="operation"
         value={pinned ? "unpin" : "pin"}
         variant={pinned ? "secondary" : "outline"}
