@@ -90,6 +90,7 @@ interface ProductEntry {
   description?: string;
   isPublished?: boolean;
   categories?: string[]; // slugs defined in categories.yaml
+  specifications?: Record<string, string>;
   variants: Array<{
     sku: string;
     title: string;

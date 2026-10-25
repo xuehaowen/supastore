@@ -1,4 +1,4 @@
-# Stable codes are referenced by variant attributeValues in products.yaml.
+# Stable codes are referenced by variant attributeValues or product specifications in products.yaml.
 - code: color
   name: Color
   sortOrder: 0
@@ -37,3 +37,87 @@
       translations:
         - locale: zh
           label: 大码
+
+# Descriptive specifications match the seeded products and are not variant choices.
+- code: material
+  name: Material
+  kind: descriptive
+  sortOrder: 2
+  translations:
+    - locale: zh
+      name: 材质
+  values:
+    - code: cotton
+      label: 100% cotton
+      translations:
+        - locale: zh
+          label: 100% 棉
+    - code: porcelain
+      label: Porcelain
+      translations:
+        - locale: zh
+          label: 瓷器
+    - code: cotton-canvas
+      label: Cotton canvas
+      translations:
+        - locale: zh
+          label: 棉帆布
+- code: weight
+  name: Weight
+  kind: descriptive
+  sortOrder: 3
+  translations:
+    - locale: zh
+      name: 重量
+  values:
+    - code: 180-g
+      label: 180 g
+      translations:
+        - locale: zh
+          label: 180 克
+    - code: 220-g
+      label: 220 g
+      translations:
+        - locale: zh
+          label: 220 克
+    - code: 320-g
+      label: 320 g
+      translations:
+        - locale: zh
+          label: 320 克
+- code: care
+  name: Care instructions
+  kind: descriptive
+  sortOrder: 4
+  translations:
+    - locale: zh
+      name: 保养说明
+  values:
+    - code: machine-wash-cold
+      label: Machine wash cold
+      translations:
+        - locale: zh
+          label: 冷水机洗
+    - code: dishwasher-safe
+      label: Dishwasher safe
+      translations:
+        - locale: zh
+          label: 可用洗碗机清洗
+    - code: spot-clean
+      label: Spot clean only
+      translations:
+        - locale: zh
+          label: 仅局部清洁
+- code: capacity
+  name: Capacity
+  kind: descriptive
+  sortOrder: 5
+  translations:
+    - locale: zh
+      name: 容量
+  values:
+    - code: 350-ml
+      label: 350 ml
+      translations:
+        - locale: zh
+          label: 350 毫升
