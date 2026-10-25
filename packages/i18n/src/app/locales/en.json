@@ -258,7 +258,8 @@
     "allCollections": "All collections",
     "collectionFilter": "Collection",
     "categoryFilter": "Category",
-    "removeCategory": "Remove category"
+    "removeCategory": "Remove category",
+    "chooseProductOptions": "Choose options"
   },
   "sms": {
     "title": "SMS order updates",

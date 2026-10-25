@@ -258,7 +258,8 @@
     "allCollections": "所有系列",
     "collectionFilter": "系列",
     "categoryFilter": "分类",
-    "removeCategory": "移除分类"
+    "removeCategory": "移除分类",
+    "chooseProductOptions": "请选择选项"
   },
   "sms": {
     "title": "短信订单更新",

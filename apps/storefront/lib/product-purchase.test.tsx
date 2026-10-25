@@ -35,7 +35,7 @@ it("disables a zero-stock variant rather than offering a failed add to cart", ()
   expect(html).toMatch(/type="submit"[^>]*disabled=""/);
   expect(html).not.toContain("Add to bag");
 });
-it("starts with an in-stock variant when the first manually enabled variant is sold out", () => {
+it("previews an in-stock variant but requires an explicit multi-variant choice", () => {
   const product = {
     ...pages.product.purchasable,
     variants: [
@@ -54,6 +54,26 @@ it("starts with an in-stock variant when the first manually enabled variant is s
       availableQuantities={{ variant: 0, "in-stock": 3 }}
     />,
   );
-  expect(html).toMatch(/name="variantId"[^>]*value="in-stock"/);
-  expect(html).toContain("Add to bag");
+  expect(html).toMatch(/name="variantId"[^>]*value=""/);
+  expect(html).toContain("Available quantity: 3");
+  expect(html).toContain("Choose options");
+  expect(html).not.toContain("Add to bag");
+});
+
+it("only offers the full description disclosure when there is more to read", () => {
+  for (const [description, disclosure] of [
+    ["Soft cotton.", false],
+    ["😀".repeat(180), false],
+    ["😀".repeat(181), true],
+  ] as const) {
+    const html = renderToStaticMarkup(
+      <ProductPurchase
+        {...props}
+        product={{ ...pages.product.purchasable, description }}
+      />,
+    );
+    expect(html.includes('<details class="storefront-disclosure')).toBe(
+      disclosure,
+    );
+  }
 });

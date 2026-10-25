@@ -63,7 +63,7 @@ export default async function Product({
       <Breadcrumb aria-label={textFor(locale).shop}>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <Link href={`/${locale}`}>{t("shop")}</Link>
+            <Link href={`/${locale}/search`}>{t("all")}</Link>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>

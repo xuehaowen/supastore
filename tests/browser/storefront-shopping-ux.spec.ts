@@ -8,32 +8,48 @@ test("category changes and filter recovery preserve the shopping search", async 
   const categories =
     await sql`select slug,name from categories order by name limit 2`;
   expect(categories.length).toBeGreaterThan(0);
-  await page.goto(
-    `/en/search?q=missing-shopping-test&sort=price-high&options=color:blue`,
-  );
-  await page
-    .locator(".catalog-category-nav")
-    .getByRole("link", { name: categories[0]!.name, exact: true })
-    .click();
-  let url = new URL(page.url());
-  expect(url.searchParams.get("q")).toBe("missing-shopping-test");
-  expect(url.searchParams.get("sort")).toBe("price-high");
-  expect(url.searchParams.getAll("options")).toEqual(["color:blue"]);
-  await page
-    .getByRole("navigation", { name: "Active filters" })
-    .getByRole("link", { name: /Clear filters/ })
-    .click();
-  await expect
-    .poll(() => new URL(page.url()).searchParams.has("options"))
-    .toBe(false);
-  url = new URL(page.url());
-  expect(url.searchParams.get("q")).toBe("missing-shopping-test");
-  expect(url.searchParams.get("sort")).toBe("price-high");
-  expect(url.searchParams.has("options")).toBe(false);
-  expect(url.searchParams.has("category")).toBe(false);
-  await expect(
-    page.getByRole("navigation", { name: "Active filters" }),
-  ).toHaveCount(0);
+  const axis = `shopping-filter-${randomUUID()}`;
+  const [attribute] =
+    await sql`insert into attributes(code,name,kind) values(${axis},'Shopping option','variant') returning id`;
+  const [cup] = await sql`select id from products where handle='studio-cup'`;
+  await sql`insert into attribute_values(attribute_id,code,label) values(${attribute!.id},'choice','Choice')`;
+  await sql`insert into product_options(product_id,attribute_id) values(${cup!.id},${attribute!.id})`;
+  try {
+    await page.goto(
+      `/en/search?q=missing-shopping-test&sort=price-high&options=${axis}:choice`,
+    );
+    await page
+      .locator('.catalog-desktop-filters [name="category"]')
+      .selectOption(categories[0]!.slug);
+    await page
+      .locator(".catalog-desktop-filters")
+      .getByRole("button", { name: "Apply filters", exact: true })
+      .click();
+    await expect(page).toHaveURL(new RegExp("category=" + categories[0]!.slug));
+    let url = new URL(page.url());
+    expect(url.searchParams.get("q")).toBe("missing-shopping-test");
+    expect(url.searchParams.get("sort")).toBe("price-high");
+    expect(url.searchParams.getAll("options")).toEqual([`${axis}:choice`]);
+    await page
+      .getByRole("navigation", { name: "Active filters" })
+      .getByRole("link", { name: /Clear filters/ })
+      .click();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.has("options"))
+      .toBe(false);
+    url = new URL(page.url());
+    expect(url.searchParams.get("q")).toBe("missing-shopping-test");
+    expect(url.searchParams.get("sort")).toBe("price-high");
+    expect(url.searchParams.has("options")).toBe(false);
+    expect(url.searchParams.has("category")).toBe(false);
+    await expect(
+      page.getByRole("navigation", { name: "Active filters" }),
+    ).toHaveCount(0);
+  } finally {
+    await sql`delete from product_options where attribute_id=${attribute!.id}`;
+    await sql`delete from attribute_values where attribute_id=${attribute!.id}`;
+    await sql`delete from attributes where id=${attribute!.id}`;
+  }
 });
 
 test("cards show purchasable variant prices and unavailable stock", async ({

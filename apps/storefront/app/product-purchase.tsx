@@ -61,6 +61,11 @@ export function ProductPurchase({
       variantCanBePurchased(v, availableQuantities),
     ) || product.variants[0];
   const [variantId, setVariantId] = useState(initial?.id || "");
+  const [confirmedOptions, setConfirmedOptions] = useState<
+    Record<string, string>
+  >({});
+  const [variantConfirmed, setVariantConfirmed] = useState(false);
+  const optionFields = useRef<HTMLDivElement>(null);
   const [activeImageKey, setActiveImageKey] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [zoomOpen, setZoomOpen] = useState(false);
@@ -75,9 +80,10 @@ export function ProductPurchase({
     let frame = 0;
     const update = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() =>
-        setShowSticky(button.getBoundingClientRect().bottom < 0),
-      );
+      frame = requestAnimationFrame(() => {
+        const bounds = button.getBoundingClientRect();
+        setShowSticky(bounds.bottom <= 0 || bounds.top >= window.innerHeight);
+      });
     };
     window.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
@@ -114,6 +120,42 @@ export function ProductPurchase({
   const selected = new Map(
     current?.localizedAttributes.map((a) => [a.code, a.valueCode]) || [],
   );
+  const needsOptions =
+    product.variants.length > 1 &&
+    (normalized
+      ? axes.some((axis) => {
+          const values = new Set(
+            product.variants.flatMap((v) =>
+              v.localizedAttributes
+                .filter((a) => a.code === axis.code)
+                .map((a) => a.valueCode),
+            ),
+          );
+          return (
+            values.size > 1 &&
+            confirmedOptions[axis.code] !== selected.get(axis.code)
+          );
+        })
+      : !variantConfirmed);
+  const chooseOptions = textFor(locale).ui.chooseProductOptions;
+  function focusOptions() {
+    optionFields.current?.scrollIntoView({
+      block: "center",
+      behavior: "smooth",
+    });
+    optionFields.current
+      ?.querySelector<HTMLButtonElement>(
+        'button:not(:disabled), [role="radio"]:not(:disabled)',
+      )
+      ?.focus({ preventScroll: true });
+  }
+  const purchaseLabel = adding
+    ? textFor(locale).common.wait
+    : !canPurchase
+      ? labels.unavailable
+      : needsOptions
+        ? chooseOptions
+        : labels.add;
   const variantImage =
     product.images.find((i) => i.variantId === variantId) ||
     product.images.find((i) => i.variantId === null) ||
@@ -216,6 +258,7 @@ export function ProductPurchase({
               width={800}
               height={800}
               sizes="(max-width: 767px) 88vw, 50vw"
+              priority={activeImage.s3Key === variantImage?.s3Key}
             />
           ) : (
             <span className="product-image-placeholder">
@@ -350,101 +393,143 @@ export function ProductPurchase({
           action={addAction}
           onSubmit={(event) => {
             event.preventDefault();
-            if (!adding) {
+            if (needsOptions) {
+              focusOptions();
+              return;
+            }
+            if (!adding && canPurchase) {
               const data = new FormData(event.currentTarget);
               startTransition(() => addAction(data));
             }
           }}
         >
           <input type="hidden" name="locale" value={locale} />
-          {normalized ? (
-            <>
-              <input
-                type="hidden"
-                name="variantId"
-                value={canPurchase ? variantId : ""}
-              />
-              {axes.map((axis, axisIndex) => {
-                const values = [
-                  ...new Map(
-                    product.variants.flatMap((v) =>
-                      v.localizedAttributes
-                        .filter((a) => a.code === axis.code)
-                        .map((a) => [a.valueCode, a] as const),
-                    ),
-                  ).values(),
-                ];
-                return (
-                  <fieldset
-                    key={axis.code}
-                    className="grid gap-3 rounded-xl border bg-card p-4"
-                  >
-                    <legend className="px-2 text-sm font-medium">
-                      {axis.name}
-                    </legend>
-                    <div className="flex flex-wrap gap-2">
-                      {values.map((value) => {
-                        // Earlier selections constrain later axes; changing an earlier axis
-                        // chooses a valid remaining combination instead of trapping sparse catalogs.
-                        const match = product.variants.find(
-                          (v) =>
-                            variantCanBePurchased(v, availableQuantities) &&
-                            axes
-                              .slice(0, axisIndex + 1)
-                              .every((a) =>
-                                v.localizedAttributes.some(
-                                  (va) =>
-                                    va.code === a.code &&
-                                    va.valueCode ===
-                                      (a.code === axis.code
-                                        ? value.valueCode
-                                        : selected.get(a.code)),
+          <div ref={optionFields} className="grid gap-6">
+            {normalized ? (
+              <>
+                <input
+                  type="hidden"
+                  name="variantId"
+                  value={canPurchase && !needsOptions ? variantId : ""}
+                />
+                {axes.map((axis, axisIndex) => {
+                  const values = [
+                    ...new Map(
+                      product.variants.flatMap((v) =>
+                        v.localizedAttributes
+                          .filter((a) => a.code === axis.code)
+                          .map((a) => [a.valueCode, a] as const),
+                      ),
+                    ).values(),
+                  ];
+                  return (
+                    <fieldset
+                      key={axis.code}
+                      className="grid gap-3 rounded-xl border bg-card p-4"
+                    >
+                      <legend className="px-2 text-sm font-medium">
+                        {axis.name}
+                      </legend>
+                      <div className="flex flex-wrap gap-2">
+                        {values.map((value) => {
+                          // Earlier selections constrain later axes; changing an earlier axis
+                          // chooses a valid remaining combination instead of trapping sparse catalogs.
+                          const match = product.variants.find(
+                            (v) =>
+                              variantCanBePurchased(v, availableQuantities) &&
+                              axes
+                                .slice(0, axisIndex + 1)
+                                .every((a) =>
+                                  v.localizedAttributes.some(
+                                    (va) =>
+                                      va.code === a.code &&
+                                      va.valueCode ===
+                                        (a.code === axis.code
+                                          ? value.valueCode
+                                          : selected.get(a.code)),
+                                  ),
                                 ),
-                              ),
-                        );
-                        return (
-                          <Button
-                            key={value.valueCode}
-                            type="button"
-                            variant={
-                              selected.get(axis.code) === value.valueCode
-                                ? "default"
-                                : "outline"
-                            }
-                            aria-pressed={
-                              selected.get(axis.code) === value.valueCode
-                            }
-                            disabled={!match}
-                            onClick={() => match && selectVariant(match.id)}
-                          >
-                            {value.label}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  </fieldset>
-                );
-              })}
-            </>
-          ) : (
-            <fieldset className="grid gap-3 rounded-xl border bg-card p-4">
-              <legend className="px-2 text-sm font-medium">
-                {textFor(locale).ui.variant}
-              </legend>
-              <input
-                type="hidden"
-                name="variantId"
-                value={canPurchase ? variantId : ""}
-              />
-              <ProductVariantOptions
-                variants={product.variants}
-                selected={variantId}
-                quantities={availableQuantities}
-                onSelect={selectVariant}
-                label={textFor(locale).ui.variant}
-                unavailable={labels.unavailable}
-              />
-            </fieldset>
+                          );
+                          return (
+                            <Button
+                              key={value.valueCode}
+                              type="button"
+                              variant={
+                                selected.get(axis.code) === value.valueCode &&
+                                (product.variants.length === 1 ||
+                                  values.length === 1 ||
+                                  confirmedOptions[axis.code] ===
+                                    value.valueCode)
+                                  ? "default"
+                                  : "outline"
+                              }
+                              aria-pressed={
+                                selected.get(axis.code) === value.valueCode &&
+                                (product.variants.length === 1 ||
+                                  values.length === 1 ||
+                                  confirmedOptions[axis.code] ===
+                                    value.valueCode)
+                              }
+                              disabled={!match}
+                              onClick={() => {
+                                if (!match) return;
+                                selectVariant(match.id);
+                                setConfirmedOptions((previous) => ({
+                                  ...Object.fromEntries(
+                                    Object.entries(previous).filter(
+                                      ([code, confirmed]) =>
+                                        match.localizedAttributes.some(
+                                          (a) =>
+                                            a.code === code &&
+                                            a.valueCode === confirmed,
+                                        ),
+                                    ),
+                                  ),
+                                  [axis.code]: value.valueCode,
+                                }));
+                              }}
+                            >
+                              {value.label}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </fieldset>
+                  );
+                })}
+              </>
+            ) : (
+              <fieldset className="grid gap-3 rounded-xl border bg-card p-4">
+                <legend className="px-2 text-sm font-medium">
+                  {textFor(locale).ui.variant}
+                </legend>
+                <input
+                  type="hidden"
+                  name="variantId"
+                  value={canPurchase && !needsOptions ? variantId : ""}
+                />
+                <ProductVariantOptions
+                  variants={product.variants}
+                  selected={
+                    product.variants.length === 1 || variantConfirmed
+                      ? variantId
+                      : ""
+                  }
+                  quantities={availableQuantities}
+                  onSelect={(id) => {
+                    selectVariant(id);
+                    setVariantConfirmed(true);
+                  }}
+                  label={textFor(locale).ui.variant}
+                  unavailable={labels.unavailable}
+                />
+              </fieldset>
+            )}
+          </div>
+          {needsOptions && (
+            <p className="text-sm text-muted-foreground" role="status">
+              {chooseOptions}
+            </p>
           )}
           {hasContextualRules && !evaluated && (
             <small className="text-muted-foreground">{m.basePriceNotice}</small>
@@ -492,7 +577,10 @@ export function ProductPurchase({
             buttonRef={purchaseButton}
             available={canPurchase}
             pending={adding}
-            labels={labels}
+            labels={{
+              ...labels,
+              add: needsOptions ? chooseOptions : labels.add,
+            }}
             wait={textFor(locale).common.wait}
           />
           {addState.error && (
@@ -516,22 +604,31 @@ export function ProductPurchase({
           >
             <div>
               <p className="font-medium">{product.title}</p>
+              {product.variants.length > 1 && (
+                <p className="text-sm">
+                  {needsOptions
+                    ? chooseOptions
+                    : current?.localizedAttributes.length
+                      ? current.localizedAttributes
+                          .map((a) => `${a.name}: ${a.label}`)
+                          .join(" · ")
+                      : current?.title}
+                </p>
+              )}
               <p className="text-sm">
                 {price} · {labels.quantity}: {selectedQuantity}
               </p>
             </div>
             <Button
-              type="submit"
+              type={needsOptions ? "button" : "submit"}
+              onClick={needsOptions ? focusOptions : undefined}
               form={purchaseFormId}
               size="lg"
               disabled={!canPurchase || adding}
               aria-busy={adding}
+              aria-label={`${textFor(locale).ui.quickPurchase} · ${purchaseLabel}`}
             >
-              {adding
-                ? textFor(locale).common.wait
-                : canPurchase
-                  ? labels.add
-                  : labels.unavailable}
+              {purchaseLabel}
             </Button>
           </aside>
         )}
@@ -546,7 +643,7 @@ export function ProductPurchase({
           <Link href={`/${locale}/pages/shipping`}>{copy.shipping}</Link>
           <Link href={`/${locale}/pages/returns`}>{copy.returns}</Link>
         </div>
-        {product.description && (
+        {Array.from(product.description || "").length > 180 && (
           <details className="storefront-disclosure mt-8">
             <summary>
               {copy.details}
