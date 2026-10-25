@@ -10,7 +10,7 @@ test("public sitemap index links bounded bilingual product pages", async ({
   const index = await page.request.get("/sitemap.xml");
   expect(index.status()).toBe(200);
   expect(index.headers()["content-type"]).toContain("application/xml");
-  expect(await index.text()).toContain("/sitemaps/1.xml");
+  expect(await index.text()).toContain("/sitemaps/products-1.xml");
   const shard = await page.request.get("/sitemaps/1.xml");
   expect(shard.status()).toBe(200);
   const xml = await shard.text();

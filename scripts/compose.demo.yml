@@ -1,0 +1,87 @@
+# Local synthetic demo. No root .env, external providers, or production volumes.
+services:
+  postgres:
+    image: postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+    environment:
+      POSTGRES_DB: supastore_demo
+      POSTGRES_USER: postgres
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale-provider=builtin --builtin-locale=PG_UNICODE_FAST"
+      POSTGRES_PASSWORD: ${DEMO_DB_PASSWORD:?Run scripts/demo.mjs}
+    volumes: [demo_postgres:/var/lib/postgresql]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres -d supastore_demo]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+  rustfs:
+    image: rustfs/rustfs:latest@sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c
+    environment:
+      RUSTFS_ACCESS_KEY: ${DEMO_STORAGE_USER:?Run scripts/demo.mjs}
+      RUSTFS_SECRET_KEY: ${DEMO_STORAGE_PASSWORD:?Run scripts/demo.mjs}
+    ports: ["127.0.0.1:${DEMO_STORAGE_PORT:-3090}:9000"]
+    volumes: [demo_storage:/data]
+  migrate:
+    image: supastore-demo-migrate:local
+    build: { context: .., dockerfile: Dockerfile, target: migrations }
+    environment:
+      DATABASE_URL: postgresql://postgres:${DEMO_DB_PASSWORD}@postgres:5432/supastore_demo
+      APP_DATABASE_USER: supastore_app
+      APP_DATABASE_PASSWORD: ${DEMO_APP_PASSWORD}
+  demo-tools:
+    image: supastore-demo-tools:local
+    build: { context: .., dockerfile: Dockerfile, target: demo-tools }
+    environment:
+      DATABASE_URL: postgresql://postgres:${DEMO_DB_PASSWORD}@postgres:5432/supastore_demo
+      DEMO_SEED: "true"
+      DEMO_OWNER_PASSWORD: DemoStorePassword123!
+      BETTER_AUTH_SECRET: ${DEMO_AUTH_SECRET}
+      ADMIN_SETUP_SECRET: ${DEMO_SETUP_SECRET}
+      STOREFRONT_ORIGIN: http://localhost:${DEMO_PORT:-3080}
+      APP_URL: http://localhost:${DEMO_PORT:-3080}
+      BETTER_AUTH_URL: http://localhost:${DEMO_PORT:-3080}
+      ENABLE_OUTBOX_WORKER: "false"
+      DISABLE_OUTBOUND_DELIVERY: "true"
+      EMAIL_PROVIDER: disabled
+      SMS_PROVIDER: disabled
+      PHONE_VERIFICATION_PROVIDER: disabled
+      S3_ENDPOINT: http://rustfs:9000
+      S3_ACCESS_KEY_ID: ${DEMO_STORAGE_USER}
+      S3_SECRET_ACCESS_KEY: ${DEMO_STORAGE_PASSWORD}
+  backend:
+    image: supastore-demo-backend:local
+    build: { context: .., dockerfile: Dockerfile, target: backend }
+    environment:
+      DATABASE_URL: postgresql://supastore_app:${DEMO_APP_PASSWORD}@postgres:5432/supastore_demo
+      BETTER_AUTH_SECRET: ${DEMO_AUTH_SECRET}
+      ADMIN_SETUP_SECRET: ${DEMO_SETUP_SECRET}
+      STOREFRONT_ORIGIN: http://localhost:${DEMO_PORT:-3080}
+      APP_URL: http://localhost:${DEMO_PORT:-3080}
+      BETTER_AUTH_URL: http://localhost:${DEMO_PORT:-3080}
+      ENABLE_OUTBOX_WORKER: "false"
+      DISABLE_OUTBOUND_DELIVERY: "true"
+      EMAIL_PROVIDER: disabled
+      SMS_PROVIDER: disabled
+      PHONE_VERIFICATION_PROVIDER: disabled
+      S3_ENDPOINT: http://rustfs:9000
+      S3_PUBLIC_ENDPOINT: http://localhost:${DEMO_STORAGE_PORT:-3090}
+      S3_REGION: us-east-1
+      S3_BUCKET_PUBLIC: supastore-public
+      S3_BUCKET_PRIVATE: supastore-private
+      S3_ACCESS_KEY_ID: ${DEMO_STORAGE_USER}
+      S3_SECRET_ACCESS_KEY: ${DEMO_STORAGE_PASSWORD}
+    depends_on:
+      {
+        postgres: { condition: service_healthy },
+        rustfs: { condition: service_started },
+      }
+  storefront:
+    image: supastore-demo-storefront:local
+    build: { context: .., dockerfile: Dockerfile, target: storefront }
+    environment:
+      BACKEND_URL: http://backend:3000
+      STOREFRONT_ORIGIN: http://localhost:${DEMO_PORT:-3080}
+    ports: ["127.0.0.1:${DEMO_PORT:-3080}:3000"]
+    depends_on: { backend: { condition: service_healthy } }
+volumes:
+  demo_postgres:
+  demo_storage:

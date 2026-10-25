@@ -45,14 +45,14 @@ describe.skipIf(!server)(
     beforeAll(async () => {
       admin = postgres(server!);
       await admin.unsafe(
-        `CREATE DATABASE "${name}" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C'`,
+        `CREATE DATABASE "${name}" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'PG_UNICODE_FAST'`,
       );
       const url = new URL(server!);
       url.pathname = `/${name}`;
       client = postgres(url.toString(), { max: 10, onnotice: () => {} });
       active.db = drizzle(client, { schema });
       await migrate(active.db as ReturnType<typeof drizzle>, {
-        migrationsFolder: "src/infrastructure/db/migrations",
+        migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
       });
       await client`insert into staff_memberships(user_id,email,role) values(${owner},'owner@reward.test','owner'),('reward-staff','staff@reward.test','staff')`;
       await client`insert into store_settings(store_name,support_email,setup_completed,email_verified_at) values('Reward fixture','support@reward.test',true,now())`;

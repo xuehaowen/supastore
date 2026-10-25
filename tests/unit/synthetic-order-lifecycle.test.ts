@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { calculatePurchaseTotal } from "@/domain/money/calculations";
-import {
-  generateOrderReferenceCode,
-  validateOrderReferenceCode,
-} from "@/domain/money/reference-code";
 import { computeOrderFinancialProjection } from "@/domain/financial-projection/projection";
 import { classifyPayoutTransfer } from "@/domain/financial-projection/discrepancies";
 import { computeInputFingerprint } from "@/application/common/idempotency";
@@ -16,7 +12,7 @@ describe("Milestone M0: Synthetic domain lifecycle simulation", () => {
 
     // Step 1: Owner Bootstrap & Store Configuration
     const storeSettings = {
-      storeName: "SupaStore Demo",
+      storeName: "Supastore",
       currency: "USD",
       precision: 2,
       isBootstrapCompleted: true,
@@ -86,9 +82,8 @@ describe("Milestone M0: Synthetic domain lifecycle simulation", () => {
     };
     expect(quoteSnapshot.expiresAt.getTime()).toBeGreaterThan(Date.now());
 
-    // Step 4: Convert Quote to Unpaid Order & Generate SP-XXXX Reference
-    const referenceCode = generateOrderReferenceCode("SP");
-    expect(validateOrderReferenceCode(referenceCode, "SP")).toBe(true);
+    // Step 4: Simulate the order number allocated by PostgreSQL.
+    const referenceCode = "ORD-000001";
 
     const order = {
       id: "order-uuid-999",

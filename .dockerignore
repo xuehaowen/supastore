@@ -1,10 +1,13 @@
 node_modules
+.supastore-demo
 .next
 .next-*
 .pnpm-store
 .tmp-*
 .tsconfig-*
 **/.next
+**/.next-*
+**/.tsconfig-*
 **/node_modules
 .test-integration-postgres
 .git

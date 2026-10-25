@@ -1,0 +1,42 @@
+{
+  "profile": {
+    "seed": 20261016,
+    "products": 1000,
+    "variants": 4000,
+    "images": 2000,
+    "historicalOrders": 10000,
+    "fulfillment": "mixed",
+    "rewards": true,
+    "trackedStock": true
+  },
+  "counts": {
+    "products": 1000,
+    "variants": 4000,
+    "images": 2000,
+    "orders": 10000,
+    "categories": 8,
+    "attributes": 2
+  },
+  "images": [
+    {
+      "width": 1200,
+      "height": 900,
+      "mime": "image/png",
+      "sha256": "6f6f7e71614343d4ffb0f9400ae47cf23997b4c56156abde6e6f29e5ab0ac837",
+      "bytes": 82071
+    },
+    {
+      "width": 1200,
+      "height": 900,
+      "mime": "image/png",
+      "sha256": "87e3a339eeb9ed1531010c74151bf273360c44f51f7e896e79ecd88ea7481b68",
+      "bytes": 82077
+    }
+  ],
+  "history": {
+    "completed": 8000,
+    "cancelled": 2000,
+    "customerType": "guest",
+    "generation": "bulk synthetic ledger, not checkout throughput"
+  }
+}

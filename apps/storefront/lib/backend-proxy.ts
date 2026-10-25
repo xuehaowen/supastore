@@ -1,4 +1,5 @@
 import { trustedEdgeClientIP } from "./trusted-edge-ip";
+import { resolveBackendOrigin } from "../../../packages/config/backend-origin.mjs";
 const hopHeaders = [
   "connection",
   "keep-alive",
@@ -18,16 +19,7 @@ function cleanHeaders(source: Headers) {
   return result;
 }
 export async function proxyBackendApi(request: Request) {
-  const backend = new URL(process.env.BACKEND_URL || "http://127.0.0.1:3000");
-  if (
-    !["http:", "https:"].includes(backend.protocol) ||
-    backend.username ||
-    backend.password ||
-    backend.pathname !== "/" ||
-    backend.search ||
-    backend.hash
-  )
-    throw new Error("BACKEND_URL must be an HTTP origin");
+  const backend = new URL(resolveBackendOrigin(process.env));
   const incoming = new URL(request.url);
   if (!incoming.pathname.startsWith("/api/"))
     return new Response(null, { status: 404 });

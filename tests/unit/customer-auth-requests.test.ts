@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { customerAuthRequest } from "@/app/customer-auth-requests";
+import { customerAuthRequest } from "../../apps/storefront/app/customer-auth-requests";
 afterEach(() => vi.unstubAllGlobals());
 it("uses the same-origin auth API and preserves reset token and session revocation intent", async () => {
   const fetch = vi.fn().mockResolvedValue(new Response("{}"));

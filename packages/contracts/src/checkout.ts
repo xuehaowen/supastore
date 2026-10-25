@@ -1,3 +1,8 @@
+export const MAX_ITEM_QUANTITY = 999;
+export const MAX_CART_LINES = 100;
+export const CART_LINE_LIMIT_MESSAGE =
+  "Your bag can contain up to 100 different items. Remove an item before adding another or checking out.";
+
 export interface QuoteDto {
   id: string;
   cartId: string;
@@ -16,6 +21,9 @@ export interface QuoteRequestDto {
   fulfillmentType: "shipping" | "pickup" | "local_delivery";
   country: string;
   address: string;
+  recipientName?: string;
+  line2?: string;
+  city?: string;
   postalCode: string;
   region: string;
   pickupDate: string;
@@ -34,6 +42,7 @@ export interface CreatedOrderDto {
 }
 
 export interface CreateOrderRequestDto {
+  smsPreferenceId?: string;
   locale: "en" | "zh";
   quoteId: string;
   name: string;

@@ -12,6 +12,15 @@ Snapshot the currency/precision, rates, rounding policy, inputs, components and 
 
 ## Generic reward/provenance contract
 
+Contextual commerce evaluation selects prices, offering eligibility, shipping
+minimums, promotion eligibility and a single reward rate before order acceptance.
+Quotes snapshot the settings revision, validated context and matched rule IDs.
+Order creation revalidates these under existing locks; changed terms require
+customer review. Contextual reward rates cannot bypass program, product/category
+or verified-customer eligibility. Accepted snapshots and credit provenance remain
+authoritative after rule changes. See [commerce evaluation](commerce-evaluation.md)
+for precedence and calculation order.
+
 These expansion contracts require migration/use-case acceptance before release. At accepted order creation snapshot policy version, rate (0–10000 basis points), verified linked customer identity and discounted line eligibility. Components include merchandise excluding extracted inclusive tax, tax and fulfillment fees. Let P be their sum and E accepted external funding excluding overpayments. Allocate floor(E*c_i/P), then remaining units by descending remainder, ties lexical component type/immutable ID. P=0 yields zero. Integer minor units and overflow-safe intermediate arithmetic are mandatory. Freeze funding at confirmation; extra receipts do not earn.
 
 Eligible external merchandise basis B earns floor(B*rate/10000), once per order. Completion releases pending entitlement. Original per-component external refunds reduce remaining basis; cumulative target is floor(remainingBasis*originalRate/10000), and incremental reversal is original entitlement minus target minus previously reversed. Tax/fee-only refunds do not reverse merchandise rewards. Later configuration changes do not rewrite accepted snapshots; uncertain source corrections require review.
@@ -67,7 +76,7 @@ Acquire required locks in this order, omitting unused categories:
 
 Resolve immutable owner IDs before locking, then revalidate their associations inside the transaction. Every financial writer locks its order first. A duplicate correction spanning orders acquires all owners before any receipt lock. New-order creation uses the cart lock and unique source-cart constraint. Catalog/quote version changes require a coherent revalidation strategy: lock relevant version rows in a documented sorted order after the store gate and before carts, and make catalog writers follow the same ordering. Do not mix ad hoc lock sequences.
 
-Use unique constraints for source-cart conversion, order references, request identities and normalized incoming/outgoing account references. Generating human-friendly payment references uses a bounded collision retry loop within order creation before failing. Locking prevents aggregate over-allocation; uniqueness prevents duplicate identities. Bounded deadlock/serialization retries rerun the same complete command with the same request key. Never blindly repeat an external payout.
+Use unique constraints for source-cart conversion, order references, request identities and normalized incoming/outgoing account references. Database sequences allocate permanent `ORD-000001` order numbers and `PAY-000001` payment numbers without collision retries. Six digits is a minimum width; gaps after rollbacks are valid. Original transaction references remain separate and unchanged. Locking prevents aggregate over-allocation; uniqueness prevents duplicate identities. Bounded deadlock/serialization retries rerun the same complete command with the same request key. Never blindly repeat an external payout.
 
 ## Request identity
 

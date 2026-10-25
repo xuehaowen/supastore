@@ -60,19 +60,22 @@ export { expect };
 export async function deliveredLink(page: Page, email: string, path: string) {
   let link = "";
   await expect
-    .poll(async () => {
-      const response = await page.request.get("http://127.0.0.1:9010");
-      expect(response.ok()).toBe(true);
-      const messages: string[] = await response.json();
-      const message = [...messages]
-        .reverse()
-        .find((text) => text.includes(email) && text.includes(path));
-      link =
-        message
-          ?.match(/https?:\/\/[^\s<>"']+/g)
-          ?.find((url) => new URL(url).pathname.includes(path)) ?? "";
-      return Boolean(link);
-    })
+    .poll(
+      async () => {
+        const response = await page.request.get("http://127.0.0.1:9010");
+        expect(response.ok()).toBe(true);
+        const messages: string[] = await response.json();
+        const message = [...messages]
+          .reverse()
+          .find((text) => text.includes(email) && text.includes(path));
+        link =
+          message
+            ?.match(/https?:\/\/[^\s<>"']+/g)
+            ?.find((url) => new URL(url).pathname.includes(path)) ?? "";
+        return Boolean(link);
+      },
+      { timeout: 15_000 },
+    )
     .toBe(true);
   return link;
 }
@@ -95,15 +98,34 @@ export async function freeProduct(sql: ReturnType<typeof postgres>) {
 export async function checkout(
   page: Page,
   sql: ReturnType<typeof postgres>,
-  options: { pickup?: boolean; free?: boolean } = {},
+  options: { pickup?: boolean; free?: boolean; quantity?: number } = {},
 ) {
   const handle = options.free ? await freeProduct(sql) : "studio-cup";
+  let pickupId: string | undefined;
+  if (options.pickup) {
+    const schedule = Object.fromEntries(
+      ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].map((day) => [
+        day,
+        [["09:00", "17:00"]],
+      ]),
+    );
+    const [location] =
+      await sql`insert into pickup_location(name,address,weekly_schedule,prep_minutes,schedule_required) values(${"CUJ pickup " + randomUUID()},'Synthetic pickup counter',${JSON.stringify(schedule)}::jsonb,0,true) returning id`;
+    pickupId = location!.id;
+  }
   await page.goto("/en/products/" + handle);
+  for (let quantity = 1; quantity < (options.quantity ?? 1); quantity++)
+    await page
+      .getByRole("button", { name: "Increase quantity", exact: true })
+      .click();
   await page.getByRole("button", { name: "Add to bag" }).click();
+  await page.getByRole("link", { name: "View bag", exact: true }).click();
   await page.getByRole("link", { name: "Continue to checkout" }).click();
   if (options.pickup) {
     await page.getByLabel("Local pickup", { exact: true }).check();
-    await page.locator('input[name="pickupLocationId"]').first().check();
+    await page
+      .locator(`input[name="pickupLocationId"][value="${pickupId}"]`)
+      .check();
     await page
       .locator("button.pickup-calendar-day-btn:not([disabled])")
       .first()
@@ -137,13 +159,22 @@ export async function openOrder(admin: Page, reference: string) {
   await admin.goto(`/admin/orders?q=${encodeURIComponent(reference)}`);
   const row = admin.getByRole("row").filter({ hasText: reference });
   await expect(row).toHaveCount(1);
-  const link = row.getByRole("link", { name: "Manage" });
+  const unpaid = /unpaid|cancelled/.test(await row.innerText());
+  const link = row.getByRole("link", { name: "View order", exact: true });
   const target = new URL((await link.getAttribute("href"))!, admin.url());
   await link.click();
   await admin.waitForURL(target.href);
   await admin.waitForLoadState("load");
+  // Legacy queue dialogs remain covered alongside the primary order workspace.
+  const orderId = target.pathname.split("/").pop()!;
+  await admin.goto(
+    `/admin/${unpaid ? "orders" : "fulfillment"}?manage=${orderId}`,
+  );
   const dialog = admin.getByRole("dialog", { name: "Manage order payment" });
-  if (await dialog.count()) return dialog;
+  if (unpaid) {
+    await expect(dialog).toBeVisible();
+    return dialog;
+  }
   const details = admin.locator("#ready details[open]").filter({
     has: admin.locator("summary", { hasText: reference }),
   });
@@ -166,7 +197,9 @@ export async function record(
   const form = row.locator("form").filter({
     has: admin.getByRole("button", { name: "Record receipt", exact: true }),
   });
-  await form.getByLabel("Received amount (minor units)").fill(String(amount));
+  await form
+    .getByLabel("Received amount (USD)")
+    .fill((amount / 100).toFixed(2));
   await form.getByLabel("Actual bank / cash reference").fill(bankReference);
   await form.getByRole("checkbox").check();
   await submit(form, "Record receipt");

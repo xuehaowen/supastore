@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  computeOrderFinancialProjection,
-  computeReceiptProjection,
-} from "@/domain/financial-projection/projection";
+import { computeOrderFinancialProjection } from "@/domain/financial-projection/projection";
 import { classifyPayoutTransfer } from "@/domain/financial-projection/discrepancies";
 
 describe("Canonical Financial Projection Engine", () => {

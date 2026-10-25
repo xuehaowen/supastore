@@ -19,8 +19,8 @@ function sources(directory: string): string[] {
 it("every literal application notification event is registered and seeded in the migration", () => {
   const emitted = new Set<string>();
   for (const file of [
-    ...sources("src/application"),
-    ...sources("src/infrastructure/auth"),
+    ...sources("apps/backend/src/application"),
+    ...sources("apps/backend/src/infrastructure/auth"),
   ]) {
     const tree = ts.createSourceFile(
       file,
@@ -53,10 +53,15 @@ it("every literal application notification event is registered and seeded in the
       notificationEvents[event],
       `Register templates for ${event}`,
     ).toBeTruthy();
-  const migration = readFileSync(
-    "src/infrastructure/db/migrations/0036_notification_templates.sql",
-    "utf8",
-  );
+  const migration = readdirSync("apps/backend/src/infrastructure/db/migrations")
+    .filter((file) => file.endsWith(".sql"))
+    .map((file) =>
+      readFileSync(
+        join("apps/backend/src/infrastructure/db/migrations", file),
+        "utf8",
+      ),
+    )
+    .join("\n");
   for (const key of requiredTemplates())
     expect(migration).toContain(
       `('${key.event}','${key.channel}','${key.audience}','${key.locale}',`,

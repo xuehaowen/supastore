@@ -27,7 +27,7 @@ Task checkboxes track implementation, not alternative specifications. Section-le
   - _Details:_ Create root `package.json` pinned to Node.js 22 LTS, pnpm, Next.js 15 with App Router and `output: 'standalone'`, React 19, and TypeScript 5.7+ with strict mode enabled (`noImplicitAny`, `strictNullChecks`, `exactOptionalPropertyTypes`).
   - _Verification:_ Run `pnpm build` and `pnpm tsc --noEmit` cleanly with zero type errors.
 - [x] **Configure Drizzle ORM and PostgreSQL driver**
-  - _Details:_ Set up `drizzle-orm` with `postgres.js` driver in `src/infrastructure/db/`. Create `drizzle.config.ts`, migration generator/runner scripts (`pnpm db:generate`, `pnpm db:migrate`), and connection pooling with session isolation for transactional row locks (`SELECT ... FOR UPDATE`).
+  - _Details:_ Set up `drizzle-orm` with `postgres.js` driver in `apps/backend/src/infrastructure/db/`. Create `drizzle.config.ts`, migration generator/runner scripts (`pnpm db:generate`, `pnpm db:migrate`), and connection pooling with session isolation for transactional row locks (`SELECT ... FOR UPDATE`).
   - _Verification:_ Execute migration runner against a local PostgreSQL instance; verify connection lifecycle and connection-pinned transaction rollback.
 - [x] **Configure Valibot schema validation**
   - _Details:_ Configure `valibot` (v1.0+) as the canonical runtime schema validation library across API endpoints, use cases, and client form inputs and measure the resulting validation bundle overhead.
@@ -39,7 +39,7 @@ Task checkboxes track implementation, not alternative specifications. Section-le
   - _Details:_ Set up Vitest (`vitest.config.ts`) for fast ESM unit testing. Configure test helper scripts with Docker PostgreSQL or Testcontainers for integration tests requiring real transactional row locks and advisory locks.
   - _Verification:_ `pnpm test` passes sample unit and database integration tests; record runtime and database startup cost separately.
 - [x] **Environment configuration template and startup validation**
-  - _Details:_ Create `.env.example` defining `DATABASE_URL`, `ADMIN_SETUP_SECRET`, `S3_*`, and `SMTP_*`. Implement a strict startup configuration validator (`src/infrastructure/config.ts`) that asserts valid URLs, non-default secrets in production, and halts boot immediately if required variables are missing.
+  - _Details:_ Create `.env.example` defining `DATABASE_URL`, `ADMIN_SETUP_SECRET`, `S3_*`, and `SMTP_*`. Validate URLs through shared configuration helpers (`packages/config/`), with database and authentication modules rejecting missing credentials or invalid production secrets at their respective entry points.
   - _Verification:_ Server fails boot with human-readable errors when mandatory environment variables are omitted.
 
 ### Slice M0 Data Model & Drizzle Schema
@@ -98,7 +98,7 @@ Contract: [Authorization boundary](architecture-overview.md#authorization-bounda
   - _Details:_ Application quote use case locking the cart, evaluating current variant prices, computing taxes, snapshotting items and calculations into an immutable `quotes` record with 15-minute TTL.
   - _Verification:_ Quote reflects exact price; updating product price after quote creation does not alter the generated quote snapshot.
 - [x] **`createOrder` use case**
-  - _Details:_ Transactional command converting a valid quote into an unpaid `orders` record before showing payment details. Generates Crockford Base32 checksummed `reference_code` (`SP-XXXX`) with bounded collision retry, locks source cart, updates `converted_order_id`, and emits `order.submitted` outbox event.
+  - _Details:_ Transactional command converting a valid quote into an unpaid `orders` record before showing payment details. Allocates a sequential `reference_code` (`ORD-000001`) through PostgreSQL, locks source cart, updates `converted_order_id`, and emits `order.submitted` outbox event.
   - _Verification:_ Multiple simultaneous requests with same cart ID yield exactly one created order; second request returns the existing order.
 - [x] **`recordReceipt` use case**
   - _Details:_ Staff command taking order ID, payment account ID, amount, and reference. Locks order with `SELECT ... FOR UPDATE`, inserts `payment_receipts`, recomputes financial projection, returns the derived payment balance, and persists audit/request results plus applicable events from the event catalog in the same transaction.
@@ -113,7 +113,7 @@ Contract: [Authorization boundary](architecture-overview.md#authorization-bounda
   - _Details:_ Owner command authorizing full/partial original-source refund capped by available receipt capacity $\max(0, R_i - A_i)$. Creates `payout_allocations` and executes `claimPayout` with exclusive single-sender lock, followed by `reconcilePayout` to record settled outgoing transfer.
   - _Verification:_ Verifies that refund cannot exceed original receipt funding and concurrent payout claims block duplicate execution. Claims require an immutable verified original-source destination revision; unverified or mismatched destinations fail, and retry retains the same destination.
 - [x] **In-process transactional outbox worker loop**
-  - _Details:_ Implement `src/infrastructure/worker/outbox.ts` running an asynchronous timer loop (e.g. 5-second interval, initialized via Next.js `instrumentation.ts` on Node runtime) polling `event_deliveries` using `SELECT ... FOR UPDATE SKIP LOCKED` inside a short claim transaction. Persist a unique lease token and expiry, enforce order+recipient+channel sequencing, commit, then call the provider outside the transaction. Only the current lease owner may acknowledge; reuse the delivery identity for provider retries.
+  - _Details:_ Implement `apps/backend/src/infrastructure/worker/outbox.ts` running an asynchronous timer loop (e.g. 5-second interval, initialized via Next.js `instrumentation.ts` on Node runtime) polling `event_deliveries` using `SELECT ... FOR UPDATE SKIP LOCKED` inside a short claim transaction. Persist a unique lease token and expiry, enforce order+recipient+channel sequencing, commit, then call the provider outside the transaction. Only the current lease owner may acknowledge; reuse the delivery identity for provider retries.
   - _Verification:_ Spin up 3 concurrent worker processes; verify one current lease owner per delivery, stale acknowledgments rejected, expired leases recoverable and no repeated business effects. Simulate an uncertain send: reuse provider idempotency where supported and explicitly allow at-least-once email delivery otherwise.
 - [x] **Mock email notification provider adapter**
   - _Details:_ Implement `MockEmailAdapter` recording sent message payloads in memory/database for test verification, logging only redacted metadata to stdout during development.
@@ -139,7 +139,7 @@ Contract: [Authorization boundary](architecture-overview.md#authorization-bounda
 
 - [x] **Public catalog browsing with React Server Components (RSC)**
   - _Details:_ Implement `/` (home) and `/products/[handle]` (PDP) using pure React Server Components with static generation and tag-based revalidation (`revalidateTag('catalog')`). Keep catalog rendering on the server and measure framework runtime plus interactive client code.
-  - _Verification:_ Record Lighthouse results under documented mobile network/CPU throttling; identify blocking time and layout-shift regressions.
+  - _Verification:_ Record browser performance results under documented mobile network/CPU throttling; identify blocking time and layout-shift regressions using the project's browser benchmark tooling.
 - [x] **Product variants, categories, and availability management**
   - _Details:_ Support variant attributes (size, color), category hierarchies, image asset key mapping, and instant manual availability toggles (`is_available: boolean`).
   - _Verification:_ Toggling variant availability immediately reflects on the PDP without restarting the application or rebuilding pages.
@@ -337,8 +337,8 @@ Contract: [Receipt corrections](business-workflows.md#7-receipt-corrections) and
   - _Details:_ Benchmark application container under load simulating 50 concurrent storefront visitors and 5 admin operations on a 1 vCPU, 1GB RAM virtual machine.
   - _Verification:_ Record steady and peak container memory, test duration and errors under the current setup; original memory ceilings are relaxed. Include worker load and document database/storage memory separately before selecting a production capacity budget.
 - [x] **Graceful process termination (`SIGTERM`/`SIGINT`)**
-  - _Details:_ Implement graceful shutdown handler in server entrypoint that stops accepting new HTTP connections, waits for in-flight database transactions to complete (up to 15s timeout), and releases active worker advisory locks.
-  - _Verification:_ Configure the container stop grace period longer than the 15-second drain budget. Verify completed transactions remain committed, interrupted transactions roll back and unacknowledged deliveries recover after lease expiry.
+  - _Details:_ Backend instrumentation installs a 35-second graceful shutdown drain for tracked in-flight work and provider calls before closing transports. Stop scheduling worker jobs during shutdown; database transaction locks end with their transactions.
+  - _Verification:_ Compose allows a 45-second stop grace period, longer than the 35-second drain budget. Verify completed transactions remain committed, interrupted transactions roll back and unacknowledged deliveries recover after lease expiry.
 - [x] **Platform deployment verification**
   - _Details:_ Test and verify deployment recipes for Docker Compose, Coolify, Railway, Fly.io, and managed cloud PostgreSQL (Supabase / Neon / AWS RDS).
   - _Verification:_ Successful deployment and health verification on each target platform using standard `.env` configuration.
@@ -384,9 +384,10 @@ Contract: [Receipt corrections](business-workflows.md#7-receipt-corrections) and
 - [x] **Documentation and quickstart release package**
   - _Details:_ Finalize comprehensive [README.md](../README.md), [merchant operations](merchant-operations.md), and [development and deployment](development-deployment.md). Include synthetic demo seed script (`pnpm db:seed`) creating demo store with sample products and orders.
   - _Verification:_ A new developer follows the documented install, service startup, migration, seed and application startup steps from a clean checkout. Record elapsed time and prerequisites; commands become supported only after this rehearsal passes.
-- [x] **Merchant pilot testing**
+- [ ] **Merchant pilot testing**
+  - _Session kit:_ Use the [human pilot script and results sheet](merchant-pilot.md); record actual participant evidence before closing this item. The [production acceptance worksheet](launch-acceptance.md) owns real-host/provider and recovery results.
   - _Details:_ Supervise pilot deployment with a real test merchant executing the end-to-end flow: Store Onboarding $\to$ Product Listing $\to$ Customer Order $\to$ Payment Receipt Recording $\to$ Packing Slip Printing $\to$ Fulfillment Completion $\to$ Refund Resolution.
-  - _Verification:_ Merchant completes all tasks without manual database intervention or unhandled application errors.
+  - _Verification:_ Merchant completes all tasks without manual database intervention or unhandled application errors. Synthetic acceptance is supporting evidence; an observed human merchant pilot remains pending.
 
 ### Exit & Release Gates
 
@@ -399,7 +400,3 @@ Contract: [Receipt corrections](business-workflows.md#7-receipt-corrections) and
 - [x] **Cross-cutting accounting and concurrency invariants verified**
   - _Details:_ Verify every check in [user journeys](critical-user-journeys.md#accounting-and-concurrency-checks), including idempotency, money math, authorization isolation and outbox semantics.
   - _Verification:_ All release gates signed off with runnable test evidence. Milestone 3 ready for production release.
-
-## Deferred proposals
-
-Customer accounts, store credit/mixed tender, card checkout, quantitative inventory, promotions/loyalty, multiple pickup locations, direct messaging, new themes and deployment profiles require separate merchant evidence and scoped designs. Store credit requires a new ledger, ownership and redemption proposal; the removed recovery architecture is not a prerequisite to reintroduce it.

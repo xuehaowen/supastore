@@ -1,41 +1,31 @@
 services:
   postgres:
     image: postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
-    container_name: supastore-postgres
+    container_name: ${COMPOSE_PROJECT_NAME:-supastore}-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-supastore}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale-provider=builtin --builtin-locale=PG_UNICODE_FAST"
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d supastore"]
+      test:
+        ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 5s
       timeout: 5s
       retries: 5
 
-  adminer:
-    image: adminer:latest@sha256:74f29c416e148b98305e84446a18db7cd2c1038264dec464359d36774ef080ce
-    restart: unless-stopped
-    profiles: [tools]
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      ADMINER_DEFAULT_SERVER: postgres
-    ports:
-      - "127.0.0.1:9002:8080"
-
   rustfs:
     image: rustfs/rustfs:latest@sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c
-    container_name: supastore-rustfs
+    container_name: ${COMPOSE_PROJECT_NAME:-supastore}-rustfs
     restart: unless-stopped
     ports:
-      - "127.0.0.1:9000:9000"
-      - "127.0.0.1:9001:9001"
+      - "127.0.0.1:${S3_API_PORT:-9000}:9000"
+      - "127.0.0.1:${S3_CONSOLE_PORT:-9001}:9001"
     environment:
       RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY_ID:?Set S3_ACCESS_KEY_ID}
       RUSTFS_SECRET_KEY: ${S3_SECRET_ACCESS_KEY:?Set S3_SECRET_ACCESS_KEY}
@@ -47,11 +37,11 @@ services:
       context: .
       dockerfile: Dockerfile
       target: backend
-    image: supastore-backend:latest
+    image: ${BACKEND_IMAGE:-supastore-backend:latest}
     restart: unless-stopped
     stop_grace_period: 45s
     expose: ["3000"]
-    environment:
+    environment: &backend-environment
       - NODE_ENV=production
       - DATABASE_URL=postgresql://${APP_DATABASE_USER:-supastore_app}:${APP_DATABASE_PASSWORD:?Set APP_DATABASE_PASSWORD}@postgres:5432/${POSTGRES_DB:-supastore}?sslmode=disable
       - DB_POOL_MAX=${DB_POOL_MAX:-10}
@@ -64,18 +54,21 @@ services:
       - NODE_OPTIONS=${BACKEND_NODE_OPTIONS:---max-old-space-size=256}
       - ADMIN_SETUP_SECRET=${ADMIN_SETUP_SECRET:?Set ADMIN_SETUP_SECRET}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET}
-      - BETTER_AUTH_URL=${STOREFRONT_ORIGIN:-http://localhost:3000}
-      - APP_URL=${APP_URL:-http://localhost:3000}
-      - STOREFRONT_ORIGIN=${STOREFRONT_ORIGIN:-http://localhost:3000}
+      - BETTER_AUTH_URL=${STOREFRONT_ORIGIN:?Set STOREFRONT_ORIGIN to the public storefront origin}
+      - APP_URL=${STOREFRONT_ORIGIN:?Set STOREFRONT_ORIGIN to the public storefront origin}
+      - STOREFRONT_ORIGIN=${STOREFRONT_ORIGIN:?Set STOREFRONT_ORIGIN to the public storefront origin}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
       - S3_ENDPOINT=http://rustfs:9000
+      - S3_PUBLIC_ENDPOINT=${S3_PUBLIC_ENDPOINT:-http://localhost:${S3_API_PORT:-9000}}
       - S3_BUCKET_PRIVATE=supastore-private
       - S3_BUCKET_PUBLIC=supastore-public
       - S3_REGION=us-east-1
       - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID:?Set S3_ACCESS_KEY_ID}
       - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:?Set S3_SECRET_ACCESS_KEY}
-      - ENABLE_OUTBOX_WORKER=true
+      - ENABLE_OUTBOX_WORKER=${ENABLE_OUTBOX_WORKER:-true}
+      - PICKUP_REMINDER_LEAD_MINUTES=${PICKUP_REMINDER_LEAD_MINUTES:-180}
+      - DISABLE_OUTBOUND_DELIVERY=${DISABLE_OUTBOUND_DELIVERY:-false}
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT:-587}
       - SMTP_USER=${SMTP_USER}
@@ -87,7 +80,11 @@ services:
       - SMTP_OAUTH_REFRESH_TOKEN=${SMTP_OAUTH_REFRESH_TOKEN:-}
       - SMTP_SECURE
       - SMTP_REQUIRE_TLS
+      # disabled: silent; console: local previews; telnyx: authorized live delivery.
+      # Global DISABLE_OUTBOUND_DELIVERY also stops console previews.
       - SMS_PROVIDER=${SMS_PROVIDER:-disabled}
+      - SMS_LIVE_AUTHORIZED=${SMS_LIVE_AUTHORIZED:-false}
+      # Console mode does not provide phone verification or enable enrollment.
       - PHONE_VERIFICATION_PROVIDER=${PHONE_VERIFICATION_PROVIDER:-disabled}
       - TELNYX_API_KEY=${TELNYX_API_KEY:-}
       - TELNYX_FROM=${TELNYX_FROM:-}
@@ -108,6 +105,26 @@ services:
         reservations:
           memory: 256M
 
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    image: ${WORKER_IMAGE:-supastore-worker:latest}
+    restart: unless-stopped
+    stop_grace_period: 45s
+    environment: *backend-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rustfs:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+
   storefront:
     build:
       context: .
@@ -115,21 +132,24 @@ services:
       target: storefront
       args:
         BACKEND_URL: http://backend:3000
-    image: supastore-storefront:latest
+        NEXT_PUBLIC_ANALYTICS_ENDPOINT: ${NEXT_PUBLIC_ANALYTICS_ENDPOINT:-}
+    image: ${STOREFRONT_IMAGE:-supastore-storefront:latest}
     restart: unless-stopped
     ports:
-      - "${PORT:-3000}:3000"
+      # Use loopback with a host TLS proxy; explicitly opt into other interfaces.
+      - "${STOREFRONT_BIND:-127.0.0.1}:${PORT:-3000}:3000"
     environment:
       NODE_ENV: production
       NODE_OPTIONS: ${STOREFRONT_NODE_OPTIONS:---max-old-space-size=256}
       BACKEND_URL: http://backend:3000
-      STOREFRONT_ORIGIN: ${STOREFRONT_ORIGIN:-http://localhost:3000}
+      STOREFRONT_ORIGIN: ${STOREFRONT_ORIGIN:?Set STOREFRONT_ORIGIN to the public storefront origin}
       EDGE_PROXY_SECRET: ${EDGE_PROXY_SECRET:-}
     depends_on:
       backend:
         condition: service_healthy
 
   migrate:
+    image: ${MIGRATION_IMAGE:-${COMPOSE_PROJECT_NAME:-supastore}-migrate:latest}
     build:
       context: .
       dockerfile: Dockerfile

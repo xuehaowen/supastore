@@ -1,5 +1,5 @@
 import { eq, and } from "drizzle-orm";
-import type { db as database } from "../src/infrastructure/db";
+import type { db as database } from "../apps/backend/src/infrastructure/db/index";
 import {
   attributes,
   attributeValues,
@@ -11,12 +11,14 @@ import {
   productVariants,
   variantTranslations,
   variantAttributeValues,
-} from "../src/infrastructure/db/schema";
+  productSpecifications,
+} from "../apps/backend/src/infrastructure/db/schema/index";
 
 type NamedTranslation = { locale: string; name: string };
 export interface AttributeSeed {
   code: string;
   name: string;
+  kind?: "descriptive" | "variant";
   sortOrder?: number;
   translations?: NamedTranslation[];
   values: Array<{
@@ -31,6 +33,7 @@ export interface TranslationSeed {
   categories: Array<{ slug: string; translations?: NamedTranslation[] }>;
   products: Array<{
     handle: string;
+    specifications?: Record<string, string>;
     variants: Array<{
       sku: string;
       attributeValues?: Record<string, string>;
@@ -49,12 +52,16 @@ export async function seedCatalogTranslations(
       string,
       { attributeId: string; attributeValueId: string }
     >();
+    const kinds = new Map(
+      seed.attributes.map((entry) => [entry.code, entry.kind ?? "variant"]),
+    );
     for (const entry of seed.attributes) {
       const [attribute] = await tx
         .insert(attributes)
         .values({
           code: entry.code,
           name: entry.name,
+          kind: entry.kind ?? "variant",
           sortOrder: entry.sortOrder ?? 0,
         })
         .onConflictDoUpdate({
@@ -139,6 +146,26 @@ export async function seedCatalogTranslations(
         .from(products)
         .where(eq(products.handle, entry.handle));
       if (!product) throw new Error(`Missing seed product: ${entry.handle}`);
+      for (const [sortOrder, [code, value]] of Object.entries(
+        entry.specifications ?? {},
+      ).entries()) {
+        const ids = valueIds.get(JSON.stringify([code, value]));
+        if (!ids || kinds.get(code) !== "descriptive")
+          throw new Error(
+            `Unknown descriptive seed attribute value: ${code}/${value}`,
+          );
+        await tx
+          .insert(productSpecifications)
+          .values({ productId: product.id, ...ids, sortOrder })
+          .onConflictDoUpdate({
+            target: [
+              productSpecifications.productId,
+              productSpecifications.attributeId,
+              productSpecifications.attributeValueId,
+            ],
+            set: { sortOrder },
+          });
+      }
       for (const item of entry.variants) {
         const [variant] = await tx
           .select()

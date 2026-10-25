@@ -1,16 +1,28 @@
 # Merchant setup and operations
 
-This is an intended task guide. No screens or working commands exist yet. [Business workflows](business-workflows.md) define the complete rules; [scope](product-scope.md) lists supported shops and limitations.
+This is the merchant task guide. The [journey index](critical-user-journeys.md) tracks acceptance outcomes and coverage; [business workflows](business-workflows.md) define the complete rules; [current capabilities](system-capabilities.md) records implemented features and limitations.
+
+Use the [human pilot script](merchant-pilot.md) to observe a merchant completing
+these tasks, and the [production acceptance worksheet](launch-acceptance.md) to
+record real deployment, provider and recovery evidence.
 
 ## Setup
 
-1. Create the owner through protected setup and add staff with operational access.
+1. Follow the [first-owner provisioning recipe](operator-cookbook.md#provision-the-first-owner) from a trusted terminal, then complete protected store setup. The admin UI has no user creation/invitation flow; Settings manages only existing memberships. Customer registration does not grant admin access. Demo seeding is not a general production staff-provisioning procedure.
 2. Set branding, support/policy pages, locale, timezone and currency.
 3. Configure shipping, optional pickup, tax, a manual payment account or cash drawer, and email. Send a test message.
-4. Add products, variants, images and translations, or preview a product CSV import.
+4. Add products, variants, images and translations, or preview a product CSV import. Product uploads accept multiple selected files, up to the product's 20-image limit. Give each image its own description; the selected variant applies to the batch. JPEG, PNG and WebP files must each be smaller than 5 MB. Upload results show failures separately; retry uploads only the failed files. Collection covers use one image.
 5. Complete a synthetic purchase, payment, fulfillment and refund before launch.
 
-Currency locks after the first order. Availability is manual; the store does not reserve stock or pickup capacity. Cash must be collected before preparation. Installation requires an application host, database, object storage and email provider; see the [deployment guide](development-deployment.md).
+The owner overview and Store setup now show a **Next step** link for the first
+missing configuration item. Follow it, save the relevant settings, and return to
+the checklist. Completed configuration does not prove that a real payment,
+transactional email or backup restore works. Rehearse synthetic purchases only
+in disposable fixtures; perform real provider acceptance as a separately
+authorized controlled transaction. See [selling readiness](selling-readiness.md)
+for the current implementation and remaining launch acceptance.
+
+Currency locks after the first order. Placement reserves tracked stock and configured slot capacity; untracked variants require an explicit count to enable stock tracking. Cash must be collected before preparation. Installation requires an application host, database, object storage and email provider; see the [deployment guide](two-service-deployment.md).
 
 ## Find and process an order
 
@@ -61,6 +73,11 @@ Physical returns require an eligible fulfilled order and cannot exceed its remai
 Customers use scoped tracking sessions or email recovery. If neither works, use owner-assisted identity verification. Failed emails remain actionable until delivered or explicitly resolved; review them in the queue. See [access recovery](business-workflows.md#8-access-recovery-and-customer-communication).
 
 Owners manage staff, settings and exports. Preview imports before applying selected changes; order import is unsupported. Pause new orders when needed while continuing existing-order work.
+
+If copying a payment amount or reference is unavailable in the customer's
+browser, the order page explains how to copy the displayed value manually and
+allows another copy attempt. A failed copy is not a failed order or payment;
+do not create a replacement order for it.
 
 Back up database and assets, rehearse restore with sends disabled, and follow the [upgrade and recovery guide](development-deployment.md#backups-and-upgrades). These procedures must be tested before release.
 

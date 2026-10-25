@@ -1,4 +1,4 @@
-import { headers } from "next/headers";
+import { cookies } from "next/headers";
 import { responseData, responseMessage } from "./response";
 import { fetchJson, TransportError } from "./fetch-json";
 export class BackendApiError extends Error {
@@ -14,9 +14,8 @@ export async function readApi<T>(
   path: string,
   decode: (value: unknown) => T,
 ): Promise<T> {
-  const incoming = await headers();
   return readDecoded(path, decode, {
-    headers: { cookie: incoming.get("cookie") || "" },
+    headers: { cookie: (await cookies()).toString() },
     cache: "no-store",
   });
 }
@@ -28,7 +27,11 @@ export function readPublicApi<T>(
 ): Promise<T> {
   const route = path.split("?")[0]!;
   let permitted =
-    route === "store" || route === "catalog" || route === "sitemap";
+    route === "store" ||
+    route === "catalog" ||
+    route === "sitemap" ||
+    route === "customer-pages/catalog" ||
+    route === "customer-pages/collections";
   if (route.startsWith("products/")) {
     try {
       const handle = decodeURIComponent(route.slice("products/".length));
@@ -57,6 +60,19 @@ export function readPublicApi<T>(
     !query.get("category") &&
     (!query.has("page") || query.get("page") === "1") &&
     (!query.has("pageSize") || query.get("pageSize") === "24");
+  // Cache only the bounded, common public listing. Searches and filtered
+  // combinations stay uncached so customer input cannot grow the shared cache.
+  const commonCatalogPage =
+    route === "customer-pages/catalog" &&
+    knownLocale &&
+    keys.every((key) =>
+      ["locale", "page", "q", "category", "sort", "options"].includes(key),
+    ) &&
+    !query.get("q") &&
+    !query.get("category") &&
+    !query.get("options") &&
+    (!query.get("page") || query.get("page") === "1") &&
+    (!query.get("sort") || query.get("sort") === "newest");
   const product =
     route.startsWith("products/") &&
     knownLocale &&
@@ -72,6 +88,7 @@ export function readPublicApi<T>(
     !keys.some((key) => query.getAll(key).length > 1) &&
     ((route === "store" && !keys.length) ||
       commonCatalog ||
+      commonCatalogPage ||
       product ||
       sitemap);
   return readDecoded(
@@ -89,7 +106,7 @@ export function readPublicApi<T>(
 async function readDecoded<T>(
   path: string,
   decode: (value: unknown) => T,
-  init: RequestInit,
+  init: RequestInit & { next?: { revalidate: number } },
 ): Promise<T> {
   const {
     response,

@@ -1,11 +1,23 @@
 {
   "name": "@supastore/contracts",
-  "version": "0.1.0",
   "private": true,
+  "version": "0.1.0",
   "type": "module",
+  "dependencies": {
+    "valibot": "^1.4.2"
+  },
   "exports": {
     ".": {
-      "types": "./src/index.ts"
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./customer-page-validation": {
+      "types": "./src/customer-page-validation.ts",
+      "default": "./src/customer-page-validation.ts"
+    },
+    "./sitemap": {
+      "types": "./src/sitemap.ts",
+      "default": "./src/sitemap.ts"
     }
   }
 }

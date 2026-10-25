@@ -26,6 +26,19 @@ import { createProduct } from "@/application/use-cases/catalog/create-product";
 import { addToCart } from "@/application/use-cases/cart/add-to-cart";
 import { getQuote } from "@/application/use-cases/get-quote";
 import { createOrder } from "@/application/use-cases/create-order";
+import {
+  updateCustomerSms,
+  applyPhoneOptOut,
+} from "@/application/use-cases/customers/sms-preferences";
+import { smsDisclosure } from "@supastore/contracts";
+import {
+  FakePhoneVerifier,
+  FakeSmsSender,
+} from "@/infrastructure/notifications/fake-senders";
+import {
+  enqueueSmsNotifications,
+  processNotificationBatch,
+} from "@/application/notifications/process-delivery";
 import { createManualOrder } from "@/application/use-cases/create-manual-order";
 import { cancelOrder } from "@/application/use-cases/orders/cancel-order";
 import { adjustStock } from "@/application/use-cases/inventory/stock-operations";
@@ -63,6 +76,7 @@ import { authorizeRefund } from "@/application/use-cases/refund-payout";
 import { uploadCatalogImage } from "@/application/use-cases/catalog/upload-catalog-image";
 import { cleanupCatalogMedia } from "@/application/use-cases/catalog/cleanup-catalog-media";
 import { removeProductImage } from "@/application/use-cases/catalog/manage-catalog";
+import { closeQueueProducer } from "@/infrastructure/queue/client";
 import { importProductsCsv } from "@/application/use-cases/catalog/import-products-csv";
 import { listProducts } from "@/application/use-cases/catalog/list-products";
 import { bulkUpdateVariants } from "@/application/use-cases/catalog/bulk-update-variants";
@@ -81,14 +95,15 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
   beforeAll(async () => {
     admin = postgres(server!);
     await admin.unsafe(
-      `CREATE DATABASE "${name}" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C'`,
+      `CREATE DATABASE "${name}" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'PG_UNICODE_FAST'`,
     );
     const url = new URL(server!);
     url.pathname = `/${name}`;
+    vi.stubEnv("DATABASE_URL", url.toString());
     client = postgres(url.toString(), { max: 10, onnotice: () => {} });
     active.db = drizzle(client, { schema });
     await migrate(active.db as ReturnType<typeof drizzle>, {
-      migrationsFolder: "src/infrastructure/db/migrations",
+      migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
     });
     await client`insert into staff_memberships(user_id,email,role) values(${owner},'owner@example.test','owner')`;
     await client`insert into store_settings(store_name,support_email,setup_completed,email_verified_at) values('Commerce tests','support@example.test',true,now())`;
@@ -100,6 +115,8 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
       await client`insert into "user"(id,name,email,email_verified) values(${id},${id},${`${id}@example.test`},true)`;
   }, 30000);
   afterAll(async () => {
+    await closeQueueProducer();
+    vi.unstubAllEnvs();
     if (client) await client.end();
     if (admin) {
       await admin.unsafe(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);
@@ -165,6 +182,138 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
       (select count(*)::int from audit_records where entity_id=${first.id} and action='manual_order.created') as audits`;
     expect(counts).toMatchObject({ orders: 1, quotes: 1, audits: 1 });
   });
+  it("links verified guest consent to an order, delivers its update and honors STOP for later checkout", async () => {
+    const [original] = await client`select * from store_settings`;
+    const offset = new Date().getUTCHours() - 12;
+    const timezone = `Etc/GMT${offset >= 0 ? "+" : ""}${offset}`;
+    await client`update store_settings set sms_policy='{"enabled":true,"reviewed":true}',support_email='help@example.test',public_content='{"en":{"privacy":"Privacy","terms":"Terms"}}',timezone=${timezone}`;
+    try {
+      const verifier = new FakePhoneVerifier();
+      const claim = await updateCustomerSms(
+        null,
+        {
+          operation: "start",
+          phone: "+12025550777",
+          consent: true,
+          disclosure: smsDisclosure({ storeName: original!.store_name }),
+          source: "checkout",
+        },
+        verifier,
+        true,
+      );
+      await updateCustomerSms(
+        null,
+        {
+          operation: "confirm",
+          preferenceId: claim!.preferenceId,
+          code: "123456",
+        },
+        verifier,
+        true,
+      );
+      const variant = await product(0);
+      const order = await createOrder({
+        ...(await prepare(variant.id)),
+        smsPreferenceId: claim!.preferenceId,
+      });
+      expect(order.customerId).toBeNull();
+      expect(order.smsPreferenceId).toBe(claim!.preferenceId);
+      await enqueueSmsNotifications();
+      const sender = new FakeSmsSender();
+      await processNotificationBatch("sms", { providers: { sms: sender } });
+      expect(sender.messages).toHaveLength(1);
+      expect(sender.messages[0]!.to).toBe("+12025550777");
+      await (
+        active.db as ReturnType<typeof drizzle<typeof schema>>
+      ).transaction((tx) => applyPhoneOptOut(tx, "+12025550777"));
+      const next = await createOrder({
+        ...(await prepare(variant.id)),
+        smsPreferenceId: claim!.preferenceId,
+      });
+      expect(next.smsPreferenceId).toBeNull();
+      await enqueueSmsNotifications();
+      await processNotificationBatch("sms", { providers: { sms: sender } });
+      expect(sender.messages).toHaveLength(1);
+    } finally {
+      await client`update store_settings set sms_policy=${JSON.stringify(original!.sms_policy)}::jsonb,support_email=${original!.support_email},public_content=${JSON.stringify(original!.public_content)}::jsonb,timezone=${original!.timezone}`;
+    }
+  });
+  it("creates scheduled manual pickup without an address and preserves capacity and retry identity", async () => {
+    const variant = await product();
+    const schedule = Object.fromEntries(
+      ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].map((day) => [
+        day,
+        [["12:00", "13:00"]],
+      ]),
+    );
+    const [location] =
+      await client`insert into pickup_location(name,address,weekly_schedule,prep_minutes,slot_capacity) values('Manual pickup','Pickup counter',${JSON.stringify(schedule)}::jsonb,0,1) returning id`;
+    const input = {
+      requestKey: randomUUID(),
+      staffUserId: owner,
+      customerName: "Pickup customer",
+      customerEmail: "pickup@example.test",
+      fulfillmentType: "pickup" as const,
+      country: "",
+      address: "",
+      pickupLocationId: location!.id as string,
+      pickupDate: new Date(Date.now() + 7 * 86400000)
+        .toISOString()
+        .slice(0, 10),
+      pickupTime: "12:00",
+      paymentAccountId: bank,
+      items: [{ variantId: variant.id, quantity: 1 }],
+    };
+    const first = await createManualOrder(input);
+    expect(first.fulfillmentType).toBe("pickup");
+    expect((await createManualOrder(input)).id).toBe(first.id);
+    await expect(
+      createManualOrder({ ...input, pickupTime: "12:30" }),
+    ).rejects.toThrow("request");
+    const [beforeRejection] = await client`select
+      (select count(*)::int from orders) as orders,
+      (select count(*)::int from carts) as carts,
+      (select count(*)::int from quotes) as quotes,
+      (select count(*)::int from slot_reservations) as reservations`;
+    for (const [rejectedInput, expectedError] of [
+      [
+        { ...input, requestKey: randomUUID() },
+        "This fulfillment slot is full. Choose another time.",
+      ],
+      [
+        { ...input, requestKey: randomUUID(), pickupTime: "09:00" },
+        "This pickup slot is closed, past, or does not allow enough preparation time.",
+      ],
+    ] as const) {
+      await expect(createManualOrder(rejectedInput)).rejects.toThrow(
+        expectedError,
+      );
+      const [afterRejection] = await client`select
+        (select count(*)::int from orders) as orders,
+        (select count(*)::int from carts) as carts,
+        (select count(*)::int from quotes) as quotes,
+        (select count(*)::int from slot_reservations) as reservations`;
+      expect(afterRejection).toEqual(beforeRejection);
+      expect(
+        await client`select id from carts where id=${rejectedInput.requestKey}`,
+      ).toHaveLength(0);
+    }
+    const [hold] =
+      await client`select count(*)::int as count from slot_reservations where order_id=${first.id}`;
+    expect(hold!.count).toBe(1);
+    await client`update pickup_location set schedule_required=false where id=${location!.id}`;
+    const unscheduled = await createManualOrder({
+      ...input,
+      requestKey: randomUUID(),
+      pickupDate: "",
+      pickupTime: "",
+    });
+    expect(unscheduled.fulfillmentType).toBe("pickup");
+    const [noHold] =
+      await client`select count(*)::int as count from slot_reservations where order_id=${unscheduled.id}`;
+    expect(noHold!.count).toBe(0);
+  });
+
   it("rolls back manual preparation when quoting fails", async () => {
     const variant = await product();
     const input = {
@@ -384,13 +533,13 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
     await client`delete from slot_reservations where order_id=${accepted.value.id}`;
     await client.unsafe(
       readFileSync(
-        "src/infrastructure/db/migrations/0029_legacy_slot_bookings.sql",
+        "apps/backend/src/infrastructure/db/migrations/0029_legacy_slot_bookings.sql",
         "utf8",
       ),
     );
     await client.unsafe(
       readFileSync(
-        "src/infrastructure/db/migrations/0029_legacy_slot_bookings.sql",
+        "apps/backend/src/infrastructure/db/migrations/0029_legacy_slot_bookings.sql",
         "utf8",
       ),
     );
@@ -622,9 +771,9 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
     const code = randomUUID().replaceAll("-", ""),
       handle = `import-${code}`;
     const [color] =
-      await client`insert into attributes(code,name) values(${`color-${code}`},'Color') returning id`;
+      await client`insert into attributes(code,name,kind) values(${`color-${code}`},'Color','variant') returning id`;
     const [size] =
-      await client`insert into attributes(code,name) values(${`size-${code}`},'Size') returning id`;
+      await client`insert into attributes(code,name,kind) values(${`size-${code}`},'Size','variant') returning id`;
     await client`insert into attribute_values(attribute_id,code,label) values(${color!.id},'red','Red'),(${color!.id},'blue','Blue'),(${size!.id},'s','Small'),(${size!.id},'m','Medium')`;
     const [collection] =
       await client`insert into product_collections(handle,title) values(${`collection-${code}`},'Import collection') returning id`;
@@ -803,6 +952,55 @@ describe.skipIf(!server)("lightweight commerce transactional journeys", () => {
     ).toMatchObject({ reserved: 0, on_hand: 1 });
     const retry = await createOrder(losing);
     expect(retry.lifecycleStatus).toBe("unpaid");
+  });
+  it("requires delivery details and preserves saved details when completing delivery", async () => {
+    const variant = await product();
+    const order = await createOrder(await prepare(variant.id));
+    await recordReceipt({
+      orderId: order.id,
+      paymentAccountId: bank,
+      amountCents: order.purchaseTotalCents,
+      rawReference: randomUUID(),
+      staffUserId: owner,
+    });
+    await confirmOrder({ orderId: order.id, staffUserId: owner });
+
+    await expect(
+      fulfillOrder({ orderId: order.id, staffUserId: owner }),
+    ).rejects.toThrow("Carrier or manual delivery method is required.");
+    expect(
+      (
+        await client`select lifecycle_status from orders where id=${order.id}`
+      )[0],
+    ).toMatchObject({ lifecycle_status: "confirmed" });
+    expect(
+      await client`select id from order_shipments where order_id=${order.id}`,
+    ).toHaveLength(0);
+
+    await client`update order_fulfillments set carrier='Manual delivery', tracking_number='saved-tracking' where order_id=${order.id}`;
+    const result = await fulfillOrder({
+      orderId: order.id,
+      staffUserId: owner,
+    });
+    expect(result.lifecycleStatus).toBe("completed");
+    expect(
+      (
+        await client`select carrier,tracking_number,status from order_fulfillments where order_id=${order.id}`
+      )[0],
+    ).toMatchObject({
+      carrier: "Manual delivery",
+      tracking_number: "saved-tracking",
+      status: "fulfilled",
+    });
+    expect(
+      await client`select carrier,tracking_number,status from order_shipments where order_id=${order.id}`,
+    ).toEqual([
+      expect.objectContaining({
+        carrier: "Manual delivery",
+        tracking_number: "saved-tracking",
+        status: "delivered",
+      }),
+    ]);
   });
   it("blocks shortages and consumes stock exactly once at fulfillment", async () => {
     const v = await product();

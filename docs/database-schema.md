@@ -1,8 +1,24 @@
 # Data model
 
+Migration `0041_promotion_limits` adds nullable
+`promotions.maximum_original_subtotal_cents` and `promotions.maximum_quantity`.
+Both caps are positive when set; quantity is bounded by the supported basket
+size. A 100% campaign additionally requires an expiry and total redemption limit
+in the application. Base merchandise value is measured before contextual prices
+or discounts. Existing accepted order and credit records are unchanged.
+
 This is a conceptual model, not executable SQL. Add Drizzle schemas and migrations with each vertical slice; do not generate the entire planned schema as a foundation milestone. [Workflows](business-workflows.md) own behavior and [transaction contracts](transaction-contracts.md) own accounting.
 
 ## Conventions
+
+`store_settings.commerce_rules` stores at most 100 validated contextual commerce
+rules as a JSON array, separate from `commerce_policy`. Migration 0040 initializes
+existing rows with an empty array. Rule edits increment `quote_version` under the
+settings lock and append audit records. Accepted quotes/orders retain their own
+context, rule identities, selected prices and reward rate; they do not join live
+rules to reconstruct historical financial terms.
+
+Authentication uses shared `user`, `account` and `verification` records, with separate customer `session` and merchant `staff_session` tables. Each session table has independently unique tokens and a cascading user foreign key. Staff sessions have an index on user ID for listing/revocation. Migration 0038 introduces staff sessions without promoting historical customer rows. Password reset revokes both tables; ordinary session operations remain scoped to their realm.
 
 UUID IDs, UTC instants and explicit IANA timezones. Monetary snapshots carry currency and precision. Use restrictive foreign keys for financial history and soft deletion for catalog entities. Administrative changes include actor, reason, revision and request identity. Applied financial history is append-only; projections are derived.
 
@@ -35,18 +51,18 @@ Preserve raw external references and versioned normalization. Account aliases mu
 
 ## Guest purchase and access
 
-| Entity                                    | Data and constraints                                                                                                                                                                                                                                                                                                                                         |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| guest_sessions                            | Server-side secret hash, expiry and revocation; credential held in HTTP-only secure cookie (`__Host-` prefixed where supported) with client storage fallback; no access by contact text; expire credentials after 30 days and retain referenced ownership rows as described below                                                                            |
-| carts / cart_items                        | Guest owner, revision, quantities, selections and converted-order link; one conversion per cart; un-converted carts purged after 30 days                                                                                                                                                                                                                     |
-| quotes                                    | Cart/revision, expiry, accepted-input versions and immutable calculation/fulfillment/method snapshot; no payment instructions before order creation                                                                                                                                                                                                          |
-| orders / order_versions                   | Unique source cart, creation request, internal order UUID, display order number and human-friendly short payment reference code (e.g. Crockford Base32 checksummed `SP-XXXX` with unique index and generation collision retry for bank transfer memos); guest/contact/locale snapshots, accepted version, lifecycle, financial revision and review deadlines |
-| order_items / order_totals                | Accepted item and calculation snapshots; positive quantities, nonnegative components/payable total, currency consistency; prior versions retained                                                                                                                                                                                                            |
-| order_change_proposals                    | One pending proposal, base accepted version, proposed pre-receipt price/terms, owner reason, acceptance/withdrawal/invalidation history                                                                                                                                                                                                                      |
-| order_change_acceptances                  | Proposal, accepted version, scoped customer actor/time and stable request identity; cash/owner-assisted acceptance retains customer-agreement evidence                                                                                                                                                                                                       |
-| order_access_tokens / order_sessions      | Order-scoped secret hashes, expiry, purpose, single-use exchange/revocation state; immediate client session storage retention upon placement; email recovery issuance metadata                                                                                                                                                                               |
-| order_fulfillments                        | Exactly one per order; accepted address/location/time snapshot, audited corrections, carrier/tracking, fulfillment state and schedule revision                                                                                                                                                                                                               |
-| payment_upload_intents / payment_evidence | Existing order, guest owner, unique private object key, expected size/type, expiry, pending/finalized/expired state; worker garbage collects unfinalized expired objects; review status and reason separate from receipts                                                                                                                                    |
+| Entity                                    | Data and constraints                                                                                                                                                                                                                                                              |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| guest_sessions                            | Server-side secret hash, expiry and revocation; credential held in HTTP-only secure cookie (`__Host-` prefixed where supported) with client storage fallback; no access by contact text; expire credentials after 30 days and retain referenced ownership rows as described below |
+| carts / cart_items                        | Guest owner, revision, quantities, selections and converted-order link; one conversion per cart; un-converted carts purged after 30 days                                                                                                                                          |
+| quotes                                    | Cart/revision, expiry, accepted-input versions and immutable calculation/fulfillment/method snapshot; no payment instructions before order creation                                                                                                                               |
+| orders / order_versions                   | Unique source cart, creation request, internal order UUID, unique sequential display order number (`ORD-000001`); guest/contact/locale snapshots, accepted version, lifecycle, financial revision and review deadlines                                                            |
+| order_items / order_totals                | Accepted item and calculation snapshots; positive quantities, nonnegative components/payable total, currency consistency; prior versions retained                                                                                                                                 |
+| order_change_proposals                    | One pending proposal, base accepted version, proposed pre-receipt price/terms, owner reason, acceptance/withdrawal/invalidation history                                                                                                                                           |
+| order_change_acceptances                  | Proposal, accepted version, scoped customer actor/time and stable request identity; cash/owner-assisted acceptance retains customer-agreement evidence                                                                                                                            |
+| order_access_tokens / order_sessions      | Order-scoped secret hashes, expiry, purpose, single-use exchange/revocation state; immediate client session storage retention upon placement; email recovery issuance metadata                                                                                                    |
+| order_fulfillments                        | Exactly one per order; accepted address/location/time snapshot, audited corrections, carrier/tracking, fulfillment state and schedule revision                                                                                                                                    |
+| payment_upload_intents / payment_evidence | Existing order, guest owner, unique private object key, expected size/type, expiry, pending/finalized/expired state; worker garbage collects unfinalized expired objects; review status and reason separate from receipts                                                         |
 
 Upload intents retain staging keys and finalization candidate identities. Payment evidence references only an immutable server-written final key with validated size, type and content digest. Track active candidate finalizations durably so cleanup cannot race a finalization; no client upload grant can write final keys.
 
@@ -58,7 +74,7 @@ Owner-created orders use the same quote/order use case with an owner-controlled 
 
 | Entity                                         | Data and constraints                                                                                                                                                                                                                                               |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| payment_receipts                               | Exactly one order owner; amount/currency, durable account ID, raw/canonical reference, normalization version, staff actor/time and collection request; unique account+canonical reference                                                                          |
+| payment_receipts                               | Exactly one order owner; unique sequential payment number (`PAY-000001`); amount/currency, durable account ID, original raw/canonical transaction reference, normalization version, staff actor/time and collection request; unique account+canonical reference    |
 | cash receipt metadata                          | Immutable generated receipt number, drawer, payer and collection time; retries retain identity                                                                                                                                                                     |
 | confirmation_funding                           | Original per-receipt funding snapshot; sums to confirmed P and excludes later receipts                                                                                                                                                                             |
 | refund_authorizations                          | Order, purchase or open-cancellation kind, immutable amount/source allocations, purchased components when applicable, owner/reason and request key                                                                                                                 |
@@ -97,6 +113,14 @@ No customer accounts, wallets, credit ledgers, pre-order receipts, recovery case
 
 ## Retention and automated housekeeping
 
+Migration 0039 adds nullable `failure_code` and `expires_at` to deliveries.
+Authentication events use an independent `auth` aggregate and a 15-minute
+dispatch deadline. Never-submitted expired review records can be suppressed
+without provider reconciliation. Stripe inbox and checkout attempts add
+`reconciliation_attempts`, `retry_after` and `failure_code`, with indexes on
+status/retry time. Pollers reserve one record immediately before provider I/O;
+failed records back off independently. See [error handling](error-handling.md).
+
 To prevent PostgreSQL table and index bloat over long-running operations without external services, the background worker executes lightweight periodic housekeeping:
 
 - **Abandoned Carts and Guest Credentials:** Purge unconverted carts after 30 days. At 30 days expire guest credentials and clear their secret hashes. Delete a guest-session row only when no retained cart, request identity or other history references it; otherwise retain an inert ownership row. Converted carts and their source-order references remain intact. Credential expiry does not delete independently scoped order sessions or financial history. Test cleanup with both abandoned carts and converted carts referenced by old orders.
@@ -116,6 +140,12 @@ cleanup. Category and attribute translations provide `name`, attribute values
 provide `label`, and optional custom variant translations provide `title`.
 
 `attributes` has a globally unique stable `code` and a base-language `name`.
+Its immutable `kind` distinguishes `descriptive` product facts (weight, calories,
+sugar-free status) from `variant` options (color, size). New fields default to
+descriptive. Product specifications accept descriptive values; variant generation
+and CSV `option_values` accept variant values. Migration 0045 classifies existing
+variant assignments and copies fields shared with specifications into separate
+descriptive fields, preserving translations and existing variant identities.
 `attribute_values` has a code unique within its attribute and a base-language
 `label`. Both include sort order. `variant_attribute_values` allows one value per
 attribute per variant; a composite foreign key ensures that value belongs to the

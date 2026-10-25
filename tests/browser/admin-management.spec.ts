@@ -127,10 +127,41 @@ test("product editor saves existing variants and translations without replacing 
   ).toBe("Concurrent change");
 });
 
+test("workspace page search and skip navigation reach content directly", async ({
+  admin,
+}) => {
+  await admin.goto("/admin");
+  await admin.getByRole("button", { name: "Go to page", exact: true }).click();
+  await admin
+    .getByRole("dialog", { name: "Go to page", exact: true })
+    .getByRole("button", { name: "Close", exact: true })
+    .click();
+  await admin.keyboard.press("ControlOrMeta+k");
+  const dialog = admin.getByRole("dialog", { name: "Go to page", exact: true });
+  await dialog.getByLabel("Search admin pages").fill("inventory");
+  await dialog.getByRole("link", { name: /^Inventory.*Products$/ }).click();
+  await expect(admin).toHaveURL(/\/admin\/inventory$/);
+  await expect(
+    admin
+      .locator("#admin-content")
+      .getByRole("navigation", { name: "Admin", exact: true }),
+  ).toHaveCount(0);
+  const skip = admin.getByRole("link", {
+    name: "Skip to content",
+    exact: true,
+  });
+  await skip.focus();
+  await skip.press("Enter");
+  await expect(admin.locator("#admin-content")).toBeFocused();
+});
+
 test("management sidebar opens real sections and product editor fits mobile", async ({
   admin,
   sql,
 }) => {
+  const [sales] =
+    await sql`select count(*)::int as count from orders where lifecycle_status in ('confirmed','completed') and created_at >= now() - interval '7 days'`;
+  const hasSales = sales!.count > 0;
   for (const [label, path, heading] of [
     ["Overview", "/admin", "Commerce overview"],
     ["Orders", "/admin/orders", "Orders"],
@@ -139,9 +170,9 @@ test("management sidebar opens real sections and product editor fits mobile", as
     ["Fulfillment", "/admin/fulfillment", "Fulfillment"],
     ["Promotions", "/admin/promotions", "Promotions"],
     ["Customers", "/admin/customers", "Customers"],
-    ["Translations", "/admin/translations", "Translations"],
+    ["Languages & translations", "/admin/translations", "Translations"],
     ["Settings", "/admin/setup", "Store setup"],
-    ["Activity", "/admin/activity", "Activity"],
+    ["Activity history", "/admin/activity", "Activity"],
   ]) {
     await admin.goto(path);
     await expect(admin).toHaveURL(new RegExp(`${path}$`));
@@ -152,13 +183,26 @@ test("management sidebar opens real sections and product editor fits mobile", as
       .getByRole("navigation", { name: "Admin" })
       .getByRole("link", { name: label, exact: true });
     await expect(link).toHaveAttribute("href", path);
-    await expect(link).toHaveAttribute("aria-current", "page");
+    if (
+      [
+        "Orders",
+        "Payments",
+        "Products",
+        "Fulfillment",
+        "Customers",
+        "Settings",
+      ].includes(label)
+    ) {
+      await expect(link).toHaveAttribute("data-active", "true");
+    } else {
+      await expect(link).toHaveAttribute("aria-current", "page");
+    }
     if (path === "/admin") {
       await expect(admin.locator(".trend-day")).toHaveCount(7);
       await expect(admin.getByText("0 orders").first()).toBeVisible();
       await expect(
         admin.getByText("No net sales activity in the last 7 days."),
-      ).toBeVisible();
+      ).toHaveCount(hasSales ? 0 : 1);
       await expect(
         admin.getByText("No overdue orders in this view."),
       ).toBeVisible();
@@ -172,11 +216,12 @@ test("management sidebar opens real sections and product editor fits mobile", as
             () => document.documentElement.scrollWidth <= innerWidth,
           ),
         ).toBe(true);
-        expect(
-          await admin
-            .locator(".sales-trend")
-            .evaluate((element) => element.getBoundingClientRect().height),
-        ).toBeLessThan(240);
+        if (!hasSales)
+          expect(
+            await admin
+              .locator(".sales-trend")
+              .evaluate((element) => element.getBoundingClientRect().height),
+          ).toBeLessThan(240);
       }
       await expect(
         admin.getByRole("heading", { name: "Payment evidence review" }),
@@ -229,6 +274,16 @@ test("management sidebar opens real sections and product editor fits mobile", as
     path: "test-results/product-editor-mobile.png",
     fullPage: true,
   });
+  await admin.goto("/admin/products");
+  const categoryFilter = admin.locator(".category-filter-picker");
+  await categoryFilter.locator("summary").click();
+  const categorySelect = categoryFilter.locator("select");
+  await categorySelect.selectOption({ index: 1 });
+  const categoryId = await categorySelect.inputValue();
+  await expect(categoryFilter).not.toHaveAttribute("open");
+  await expect(categoryFilter.locator("summary")).toBeFocused();
+  await admin.getByRole("button", { name: "Filter", exact: true }).click();
+  await expect(admin).toHaveURL(new RegExp(`category=${categoryId}`));
 });
 
 test("promotion codes apply to checkout and record one redemption", async ({
@@ -249,10 +304,13 @@ test("promotion codes apply to checkout and record one redemption", async ({
   await create
     .getByRole("button", { name: "Create promotion", exact: true })
     .click();
-  await expect(admin.getByText(new RegExp(`${code}.*Active`))).toBeVisible();
+  await expect(admin.getByRole("row").filter({ hasText: code })).toContainText(
+    "Active",
+  );
 
   await page.goto("/en/products/studio-cup");
   await page.getByRole("button", { name: "Add to bag" }).click();
+  await page.getByRole("link", { name: "View bag", exact: true }).click();
   await page.getByRole("link", { name: "Continue to checkout" }).click();
   await page.getByLabel("Street address").fill("1 Promotion Street");
   await page.getByLabel("Promotion code").fill(code);
@@ -293,18 +351,24 @@ test("long manual order dialogs keep the header and submit button reachable", as
     { width: 375, height: 812 },
   ]) {
     await admin.setViewportSize(viewport);
-    await dialog.evaluate((element) => {
-      element.scrollTop = element.scrollHeight;
-    });
-    const bounds = await dialog.boundingBox();
     const submit = dialog.getByRole("button", {
       name: "Create order",
       exact: true,
     });
-    const button = await submit.boundingBox();
-    expect(button!.y + button!.height).toBeLessThanOrEqual(
-      bounds!.y + bounds!.height,
-    );
+    await expect
+      .poll(async () => {
+        await dialog.evaluate((element) => {
+          element.scrollTop = element.scrollHeight;
+        });
+        const bounds = await dialog.boundingBox();
+        const button = await submit.boundingBox();
+        return Boolean(
+          bounds &&
+          button &&
+          button.y + button.height <= bounds.y + bounds.height,
+        );
+      })
+      .toBe(true);
     await submit.click({ trial: true });
     await dialog
       .getByRole("button", { name: "Close", exact: true })
@@ -331,9 +395,9 @@ test("owner creates a manual order from the orders dialog", async ({
     .selectOption({ label: "Demo bank transfer" });
   await dialog.getByLabel("Product variant").selectOption({ index: 1 });
   await dialog.getByRole("button", { name: "Create order" }).click();
-  await expect(admin).toHaveURL(/\/admin\/orders\?created=SP-/);
+  await expect(admin).toHaveURL(/\/admin\/orders\?created=ORD-/);
   await expect(
-    admin.getByRole("alert").filter({ hasText: "Manual order SP-" }),
+    admin.getByRole("alert").filter({ hasText: "Manual order ORD-" }),
   ).toBeVisible();
   const [created] =
     await sql`select source_cart_id from orders where guest_email='manual@example.test'`;
@@ -346,18 +410,143 @@ test("owner creates a manual order from the orders dialog", async ({
   const orderRow = admin.getByRole("row").filter({
     hasText: "manual@example.test",
   });
-  await orderRow.getByRole("link", { name: "Manage" }).click();
-  await expect(admin).toHaveURL(/manage=[0-9a-f-]+#order-/);
+  await orderRow.getByRole("link", { name: "View order", exact: true }).click();
+  await expect(admin).toHaveURL(/\/admin\/orders\/[0-9a-f-]+\?back=/);
   await expect(
-    admin.locator(
-      "details[open]#order-payment-" +
-        new URL(admin.url()).searchParams.get("manage"),
-    ),
+    admin.getByRole("button", { name: "Record payment", exact: true }),
   ).toBeVisible();
   expect(
     await sql`select id from orders where guest_email='manual@example.test'`,
   ).toHaveLength(1);
 });
+
+for (const scheduled of [false, true]) {
+  test(`owner creates a ${scheduled ? "scheduled" : "unscheduled"} manual pickup without a shipping address`, async ({
+    admin,
+    sql,
+  }) => {
+    const schedule = Object.fromEntries(
+      ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].map((day) => [
+        day,
+        [["12:00", "13:00"]],
+      ]),
+    );
+    const [location] =
+      await sql`insert into pickup_location(name,address,weekly_schedule,prep_minutes,schedule_required) values('Manual pickup test','Pickup counter',${JSON.stringify(schedule)}::jsonb,0,${scheduled}) returning id`;
+    await admin.goto("/admin/orders");
+    await admin.getByRole("button", { name: "Add manual order" }).click();
+    const dialog = admin.getByRole("dialog", { name: "Add manual order" });
+    await dialog.getByLabel("Customer name").fill("Manual pickup customer");
+    const email = `manual-pickup-${scheduled}@example.test`;
+    await dialog.getByLabel("Customer email").fill(email);
+    await dialog
+      .getByLabel("Fulfillment", { exact: true })
+      .selectOption("pickup");
+    await expect(
+      dialog.getByLabel("Shipping address", { exact: true }),
+    ).toHaveCount(0);
+    await dialog.getByLabel("Pickup location").selectOption(location!.id);
+    if (scheduled) {
+      await dialog
+        .getByLabel("Pickup date")
+        .fill(new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10));
+      await dialog.getByLabel("Pickup time").fill("12:00");
+    }
+    await dialog
+      .getByLabel("Payment method")
+      .selectOption({ label: "Demo bank transfer" });
+    await dialog.getByLabel("Product variant").selectOption({ index: 1 });
+    await dialog.getByRole("button", { name: "Create order" }).click();
+    await expect(admin).toHaveURL(/\/admin\/orders\?created=ORD-/);
+    await expect(dialog).toBeHidden();
+    const [order] =
+      await sql`select fulfillment_type,terms_snapshot from orders where guest_email=${email}`;
+    expect(order!.fulfillment_type).toBe("pickup");
+    expect(order!.terms_snapshot.pickup.locationId).toBe(location!.id);
+    expect(Boolean(order!.terms_snapshot.pickup.date)).toBe(scheduled);
+  });
+}
+
+for (const rejection of ["full", "blackout"] as const) {
+  test(`manual pickup retains entered details after ${rejection} rejection and retries once`, async ({
+    admin,
+    sql,
+  }) => {
+    const date = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+    const schedule = Object.fromEntries(
+      ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].map((day) => [
+        day,
+        [["12:00", "13:00"]],
+      ]),
+    );
+    const [location] =
+      await sql`insert into pickup_location(name,address,weekly_schedule,prep_minutes,schedule_required,slot_capacity,blackout_dates) values('Recovery pickup','Pickup counter',${JSON.stringify(schedule)}::jsonb,0,true,${rejection === "full" ? 0 : 1},${JSON.stringify(rejection === "blackout" ? [date] : [])}::jsonb) returning id`;
+    await admin.goto("/admin/orders");
+    await admin.getByRole("button", { name: "Add manual order" }).click();
+    const dialog = admin.getByRole("dialog", { name: "Add manual order" });
+    const email = `manual-recovery-${rejection}@example.test`;
+    await dialog.getByLabel("Customer name").fill("Recovery customer");
+    await dialog.getByLabel("Customer email").fill(email);
+    await dialog
+      .getByLabel("Fulfillment", { exact: true })
+      .selectOption("pickup");
+    await dialog.getByLabel("Pickup location").selectOption(location!.id);
+    await dialog.getByLabel("Pickup date").fill(date);
+    await dialog.getByLabel("Pickup time").fill("12:00");
+    await dialog
+      .getByLabel("Payment method")
+      .selectOption({ label: "Demo bank transfer" });
+    await dialog.getByLabel("Product variant").selectOption({ index: 1 });
+    await dialog.getByLabel("Quantity", { exact: true }).fill("2");
+    const requestKey = await dialog
+      .locator('input[name="requestKey"]')
+      .inputValue();
+    const variant = await dialog.getByLabel("Product variant").inputValue();
+    const payment = await dialog.getByLabel("Payment method").inputValue();
+    await dialog.getByRole("button", { name: "Create order" }).click();
+    await expect(dialog.getByRole("alert")).toHaveText(
+      rejection === "full"
+        ? "This fulfillment slot is full. Choose another time."
+        : "This pickup slot is closed, past, or does not allow enough preparation time.",
+    );
+    await expect(dialog.getByLabel("Customer name")).toHaveValue(
+      "Recovery customer",
+    );
+    await expect(dialog.getByLabel("Customer email")).toHaveValue(email);
+    await expect(dialog.getByLabel("Fulfillment", { exact: true })).toHaveValue(
+      "pickup",
+    );
+    await expect(dialog.getByLabel("Pickup location")).toHaveValue(
+      location!.id,
+    );
+    await expect(dialog.getByLabel("Pickup date")).toHaveValue(date);
+    await expect(dialog.getByLabel("Pickup time")).toHaveValue("12:00");
+    await expect(dialog.getByLabel("Product variant")).toHaveValue(variant);
+    await expect(dialog.getByLabel("Quantity", { exact: true })).toHaveValue(
+      "2",
+    );
+    await expect(dialog.getByLabel("Payment method")).toHaveValue(payment);
+    await expect(dialog.locator('input[name="requestKey"]')).toHaveValue(
+      requestKey,
+    );
+    expect(await sql`select id from carts where id=${requestKey}`).toHaveLength(
+      0,
+    );
+    expect(
+      await sql`select id from orders where source_cart_id=${requestKey}`,
+    ).toHaveLength(0);
+    await sql`update pickup_location set blackout_dates='[]'::jsonb, slot_capacity=1 where id=${location!.id}`;
+    await dialog.getByRole("button", { name: "Create order" }).click();
+    await expect(admin).toHaveURL(/\/admin\/orders\?created=ORD-/);
+    await expect(dialog).toBeHidden();
+    const orders =
+      await sql`select id from orders where source_cart_id=${requestKey}`;
+    expect(orders).toHaveLength(1);
+    expect(
+      await sql`select id from slot_reservations where order_id=${orders[0]!.id}`,
+    ).toHaveLength(1);
+  });
+}
 
 test("staff can see submitted payment evidence in the review grid", async ({
   page,
@@ -391,10 +580,35 @@ test("staff can see submitted payment evidence in the review grid", async ({
       image.evaluate((element: HTMLImageElement) => element.naturalWidth),
     )
     .toBeGreaterThan(0);
-  await admin.getByRole("button", { name: "Review evidence" }).click();
+  const evidenceCard = admin
+    .locator(".evidence-card")
+    .filter({ hasText: order.reference_code });
+  await evidenceCard.getByRole("button", { name: "Review evidence" }).click();
   const review = admin.getByRole("dialog", {
     name: `Payment evidence · ${order.reference_code}`,
   });
+  await expect(
+    review.getByRole("heading", {
+      name: `Order details · ${order.reference_code}`,
+    }),
+  ).toBeVisible();
+  const lines =
+    await sql`select quantity, catalog_snapshot from order_items where order_id=${order.id}`;
+  for (const line of lines) {
+    const row = review
+      .getByRole("row")
+      .filter({ hasText: line.catalog_snapshot.sku });
+    await expect(row).toBeVisible();
+    await expect(
+      row.getByRole("cell", { name: String(line.quantity), exact: true }),
+    ).toBeVisible();
+  }
+  await expect(
+    review.getByText("External payment total:", { exact: false }),
+  ).toBeVisible();
+  await expect(
+    review.getByRole("heading", { name: "Fulfillment", exact: true }),
+  ).toBeVisible();
   await expect(
     review.getByRole("img", {
       name: `Full-size payment evidence submitted for order ${order.reference_code}`,
@@ -403,6 +617,85 @@ test("staff can see submitted payment evidence in the review grid", async ({
   await expect(
     review.getByRole("link", { name: /Open original/ }),
   ).toHaveAttribute("target", "_blank");
+  await review.getByRole("button", { name: "Zoom in evidence" }).click();
+  await expect(review.getByText("150%", { exact: true })).toBeVisible();
+  await review.getByRole("button", { name: "Fit image" }).click();
+  await expect(review.getByText("100%", { exact: true })).toBeVisible();
+  const [account] =
+    await sql`select id from payment_accounts where is_active=true and account_type <> 'cash' limit 1`;
+  await review
+    .getByLabel("Receiving account", { exact: true })
+    .selectOption(account!.id);
+  await review
+    .getByLabel("Actual received amount", { exact: false })
+    .fill((order.purchase_total_cents / 100).toFixed(2));
+  const reference = `EVIDENCE-${randomUUID()}`;
+  await review
+    .getByLabel("Actual payment reference", { exact: true })
+    .fill(reference);
+  await review
+    .getByRole("checkbox", { name: /I verified the actual receiving/ })
+    .check();
+  await review
+    .getByRole("button", { name: "Record receipt", exact: true })
+    .click();
+  await expect(admin).toHaveURL(/\/admin\/payments\?reviewEvidence=/);
+  await expect(review.getByText(reference, { exact: false })).toBeVisible();
+  await review
+    .getByRole("button", { name: "Confirm exact payment", exact: true })
+    .click();
+  await expect
+    .poll(
+      async () =>
+        (
+          await sql`select lifecycle_status from orders where id=${order.id}`
+        )[0]!.lifecycle_status,
+    )
+    .toBe("confirmed");
+  await expect(admin).toHaveURL(/\/admin\/payments/);
+  await admin.goto(`/admin/orders/${order.id}`);
+  await expect(
+    admin.getByRole("heading", { name: "Payment evidence & receipts" }),
+  ).toBeVisible();
+  await expect(
+    admin.getByRole("img", {
+      name: `Payment evidence submitted for order ${order.reference_code}`,
+      exact: true,
+    }),
+  ).toBeVisible();
+});
+
+test("owner selects orders before exporting instead of exporting every order", async ({
+  page,
+  admin,
+  sql,
+}) => {
+  const first = await checkout(page, sql);
+  const second = await checkout(page, sql);
+  await admin.goto("/admin/orders");
+  await expect(admin.getByLabel("Orders to export")).toHaveValue("selected");
+  const exportButton = admin.getByRole("button", {
+    name: "Export orders CSV",
+    exact: true,
+  });
+  await expect(exportButton).toBeDisabled();
+  await admin
+    .getByRole("checkbox", {
+      name: `Select order ${first.reference_code}`,
+      exact: true,
+    })
+    .check();
+  const download = admin.waitForEvent("download");
+  await exportButton.click();
+  const file = await download;
+  const stream = await file.createReadStream();
+  let csv = "";
+  for await (const chunk of stream!) csv += chunk.toString();
+  expect(csv).toContain(first.reference_code);
+  expect(csv).not.toContain(second.reference_code);
+  await admin.getByLabel("Search orders").fill(first.reference_code);
+  await admin.getByRole("button", { name: "Filter", exact: true }).click();
+  await expect(exportButton).toBeDisabled();
 });
 
 test("staff filters the payment ledger and opens payment management", async ({

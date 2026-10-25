@@ -8,10 +8,6 @@ import {
   calculatePurchaseTotal,
   roundHalfUp,
 } from "@/domain/money/calculations";
-import {
-  computeCrockfordChecksum,
-  validateOrderReferenceCode,
-} from "@/domain/money/reference-code";
 
 describe("domain validation edge cases", () => {
   it("covers shipping zone precedence and free-threshold boundaries", () => {
@@ -93,13 +89,5 @@ describe("domain validation edge cases", () => {
         { amountCents: 500, taxRateBasisPoints: 2000, isTaxInclusive: true },
       ).shipping.taxCents,
     ).toBe(83);
-  });
-
-  it("rejects malformed reference codes and ignores unsupported checksum input", () => {
-    expect(() => computeCrockfordChecksum("I-O-U")).toThrow();
-    expect(validateOrderReferenceCode("", "SP")).toBe(false);
-    expect(validateOrderReferenceCode("XX-1234-5678K", "SP")).toBe(false);
-    expect(validateOrderReferenceCode("SP-123-5678K", "SP")).toBe(false);
-    expect(validateOrderReferenceCode("SP-1234-5678!", "SP")).toBe(false);
   });
 });

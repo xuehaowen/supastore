@@ -5,7 +5,7 @@ import { recoverOwner } from "@/application/use-cases/staff/recover-owner";
 async function main() {
   const args = process.argv.slice(2);
   let email = "";
-  let baseUrl = process.env.BETTER_AUTH_URL || "http://localhost:3000";
+  let baseUrl: string | undefined;
 
   for (const arg of args) {
     if (arg.startsWith("--email=")) {
@@ -26,7 +26,10 @@ async function main() {
   }
 
   try {
-    const result = await recoverOwner({ email, baseUrl });
+    const result = await recoverOwner({
+      email,
+      ...(baseUrl ? { baseUrl } : {}),
+    });
 
     console.log("=================================================");
     console.log("  OWNER ACCESS RECOVERY SUCCESSFUL (M5)");

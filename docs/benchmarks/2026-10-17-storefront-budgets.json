@@ -1,0 +1,49 @@
+{
+  "metric": "compiled route/shared/error JS (sum of per-chunk gzip)",
+  "version": 1,
+  "baselineCommit": "022f92f4bb8abe12c8e8200f148d5a3c2525ee3d",
+  "maxIncreasePercent": 10,
+  "status": "pass",
+  "routes": [
+    {
+      "route": "/[locale]/page",
+      "chunks": 17,
+      "rawBytes": 507846,
+      "gzipBytes": 160484,
+      "gzipKiB": 156.7,
+      "baselineGzipBytes": 160484,
+      "maxGzipBytes": 204800,
+      "violations": []
+    },
+    {
+      "route": "/[locale]/products/[handle]/page",
+      "chunks": 17,
+      "rawBytes": 512102,
+      "gzipBytes": 161909,
+      "gzipKiB": 158.1,
+      "baselineGzipBytes": 161908,
+      "maxGzipBytes": 204800,
+      "violations": []
+    },
+    {
+      "route": "/[locale]/cart/page",
+      "chunks": 17,
+      "rawBytes": 504398,
+      "gzipBytes": 159117,
+      "gzipKiB": 155.4,
+      "baselineGzipBytes": 159117,
+      "maxGzipBytes": 204800,
+      "violations": []
+    },
+    {
+      "route": "/[locale]/checkout/page",
+      "chunks": 17,
+      "rawBytes": 522797,
+      "gzipBytes": 165149,
+      "gzipKiB": 161.3,
+      "baselineGzipBytes": 165130,
+      "maxGzipBytes": 204800,
+      "violations": []
+    }
+  ]
+}

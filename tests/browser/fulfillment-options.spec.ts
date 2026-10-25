@@ -17,6 +17,7 @@ for (const mode of ["shipping", "pickup", "none"] as const) {
       await sql`update store_settings set commerce_policy=${sql.json(policy)}, quote_version=quote_version+1`;
       await page.goto("/en/products/studio-cup");
       await page.getByRole("button", { name: "Add to bag" }).click();
+      await page.getByRole("link", { name: "View bag", exact: true }).click();
       await page.getByRole("link", { name: "Continue to checkout" }).click();
       await expect(page.locator('input[name="fulfillmentType"]')).toHaveCount(
         mode === "none" ? 0 : 1,
@@ -68,6 +69,7 @@ for (const scheduled of [false, true]) {
       await sql`update store_settings set commerce_policy=${sql.json(policy)}, quote_version=quote_version+1`;
       await page.goto("/en/products/studio-cup");
       await page.getByRole("button", { name: "Add to bag" }).click();
+      await page.getByRole("link", { name: "View bag", exact: true }).click();
       await page.getByRole("link", { name: "Continue to checkout" }).click();
       await expect(
         page.getByRole("radio", { name: "Local delivery", exact: true }),

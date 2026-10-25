@@ -1,0 +1,47 @@
+{
+  "scope": "memory-only",
+  "protocolVersion": 1,
+  "benchmarkAcceptance": "not-evaluated",
+  "budgetScope": {
+    "platform": "win32",
+    "runtime": "Next CLI",
+    "products": 1000,
+    "fulfillment": "mixed",
+    "rewards": true,
+    "trackedStock": true
+  },
+  "budgetApplicable": true,
+  "status": "fail",
+  "services": {
+    "backend": {
+      "status": "fail",
+      "sampleCount": 360,
+      "firstMedianMiB": 326.859375,
+      "lastMedianMiB": 565.291015625,
+      "peakMiB": 593.46484375,
+      "slopeMiBPerMinute": 12.31977060980819,
+      "medianGrowthMiB": 238.431640625,
+      "violations": ["slopeMiBPerMinute", "medianGrowthMiB"]
+    },
+    "storefront": {
+      "status": "fail",
+      "sampleCount": 360,
+      "firstMedianMiB": 332.78125,
+      "lastMedianMiB": 473.630859375,
+      "peakMiB": 484.8515625,
+      "slopeMiBPerMinute": 7.1183860221982656,
+      "medianGrowthMiB": 140.849609375,
+      "violations": ["slopeMiBPerMinute", "medianGrowthMiB"]
+    },
+    "postgres": {
+      "status": "fail",
+      "sampleCount": 360,
+      "firstMedianMiB": 787.171875,
+      "lastMedianMiB": 2464.921875,
+      "peakMiB": 2487.15234375,
+      "slopeMiBPerMinute": 80.64139881013904,
+      "medianGrowthMiB": 1677.75,
+      "violations": ["slopeMiBPerMinute", "medianGrowthMiB"]
+    }
+  }
+}

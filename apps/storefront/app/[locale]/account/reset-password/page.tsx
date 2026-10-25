@@ -1,7 +1,8 @@
-﻿import { ResetPasswordClient } from "../../../account-client";
-import { getStorefrontMessages } from "../../../../lib/i18n";
+import { textFor } from "@supastore/i18n/messages";
+import { CustomerAuthTools } from "../../../customer-auth";
+import Link from "next/link";
 export const metadata = { robots: { index: false, follow: false } };
-export default async function Reset({
+export default async function ResetPassword({
   params,
   searchParams,
 }: {
@@ -10,15 +11,16 @@ export default async function Reset({
 }) {
   const { locale } = await params;
   const query = await searchParams;
-  const m = getStorefrontMessages(locale);
   return (
-    <>
-      <h1>{m.auth.resetPassword}</h1>
-      <ResetPasswordClient
+    <section className="storefront-state">
+      <Link href={`/${locale}/account`}>← {textFor(locale).ui.account}</Link>
+      <h1>{textFor(locale).auth.resetPassword}</h1>
+      <CustomerAuthTools
         locale={locale}
-        messages={{ auth: m.auth }}
-        {...query}
+        reset
+        {...(query.token ? { token: query.token } : {})}
+        invalidToken={Boolean(query.error)}
       />
-    </>
+    </section>
   );
 }

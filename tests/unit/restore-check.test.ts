@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { assertSafeRestoreEnvironment } from "@/../scripts/restore-check";
+import { assertSafeRestoreEnvironment } from "../../scripts/restore-check";
 
 describe("Disaster Recovery Restore Check", () => {
   it("throws error when DISABLE_OUTBOUND_DELIVERY is not true", () => {

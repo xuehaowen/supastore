@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { availableFulfillment } from "@/domain/shipping-destination";
+import { availableFulfillment } from "@supastore/shipping/destination";
 const configured = { shipping: 1, pickup: 1, delivery: 1 };
 describe("customer fulfillment choices", () => {
   it.each([

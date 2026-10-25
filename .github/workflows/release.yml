@@ -1,0 +1,89 @@
+name: Publish developer beta
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing beta tag on main with passing CI (for example v0.1.0-beta.1)
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: developer-beta-${{ inputs.tag }}
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      actions: read
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require accepted main commit and successful CI
+        id: candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v0\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-beta\.[1-9][0-9]*$ ]] || { echo 'An existing developer-beta tag is required.'; exit 1; }
+          sha=$(git rev-parse HEAD)
+          tagged=$(git rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")
+          test "$tagged" = "$sha" || { echo 'The candidate must be the existing tag, not a branch name.'; exit 1; }
+          git merge-base --is-ancestor "$sha" origin/main
+          passed=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$sha&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // empty')
+          test "$passed" = "$sha" || { echo 'CI must pass on this exact commit before release.'; exit 1; }
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo 'This release already exists; choose a new version.'
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - name: Validate beta version
+        id: release
+        run: node scripts/release-settings.mjs
+      - name: Build all three Linux amd64 release images
+        env:
+          IMAGE_NAMESPACE: ${{ steps.release.outputs.namespace }}
+          CANDIDATE_SHA: ${{ steps.candidate.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for target in backend storefront migrations; do
+            docker build --platform linux/amd64 --target "$target" \
+              --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+              --label "org.opencontainers.image.revision=$CANDIDATE_SHA" \
+              --label "org.opencontainers.image.version=$RELEASE_TAG" \
+              --tag "$IMAGE_NAMESPACE-$target:$RELEASE_TAG" .
+          done
+      - name: Publish versioned images and record digests
+        env:
+          IMAGE_NAMESPACE: ${{ steps.release.outputs.namespace }}
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          trap 'docker logout ghcr.io' EXIT
+          for target in backend storefront migrations; do
+            image="$IMAGE_NAMESPACE-$target:$RELEASE_TAG"
+            docker push "$image"
+            digest=$(docker image inspect "$image" --format '{{index .RepoDigests 0}}')
+            test -n "$digest"
+            printf '%s %s\n' "$image" "$digest" >> release-images.txt
+          done
+      - name: Create prerelease after all images are published
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          { printf 'Developer beta for evaluation and contribution. Production and human merchant acceptance remain open.\n\n'; cat CHANGELOG.md; } > release-notes.md
+          gh release create "$RELEASE_TAG" --verify-tag --prerelease \
+            --title "Supastore $RELEASE_TAG" --notes-file release-notes.md release-images.txt

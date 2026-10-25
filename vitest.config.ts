@@ -1,11 +1,17 @@
 import path from "node:path";
-import { defineConfig } from "vitest/config";
+import { defineConfig, configDefaults } from "vitest/config";
 
 export default defineConfig({
   esbuild: { jsx: "automatic" },
   test: {
     environment: "node",
-    exclude: ["tests/browser/**", "node_modules/**"],
+    exclude: [
+      ...configDefaults.exclude,
+      "tests/browser/**",
+      "**/.tmp-*/**",
+      "**/.test-*/**",
+      "**/.supastore-demo/**",
+    ],
     globals: true,
     testTimeout: 20000,
     coverage: {
@@ -14,11 +20,10 @@ export default defineConfig({
       reportsDirectory: "./coverage",
       // Unit coverage is a deterministic quality gate for the pure domain.
       // Database-backed use cases are measured by the integration command.
-      include: ["src/domain/**/*.ts"],
+      include: ["apps/backend/src/domain/**/*.ts"],
       exclude: [
-        "src/infrastructure/db/migrations/**",
-        "src/infrastructure/db/schema/**",
-        "src/infrastructure/auth/client.ts",
+        "apps/backend/src/infrastructure/db/migrations/**",
+        "apps/backend/src/infrastructure/db/schema/**",
         "**/*.d.ts",
       ],
       thresholds: {
@@ -30,12 +35,54 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: {
-      "@supastore/contracts": path.resolve(
-        __dirname,
-        "./packages/contracts/src/index.ts",
-      ),
-      "@": path.resolve(__dirname, "./src"),
-    },
+    alias: [
+      {
+        find: /^@supastore\/ui\/utils$/,
+        replacement: path.resolve(__dirname, "packages/ui/src/utils.ts"),
+      },
+      {
+        find: /^@supastore\/ui\/(.+)$/,
+        replacement: path.resolve(
+          __dirname,
+          "packages/ui/src/components/ui/$1",
+        ),
+      },
+      {
+        find: "@supastore/i18n/messages",
+        replacement: path.resolve(
+          __dirname,
+          "packages/i18n/src/app/messages.ts",
+        ),
+      },
+      {
+        find: /^@supastore\/i18n\/(.+)$/,
+        replacement: path.resolve(__dirname, "packages/i18n/src/$1"),
+      },
+      {
+        find: /^@supastore\/shipping\/(.+)$/,
+        replacement: path.resolve(__dirname, "packages/shipping/src/$1"),
+      },
+      {
+        find: "@supastore/contracts/customer-page-validation",
+        replacement: path.resolve(
+          __dirname,
+          "packages/contracts/src/customer-page-validation.ts",
+        ),
+      },
+      {
+        find: "@supastore/contracts/sitemap",
+        replacement: path.resolve(
+          __dirname,
+          "packages/contracts/src/sitemap.ts",
+        ),
+      },
+      ...Object.entries({
+        "@supastore/contracts": path.resolve(
+          __dirname,
+          "./packages/contracts/src/index.ts",
+        ),
+        "@": path.resolve(__dirname, "./apps/backend/src"),
+      }).map(([find, replacement]) => ({ find, replacement })),
+    ],
   },
 });

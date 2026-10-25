@@ -1,11 +1,7 @@
 import { describe, it, expect } from "vitest";
-import {
-  computeOrderFinancialProjection,
-  computeReceiptProjection,
-} from "@/domain/financial-projection/projection";
+import { computeOrderFinancialProjection } from "@/domain/financial-projection/projection";
 import {
   classifyPayoutTransfer,
-  areDestinationsEqual,
   type Destination,
 } from "@/domain/financial-projection/discrepancies";
 
@@ -13,10 +9,6 @@ describe("M2 Executable Accounting Contract Suite (transaction-contracts.md)", (
   const verifiedDest: Destination = {
     type: "bank_account",
     accountNumberHash: "verified-hash-123",
-  };
-  const wrongDest: Destination = {
-    type: "bank_account",
-    accountNumberHash: "wrong-hash-456",
   };
 
   describe("Canonical Table-Driven Scenarios", () => {

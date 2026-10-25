@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseCreatedOrderDto,
   parseQuoteDto,
-} from "../../packages/contracts/src";
+} from "../../packages/contracts/src/index";
 
 describe("checkout response contracts", () => {
   const quote = {

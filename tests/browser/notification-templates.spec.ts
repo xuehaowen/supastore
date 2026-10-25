@@ -22,7 +22,7 @@ test("owner previews drafts, rejects invalid publishing, publishes and rolls bac
     .fill("Use this secure link: {{action.url}}");
   await expect(
     admin.getByRole("heading", {
-      name: "Preview reset · Example Store",
+      name: "Preview reset · Supastore",
       exact: true,
     }),
   ).toBeVisible();

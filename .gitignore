@@ -1,4 +1,5 @@
 # Dependencies
+.supastore-demo/
 node_modules/
 .pnpm-store/
 
@@ -44,5 +45,7 @@ test-results/
 .next-cuj/
 .tsconfig-cuj.json
 .test-integration-postgres/
+.test-integration-unicode-postgres/
+.database-backups/
 .implementation-*.log
 .test-storefront-postgres/

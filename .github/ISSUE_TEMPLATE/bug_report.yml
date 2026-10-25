@@ -1,0 +1,38 @@
+name: Bug report
+description: Report a reproducible problem using synthetic data.
+body:
+  - type: markdown
+    attributes:
+      value: "For vulnerabilities, use [private reporting](https://github.com/xuehaowen/supastore/security/advisories/new). Never include secrets or customer/payment records."
+  - type: input
+    id: version
+    attributes:
+      {
+        label: Commit or release,
+        description: Include the exact SHA or beta tag.,
+      }
+    validations: { required: true }
+  - type: textarea
+    id: environment
+    attributes:
+      {
+        label: Environment,
+        description: "OS, Docker/Node/pnpm versions, browser and deployment mode. No credentials.",
+      }
+    validations: { required: true }
+  - type: textarea
+    id: reproduce
+    attributes:
+      {
+        label: Reproduction,
+        description: Give the shortest steps with synthetic data.,
+      }
+    validations: { required: true }
+  - type: textarea
+    id: result
+    attributes:
+      {
+        label: Expected and actual results,
+        description: Include sanitized errors or screenshots.,
+      }
+    validations: { required: true }

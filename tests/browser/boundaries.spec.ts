@@ -6,6 +6,7 @@ import {
   openOrder,
   clickAction,
   record,
+  deliveredLink,
 } from "./fixtures";
 
 async function accessible(page: import("@playwright/test").Page) {
@@ -17,7 +18,10 @@ async function accessible(page: import("@playwright/test").Page) {
       { timeout: 10000 },
     )
     .toBe(true);
-  const scan = await new AxeBuilder({ page }).analyze();
+  // The script-disabled draft is audited separately in storefront-refinement.
+  const scan = await new AxeBuilder({ page })
+    .exclude('iframe[title="Unsaved homepage preview"]')
+    .analyze();
   expect(
     scan.violations.filter((v) =>
       ["critical", "serious"].includes(v.impact ?? ""),
@@ -39,9 +43,11 @@ test("C3 unsupported destination preserves cart and explains next action", async
   try {
     await page.goto("/en/products/studio-cup");
     await page.getByRole("button", { name: "Add to bag" }).click();
+    await page.getByRole("link", { name: "View bag", exact: true }).click();
     await page.getByRole("link", { name: "Continue to checkout" }).click();
-    await page.getByLabel("Country", { exact: true }).selectOption("AQ");
     await page.getByLabel("Street address").fill("1 Test Street");
+    await page.getByLabel("Country", { exact: true }).selectOption("AQ");
+    await expect(page.getByLabel("Country", { exact: true })).toHaveValue("AQ");
     await page
       .getByLabel("Payment method")
       .selectOption({ label: "Demo bank transfer" });
@@ -63,13 +69,13 @@ test("C3 unsupported destination preserves cart and explains next action", async
 test("C3/C4 keyboard checkout and expanded admin forms are accessible on mobile", async ({
   page,
   admin,
-  sql,
 }) => {
   await page.setViewportSize({ width: 360, height: 780 });
   await admin.setViewportSize({ width: 360, height: 780 });
   await page.goto("/en/products/studio-cup");
   await page.getByRole("button", { name: "Add to bag" }).focus();
   await page.keyboard.press("Enter");
+  await page.getByRole("link", { name: "View bag", exact: true }).click();
   await page.getByRole("link", { name: "Continue to checkout" }).click();
   await page.getByLabel("Street address").fill("1 Test Street");
   await page
@@ -93,7 +99,7 @@ test("C3/C4 keyboard checkout and expanded admin forms are accessible on mobile"
   await openOrder(admin, reference);
   await accessible(admin);
   await record(admin, reference, 2900);
-  await admin.goto("/admin/fulfillment");
+  await admin.goto("/admin/fulfillment?work=all");
   const row = admin
     .locator("#ready details")
     .filter({ has: admin.locator("summary", { hasText: reference }) });
@@ -120,14 +126,12 @@ test("A7 late receipt on a cancelled order creates return work without reopening
     (await sql`select lifecycle_status from orders where id=${order.id}`)[0]!
       .lifecycle_status,
   ).toBe("cancelled");
-  await admin.goto("/admin/fulfillment");
+  await admin.goto("/admin/fulfillment?work=all");
   const operations = admin.locator("#ready details").filter({
     has: admin.locator("summary", { hasText: order.reference_code }),
   });
   await operations.locator("summary").click();
-  await operations
-    .getByLabel("Surplus return amount (minor units)")
-    .fill("100");
+  await operations.getByLabel("Surplus return amount (USD)").fill("1.00");
   await operations.getByLabel("Return reason").fill("Late payment return");
   await clickAction(
     admin,
@@ -146,13 +150,10 @@ test("A7 late receipt on a cancelled order creates return work without reopening
 
 test("Account registration requires verification, retries sign-in, denies admin and signs out", async ({
   page,
-  sql,
 }) => {
   const email = "account-" + Date.now() + "@example.test";
   await page.goto("/en/account");
-  await page
-    .getByRole("button", { name: "Create account", exact: true })
-    .click();
+  await page.getByRole("tab", { name: "Create account", exact: true }).click();
   await page.getByLabel("Name", { exact: true }).fill("Account Customer");
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page
@@ -172,16 +173,11 @@ test("Account registration requires verification, retries sign-in, denies admin 
   await expect(page.locator('[data-slot="alert"]')).toContainText(
     "Please verify your email",
   );
-  const messages: string[] = await (
-    await page.request.get("http://127.0.0.1:9010")
-  ).json();
-  const message = messages.find(
-    (message) =>
-      message.includes(email) && message.includes("/api/auth/verify-email"),
-  )!;
-  const verificationUrl = message.match(
-    /https?:\/\/[^\s<>"']*\/api\/auth\/verify-email\?[^\s<>"']+/,
-  )![0]!;
+  const verificationUrl = await deliveredLink(
+    page,
+    email,
+    "/api/auth/verify-email",
+  );
   await page.goto(verificationUrl);
   await expect(
     page.getByRole("heading", { name: "Good to see you." }),
@@ -212,7 +208,7 @@ test("Account registration requires verification, retries sign-in, denies admin 
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/admin\/login/);
   await expect(page.locator('[data-slot="alert"]')).toContainText(
-    "does not have staff access",
+    "Sign in with your staff account",
   );
   await page.goto("/en/account");
   await page.route(
@@ -266,16 +262,7 @@ test("customer profile and emailed password reset persist and reject the old pas
   await page.getByLabel("Email for password reset").fill(email);
   await page.getByRole("button", { name: "Send link", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Check your inbox");
-  const messages: string[] = await (
-    await page.request.get("http://127.0.0.1:9010")
-  ).json();
-  const message = messages.find(
-    (text) => text.includes(email) && text.includes("reset-password"),
-  );
-  expect(message).toBeTruthy();
-  await page.goto(
-    message!.match(/https?:\/\/[^\s<>"']*reset-password[^\s<>"']*/)![0]!,
-  );
+  await page.goto(await deliveredLink(page, email, "reset-password"));
   await page.getByLabel("New password", { exact: true }).fill(newPassword);
   await page.getByLabel("Confirm password", { exact: true }).fill(newPassword);
   await page
@@ -387,14 +374,18 @@ test("M2/C1 multiple variants and Chinese product text persist into customer sel
   const [large] =
     await sql`select id from product_variants where sku=${handle + "-b"}`;
   const largeRadio = page.getByRole("radio", { name: /Large/ });
-  await expect(largeRadio).toHaveValue(large!.id);
-  await largeRadio.check();
-  await expect(largeRadio).toBeChecked();
+  await largeRadio.click();
+  await expect(largeRadio).toHaveAttribute("aria-checked", "true");
   await expect
     .poll(() =>
-      largeRadio.evaluate((radio: HTMLInputElement) =>
-        new FormData(radio.form!).get("variantId"),
-      ),
+      page
+        .locator("form")
+        .filter({
+          has: page.getByRole("button", { name: "Add to bag", exact: true }),
+        })
+        .evaluate((form: HTMLFormElement) =>
+          new FormData(form).get("variantId"),
+        ),
     )
     .toBe(large!.id);
   await clickAction(page, page.getByRole("button", { name: "Add to bag" }));

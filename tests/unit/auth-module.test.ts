@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { auth } from "@/infrastructure/auth";
-import { smtpAdapter } from "@/infrastructure/notifications/smtp";
+import { auth, staffAuth } from "@/infrastructure/auth";
+import * as smtpAdapter from "@/infrastructure/notifications/smtp";
+import { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from "@supastore/contracts";
 
 const queries = vi.hoisted(() => ({ limit: vi.fn() }));
 vi.mock("@/infrastructure/db", () => ({
@@ -12,6 +13,83 @@ vi.mock("@/infrastructure/db", () => ({
 }));
 
 describe("Auth Module Configuration and Callbacks", () => {
+  it("does not trust development origins implicitly in production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("STOREFRONT_ORIGIN", "https://shop.example.test");
+    vi.stubEnv("APP_URL", "https://shop.example.test");
+    vi.stubEnv("BETTER_AUTH_URL", "https://shop.example.test");
+    vi.stubEnv(
+      "BETTER_AUTH_SECRET",
+      "production-fixture-random-secret-32-characters",
+    );
+    try {
+      vi.resetModules();
+      const { staffAuth: productionAuth } =
+        await import("@/infrastructure/auth");
+      expect(productionAuth.options.trustedOrigins).not.toContain(
+        "http://localhost:3000",
+      );
+      expect(productionAuth.options.trustedOrigins).not.toContain(
+        "http://127.0.0.1:3000",
+      );
+      expect(productionAuth.options.trustedOrigins).toContain(
+        "https://shop.example.test",
+      );
+      expect(
+        productionAuth.options.advanced?.ipAddress?.ipAddressHeaders,
+      ).toEqual(["x-forwarded-for"]);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+  it("offers authenticator MFA only for staff and persists auth rate limits", () => {
+    expect(
+      staffAuth.options.plugins?.some((plugin) => plugin.id === "two-factor"),
+    ).toBe(true);
+    expect(
+      auth.options.plugins?.some((plugin) => plugin.id === "two-factor"),
+    ).not.toBe(true);
+    expect(staffAuth.options.rateLimit?.storage).toBe("database");
+    expect(auth.options.rateLimit?.storage).toBe("database");
+  });
+  it("applies the shared password creation policy in both identity realms", () => {
+    for (const identity of [auth, staffAuth]) {
+      expect(identity.options.emailAndPassword?.minPasswordLength).toBe(
+        MIN_PASSWORD_LENGTH,
+      );
+      expect(identity.options.emailAndPassword?.maxPasswordLength).toBe(
+        MAX_PASSWORD_LENGTH,
+      );
+    }
+  });
+  it.each(["STOREFRONT_ORIGIN", "APP_URL"])(
+    "uses %s for standalone authentication without BETTER_AUTH_URL",
+    async (key) => {
+      vi.stubEnv("BETTER_AUTH_URL", undefined);
+      vi.stubEnv("STOREFRONT_ORIGIN", undefined);
+      vi.stubEnv("APP_URL", undefined);
+      vi.stubEnv(key, "https://shop.example.test");
+      try {
+        vi.resetModules();
+        const identities = await import("@/infrastructure/auth");
+        expect(identities.auth.options.baseURL).toBe(
+          "https://shop.example.test",
+        );
+        expect(identities.staffAuth.options.baseURL).toBe(
+          "https://shop.example.test",
+        );
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    },
+  );
+  it("uses separate staff and customer cookie namespaces and disables staff registration", () => {
+    expect(auth.options.advanced?.cookiePrefix).toBe("supastore-customer");
+    expect(staffAuth.options.advanced?.cookiePrefix).toBe("supastore-staff");
+    expect(staffAuth.options.basePath).toBe("/api/admin-auth");
+    expect(staffAuth.options.emailAndPassword?.disableSignUp).toBe(true);
+    expect(staffAuth.options.secret).not.toBe(auth.options.secret);
+  });
   it("keeps customer signup verification without globally blocking staff login", () => {
     expect(auth.options.emailAndPassword?.enabled).toBe(true);
     expect(auth.options.emailAndPassword?.requireEmailVerification).toBe(false);
@@ -28,7 +106,7 @@ describe("Auth Module Configuration and Callbacks", () => {
       label: "unverified active staff",
       verified: false,
       staff: true,
-      allowed: true,
+      allowed: false,
     },
     {
       label: "unverified customer",
@@ -42,39 +120,57 @@ describe("Auth Module Configuration and Callbacks", () => {
       staff: false,
       allowed: false,
     },
-  ])(
-    "checks session creation for $label",
-    async ({ verified, staff, allowed }) => {
+  ])("checks session creation for $label", async ({ verified, allowed }) => {
+    queries.limit.mockReset();
+    queries.limit.mockResolvedValueOnce([{ emailVerified: verified }]);
+    const before = auth.options.databaseHooks!.session!.create!.before!;
+    const result = before({
+      id: "session",
+      userId: "user",
+      token: "token",
+      expiresAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    if (allowed) await expect(result).resolves.toBeUndefined();
+    else
+      await expect(result).rejects.toMatchObject({
+        status: "FORBIDDEN",
+        body: { code: "EMAIL_NOT_VERIFIED" },
+      });
+    expect(queries.limit).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([true, false])(
+    "checks active staff membership independently: %s",
+    async (active) => {
       queries.limit.mockReset();
-      queries.limit.mockResolvedValueOnce([{ emailVerified: verified }]);
-      if (!verified)
-        queries.limit.mockResolvedValueOnce(
-          staff ? [{ id: "membership" }] : [],
-        );
-      const before = auth.options.databaseHooks!.session!.create!.before!;
-      const result = before({
-        id: "session",
-        userId: "user",
-        token: "token",
+      queries.limit.mockResolvedValue(active ? [{ id: "member" }] : []);
+      const result = staffAuth.options.databaseHooks!.session!.create!.before!({
+        id: "staff-session",
+        userId: "staff-user",
+        token: "staff-token",
         expiresAt: new Date(),
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      if (allowed) await expect(result).resolves.toBeUndefined();
+      if (active) await expect(result).resolves.toBeUndefined();
       else
         await expect(result).rejects.toMatchObject({
           status: "FORBIDDEN",
-          body: { code: "EMAIL_NOT_VERIFIED" },
+          body: { code: "STAFF_ACCESS_REQUIRED" },
         });
-      expect(queries.limit).toHaveBeenCalledTimes(verified ? 1 : 2);
+      expect(queries.limit).toHaveBeenCalledTimes(1);
     },
   );
 
   it("dispatches verification email with correct link and payload", async () => {
-    const sendEmailSpy = vi.spyOn(smtpAdapter, "sendEmail").mockResolvedValue({
-      success: true,
-      messageId: "mock-verify-msg-id",
-    });
+    const sendEmailSpy = vi
+      .spyOn(smtpAdapter, "queueAuthEmail")
+      .mockResolvedValue({
+        success: true,
+        messageId: "mock-verify-msg-id",
+      });
 
     const sendVerificationEmail =
       auth.options.emailVerification?.sendVerificationEmail;
@@ -109,10 +205,12 @@ describe("Auth Module Configuration and Callbacks", () => {
   });
 
   it("dispatches password reset email with correct reset URL", async () => {
-    const sendEmailSpy = vi.spyOn(smtpAdapter, "sendEmail").mockResolvedValue({
-      success: true,
-      messageId: "mock-reset-msg-id",
-    });
+    const sendEmailSpy = vi
+      .spyOn(smtpAdapter, "queueAuthEmail")
+      .mockResolvedValue({
+        success: true,
+        messageId: "mock-reset-msg-id",
+      });
 
     const sendResetPassword = auth.options.emailAndPassword?.sendResetPassword;
     expect(sendResetPassword).toBeDefined();
@@ -148,7 +246,7 @@ describe("Auth Module Configuration and Callbacks", () => {
   });
 
   it("suppresses verification delivery when outbound delivery is disabled", async () => {
-    const sendEmailSpy = vi.spyOn(smtpAdapter, "sendEmail");
+    const sendEmailSpy = vi.spyOn(smtpAdapter, "queueAuthEmail");
     const previous = process.env.DISABLE_OUTBOUND_DELIVERY;
     process.env.DISABLE_OUTBOUND_DELIVERY = "true";
     try {

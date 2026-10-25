@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { waitForRecoveryReadiness } from "./recovery-readiness.mjs";
 const compose = [
   "compose",
   "-p",
@@ -71,29 +72,19 @@ try {
   });
   assert.ok(!offline.ok, "Backend outage must fail public readiness");
   docker([...compose, "start", "backend"]);
-  let recovered = false;
-  for (let attempt = 0; attempt < 60; attempt++) {
-    try {
-      if (
-        (
-          await fetch(origin + "/api/health/ready", {
-            signal: AbortSignal.timeout(2000),
-          })
-        ).ok
-      ) {
-        recovered = true;
-        break;
-      }
-    } catch {}
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  assert.ok(recovered, "Backend must recover readiness within 30 seconds");
+  const recovery = await waitForRecoveryReadiness(origin + "/api/health/ready");
+  assert.ok(
+    recovery.recovered,
+    `Backend readiness recovery exceeded 30 seconds (${recovery.elapsedMs} ms)`,
+  );
   console.log(
     JSON.stringify({
       passed: true,
       restored: ["orders", "order_items", "guest_order_sessions"],
       outageReadiness: offline.status,
       recovered: true,
+      recoveryElapsedMs: recovery.elapsedMs,
+      recoveryAttempts: recovery.attempts,
     }),
   );
 } finally {

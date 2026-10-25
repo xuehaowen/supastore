@@ -1,4 +1,4 @@
-# SupaStore generic online-store implementation plan
+# Supastore generic online-store implementation plan
 
 Status: core implementation completed locally; production acceptance and the deferred items below remain open.
 Prepared: 2026-10-04, America/Los_Angeles.
@@ -15,16 +15,16 @@ Live provider/email validation, a restored production upgrade rehearsal, sustain
 
 ## Objective
 
-Deliver reusable online-store capabilities: customer authentication/profile management, configurable purchase rewards (including 5%), inventory per variant and optional fulfillment slot, shipping/pickup/local delivery, and two independently deployable services: backend and storefront. Extend SupaStore's existing financial and inventory mechanisms. The bakery checklist supplies use cases, not platform-wide defaults or restrictions.
+Deliver reusable online-store capabilities: customer authentication/profile management, configurable purchase rewards (including 5%), inventory per variant and optional fulfillment slot, shipping/pickup/local delivery, and two independently deployable services: backend and storefront. Extend Supastore's existing financial and inventory mechanisms. Merchant use cases inform the plan without imposing platform-wide defaults or restrictions.
 
 ## Generic product boundary
 
 - One configurable store and currency per deployment remains the initial boundary. Generic means reusable across merchants; multi-tenant hosting, simultaneous multi-currency, subscriptions, marketplace sellers and every product/service type require separate scope.
 - Target physical-goods stores, including shipped retail, local pickup, scheduled delivery and made-to-order goods. Digital fulfillment, bookings and recurring billing are explicit future extensions, not implied implemented support.
 - Configure branding, domain, locales, currency precision, timezone, account policy, payment methods, reward rules, stock tracking, fulfillment methods, tax rules and reporting thresholds through validated merchant settings.
-- Ship neutral installation defaults: rewards off until configured, no statutory sales cap, no industry-specific shipping prohibition, no bakery copy or Washington rules in core logic. Existing stores retain compatible settings through migration.
+- Ship neutral installation defaults: rewards off until configured, no statutory sales cap, no industry-specific shipping prohibition, no merchant branding or jurisdiction-specific rules in core logic. Existing stores retain compatible settings through migration.
 - Use focused interfaces for payments, tax calculation and notifications. Stripe is the first online-payment adapter; manual payment remains supported. Avoid a general plugin framework.
-- Bakery restrictions belong to an optional example store configuration and operational runbook. Domain transfer and external permit verification are merchant operations, not required product features.
+- Merchant-specific restrictions belong in deployment configuration and operational runbooks. Domain transfer and external permit verification are merchant operations, not required product features.
 - Acceptance must include at least a shipping-only retailer, pickup-only made-to-order store and mixed shipping/pickup store with rewards disabled/enabled and tracked/untracked products.
 
 ## Evidence and scope corrections
@@ -49,7 +49,7 @@ These defaults make implementation concrete; validate them in step 1 before comm
 4. Track credit issuance lots and source allocations for holds, capture and refunds. Consume reward credit first, then other credit, FIFO within each group by creation timestamp/ID. Keep promotional rewards distinguishable from merchant-issued and refund-restored credit; purchased credit is supported only if separately implemented. Revoke unreserved remaining value from the affected reward lot first; record unrecovered value as reward debt offsetting future earnings. Never consume unrelated credit or break existing checkout holds. See the debt/hold contract below.
 5. Start with no reward expiry or transferability. Version policy changes; never retroactively rewrite earned history. Rewards eligibility requires a verified account linked at accepted order creation; later guest claims do not generate past rewards.
 6. A fulfillment slot means a location/service area + fulfillment method + local calendar date + time window, with stable identity and timezone snapshot. Scheduling is optional for pickup/local delivery; ordinary shipped orders require no slot. Variant stock, per-slot variant quotas, and total slot order capacity are separate constraints. Null limit means unlimited; zero means unavailable. Initially retain one physical stock pool per variant; multiple warehouses require separate design.
-7. Reserve tracked stock and any applicable slot capacity when creating an unpaid order. Manual-payment deadlines create a review queue and never automatically release reservations, since money may have arrived without a recorded receipt. Provider checkout holds may expire only through a provider-specific terminal/reconciliation procedure. Once paid/confirmed, preserve the reservation through fulfillment. No bakery-specific preparation deadline applies to every store.
+7. Reserve tracked stock and any applicable slot capacity when creating an unpaid order. Manual-payment deadlines create a review queue and never automatically release reservations, since money may have arrived without a recorded receipt. Provider checkout holds may expire only through a provider-specific terminal/reconciliation procedure. Once paid/confirmed, preserve the reservation through fulfillment. No merchant-specific preparation deadline applies to every store.
 8. Two services in one pnpm workspace: `apps/backend` (API, admin, auth, worker) and `apps/storefront` (customer Next.js UI). Backend alone accesses PostgreSQL. Shared contracts contain serializable types/validation; backend business code never enters the storefront bundle.
 9. Keep the backend worker within the backend deployment for the initial two-service release. Use durable leases and test coordination with overlapping instances during deployment.
 10. Route public `/api/*` through an explicit reverse proxy to backend for same-origin browser credentials. Backend auth owns sessions; storefront SSR forwards only approved cookies/request context. Use separate customer and staff credential scopes where feasible. Do not introduce broad parent-domain cookies as a shortcut.
@@ -160,7 +160,7 @@ Context: current store/get-quote tax uses global rate/inclusive settings. Mixed-
 - Establish the local-delivery order/quote method, service-area identity and backward-compatible fulfillment references before slot migration. Keep one fulfillment per order and require one compatible method for the whole cart; quantity-based partial shipments are supported within that method, with completion only after all units are delivered.
 - Define shipment dispatch separately from delivery completion: dispatch consumes stock once and marks fulfillment shipped while lifecycle remains confirmed; manual delivery confirmation marks fulfilled/completed. Pickup completes on verified handoff, local delivery on recorded delivery. Rewards release only at fulfilled/completed, never at dispatch. An optional signed carrier gateway can record verified delivery; native carrier-specific adapters remain future work.
 - Make schedules/capacity optional and independent of stock tracking. Shipping does not require pickup settings. Introduce a shipping-rate adapter boundary for future carrier rates without requiring live carrier integration in this release.
-- Document merchant responsibility for configuring tax/license requirements. Validate specific jurisdictions only in optional store examples/runbooks, including the bakery use case.
+- Document merchant responsibility for configuring tax/license requirements. Validate specific jurisdictions only in optional store examples/runbooks, where applicable.
 - Deliver merchant settings/onboarding for fulfillment methods, addresses, schedules and tax in this milestone, with backend validation and UI round-trip tests. Do not defer these screens to launch.
 
 Exit: approved product/order examples produce itemized, reproducible totals; prohibited fulfillment cannot bypass backend checks.
@@ -235,7 +235,7 @@ Context: earlier runtime targets are unverified; service extraction creates new 
 - Measure each image, each service RSS, combined host RAM, storefront transferred JS, cached/uncached latency, database connections and worker throughput under representative concurrent checkout load for at least 30 minutes.
 - Record dataset, hardware, methodology, revision and results. Set budgets from measured constraints; a synthetic benchmark alone is insufficient production evidence.
 - Review secrets, API/cookie/CSRF/SSRF boundaries, staff revocation, webhook replay, evidence access and multi-instance rate/worker coordination.
-- Perform keyboard/screen-reader acceptance for auth, optional slot selection, checkout and admin-critical operations. Run the generic acceptance matrix below to prove no bakery configuration is required.
+- Perform keyboard/screen-reader acceptance for auth, optional slot selection, checkout and admin-critical operations. Run the generic acceptance matrix below to verify neutral installation defaults.
 - Restore DB/assets into isolated infrastructure with outbound delivery suppressed. Verify restoration of payment/reward/inventory obligations and provider reconciliation before resuming side effects.
 
 Exit: critical journeys pass, restore succeeds, measurements meet agreed budgets and no unresolved launch-critical issue remains.
@@ -293,15 +293,15 @@ Every migration must pass clean-install and forward-upgrade tests against a rest
 
 ## Generic acceptance matrix
 
-| Store configuration                | Required acceptance                                                                                                    |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Shipping-only physical retailer    | Tracked variant stock, destination rates/tax, card/manual payment, no pickup location or slot required, rewards off    |
-| Pickup-only made-to-order merchant | Untracked global stock, optional variant slot quotas, preparation cutoff configured by merchant, 5% rewards enabled    |
-| Mixed shipping/pickup merchant     | Supported method/address/slot rules, variant eligibility and conflicting cart restrictions enforced on backend         |
-| Scheduled local-delivery merchant  | Service-area eligibility, delivery rate and timezone-aware capacity; ordinary shipping/pickup settings not required    |
-| Configurable accounts and rewards  | Guest allowed/account required, rewards disabled/alternate rate, verified ownership and currency-precision correctness |
-| Existing installation upgrade      | Original IDs, balances, reservations and snapshots retained; existing fulfillment behavior remains compatible          |
-| Neutral fresh installation         | No bakery name, WA rate, permit cap, 5% reward requirement or industry shipping restriction appears unless configured  |
+| Store configuration                | Required acceptance                                                                                                                                  |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shipping-only physical retailer    | Tracked variant stock, destination rates/tax, card/manual payment, no pickup location or slot required, rewards off                                  |
+| Pickup-only made-to-order merchant | Untracked global stock, optional variant slot quotas, preparation cutoff configured by merchant, 5% rewards enabled                                  |
+| Mixed shipping/pickup merchant     | Supported method/address/slot rules, variant eligibility and conflicting cart restrictions enforced on backend                                       |
+| Scheduled local-delivery merchant  | Service-area eligibility, delivery rate and timezone-aware capacity; ordinary shipping/pickup settings not required                                  |
+| Configurable accounts and rewards  | Guest allowed/account required, rewards disabled/alternate rate, verified ownership and currency-precision correctness                               |
+| Existing installation upgrade      | Original IDs, balances, reservations and snapshots retained; existing fulfillment behavior remains compatible                                        |
+| Neutral fresh installation         | No merchant branding, jurisdiction-specific tax rate, permit cap, fixed reward percentage or industry shipping restriction appears unless configured |
 
 These fixtures verify the documented supported store types. They do not certify universal tax compliance, digital goods, subscriptions, multi-warehouse inventory or multi-tenant operation.
 
@@ -313,7 +313,7 @@ This section resolves the review findings against current source/specs. It is a 
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Root `package.json` owns one Next app; `pnpm-workspace.yaml` contains only build permissions, not package globs                                             | Add `apps/*` and `packages/*` workspace globs, per-app manifests/tsconfig/Next/i18n configuration, shared contract package and root aggregate scripts. Keep backend domain/application/persistence together rather than expose them as storefront dependencies.                                                                              |
 | `next.config.ts` uses a root i18n path and optional standalone output; Dockerfile copies root standalone artifacts                                          | Give each app its own i18n/config/output; test monorepo standalone tracing and actual server/static paths. Split Docker targets/images and migration packaging.                                                                                                                                                                              |
-| Compose has one `app` containing secrets and worker, plus PostgreSQL/storage; Adminer and RustFS both bind host port 9001                                   | Replace `app` with backend/storefront and explicit proxy routing. Resolve port conflict; make development inspection services optional. Storefront receives only its backend origin/public configuration. Backend receives DB/payment/storage/SMTP secrets.                                                                                  |
+| Compose has one `app` containing secrets and worker, plus PostgreSQL/storage; an optional database inspection tool conflicts with the storage console port  | Replace `app` with backend/storefront and explicit proxy routing. Resolve port conflict; make development inspection services optional. Storefront receives only its backend origin/public configuration. Backend receives DB/payment/storage/SMTP secrets.                                                                                  |
 | `docs/product-scope.md` excludes accounts/inventory/credit despite current implementations; `docs/transaction-contracts.md` extension section includes them | Update authoritative scope and remove contradictory workflow paragraphs. Plan is proposed direction; owner specs must be changed in step 1 before feature implementation. Do not add competing contracts only in the plan.                                                                                                                   |
 | `orders.ts` and `get-quote.ts` constrain fulfillment to shipping/pickup; fulfillment has a unique order ID                                                  | Add local_delivery consistently across schema, request validation, quote snapshots, admin, APIs and UI. Retain one method/fulfillment per order and explicitly retain one fulfillment method while supporting quantity shipments.                                                                                                            |
 | `shipping.ts` canonical pickup slots require a pickup-location FK                                                                                           | Preserve old snapshots/FKs. Add additive generic fulfillment-slot/service-area storage or a reviewed compatible migration; a delivery area cannot be inserted into the old pickup-location FK. Prefer a separate generic capacity slot referencing legacy pickup slots uniquely where applicable, so existing order references remain valid. |
@@ -381,4 +381,4 @@ Resolve source/spec disagreements explicitly; neither stale docs nor current sho
 
 ## Plan maintenance and review
 
-Track implementation status, revision and evidence per step. Split oversized milestones, document new dependency edges, and revise the affected acceptance criteria before implementation. Do not mark a requirement done based only on docs, route existence or a mock-only happy path. This plan assumes SupaStore remains the chosen base; reassess only if measured constraints or a concrete missing business requirement justify migration.
+Track implementation status, revision and evidence per step. Split oversized milestones, document new dependency edges, and revise the affected acceptance criteria before implementation. Do not mark a requirement done based only on docs, route existence or a mock-only happy path. This plan assumes Supastore remains the chosen base; reassess only if measured constraints or a concrete missing business requirement justify migration.

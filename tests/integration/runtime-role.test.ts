@@ -8,7 +8,9 @@ beforeAll(async () => {
     throw new Error(
       "Runtime role tests require the isolated integration database",
     );
-  await migrate(db, { migrationsFolder: "src/infrastructure/db/migrations" });
+  await migrate(db, {
+    migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
+  });
   // A failing permission regression can create its specifically named fixture.
   await queryClient.unsafe(
     "DROP SCHEMA IF EXISTS runtime_should_not_create CASCADE",

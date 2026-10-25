@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  authenticate,
+  authenticate as authenticateAdmin,
   downloadAdminExport,
   importProductsCsv,
+  signOutStaff,
+} from "@/app/client-requests";
+import {
+  authenticate,
   signOutSession,
   uploadEvidence,
-} from "@/app/client-requests";
+} from "../../apps/storefront/app/client-requests";
 import {
   parseProductCsv,
   serializeProductCsv,
@@ -34,8 +38,57 @@ const importFile = (sizes: number[]) =>
   );
 
 describe("frontend backend request contracts", () => {
+  it("signs out only the merchant realm and exposes failures for retry", async () => {
+    const fetcher = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(Response.json({ success: true }))
+      .mockResolvedValueOnce(Response.json({}, { status: 503 }));
+    await expect(signOutStaff()).resolves.toBeUndefined();
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/admin-auth/sign-out",
+      expect.objectContaining({ method: "POST", body: "{}" }),
+    );
+    await expect(signOutStaff()).rejects.toThrow("Unable to sign out");
+  });
   beforeEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("merchant authentication always uses the sign-in endpoint", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(Response.json({ user: { id: "staff" } }));
+    const payload = {
+      email: "owner@example.test",
+      password: "fixture-password",
+      callbackURL: "/admin",
+    };
+    await expect(authenticateAdmin(payload)).resolves.toMatchObject({
+      user: { id: "staff" },
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/admin-auth/sign-in/email",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    );
+  });
+
+  it("merchant authentication preserves sign-in rejection messages", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      Response.json(
+        { error: { message: "Invalid credentials" } },
+        { status: 401 },
+      ),
+    );
+    await expect(
+      authenticateAdmin({
+        email: "owner@example.test",
+        password: "fixture-password",
+        callbackURL: "/admin",
+      }),
+    ).rejects.toThrow("Invalid credentials");
   });
 
   it("signs out with the expected same-origin request", async () => {

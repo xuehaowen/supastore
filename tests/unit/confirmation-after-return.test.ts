@@ -7,6 +7,9 @@ vi.mock("@/infrastructure/db", () => ({
 vi.mock("@/infrastructure/auth/session", () => ({
   verifyStaffInTransaction: async () => ({ userId: "owner", role: "owner" }),
 }));
+vi.mock("@/application/scheduling/scheduled-actions", () => ({
+  schedulePickupReminder: vi.fn(),
+}));
 import { confirmOrder } from "@/application/use-cases/confirm-order";
 let settled: number;
 let held = false;

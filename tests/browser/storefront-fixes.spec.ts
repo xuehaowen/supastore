@@ -6,6 +6,7 @@ test("paid guest checkout defaults to payment and retains fulfillment while edit
 }) => {
   await page.goto("/en/products/studio-cup");
   await page.getByRole("button", { name: "Add to bag" }).click();
+  await page.getByRole("link", { name: "View bag", exact: true }).click();
   await page.getByRole("link", { name: "Continue to checkout" }).click();
   await expect(page.getByLabel("Payment method")).not.toHaveValue("");
   await page.getByLabel("Street address").fill("123 Customer Street");
@@ -22,6 +23,7 @@ test("checkout validation keeps entered details and contact fields", async ({
 }) => {
   await page.goto("/en/products/studio-cup");
   await page.getByRole("button", { name: "Add to bag" }).click();
+  await page.getByRole("link", { name: "View bag", exact: true }).click();
   await page.getByRole("link", { name: "Continue to checkout" }).click();
   await page.getByLabel("Street address").fill("456 Customer Street");
   await page.getByLabel("Promotion code").fill("NOT-A-VALID-PROMOTION");
@@ -55,6 +57,7 @@ test("pickup review retains date and time after validation and while editing", a
 }) => {
   await page.goto("/en/products/studio-cup");
   await page.getByRole("button", { name: "Add to bag" }).click();
+  await page.getByRole("link", { name: "View bag", exact: true }).click();
   await page.getByRole("link", { name: "Continue to checkout" }).click();
   await page.getByLabel("Local pickup", { exact: true }).check();
   await page
@@ -83,6 +86,7 @@ test("Chinese mobile checkout has translated labels and compact radios", async (
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/zh/products/studio-cup");
   await page.getByRole("button", { name: "加入购物袋" }).click();
+  await page.getByRole("link", { name: "查看购物袋", exact: true }).click();
   await page.getByRole("link", { name: "前往结账" }).click();
   await expect(page.getByText("配送方式", { exact: true })).toBeVisible();
   await expect(page.getByLabel("街道地址")).toBeVisible();
@@ -115,6 +119,7 @@ test("changing variants clamps quantity to the selected stock", async ({
   await page.getByRole("radio", { name: "Limited", exact: true }).check();
   await expect(page.locator('input[name="quantity"]')).toHaveValue("2");
   await page.getByRole("button", { name: "Add to bag" }).click();
+  await page.getByRole("link", { name: "View bag", exact: true }).click();
   await expect(page.getByText("Limited", { exact: true })).toBeVisible();
   await expect(page.getByText("$20.00", { exact: true }).first()).toBeVisible();
 });

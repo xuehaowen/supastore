@@ -5,6 +5,11 @@ private backend. PostgreSQL and S3-compatible storage retain application data.
 The backend also runs the outbox worker when explicitly enabled. No Redis or
 external cache is required.
 
+For the pickup-only and shipping-only manual-payment launch, use the
+[two-instance recipe](independent-store-instances.md). It covers explicit project
+names, separate data/secrets/origins, non-conflicting host ports and independent
+inventory/backup operations.
+
 ## Docker Compose
 
 Follow [two-service deployment](two-service-deployment.md) for environment
@@ -14,6 +19,10 @@ configuration, PostgreSQL upgrades, public origins and trusted ingress.
    credentials and the public HTTPS storefront origin.
 2. Build the explicit targets with
    `docker compose build backend storefront migrate`.
+   For independent store releases, set `BACKEND_IMAGE`, `STOREFRONT_IMAGE` and
+   `MIGRATION_IMAGE` to versioned tags before building, or use verified prebuilt
+   registry digests. Do not build to digest references. See the
+   [release and rollback procedure](independent-store-instances.md#independent-releases-and-rollback).
 3. Start PostgreSQL and object storage with
    `docker compose up -d postgres rustfs`.
 4. Back up an existing installation and rehearse recovery before applying

@@ -19,11 +19,11 @@ GROUP BY status, channel;
 
 ## 2. Decision Matrix
 
-| State                  | Historical External Evidence                                 | Action                                                                                |
-| ---------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| `pending` / `retrying` | Email was already confirmed delivered via SMTP logs/provider | Mark as `delivered` (suppress resend)                                                 |
-| `pending` / `retrying` | Email was definitely NOT delivered                           | Keep as `pending` (allow worker to dispatch)                                          |
-| `exhausted`            | Reached max 6 attempts before disaster                       | Inspect failure reason; keep as `exhausted` or reset to `pending` with `attempts = 0` |
+| State                  | Historical External Evidence                                 | Action                                                                                                  |
+| ---------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `pending` / `retrying` | Email was already confirmed delivered via SMTP logs/provider | Mark as `delivered` (suppress resend)                                                                   |
+| `pending` / `retrying` | Email was definitely NOT delivered                           | Keep as `pending` (allow worker to dispatch)                                                            |
+| `exhausted`            | Reached max 6 attempts before disaster                       | Inspect failure reason; keep as `exhausted` or authorize one safe retry while retaining attempt history |
 
 ---
 
@@ -53,10 +53,18 @@ WHERE id = '<verified-delivery-id>'
 
 ```sql
 UPDATE event_deliveries
-SET status = 'pending', attempts = 0, retry_after = NOW(), lease_token = NULL, lease_expires_at = NULL, updated_at = NOW()
+SET status = 'pending', retry_after = NOW(), lease_token = NULL, lease_expires_at = NULL, updated_at = NOW()
 WHERE id = '<verified-undelivered-id>'
   AND status IN ('retrying', 'exhausted');
 ```
+
+Never reset `attempts` on deliveries with persisted attempt records: attempt
+numbers are unique audit identities. Requeueing an exhausted delivery authorizes
+one additional submission; another rejection remains exhausted. For `failed`
+deliveries, first establish a definite rejection, correct the permanent cause,
+and document owner authorization before the same targeted retry. Never requeue
+`review` rows whose submission outcome is uncertain. Expired authentication links
+must be replaced by a new customer request, not requeued.
 
 ---
 

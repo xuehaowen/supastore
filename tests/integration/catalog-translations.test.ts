@@ -1,6 +1,7 @@
 import { vi } from "vitest";
 import { getProduct } from "@/application/use-cases/catalog/get-product";
 import { getCart } from "@/application/use-cases/cart/get-cart";
+import { listSpecifications } from "@/application/use-cases/catalog/manage-specifications";
 import {
   localizeCategories,
   localizeVariants,
@@ -12,7 +13,7 @@ vi.mock("@/infrastructure/db", () => ({
     return activeDatabase.current;
   },
 }));
-import * as schema from "../../src/infrastructure/db/schema";
+import * as schema from "../../apps/backend/src/infrastructure/db/schema/index";
 import { readFileSync } from "node:fs";
 import { load } from "js-yaml";
 import {
@@ -34,14 +35,16 @@ describe.skipIf(!server)("catalog translation database constraints", () => {
     let client: ReturnType<typeof postgres> | undefined;
     try {
       await admin.unsafe(
-        `CREATE DATABASE "${name}" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C'`,
+        `CREATE DATABASE "${name}" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'PG_UNICODE_FAST'`,
       );
       const url = new URL(server!);
       url.pathname = `/${name}`;
       client = postgres(url.toString(), { max: 1, onnotice: () => {} });
       const db = drizzle(client, { schema });
       activeDatabase.current = db;
-      const options = { migrationsFolder: "src/infrastructure/db/migrations" };
+      const options = {
+        migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
+      };
       await migrate(db, options);
       await migrate(db, options);
       const [product] =
@@ -121,22 +124,50 @@ describe.skipIf(!server)("catalog translation database constraints", () => {
       await seedCatalogTranslations(db, seed);
       const before =
         await client`SELECT id FROM variant_translations ORDER BY id`;
+      const specificationsBefore =
+        await client`select * from product_specifications order by product_id,attribute_id,attribute_value_id`;
       await seedCatalogTranslations(db, seed);
+      expect(
+        await client`select * from product_specifications order by product_id,attribute_id,attribute_value_id`,
+      ).toEqual(specificationsBefore);
+      expect(specificationsBefore).toHaveLength(10);
       expect(
         await client`SELECT id FROM variant_translations ORDER BY id`,
       ).toEqual(before);
       expect(before).toHaveLength(5);
       expect(await client`SELECT * FROM category_translations`).toHaveLength(3);
       expect(await client`SELECT * FROM attribute_translations`).toHaveLength(
-        2,
+        6,
       );
       expect(
         await client`SELECT * FROM attribute_value_translations`,
-      ).toHaveLength(4);
+      ).toHaveLength(14);
       expect(await client`SELECT * FROM variant_attribute_values`).toHaveLength(
         8,
       );
       await client`INSERT INTO store_settings (store_name,default_locale) VALUES ('Test','zh')`;
+      const [cup] =
+        await client`select id from products where handle='studio-cup'`;
+      expect(
+        (await listSpecifications(cup!.id, "en", "en")).map(
+          ({ name, label }) => [name, label],
+        ),
+      ).toEqual([
+        ["Material", "Porcelain"],
+        ["Capacity", "350 ml"],
+        ["Weight", "320 g"],
+        ["Care instructions", "Dishwasher safe"],
+      ]);
+      expect(
+        (await listSpecifications(cup!.id, "zh", "en")).map(
+          ({ name, label }) => [name, label],
+        ),
+      ).toEqual([
+        ["材质", "瓷器"],
+        ["容量", "350 毫升"],
+        ["重量", "320 克"],
+        ["保养说明", "可用洗碗机清洗"],
+      ]);
       const [shirt] =
         await client`SELECT id FROM products WHERE handle='everyday-shirt'`;
       const [apparel] =

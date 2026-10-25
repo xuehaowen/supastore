@@ -4,7 +4,7 @@ Country/state options, destination field requirements, region validation, and en
 
 ## When working here
 
-Keep customer destination fields aligned with backend validation. Zone matching and shipping pricing live in the backend [checkout rules](../../src/domain/checkout.ts); this package determines available choices and required fields.
+Keep customer destination fields aligned with backend validation. Zone matching and shipping pricing live in the backend [checkout rules](../../apps/backend/src/domain/checkout.ts); this package determines available choices and required fields.
 
 ## Where to start
 

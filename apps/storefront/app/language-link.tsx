@@ -1,18 +1,22 @@
 "use client";
+
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { getStorefrontMessages } from "../lib/i18n";
+import { textFor } from "@supastore/i18n/messages";
+
 export function LanguageLink({ locale }: { locale: string }) {
-  const path = usePathname(),
-    query = useSearchParams().toString();
+  const pathname = usePathname();
+  const query = useSearchParams().toString();
   return (
     <Link
       href={
-        path.replace(/^\/(en|zh)(?=\/|$)/, locale === "zh" ? "/en" : "/zh") +
-        (query ? `?${query}` : "")
+        pathname.replace(
+          /^\/(en|zh)(?=\/|$)/,
+          locale === "en" ? "/zh" : "/en",
+        ) + (query ? `?${query}` : "")
       }
     >
-      {getStorefrontMessages(locale).common.languageName}
+      {textFor(locale).common.languageName}
     </Link>
   );
 }

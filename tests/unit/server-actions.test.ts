@@ -1,4 +1,5 @@
 import * as actions from "@/app/actions";
+import { submitManualOrder } from "@/app/admin/manual-order-actions";
 import { DomainError } from "@/application/common/errors";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
@@ -17,7 +18,6 @@ const mocks = vi.hoisted(() => ({
       "updateProduct",
       "addProductVariant",
       "removeProductVariant",
-      "addProductImage",
       "removeProductImage",
       "updateCategory",
       "removeCategory",
@@ -70,7 +70,7 @@ vi.mock("next/cache", () => ({
 }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 vi.mock("@/infrastructure/auth", () => ({
-  auth: {
+  staffAuth: {
     api: {
       getSession: async () => ({ user: { email: "owner@example.test" } }),
     },
@@ -127,7 +127,6 @@ vi.mock("@/application/use-cases/catalog/update-product", () => ({
 vi.mock("@/application/use-cases/catalog/manage-catalog", () => ({
   addProductVariant: mocks.commands.addProductVariant,
   removeProductVariant: mocks.commands.removeProductVariant,
-  addProductImage: mocks.commands.addProductImage,
   removeProductImage: mocks.commands.removeProductImage,
   updateCategory: mocks.commands.updateCategory,
   removeCategory: mocks.commands.removeCategory,
@@ -330,11 +329,6 @@ const cases = [
     `/admin/products/${id}/edit?removed=archived`,
   ],
   [
-    "createProductImage",
-    "addProductImage",
-    `/admin/products/${id}/edit?added=image`,
-  ],
-  [
     "deleteProductImage",
     "removeProductImage",
     `/admin/products/${id}/edit?removed=image`,
@@ -377,11 +371,6 @@ const expectedPayloads: Record<string, unknown> = {
     staffUserId: "staff-session",
     productId: id,
     variantId: id,
-  },
-  createProductImage: {
-    staffUserId: "staff-session",
-    productId: id,
-    s3Key: "products/image.jpg",
   },
   deleteProductImage: {
     staffUserId: "staff-session",
@@ -659,6 +648,67 @@ beforeEach(() => {
   mocks.transaction.mockImplementation(async (work) => work(tx));
 });
 describe("every server action request boundary", () => {
+  it.each([
+    ["updateStaffMember", "updateStaffMembership"],
+    ["removeStaffMember", "removeStaffMembership"],
+  ] as const)(
+    "%s keeps the rejected staff editor in context",
+    async (action, command) => {
+      mocks.commands[command].mockRejectedValueOnce(
+        new DomainError("The last active owner cannot be removed"),
+      );
+      await expect(actions[action](form())).rejects.toThrow(
+        "REDIRECT:/admin/setup?staff=staff-target&error=The%20last%20active%20owner",
+      );
+    },
+  );
+  it("returns inline manual-order errors for correction without a redirect", async () => {
+    mocks.commands.createManualOrder.mockRejectedValueOnce(
+      new DomainError("This fulfillment slot is full. Choose another time."),
+    );
+    await expect(submitManualOrder(form())).resolves.toEqual({
+      error: "This fulfillment slot is full. Choose another time.",
+    });
+  });
+
+  it("returns the created manual-order reference after inline success", async () => {
+    await expect(submitManualOrder(form())).resolves.toEqual({
+      referenceCode: "SP-MANUAL",
+    });
+  });
+
+  it("hides unexpected inline manual-order failures", async () => {
+    mocks.commands.createManualOrder.mockRejectedValueOnce(
+      new Error("private detail"),
+    );
+    await expect(submitManualOrder(form())).resolves.toEqual({
+      error: "Unable to save. Please retry.",
+      requestId: expect.any(String),
+    });
+  });
+  it("forwards manual pickup location and schedule without a shipping address", async () => {
+    const request = form();
+    request.set("fulfillmentType", "pickup");
+    request.set("pickupLocationId", id);
+    request.set("pickupDate", "2026-11-01");
+    request.set("pickupTime", "12:00");
+    request.delete("country");
+    request.delete("address");
+    await expect(actions.createManualOrderAction(request)).rejects.toThrow(
+      "REDIRECT:/admin/orders?created=SP-MANUAL",
+    );
+    expect(mocks.commands.createManualOrder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fulfillmentType: "pickup",
+        pickupLocationId: id,
+        pickupDate: "2026-11-01",
+        pickupTime: "12:00",
+        country: "",
+        address: "",
+      }),
+    );
+  });
+
   it("requires a contract case for every exported action", () => {
     expect(Object.keys(actions).sort()).toEqual(
       [
@@ -934,6 +984,43 @@ describe("optional and alternate action forms", () => {
         pickup: expect.objectContaining({ id }),
       }),
     );
+  });
+  it("preserves multiple pickup windows submitted by the schedule editor", async () => {
+    const weeklySchedule = {
+      mon: [
+        ["09:00", "12:00"],
+        ["13:00", "17:00"],
+      ],
+      tue: [],
+    };
+    await expect(
+      actions.savePickup(
+        form({
+          pickupLocationId: id,
+          weeklySchedule: JSON.stringify(weeklySchedule),
+        }),
+      ),
+    ).rejects.toThrow("REDIRECT:/admin/setup");
+    expect(mocks.commands.configureShipping).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pickup: expect.objectContaining({ id, weeklySchedule }),
+      }),
+    );
+  });
+  it("rejects overlapping pickup windows before saving", async () => {
+    await expect(
+      actions.savePickup(
+        form({
+          weeklySchedule: JSON.stringify({
+            mon: [
+              ["09:00", "14:00"],
+              ["12:00", "17:00"],
+            ],
+          }),
+        }),
+      ),
+    ).rejects.toThrow("REDIRECT:/admin/setup?error=");
+    expect(mocks.commands.configureShipping).not.toHaveBeenCalled();
   });
   it("quotes pickup with explicit location and no payment method", async () => {
     await expect(

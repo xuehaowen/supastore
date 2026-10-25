@@ -1,19 +1,19 @@
 import { fileURLToPath } from "node:url";
-const backend = (process.env.BACKEND_URL || "http://127.0.0.1:3000").replace(
-  /\/$/,
-  "",
-);
-const backendOrigin = new URL(backend);
-if (
-  !["http:", "https:"].includes(backendOrigin.protocol) ||
-  backendOrigin.username ||
-  backendOrigin.password ||
-  backendOrigin.pathname !== "/" ||
-  backendOrigin.search ||
-  backendOrigin.hash
-)
-  throw new Error("BACKEND_URL must be an HTTP origin");
+import createNextIntlPlugin from "next-intl/plugin";
+import { resolveBackendOrigin } from "../../packages/config/backend-origin.mjs";
+import { securityHeaders } from "../../packages/config/security-headers.mjs";
+const backend = resolveBackendOrigin(process.env);
 const nextConfig = {
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
+  },
+  transpilePackages: [
+    "@supastore/ui",
+    "@supastore/i18n",
+    "@supastore/shipping",
+    "@supastore/contracts",
+  ],
+  images: { localPatterns: [{ pathname: "/api/assets" }], minimumCacheTTL: 60 },
   distDir: process.env.NEXT_DIST_DIR || ".next",
   typescript: {
     tsconfigPath: process.env.STOREFRONT_TSCONFIG || "tsconfig.json",
@@ -33,4 +33,6 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default createNextIntlPlugin("../../packages/i18n/src/app/request.ts")(
+  nextConfig,
+);

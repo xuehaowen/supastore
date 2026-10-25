@@ -49,14 +49,14 @@ describe.skipIf(!server)("generic sales reporting PostgreSQL", () => {
   beforeAll(async () => {
     admin = postgres(server!);
     await admin.unsafe(
-      `CREATE DATABASE "${name}" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C'`,
+      `CREATE DATABASE "${name}" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'PG_UNICODE_FAST'`,
     );
     const url = new URL(server!);
     url.pathname = `/${name}`;
     client = postgres(url.toString(), { max: 10, onnotice: () => {} });
     active.db = drizzle(client, { schema });
     await migrate(active.db as ReturnType<typeof drizzle>, {
-      migrationsFolder: "src/infrastructure/db/migrations",
+      migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
     });
     await client`insert into staff_memberships(user_id,email,role) values(${owner},'owner@reports.test','owner')`;
     await client`insert into staff_memberships(user_id,email,role) values('reports-staff','staff@reports.test','staff')`;
@@ -323,8 +323,7 @@ describe.skipIf(!server)("generic sales reporting PostgreSQL", () => {
         endExclusive: "2040-02-01",
       }),
     ).rejects.toThrow("revised prices without revised tax");
-    const [refund] =
-      await client`insert into refund_authorizations(order_id,kind,amount_cents,reason,authorized_by_user_id,created_at) values(${revised.orderId},'purchase_refund',10,'Historical refund',${owner},'2040-02-10T12:00:00Z') returning id`;
+    await client`insert into refund_authorizations(order_id,kind,amount_cents,reason,authorized_by_user_id,created_at) values(${revised.orderId},'purchase_refund',10,'Historical refund',${owner},'2040-02-10T12:00:00Z')`;
     await expect(
       generateSalesReport({
         actorUserId: owner,

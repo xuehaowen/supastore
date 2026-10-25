@@ -12,13 +12,13 @@ describe.skipIf(!server)("bounded order-list query plans", () => {
   beforeAll(async () => {
     admin = postgres(server!);
     await admin.unsafe(
-      `CREATE DATABASE "${database}" TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C'`,
+      `CREATE DATABASE "${database}" TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'PG_UNICODE_FAST'`,
     );
     const url = new URL(server!);
     url.pathname = `/${database}`;
     client = postgres(url.toString(), { max: 1, onnotice: () => {} });
     await migrate(drizzle(client), {
-      migrationsFolder: "src/infrastructure/db/migrations",
+      migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
     });
     await client`create temporary table fixture as select n,gen_random_uuid() as cart_id,gen_random_uuid() as quote_id from generate_series(1,10000) n`;
     await client`insert into carts(id,guest_session_id) select cart_id,'plan-' || n from fixture`;
@@ -63,7 +63,7 @@ describe.skipIf(!server)("bounded order-list query plans", () => {
     expect(before).toHaveLength(2);
     expect(before.every((row) => row.indisvalid)).toBe(true);
     const migration = readFileSync(
-      "src/infrastructure/db/migrations/0037_order_queue_indexes.sql",
+      "apps/backend/src/infrastructure/db/migrations/0037_order_queue_indexes.sql",
       "utf8",
     );
     for (const statement of migration.split("--> statement-breakpoint"))

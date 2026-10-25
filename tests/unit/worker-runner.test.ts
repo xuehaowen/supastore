@@ -6,6 +6,43 @@ import {
 } from "@/infrastructure/runtime/worker";
 
 describe("independent worker jobs", () => {
+  it("reports partial record failures and deferred failures until recovery", async () => {
+    let now = 0;
+    const run = vi.fn().mockResolvedValue({
+      succeeded: 2,
+      failed: 1,
+      deferred: 0,
+      reviewRequired: 0,
+    });
+    const runner = createWorkerRunner(
+      [{ name: "payments", intervalMs: 1000, run }],
+      { now: () => now, onError: vi.fn() },
+    );
+    await runner.tick();
+    expect(workerHealth(now).status).toBe("degraded");
+    expect(workerHealth(now).jobs.payments).toMatchObject({
+      lastResult: { succeeded: 2, failed: 1 },
+    });
+    now = 1000;
+    run.mockResolvedValue({
+      succeeded: 0,
+      failed: 0,
+      deferred: 1,
+      reviewRequired: 0,
+    });
+    await runner.tick();
+    expect(workerHealth(now).status).toBe("degraded");
+    now = 2000;
+    run.mockResolvedValue({
+      succeeded: 1,
+      failed: 0,
+      deferred: 0,
+      reviewRequired: 0,
+    });
+    await runner.tick();
+    expect(workerHealth(now).status).toBe("ok");
+    runner.stop();
+  });
   it("continues other jobs after one fails and preserves the exception", async () => {
     let now = 1000;
     const failure = new Error("Provider unavailable");

@@ -8,12 +8,8 @@ import {
   staffMemberships,
   paymentAccounts,
   shippingZones,
-  orders,
   quotes,
-  orderProposals,
   outboxEvents,
-  guestOrderSessions,
-  productVariants,
 } from "@/infrastructure/db/schema";
 import { createProduct } from "@/application/use-cases/catalog/create-product";
 import { listProducts } from "@/application/use-cases/catalog/list-products";
@@ -50,7 +46,9 @@ describe.skipIf(!enabled)("M1 real PostgreSQL journeys", () => {
   let variantId: string, accountId: string;
   const staff = "m1-owner";
   beforeAll(async () => {
-    await migrate(db, { migrationsFolder: "src/infrastructure/db/migrations" });
+    await migrate(db, {
+      migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
+    });
     await queryClient.unsafe(
       "TRUNCATE store_settings, staff_memberships, products, payment_accounts, shipping_zones, carts, orders, guest_order_sessions, operation_requests CASCADE",
     );

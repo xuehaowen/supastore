@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { UnauthorizedError } from "@/application/common/errors";
 import { createHmac } from "node:crypto";
@@ -27,12 +27,12 @@ vi.mock("@/application/use-cases/uploads/finalize-upload", () => ({
 }));
 vi.mock("@/infrastructure/db", () => ({ db: mocks.db }));
 vi.mock("@/infrastructure/auth", () => ({
-  auth: {
+  staffAuth: {
     $context: Promise.resolve({
       secret: "SyntheticRecoveryCookieSecret123456789!",
       authCookies: {
         sessionToken: {
-          name: "__Secure-better-auth.session_token",
+          name: "__Secure-supastore-staff.session_token",
           attributes: {
             httpOnly: true,
             secure: true,
@@ -41,7 +41,7 @@ vi.mock("@/infrastructure/auth", () => ({
           },
         },
         sessionData: {
-          name: "__Secure-better-auth.session_data",
+          name: "__Secure-supastore-staff.session_data",
           attributes: {
             httpOnly: true,
             secure: true,
@@ -69,6 +69,8 @@ function request(
 }
 
 describe("API route boundaries", () => {
+  beforeEach(() => vi.stubEnv("STOREFRONT_ORIGIN", "https://shop.test"));
+  afterEach(() => vi.unstubAllEnvs());
   it("serves bounded image bytes only for published assets", async () => {
     const chain = (rows: unknown[]) => ({
       from: () => ({
@@ -91,6 +93,9 @@ describe("API route boundaries", () => {
         request("https://shop.test/api/assets?key=image.png&inline=1"),
       );
       expect(response.status).toBe(200);
+      expect(mocks.presignAsset).toHaveBeenCalledWith("image.png", {
+        internal: true,
+      });
       expect(new Uint8Array(await response.arrayBuffer())).toEqual(
         new Uint8Array([1, 2, 3]),
       );
@@ -132,14 +137,18 @@ describe("API route boundaries", () => {
     });
 
     const response = await redeem(
-      request("https://shop.test/api/auth/recover-owner/redeem?token=token", {
-        headers: { cookie: "__Secure-better-auth.session_data.0=stale-cache" },
+      request("http://0.0.0.0:3000/api/auth/recover-owner/redeem?token=token", {
+        headers: {
+          cookie: "__Secure-supastore-staff.session_data.0=stale-cache",
+        },
       }),
     );
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe("https://shop.test/admin");
-    const signed = response.cookies.get("__Secure-better-auth.session_token")!;
+    const signed = response.cookies.get(
+      "__Secure-supastore-staff.session_token",
+    )!;
     const expectedSignature = createHmac(
       "sha256",
       "SyntheticRecoveryCookieSecret123456789!",
@@ -153,9 +162,11 @@ describe("API route boundaries", () => {
       sameSite: "lax",
       expires: expiresAt,
     });
-    expect(response.cookies.get("better-auth.session_token")).toBeUndefined();
     expect(
-      response.cookies.get("__Secure-better-auth.session_data.0")?.maxAge,
+      response.cookies.get("supastore-staff.session_token"),
+    ).toBeUndefined();
+    expect(
+      response.cookies.get("__Secure-supastore-staff.session_data.0")?.maxAge,
     ).toBe(0);
     expect(response.headers.get("cache-control")).toBe("no-store");
   });
@@ -166,7 +177,9 @@ describe("API route boundaries", () => {
     );
 
     const response = await redeem(
-      request("https://shop.test/api/auth/recover-owner/redeem?token=expired"),
+      request(
+        "http://0.0.0.0:3000/api/auth/recover-owner/redeem?token=expired",
+      ),
     );
 
     expect(response.status).toBe(307);
@@ -180,13 +193,13 @@ describe("API route boundaries", () => {
       new Error("private database details"),
     );
     const response = await redeem(
-      request("https://shop.test/api/auth/recover-owner/redeem?token=token"),
+      request("http://0.0.0.0:3000/api/auth/recover-owner/redeem?token=token"),
     );
     expect(response.headers.get("location")).toBe(
       "https://shop.test/admin/login?error=Failed+to+redeem+recovery+link.",
     );
     expect(
-      response.cookies.get("__Secure-better-auth.session_token"),
+      response.cookies.get("__Secure-supastore-staff.session_token"),
     ).toBeUndefined();
   });
 
@@ -238,6 +251,9 @@ describe("API route boundaries", () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({
       error: "Untrusted request origin.",
+      code: "FORBIDDEN",
+      requestId: expect.any(String),
+      retryable: false,
     });
     expect(mocks.createUploadIntent).not.toHaveBeenCalled();
   });

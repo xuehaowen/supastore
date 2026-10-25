@@ -6,7 +6,7 @@ vendor-specific HTTP formats and credentials stay inside infrastructure adapters
 | Capability             | Contract          | Registry                          | Stable handles                    |
 | ---------------------- | ----------------- | --------------------------------- | --------------------------------- |
 | Email                  | `EmailSender`     | `notifications/email-adapters.ts` | `nodemailer`, `nodemailer-oauth2` |
-| SMS                    | `SmsSender`       | `notifications/sms-adapters.ts`   | `telnyx`                          |
+| SMS                    | `SmsSender`       | `notifications/sms-adapters.ts`   | `telnyx`, `console`               |
 | Phone verification     | `PhoneVerifier`   | `notifications/phone-adapters.ts` | `telnyx`                          |
 | Hosted online payments | `PaymentProvider` | `payments/payment-adapters.ts`    | `stripe`                          |
 
@@ -19,7 +19,7 @@ existing receipt/confirmation workflows and do not require an online adapter.
 
 ## Adding an adapter
 
-1. Implement the capability interface from `src/application/ports`. Keep vendor
+1. Implement the capability interface from `apps/backend/src/application/ports`. Keep vendor
    response mapping, authentication, deadlines and sanitized errors in the adapter.
 2. Define a configuration discriminator and add it to the capability's config union.
 3. Register an `AdapterDefinition` with a stable `handle`, `parseEnvironment`,
@@ -38,7 +38,9 @@ existing receipt/confirmation workflows and do not require an online adapter.
 No adapter selection branches need to be added to notification bootstrap. The
 email registry returns `EmailSender`, so API-backed email adapters can be added
 without inheriting the SMTP implementation. SMS and phone factories preserve the
-existing explicit live-send authorization gate.
+existing explicit live-send authorization gate. The `console` SMS adapter is
+selected explicitly for local previews and does not require live-send authorization.
+It never enables phone enrollment or establishes external delivery.
 
 ## Configuration and delivery safety
 

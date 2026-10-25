@@ -2,7 +2,16 @@ import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Field } from "@/app/components";
+import { AuthForm } from "@/app/interactive";
 describe("repeated admin forms", () => {
+  it("renders merchant sign-in without customer registration fields", () => {
+    const html = renderToStaticMarkup(createElement(AuthForm, {}));
+    expect(html).toContain('name="email"');
+    expect(html).toContain('name="password"');
+    expect(html).not.toContain('name="name"');
+    expect(html).not.toContain("Create account");
+    expect(html).toContain("Sign in securely");
+  });
   it("gives repeated fields unique label targets", () => {
     const html = renderToStaticMarkup(
       createElement(

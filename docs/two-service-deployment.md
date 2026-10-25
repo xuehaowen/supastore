@@ -1,5 +1,9 @@
 # Backend and storefront deployment
 
+Use the [operator cookbook](operator-cookbook.md) for fresh-store provisioning,
+upgrades and recovery, and the [command reference](commands.md) for command
+arguments and environment loading.
+
 See [local performance and recovery evidence](local-performance-recovery.md)
 for the verified 30-minute synthetic load and restore/upgrade gates.
 
@@ -11,11 +15,20 @@ storage, SMTP, authentication and Stripe secrets belong to the backend.
 
 Email/SMS/verification configuration and migrations 0033–0034 are documented in
 [notification integrations](notification-integrations.md). Telnyx credentials
-stay on the backend; live SMS remains disabled. Restart after provider profile
-configuration changes. Backend stop grace is 45 seconds so the 35-second drain
+stay on the backend. `SMS_PROVIDER=disabled` is silent; `console` enables explicit
+previews, and `telnyx` requires `SMS_LIVE_AUTHORIZED=true` for live delivery.
+Compose forwards these settings with live authorization off by default.
+See [console-mode configuration](notification-integrations.md#explicit-console-mode-for-development-and-testing)
+for prerequisites and log access. Recreate the backend container after environment
+changes; a restart alone does not apply new Compose values. Backend stop grace is 45 seconds so the 35-second drain
 can complete bounded provider calls before closing pooled transports.
 
 ## Local development
+
+Each application owns its source and Next.js configuration under `apps/backend`
+and `apps/storefront`. Shared UI, localization, shipping helpers and HTTP contracts
+are workspace packages. The backend reads the existing root `.env`; app folders
+do not require copied environment files.
 
 Generate separate random values for `POSTGRES_PASSWORD`, `APP_DATABASE_PASSWORD`, `ADMIN_SETUP_SECRET`,
 `BETTER_AUTH_SECRET`, `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` in `.env`.
@@ -30,16 +43,16 @@ production backend rejects short or known placeholder authentication secrets.
 Install with `pnpm install --frozen-lockfile`. Start dependencies with
 `docker compose up -d postgres rustfs`, run `pnpm db:migrate` against the development
 database, then run `pnpm dev:backend` and `pnpm dev:storefront` separately.
-Use `http://localhost:3001` for `APP_URL`, `STOREFRONT_ORIGIN` and `BETTER_AUTH_URL`,
-and `http://127.0.0.1:3000` for the storefront's `BACKEND_URL`. Customer pages and
-`/admin` use the storefront origin. Optional Adminer uses port 9002 with
-`docker compose --profile tools up -d adminer`; RustFS retains port 9001.
+Development launchers default the public origin to `http://localhost:3001` (or `STOREFRONT_PORT`). Production start requires an explicit `STOREFRONT_ORIGIN`, `APP_URL` or `BETTER_AUTH_URL`; Compose requires `STOREFRONT_ORIGIN`. Launchers validate only their supplied in-memory environment and have no file-loading or Next.js dependency. Root package commands use Node environment-file options before launching: development loads `.env` then `.env.local`; production loads `.env`, `.env.production`, `.env.local`, then `.env.production.local`. Existing shell variables take precedence. Direct launcher callers must preload their own configuration. The storefront process receives an allowlist of runtime/public variables, including its edge proxy secret, without backend/provider credentials. Authentication, notification links and storefront URLs share the same origin resolver. Use
+`http://127.0.0.1:3000` for the storefront's `BACKEND_URL`. `pnpm dev` starts both services. The backend has no customer page routes; its root opens `/admin`. The storefront now renders the original customer UI, including search, categories, collections and policy pages. Customer pages and
+`/admin` use the storefront origin. RustFS retains port 9001.
 
 ## Containers
 
-PostgreSQL, RustFS and optional Adminer host ports bind only to `127.0.0.1`.
-Use an SSH tunnel for remote operator access. Only the storefront port is intended
-for public ingress.
+PostgreSQL and RustFS host ports bind only to `127.0.0.1`.
+Use an SSH tunnel for remote operator access. Only the storefront port publishes
+application traffic. Browser-facing signed storage links additionally require a
+separately configured reachable storage origin, as described below.
 
 ### Existing PostgreSQL volume correction
 
@@ -53,6 +66,19 @@ container until a restored copy has passed verification. Restore the backup into
 a fresh PostgreSQL 18 instance with the corrected mount, verify application data,
 and then switch the application connection. Do not use `down --volumes` or simply
 recreate the old container as a migration procedure.
+
+### Storage access
+
+`S3_ENDPOINT` is the backend's internal object-storage endpoint. Set
+`S3_PUBLIC_ENDPOINT` to the browser-reachable S3 origin when it differs, including
+the port. Browser upload/download signatures use that origin directly; rewriting
+the host of an already signed URL invalidates its signature. Server-side uploads,
+copies and inline catalog image fetches retain the internal endpoint. Without
+`S3_PUBLIC_ENDPOINT`, non-Compose deployments retain the single-endpoint behavior.
+Compose defaults signed browser links to `http://localhost:${S3_API_PORT:-9000}`
+for local development. Public deployment requires a reachable HTTPS storage origin
+and appropriate ingress/CORS configuration; bucket access remains private. Ensure
+both configured buckets exist before uploading catalog images or evidence.
 
 ### Application startup
 
@@ -107,17 +133,18 @@ verification require an operator acceptance run; local tests alone do not verify
 external deployment configuration.
 
 Run `pnpm test:storefront` for the production-build browser journeys across both
-services. Its default selection includes `cross-service-storefront.spec.ts`,
-`cross-service-i18n.spec.ts`, and `storefront-journey-updates.spec.ts`; the CI browser
+services. Its default selection includes `original-storefront-separation.spec.ts`,
+`cuj.spec.ts`, `boundaries.spec.ts`, `i18n.spec.ts`, sitemap and scale checks,
+`sales-usability.spec.ts` and `ui-page-audit.spec.ts`; the CI browser
 job runs this command. The runner uses an isolated database, local SMTP inbox and
 storage fixture. Customer requests use the storefront proxy and merchant actions
 use a separate authenticated backend browser session.
 
-The journeys cover payment evidence, actual-receipt recording, confirmation,
-shipment and delivery, goods return approval/receipt and refund settlement;
-registration and password reset follow links delivered to the local inbox.
-Account history uses persisted orders, and saved-address/mixed-credit checkout
-checks reservation, submission, capture and reopening from account history.
+The journeys cover catalog/cart edits, shipping and pickup checkout, private order
+tracking, payment evidence, receipts, confirmation, cancellation and refunds,
+merchant permissions, localization and accessibility. Registration and password
+reset follow links delivered to the local inbox. Database integration checks also
+exercise store credit, rewards and return accounting.
 The synthetic lifecycle in `tests/unit/synthetic-order-lifecycle.test.ts` is a
 domain simulation, not evidence of a browser or provider journey.
 

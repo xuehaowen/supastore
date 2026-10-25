@@ -5,7 +5,7 @@
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "src/app/globals.css",
+    "css": "apps/backend/src/app/globals.css",
     "baseColor": "neutral",
     "cssVariables": true,
     "prefix": ""
@@ -14,8 +14,8 @@
   "rtl": false,
   "aliases": {
     "components": "@/components",
-    "utils": "@/lib/utils",
-    "ui": "@/components/ui",
+    "utils": "@supastore/ui/utils",
+    "ui": "@supastore/ui",
     "lib": "@/lib",
     "hooks": "@/hooks"
   },

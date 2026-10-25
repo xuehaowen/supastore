@@ -16,6 +16,8 @@ import {
   processNotificationInboxBatch,
 } from "@/application/notifications/notification-inbox";
 import type { EmailSender } from "@/application/ports/notifications";
+import { queueAuthEmail } from "@/infrastructure/notifications/smtp";
+import { retryTemplateReviews } from "@/application/notifications/template-manager";
 const enabled = !!process.env.DATABASE_URL?.includes("supastore");
 const acceptedSender = (
   send?: EmailSender["send"],
@@ -48,8 +50,119 @@ async function clear() {
 }
 describe.skipIf(!enabled)("durable notification leases and callbacks", () => {
   beforeAll(async () => {
-    await migrate(db, { migrationsFolder: "src/infrastructure/db/migrations" });
+    await migrate(db, {
+      migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
+    });
     await clear();
+  });
+  it("retains a diagnostic code for an unsent template failure and allows owner recovery", async () => {
+    await clear();
+    const id = await seeded();
+    await queryClient`update outbox_events set event_type='missing.fixture' where id=(select event_id from event_deliveries where id=${id})`;
+    const send = vi.fn();
+    await processOutboxBatch({ providers: { email: acceptedSender(send) } });
+    const [delivery] = await db
+      .select()
+      .from(eventDeliveries)
+      .where(eq(eventDeliveries.id, id));
+    expect(delivery).toMatchObject({
+      status: "review",
+      failureCode: "TEMPLATE_UNKNOWN_EVENT",
+      attempts: 0,
+    });
+    expect(send).not.toHaveBeenCalled();
+    const owner = randomUUID();
+    await queryClient`insert into staff_memberships(user_id,email,role) values(${owner},${owner + "@example.test"},'owner')`;
+    await queryClient`update outbox_events set event_type='order.confirmed' where id=(select event_id from event_deliveries where id=${id})`;
+    expect(await retryTemplateReviews(owner)).toBe(1);
+    await processOutboxBatch({ providers: { email: acceptedSender() } });
+    expect(
+      (
+        await db
+          .select()
+          .from(eventDeliveries)
+          .where(eq(eventDeliveries.id, id))
+      )[0],
+    ).toMatchObject({ status: "accepted", failureCode: null });
+  });
+  it("retries queued auth mail after a definite rejection and suppresses expired links", async () => {
+    await clear();
+    const queued = await queueAuthEmail({
+      recipient: "auth@example.test",
+      template: "auth.email_verification",
+      data: {
+        verificationUrl:
+          "http://localhost:3000/api/auth/verify-email?token=fixture",
+      },
+    });
+    const send = vi
+      .fn()
+      .mockResolvedValueOnce({
+        status: "rejected",
+        code: "SMTP_CONNECT",
+        retryable: true,
+      })
+      .mockResolvedValue({
+        status: "accepted",
+        providerMessageId: "auth-fixture",
+      });
+    await processOutboxBatch({ providers: { email: acceptedSender(send) } });
+    expect(
+      (
+        await db
+          .select()
+          .from(eventDeliveries)
+          .where(eq(eventDeliveries.id, queued.messageId))
+      )[0],
+    ).toMatchObject({ status: "retrying", attempts: 1 });
+    await queryClient`update event_deliveries set retry_after=now() where id=${queued.messageId}`;
+    await processOutboxBatch({ providers: { email: acceptedSender(send) } });
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(send.mock.calls[0]![0].deliveryId).toBe(
+      send.mock.calls[1]![0].deliveryId,
+    );
+    const expired = await queueAuthEmail({
+      recipient: "auth@example.test",
+      template: "auth.reset_password",
+      data: { resetUrl: "http://localhost:3000/reset-password?token=expired" },
+    });
+    await queryClient`update event_deliveries set expires_at=now()-interval '1 minute' where id=${expired.messageId}`;
+    await processOutboxBatch({ providers: { email: acceptedSender(send) } });
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(
+      (
+        await db
+          .select()
+          .from(eventDeliveries)
+          .where(eq(eventDeliveries.id, expired.messageId))
+      )[0],
+    ).toMatchObject({
+      status: "suppressed",
+      providerStatus: "notification_expired",
+      attempts: 0,
+    });
+  });
+  it("expires never-submitted auth review records even while email is disabled", async () => {
+    await clear();
+    const queued = await queueAuthEmail({
+      recipient: "auth@example.test",
+      template: "auth.email_verification",
+      data: { verificationUrl: "http://localhost:3000/verify?token=expired" },
+    });
+    await queryClient`update event_deliveries set status='review',provider_status='template_preparation_failed',expires_at=now()-interval '1 minute' where id=${queued.messageId}`;
+    await processOutboxBatch({ providers: {} });
+    expect(
+      (
+        await db
+          .select()
+          .from(eventDeliveries)
+          .where(eq(eventDeliveries.id, queued.messageId))
+      )[0],
+    ).toMatchObject({
+      status: "suppressed",
+      providerStatus: "notification_expired",
+      attempts: 0,
+    });
   });
   it("coordinates concurrent replicas without duplicate submissions and retains acceptance separately", async () => {
     await clear();

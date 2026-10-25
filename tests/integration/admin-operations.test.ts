@@ -60,7 +60,7 @@ describe.skipIf(!process.env.DATABASE_URL?.endsWith("/supastore_test"))(
     }));
     beforeAll(async () => {
       await migrate(db, {
-        migrationsFolder: "src/infrastructure/db/migrations",
+        migrationsFolder: "apps/backend/src/infrastructure/db/migrations",
       });
       await queryClient.unsafe(
         "TRUNCATE store_settings, staff_memberships, products, payment_accounts, categories, carts, orders, outbox_events CASCADE",
@@ -212,15 +212,22 @@ describe.skipIf(!process.env.DATABASE_URL?.endsWith("/supastore_test"))(
       expect(summary.queueCounts.evidenceReviews).toBe(110);
     });
     it("paginates fulfillment and opens orders outside the selected page", async () => {
+      const activeWork = await getAdminOperations({
+        ...input,
+        view: "fulfillment",
+      });
+      expect(activeWork.rows).toEqual([]);
       const receiptWork = await getAdminOperations({
         ...input,
         view: "fulfillment",
+        fulfillmentWork: "all",
       });
       expect(receiptWork.rows).toHaveLength(50);
       const staffWork = await getAdminOperations({
         ...input,
         view: "fulfillment",
         staffUserId: staff,
+        fulfillmentWork: "all",
       });
       expect(staffWork.rows).toEqual([]);
       await db.update(orders).set({ lifecycleStatus: "confirmed" });

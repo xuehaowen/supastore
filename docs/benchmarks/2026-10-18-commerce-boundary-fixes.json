@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-18",
+  "timezone": "America/Los_Angeles",
+  "applicationCommit": "124598f",
+  "redCheckpoints": ["b1d9c73", "6d9fc45"],
+  "syntheticDataOnly": true,
+  "productionAccepted": false,
+  "additionalMigrationRequired": false,
+  "regressions": [
+    "Variants referenced by enabled or disabled commerce rules are archived. Missing targets remain selected and invalid saves are rejected instead of broadening the rule.",
+    "Pending promotion eligibility leaves adjusted merchandise subtotal and shipping or delivery qualification pending.",
+    "Cart additions, previews and checkout share a 100-line limit. Concurrent additions serialize correctly, existing-line edits and removals remain possible, and oversized legacy carts receive localized removal instructions."
+  ],
+  "unitAndLibrary": { "filesPassed": 143, "testsPassed": 1207 },
+  "postgresIntegration": { "filesPassed": 21, "testsPassed": 160 },
+  "browser": {
+    "command": "node scripts/test-storefront.mjs --measure",
+    "testsPassed": 50,
+    "freshProductionBuilds": true,
+    "responsiveAccessibilityAudit": "pass",
+    "fixtureCleanupConfirmed": true,
+    "interruptedRunsExcluded": true
+  },
+  "staticChecks": { "typecheck": "pass", "eslint": "pass", "prettier": "pass" },
+  "bundle": {
+    "status": "pass",
+    "unchangedMaximumBytesPerRoute": 204800,
+    "unchangedMaximumIncreasePercent": 10,
+    "gzipBytes": {
+      "home": 160798,
+      "product": 163430,
+      "cart": 168277,
+      "checkout": 172869
+    }
+  },
+  "codeReview": "no remaining confirmed findings in the fixes"
+}

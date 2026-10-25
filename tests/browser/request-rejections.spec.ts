@@ -1,39 +1,84 @@
 import { expect, test, checkout, openOrder, record, confirm } from "./fixtures";
 
 test.describe("request rejection flows", () => {
-  test("customer sees a readable error for an invalid cart quantity", async ({
-    page,
-  }) => {
-    await page.goto("/en/products/everyday-shirt");
-    await page.getByRole("button", { name: "Add to bag" }).click();
-    await expect(page.getByRole("heading", { name: "Your bag" })).toBeVisible();
-    const quantity = page.locator('input[name="quantity"]').first();
-    await quantity.evaluate((input) => {
-      (input as HTMLInputElement).value = "-1";
+  for (const copy of [
+    {
+      locale: "en",
+      add: "Add to bag",
+      cart: "Your bag",
+      checkout: "Continue to checkout",
+      empty: "Your bag is empty.",
+      minimumZero: "Quantity must be at least 0.",
+      minimumOne: "Quantity must be at least 1.",
+    },
+    {
+      locale: "zh",
+      add: "加入购物袋",
+      cart: "购物袋",
+      checkout: "前往结账",
+      empty: "购物袋是空的。",
+      minimumZero: "数量不得小于 0。",
+      minimumOne: "数量不得小于 1。",
+    },
+  ]) {
+    const { locale } = copy;
+    test(`customer sees a readable error for an invalid cart quantity (${locale})`, async ({
+      page,
+    }) => {
+      await page.goto(`/${locale}/products/everyday-shirt`);
+      await page.getByRole("button", { name: copy.add }).click();
+      await expect(
+        page.getByRole("heading", { name: copy.cart }),
+      ).toBeVisible();
+      const quantity = page.locator('input[name="quantity"]').first();
+      await quantity.evaluate((input) => {
+        (input as HTMLInputElement).value = "-1";
+      });
+      await quantity
+        .locator("xpath=ancestor::form")
+        .getByRole("button")
+        .click();
+      await expect(page.locator('[data-slot="alert"]')).toContainText(
+        copy.minimumZero,
+      );
+      await expect(
+        page.getByRole("link", { name: copy.checkout }),
+      ).toBeVisible();
+      const cartResponse = await page.request.get(
+        `/api/v1/cart?locale=${locale}`,
+      );
+      expect(cartResponse.ok()).toBe(true);
+      expect((await cartResponse.json()).data.itemCount).toBe(1);
+      await page.screenshot({
+        path: `test-results/quantity-minimum-zero-${locale}.png`,
+      });
     });
-    await quantity.locator("xpath=ancestor::form").getByRole("button").click();
-    await expect(page.getByText("Quantity must be at least 0.")).toBeVisible();
-  });
 
-  test("add-to-bag rejects a zero quantity after client constraints are removed", async ({
-    page,
-  }) => {
-    await page.goto("/en/products/studio-cup");
-    const quantity = page.locator('input[name="quantity"]');
-    await quantity.evaluate((input) => {
-      input.removeAttribute("min");
-      input.closest("form")!.noValidate = true;
-      (input as HTMLInputElement).value = "0";
+    test(`add-to-bag rejects a zero quantity after client constraints are removed (${locale})`, async ({
+      page,
+    }) => {
+      await page.goto(`/${locale}/products/studio-cup`);
+      const quantity = page.locator('input[name="quantity"]');
+      await quantity.evaluate((input) => {
+        input.removeAttribute("min");
+        input.closest("form")!.noValidate = true;
+        (input as HTMLInputElement).value = "0";
+      });
+      await page.getByRole("button", { name: copy.add }).click();
+      await expect(page.locator('[data-slot="alert"]')).toContainText(
+        copy.minimumOne,
+      );
+      await expect(page.getByText(copy.empty, { exact: true })).toBeVisible();
+      await page.screenshot({
+        path: `test-results/quantity-minimum-one-${locale}.png`,
+      });
     });
-    await page.getByRole("button", { name: "Add to bag" }).click();
-    await expect(page.locator('[data-slot="alert"]')).toContainText(
-      "Quantity must be at least 1.",
-    );
-  });
+  }
 
   test("checkout rejects an unsupported fulfillment type", async ({ page }) => {
     await page.goto("/en/products/studio-cup");
     await page.getByRole("button", { name: "Add to bag" }).click();
+    await page.getByRole("link", { name: "View bag", exact: true }).click();
     await page.getByRole("link", { name: "Continue to checkout" }).click();
     await page.getByLabel("Street address").fill("1 Test Street");
     await page
@@ -61,7 +106,7 @@ test.describe("request rejection flows", () => {
       input.closest("form")!.noValidate = true;
     });
     await email.fill("not-an-email");
-    await page.getByLabel("Payment reference").fill("SP-NOTFOUND");
+    await page.getByLabel("Payment reference").fill("ORD-99999999999999999999");
     await page.getByRole("button", { name: "Send recovery link" }).click();
     await expect(page.locator('[data-slot="alert"]')).toBeVisible();
     await expect(
@@ -108,7 +153,16 @@ test.describe("request rejection flows", () => {
     sql,
   }) => {
     const order = await checkout(page, sql, { free: true, pickup: true });
-    const pickup = await openOrder(admin, order.reference_code);
+    await sql`update order_fulfillments set status='ready_for_pickup' where order_id=${order.id}`;
+    await admin.goto(`/admin/orders/${order.id}`);
+    // Simulate readiness being revoked after this page was loaded.
+    await sql`update order_fulfillments set status='unfulfilled' where order_id=${order.id}`;
+    await admin
+      .getByRole("button", { name: "Complete pickup handoff", exact: true })
+      .click();
+    const pickup = admin.getByRole("dialog", {
+      name: "Verify pickup recipient",
+    });
     await pickup
       .getByLabel("Recipient / authorized recipient")
       .fill("Test Customer");
@@ -129,7 +183,7 @@ test.describe("request rejection flows", () => {
     await record(admin, order.reference_code, order.purchase_total_cents);
     await confirm(admin, order.reference_code);
     const confirmed = await openOrder(admin, order.reference_code);
-    const amount = confirmed.getByLabel("Refund amount (minor units)");
+    const amount = confirmed.getByLabel("Refund amount (USD)");
     await amount.evaluate((input) => {
       input.removeAttribute("min");
       input.closest("form")!.noValidate = true;

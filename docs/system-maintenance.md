@@ -1,6 +1,6 @@
 # System maintenance guide
 
-Maintenance updated: 2026-10-11. Use the [capability inventory](system-capabilities.md) for system behavior and the directory READMEs linked from [backend source](../src/README.md), [applications](../apps/README.md), and [shared packages](../packages/README.md) for module details. This guide covers maintenance across those modules. Commands below come from the current root `package.json` and repository scripts. Review configuration and the target database before running commands that migrate, seed, restore, or contact providers.
+Maintenance updated: 2026-10-18. Use the [capability inventory](system-capabilities.md) for system behavior and the directory READMEs linked from [backend source](../apps/backend/src/README.md), [applications](../apps/README.md), and [shared packages](../packages/README.md) for module details. The [command reference](commands.md) inventories package commands and the [operator cookbook](operator-cookbook.md) provides task recipes. Review configuration and the target database before running commands that migrate, seed, restore, or contact providers.
 
 ## Current transport, fixture and dependency budgets
 
@@ -56,8 +56,8 @@ Whole-repository formatting now passes and is enforced by CI.
 
 ## Checkout request and response contracts
 
-`src/application/common/quote-request.ts` owns validation of public quote fields
-for the JSON API and combined checkout form. Both trim text, uppercase country
+`apps/backend/src/application/common/quote-request.ts` owns validation of public quote fields
+for the JSON API and original checkout form. Both trim text, uppercase country
 and region, validate UUIDs and fulfillment types, and apply the same length
 limits: country 2, address 2,000, region 12, postal code 40, pickup date 10,
 pickup time 20 and promotion code 100 characters. Missing optional text becomes
@@ -94,9 +94,9 @@ The forward rollback is to drop only these two indexes in a later migration;
 order data and query semantics are unchanged. On an online rollback, use
 `DROP INDEX CONCURRENTLY` outside a transaction.
 
-## Combined application sitemap
+## Customer storefront sitemap
 
-The combined application serves `/sitemap.xml` as a streamed index. Its child
+The separate storefront serves `/sitemap.xml` as a streamed index using the backend `/api/v1/customer-sitemap` read API. Its child
 routes are `/sitemaps/static.xml` and `/sitemaps/{resource}-{page}.xml`, where
 resource is `products`, `collections`, or `categories`. Each resource page reads
 at most 1,000 projected records ordered by ID and emits both supported locales.
@@ -105,6 +105,12 @@ the configured locale fallback. The index rejects more than 50,000 child pages
 instead of silently truncating discovery. Responses allow 30 seconds of public
 caching. Publication changes can shift pages between requests; these are live
 discovery documents, not a historical snapshot.
+
+## Staff/customer session isolation
+
+Apply migration `0038_staff_sessions` before deploying the separated authentication instances, using the configured migration credentials and normal runtime-role grant refresh. Staff login now uses `/api/admin-auth` and `staff_session`; customer login retains `/api/auth` and `session`. Both use new cookie namespaces and separately derived signing secrets, so existing browser sessions require sign-in again. Do not copy old sessions into the staff table or rename legacy cookies. Owner-recovery redemption creates a staff session only. No new environment variable is needed; retain the configured `BETTER_AUTH_SECRET`.
+
+Validate both logins in the same browser and independent logout, plus rejection of copied cookies and inactive membership. Password reset must revoke both realms because credentials remain shared. Evidence: [integration isolation/reset](../tests/integration/auth-session-isolation.test.ts), [staff HTTP allowlist](../tests/unit/admin-auth-route.test.ts), [owner recovery](../tests/integration/owner-recovery.test.ts) and [same-browser journey](../tests/browser/session-isolation.spec.ts).
 
 ## Manual order retries
 
@@ -185,8 +191,7 @@ The separate storefront's `/sitemap.xml` is a streamed index of
 `/sitemaps/{page}.xml` files. Discovery reads only published product handles,
 at most 1,000 per API request. Each XML page contains up to 2,002 bilingual URLs,
 including the two home URLs on the first page. Publication changes can move
-records between pages during a crawl. The combined application's existing
-category/collection sitemap still needs migration to this paged structure.
+records between pages during a crawl. Category, collection and static policy shards use the same bounded backend queries.
 
 Storefront JSON reads and writes have a 15-second deadline covering connection,
 headers and response-body reads. Responses are limited to 2 MiB, using both the
@@ -209,7 +214,7 @@ these runtime budgets. Budget total connections across all backend instances.
 
 ## Establish the current state
 
-Start with the relevant directory README, current diff, deployed image revision, environment configuration, and migration journal. Determine whether the problem affects the combined app, separate storefront, backend, worker, storage, or provider. Record the request/order/reference and timestamps without exposing private access tokens or credentials.
+Start with the relevant directory README, current diff, deployed image revision, environment configuration, and migration journal. Determine whether the problem affects the backend, storefront, backend, worker, storage, or provider. Record the request/order/reference and timestamps without exposing private access tokens or credentials.
 
 Documentation priority is explicit: scope/workflows/transactions/schema/events own intended rules; code and migrations show implementation; automated checks and dated release evidence show tested outcomes. Plans explain history/dependencies and are not an inventory of shipped functionality. Resolve discrepancies deliberately; do not copy historical test counts or resource estimates into current release claims.
 
@@ -218,7 +223,7 @@ Documentation priority is explicit: scope/workflows/transactions/schema/events o
 | Purpose                        | Command                                                           | What it establishes                                                                                               |
 | ------------------------------ | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | Install                        | `pnpm install --frozen-lockfile`                                  | Reproducible locked dependencies                                                                                  |
-| Combined development           | `pnpm dev`                                                        | Root Next application, including customer/admin/API routes                                                        |
+| Two-service development        | `pnpm dev`                                                        | Starts backend and original customer storefront in separate processes                                             |
 | Separate development           | `pnpm dev:backend` and `pnpm dev:storefront`                      | Backend on 3000 and storefront on 3001 by default                                                                 |
 | Backend/root types             | `pnpm typecheck`                                                  | Root TypeScript compilation checks                                                                                |
 | Separate storefront types      | `pnpm typecheck:storefront`                                       | Storefront compilation checks                                                                                     |
@@ -230,7 +235,7 @@ Documentation priority is explicit: scope/workflows/transactions/schema/events o
 | Existing-server browser checks | `pnpm test:browser:existing`                                      | Direct Playwright invocation; inspect fixture assumptions first                                                   |
 | Combined verification          | `pnpm test:all`                                                   | Both type checks, unit suites, integration and browser commands; excludes lint, coverage and container acceptance |
 | Lint/format                    | `pnpm lint`, `pnpm format:check`                                  | Source style/static checks; use targeted Prettier for a small documentation change                                |
-| Domain coverage                | `pnpm test:coverage`                                              | 90% lines/statements/functions/branches for `src/domain/**/*.ts`; not whole-system coverage                       |
+| Domain coverage                | `pnpm test:coverage`                                              | 90% lines/statements/functions/branches for `apps/backend/src/domain/**/*.ts`; not whole-system coverage          |
 | Builds                         | `pnpm build:backend`, `pnpm build:storefront`                     | Both application production builds                                                                                |
 | Container acceptance           | `pnpm test:containers`                                            | Disposable container acceptance runner; inspect its fixture/project scope                                         |
 | Service configuration          | `pnpm check:services`                                             | Configuration report without connectivity probing                                                                 |
@@ -244,18 +249,18 @@ The isolated integration runner currently uses loopback port 25438. Fixture port
 
 ## Configuration map
 
-| Surface           | Configuration/source                                                                                   | Maintenance concern                                                                                                                                                                  |
-| ----------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Backend runtime   | `.env.example`, `infrastructure/config.ts`, `DATABASE_URL`, `ADMIN_SETUP_SECRET`, `BETTER_AUTH_SECRET` | Core config validation is only part of validation; individual adapters validate their own settings. Use direct/session-compatible PostgreSQL connections for full transaction locks. |
-| Public identity   | `APP_URL`, `BETTER_AUTH_URL`, `STOREFRONT_ORIGIN`                                                      | Keep browser origin, cookie/auth links and provider callbacks coherent. Local separate setup uses public port 3001.                                                                  |
-| Storefront server | `BACKEND_URL`, optional `EDGE_PROXY_SECRET`                                                            | Backend target also participates in compiled rewrites; update build arguments when hostname changes. No database/SMTP/storage/Stripe secrets on storefront.                          |
-| Object storage    | `S3_ENDPOINT`, region, public/private buckets, access keys                                             | Browser presigned URLs must reach the configured storage endpoint. Preserve private immutable evidence and public catalog objects during backups.                                    |
-| Email             | `EMAIL_PROVIDER`, SMTP connection/auth/TLS values; OAuth client/secret/refresh token if selected       | `nodemailer`, `nodemailer-oauth2`, or disabled. Restart after profile/credential changes and reconcile pinned pending messages.                                                      |
-| SMS/verification  | Selected providers and backend-only Telnyx key/from/profiles/public key                                | Configuration does not enable live sending; composition-root authorization remains off.                                                                                              |
-| Stripe            | Secret key and webhook secret                                                                          | Configure public signed callback path and supported store currency units. Redirects cannot confirm payment.                                                                          |
-| Carrier gateway   | Provider and webhook secret                                                                            | Signed timestamp-bounded gateway callbacks only; no carrier labels/rate engine implied.                                                                                              |
-| Worker            | `ENABLE_OUTBOX_WORKER`, `DISABLE_OUTBOUND_DELIVERY`                                                    | Worker only on backend; suppress outbound during isolated recovery. Confirm suppression reaches the actual process environment.                                                      |
-| Merchant policies | Store settings persisted in PostgreSQL                                                                 | Enabled fulfillment, guest policy, rewards/tax, zones/locations/areas, deadlines and content are store data, not merely environment variables.                                       |
+| Surface           | Configuration/source                                                                                                     | Maintenance concern                                                                                                                                                        |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend runtime   | `.env.example`, `packages/config/`, database/auth validators, `DATABASE_URL`, `ADMIN_SETUP_SECRET`, `BETTER_AUTH_SECRET` | Database, authentication and individual adapters validate the configuration they consume. Use direct/session-compatible PostgreSQL connections for full transaction locks. |
+| Public identity   | `APP_URL`, `BETTER_AUTH_URL`, `STOREFRONT_ORIGIN`                                                                        | Keep browser origin, cookie/auth links and provider callbacks coherent. Local separate setup uses public port 3001.                                                        |
+| Storefront server | `BACKEND_URL`, optional `EDGE_PROXY_SECRET`                                                                              | Backend target also participates in compiled rewrites; update build arguments when hostname changes. No database/SMTP/storage/Stripe secrets on storefront.                |
+| Object storage    | `S3_ENDPOINT`, region, public/private buckets, access keys                                                               | Browser presigned URLs must reach the configured storage endpoint. Preserve private immutable evidence and public catalog objects during backups.                          |
+| Email             | `EMAIL_PROVIDER`, SMTP connection/auth/TLS values; OAuth client/secret/refresh token if selected                         | `nodemailer`, `nodemailer-oauth2`, or disabled. Restart after profile/credential changes and reconcile pinned pending messages.                                            |
+| SMS/verification  | Selected providers and backend-only Telnyx key/from/profiles/public key                                                  | Configuration does not enable live sending; composition-root authorization remains off.                                                                                    |
+| Stripe            | Secret key and webhook secret                                                                                            | Configure public signed callback path and supported store currency units. Redirects cannot confirm payment.                                                                |
+| Carrier gateway   | Provider and webhook secret                                                                                              | Signed timestamp-bounded gateway callbacks only; no carrier labels/rate engine implied.                                                                                    |
+| Worker            | `ENABLE_OUTBOX_WORKER`, `DISABLE_OUTBOUND_DELIVERY`                                                                      | Worker only on backend; suppress outbound during isolated recovery. Confirm suppression reaches the actual process environment.                                            |
+| Merchant policies | Store settings persisted in PostgreSQL                                                                                   | Enabled fulfillment, guest policy, rewards/tax, zones/locations/areas, deadlines and content are store data, not merely environment variables.                             |
 
 Rate limiting is layered. In-memory limits are process local; sensitive database checks and verified ingress must protect multi-replica deployments. The storefront proxy strips untrusted client IP headers. Without an authenticated edge contract, unrelated clients can share backend/proxy rate-limit buckets. Configure the selected ingress explicitly; forwarding arbitrary supplied IP headers is not a fix.
 
@@ -305,7 +310,7 @@ Use [outbox reconciliation](playbooks/outbox-reconciliation.md) as an investigat
 
 The current container deployment has `backend`, `storefront`, `migrate`, PostgreSQL and S3-compatible storage. Only storefront publishes the application; it proxies API/auth/admin and admin assets. Backend owns the worker. Migrations are separate from startup.
 
-Use [two-service deployment](two-service-deployment.md) for exact origin/build settings and [development/deployment](development-deployment.md) for supervision. The checked-in migration chain reaches `0037_order_queue_indexes.sql`; match the deployed image and journal, not merely the filename. Apply compatible additive migrations before starting dependent application images.
+Use [two-service deployment](two-service-deployment.md) for exact origin/build settings and [development/deployment](development-deployment.md) for supervision. The checked-in migration chain reaches `0041_promotion_limits.sql` (42 journal entries); match the deployed image and journal, not merely the filename. Apply compatible additive migrations before starting dependent application images. Migration `0040_contextual_commerce` adds contextual commerce rules; `0041_promotion_limits` adds giveaway basket caps. Existing 100% promotion codes require value and quantity caps, an expiry and a redemption limit before use. See [commerce evaluation](commerce-evaluation.md) for upgrade behavior and acceptance evidence.
 
 Before an upgrade, back up database and assets, retain the current image/revision and configuration, and rehearse on an isolated restored copy. Keep outbound delivery suppressed there. Verify migration continuity, financial history, reservations, provider intents, template pinning, ownership and service readiness. Roll back application images only to schema-compatible versions; do not delete durable financial/provider history to force compatibility.
 
@@ -314,6 +319,10 @@ The [disaster recovery playbook](playbooks/disaster-recovery.md) and `scripts/ba
 Use the disposable project defined by `scripts/compose.smoke.yml` for container rehearsals; inspect runner scope before cleanup. Avoid applying fixture cleanup commands to a merchant's active Compose project or volumes.
 
 ## Release evidence and remaining external checks
+
+Staff authenticator MFA and PostgreSQL authentication rate counters are available
+after migration `0043_staff_security`. Follow [security deployment](security-deployment.md)
+for per-account enrollment, recovery-code handling and trusted TLS ingress.
 
 The repository contains local synthetic integration/browser/container/load/restore evidence. Use the dated hardening evidence for the checks actually rerun. No production migration was applied.
 

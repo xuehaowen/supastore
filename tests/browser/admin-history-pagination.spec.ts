@@ -18,7 +18,7 @@ test("promotion and translation pages expose records beyond the first batch", as
     await sql`insert into products (id, handle, title)
       select r.id, r.code, r.name from jsonb_to_recordset(${sql.json(entries)}) as r(id uuid, code text, name text)`;
     await admin.goto("/admin/promotions");
-    await expect(admin.locator("details")).toHaveCount(50);
+    await expect(admin.getByRole("table").locator("tbody tr")).toHaveCount(50);
     await admin
       .getByRole("navigation", { name: "page pagination", exact: true })
       .getByRole("link", { name: "Next" })
@@ -28,7 +28,7 @@ test("promotion and translation pages expose records beyond the first batch", as
       a.id.localeCompare(b.id),
     )[0]!;
     await expect(
-      admin.locator("summary").filter({ hasText: lastPromotion.code }),
+      admin.getByRole("row").filter({ hasText: lastPromotion.code }),
     ).toBeVisible();
     await admin.goto("/admin/translations?locale=zh");
     const products = admin.locator("section").filter({

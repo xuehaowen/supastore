@@ -43,7 +43,7 @@ const restored = "supastore_upgrade_restored";
 const url = (database) =>
   `DATABASE_URL=postgresql://postgres:fixture-only@postgres:5432/${database}`;
 const migration28 =
-  "const fs=require('fs');const cp=require('child_process');const p='src/infrastructure/db/migrations/meta/_journal.json';const j=JSON.parse(fs.readFileSync(p));j.entries=j.entries.filter(e=>e.idx<=28);fs.writeFileSync(p,JSON.stringify(j));cp.execFileSync('node',['migrate.mjs'],{stdio:'inherit'});";
+  "const fs=require('fs');const cp=require('child_process');const p='apps/backend/src/infrastructure/db/migrations/meta/_journal.json';const j=JSON.parse(fs.readFileSync(p));j.entries=j.entries.filter(e=>e.idx<=28);fs.writeFileSync(p,JSON.stringify(j));cp.execFileSync('node',['migrate.mjs'],{stdio:'inherit'});";
 const fingerprint =
   "select id,title,handle from products order by id; select id,product_id,sku,price_cents from product_variants order by id; select id,account_name,account_identifier from payment_accounts order by id; select store_name,support_email from store_settings;";
 try {

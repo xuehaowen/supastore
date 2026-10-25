@@ -1,0 +1,133 @@
+import { DomainError, ForbiddenError } from "@/application/common/errors";
+import { describeFailure } from "./failure";
+export { describeFailure } from "./failure";
+import { parseActionInteger } from "@/application/common/request-validation";
+import { resolvePublicOrigin } from "../../../../../packages/config/public-origin.mjs";
+import {
+  readBoundedBody,
+  BodyTooLargeError,
+  BodyReadTimeoutError,
+} from "./bounded-body";
+
+export function assertMutationOrigin(request: Request) {
+  const origin = request.headers.get("origin");
+  const allowed = [
+    new URL(request.url).origin,
+    resolvePublicOrigin(process.env),
+  ];
+  if (
+    !origin ||
+    !allowed.includes(origin) ||
+    request.headers.get("sec-fetch-site") === "cross-site"
+  )
+    throw new ForbiddenError("Untrusted request origin.");
+}
+
+export async function readApiBody(
+  request: Request,
+): Promise<Record<string, unknown>> {
+  assertMutationOrigin(request);
+  if (!request.headers.get("content-type")?.startsWith("application/json"))
+    throw new DomainError("JSON body required.");
+  if (!request.body) throw new DomainError("JSON body required.");
+  let bytes: Uint8Array;
+  try {
+    bytes = await readBoundedBody(request.body, {
+      maxBytes: 32768,
+      contentLength: request.headers.get("content-length"),
+    });
+  } catch (error) {
+    if (error instanceof BodyTooLargeError)
+      throw new DomainError("Request is too large.");
+    if (error instanceof BodyReadTimeoutError)
+      throw new DomainError("Request timed out.");
+    throw error;
+  }
+  let value: unknown;
+  try {
+    value = JSON.parse(new TextDecoder().decode(bytes));
+  } catch {
+    throw new DomainError("Invalid JSON.");
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new DomainError("JSON object required.");
+  return value as Record<string, unknown>;
+}
+
+export function apiText(
+  body: Record<string, unknown>,
+  key: string,
+  max = 200,
+  optional = false,
+) {
+  const value = body[key];
+  if (optional && value === undefined) return "";
+  if (
+    typeof value !== "string" ||
+    value.length > max ||
+    (!optional && !value.trim())
+  )
+    throw new DomainError(`Invalid ${key}.`);
+  return value.trim();
+}
+export function apiInteger(
+  body: Record<string, unknown>,
+  key: string,
+  min: number,
+  max: number,
+  fallback?: number,
+  label?: string,
+) {
+  const value = body[key] === undefined ? fallback : body[key];
+  if (label) {
+    if (typeof value !== "number" || !Number.isSafeInteger(value))
+      throw new DomainError(`${label} must be an integer.`);
+    return parseActionInteger(value, label, min, max);
+  }
+  if (
+    typeof value !== "number" ||
+    !Number.isSafeInteger(value) ||
+    value < min ||
+    value > max
+  )
+    throw new DomainError(`Invalid ${key}.`);
+  return value;
+}
+export async function apiResponse<T>(
+  work: () => Promise<T>,
+  publicCache = false,
+) {
+  const requestId = crypto.randomUUID();
+  const headers = {
+    "Cache-Control": publicCache ? "public, max-age=30" : "private, no-store",
+    "X-Request-ID": requestId,
+  };
+  try {
+    return Response.json({ data: await work(), requestId }, { headers });
+  } catch (error) {
+    const failure = describeFailure(
+      error,
+      "commerce.api",
+      undefined,
+      requestId,
+    );
+    return Response.json(
+      {
+        error: {
+          code: failure.code,
+          message: failure.message,
+          retryable: failure.retryable,
+        },
+        requestId,
+      },
+      {
+        status: failure.status,
+        headers: {
+          ...headers,
+          "Cache-Control": "private, no-store",
+          ...(failure.retryable ? { "Retry-After": "60" } : {}),
+        },
+      },
+    );
+  }
+}

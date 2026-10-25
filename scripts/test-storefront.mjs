@@ -1,33 +1,55 @@
 import { fixtureDirectory } from "./fixture-directory.mjs";
 import { measureFixtureResources } from "./measure-fixture-resources.mjs";
+import { parseBenchmarkOptions } from "./benchmark/options.mjs";
+import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
-import { cpSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import postgres from "postgres";
 import EmbeddedPostgres from "embedded-postgres";
 
+const benchmark = parseBenchmarkOptions(process.argv.slice(2));
 // A dedicated synthetic cluster, database and Next cache. Never use the app DB.
 const fixture = fixtureDirectory("storefront");
 const databaseDir = fixture.path;
 const pg = new EmbeddedPostgres({
   databaseDir,
-  port: 55449,
+  port: 25449,
   user: "postgres",
   password: "postgres",
   persistent: true,
+  initdbFlags: [
+    "--encoding=UTF8",
+    "--locale-provider=builtin",
+    "--builtin-locale=PG_UNICODE_FAST",
+  ],
   onLog: () => {},
   onError: console.error,
 });
 const database = "supastore_cuj_" + Date.now();
+const benchmarkToken = benchmark ? randomUUID() : "";
+const benchmarkReport = benchmark
+  ? join(process.cwd(), ".tmp-cuj", "benchmark-" + database)
+  : "";
+if (benchmark) mkdirSync(benchmarkReport, { recursive: true });
 const production = true;
 const measure = process.argv.includes("--measure");
-const standalone = measure && process.platform === "linux";
+const standalone =
+  process.argv.includes("--standalone") ||
+  (measure && process.platform === "linux");
 const testArguments = process.argv
   .slice(2)
   .filter(
-    (argument) => argument !== "--production" && argument !== "--measure",
+    (argument) =>
+      !["--production", "--measure", "--standalone"].includes(argument),
   );
 const env = {
   ...process.env,
@@ -39,21 +61,26 @@ const env = {
   STOREFRONT_ORIGIN: "http://localhost:3103",
   NEXT_TSCONFIG: ".tsconfig-cuj.json",
   STOREFRONT_TSCONFIG: ".tsconfig-cuj.json",
-  DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:55449/" + database,
+  DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:25449/" + database,
   APP_URL: "http://localhost:3103",
-  BETTER_AUTH_URL: "http://localhost:3102",
-  ADMIN_BASE_URL: "http://localhost:3102",
+  BETTER_AUTH_URL: "http://localhost:3103",
+  ADMIN_BASE_URL: "http://localhost:3103",
   PLAYWRIGHT_BASE_URL: "http://localhost:3103",
   ADMIN_SETUP_SECRET: "SyntheticSetupSecret123!",
   BETTER_AUTH_SECRET: "SyntheticAuthSecretForBrowserTests123!",
-  M1_DEMO: "true",
+  M1_DEMO: benchmark ? "false" : "true",
+  BENCHMARK_OWNER_TOKEN: benchmarkToken,
+  BENCHMARK_REPORT_PATH: benchmarkReport,
+  BENCHMARK_IMAGES: benchmark ? "true" : "false",
   DEMO_OWNER_PASSWORD: "SyntheticOwnerPassword123!",
-  DISABLE_OUTBOUND_DELIVERY: "false",
-  ENABLE_OUTBOX_WORKER: "false",
+  DISABLE_OUTBOUND_DELIVERY: benchmark ? "true" : "false",
+  // Authentication links now use the durable outbox.
+  ENABLE_OUTBOX_WORKER: benchmark ? "false" : "true",
   EMAIL_PROVIDER: "nodemailer",
   SMS_PROVIDER: "disabled",
   PHONE_VERIFICATION_PROVIDER: "disabled",
   S3_ENDPOINT: "http://127.0.0.1:9009",
+  S3_PUBLIC_ENDPOINT: "http://127.0.0.1:9009",
   S3_ACCESS_KEY_ID: "fixture",
   S3_SECRET_ACCESS_KEY: "fixture",
   S3_BUCKET_PRIVATE: "browser-fixture",
@@ -85,11 +112,28 @@ function completed(child) {
   });
 }
 function start(args, runtime = false, overrides = {}) {
+  if (runtime && benchmark?.runtimeMemory === "compact")
+    args = ["--max-semi-space-size=16", ...args];
+  const diagnostics = runtime && benchmark && benchmark.diagnostics !== "none";
+  if (diagnostics)
+    args = [
+      ...(benchmark.diagnostics === "gc" ? ["--expose-gc"] : []),
+      ...(benchmark.diagnostics === "compact"
+        ? ["--max-semi-space-size=16"]
+        : []),
+      "--import",
+      pathToFileURL(join(process.cwd(), "scripts/benchmark/heap-probe.mjs"))
+        .href,
+      ...args,
+    ];
   const child = spawn(process.execPath, args, {
     env: runtime
       ? {
           ...env,
           NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=256",
+          ...(diagnostics
+            ? { BENCHMARK_MEMORY_DIAGNOSTICS: benchmark.diagnostics }
+            : {}),
           ...overrides,
         }
       : env,
@@ -195,12 +239,18 @@ try {
   if (postgresBinary) {
     const child = (databaseProcess = spawn(
       postgresBinary,
-      ["-D", databaseDir, "-p", "55449"],
+      ["-D", databaseDir, "-p", "25449", "-h", "127.0.0.1"],
       { stdio: ["ignore", "ignore", "pipe"], windowsHide: true },
     ));
     await new Promise((resolve, reject) => {
+      let startupDiagnostics = "";
       const timer = setTimeout(
-        () => reject(new Error("Test PostgreSQL startup timed out")),
+        () =>
+          reject(
+            new Error(
+              "Test PostgreSQL startup timed out: " + startupDiagnostics,
+            ),
+          ),
         30000,
       );
       child.once("error", (error) => {
@@ -211,10 +261,15 @@ try {
         "exit",
         (code) => (
           clearTimeout(timer),
-          reject(new Error("Test PostgreSQL exited: " + code))
+          reject(
+            new Error(
+              "Test PostgreSQL exited: " + code + ": " + startupDiagnostics,
+            ),
+          )
         ),
       );
       child.stderr.on("data", (data) => {
+        startupDiagnostics = (startupDiagnostics + String(data)).slice(-8000);
         if (
           String(data).includes(
             "database system is ready to accept connections",
@@ -228,16 +283,28 @@ try {
   } else await pg.start();
   pgStarted = true;
   const admin = postgres(
-    "postgresql://postgres:postgres@127.0.0.1:55449/postgres",
+    "postgresql://postgres:postgres@127.0.0.1:25449/postgres",
   );
   try {
     await admin.unsafe(
-      `CREATE DATABASE "${database}" WITH TEMPLATE template0 ENCODING 'UTF8' LC_COLLATE 'C' LC_CTYPE 'C'`,
+      `CREATE DATABASE "${database}" WITH TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER builtin BUILTIN_LOCALE 'PG_UNICODE_FAST'`,
     );
   } finally {
     await admin.end();
   }
-  writeFileSync(env.NEXT_TSCONFIG, readFileSync("tsconfig.json"));
+  if (benchmark) {
+    const owned = postgres(env.DATABASE_URL);
+    try {
+      await owned`create table benchmark_fixture_ownership(token uuid primary key)`;
+      await owned`insert into benchmark_fixture_ownership values(${benchmarkToken})`;
+    } finally {
+      await owned.end();
+    }
+  }
+  writeFileSync(
+    "apps/backend/" + env.NEXT_TSCONFIG,
+    readFileSync("apps/backend/tsconfig.json"),
+  );
   writeFileSync(
     "apps/storefront/" + env.STOREFRONT_TSCONFIG,
     readFileSync("apps/storefront/tsconfig.json"),
@@ -247,24 +314,60 @@ try {
   start(["scripts/test-storage.mjs"]);
 
   await completed(
-    start(["node_modules/tsx/dist/cli.mjs", "scripts/seed-demo.ts"]),
+    start(
+      benchmark
+        ? [
+            "node_modules/tsx/dist/cli.mjs",
+            "scripts/benchmark/prepare-cli.ts",
+            ...process.argv.slice(2),
+          ]
+        : ["node_modules/tsx/dist/cli.mjs", "scripts/seed-demo.ts"],
+    ),
   );
 
+  if (benchmark) {
+    await completed(
+      start([
+        "scripts/test-integration.mjs",
+        "tests/integration/m1.test.ts",
+        "tests/integration/lightweight-commerce.test.ts",
+        "tests/integration/stripe-lifecycle.test.ts",
+        "--testNamePattern=returns one authorized order after racing and expiry|reserves the last unit once|serializes pickup capacity|serializes parallel payment delivery|preserves unsigned/mode-mismatched events",
+        "--reporter=json",
+        "--outputFile=" + join(benchmarkReport, "races-vitest.json"),
+      ]),
+    );
+    await completed(
+      start([
+        "node_modules/tsx/dist/cli.mjs",
+        "scripts/benchmark/check-races.ts",
+      ]),
+    );
+  }
+
+  if (!benchmark)
+    start(["--import", "tsx", "scripts/worker.ts"], true, {
+      SERVICE_ROLE: "worker",
+    });
+
   if (production)
-    await completed(start(["node_modules/next/dist/bin/next", "build"]));
+    await completed(
+      start(["node_modules/next/dist/bin/next", "build", "apps/backend"]),
+    );
   if (production)
     await completed(
       start(["node_modules/next/dist/bin/next", "build", "apps/storefront"]),
     );
   if (standalone) {
-    // Next's generated entry point is CommonJS even when the source package is ESM.
     cpSync(
-      join(env.NEXT_DIST_DIR, "standalone/server.js"),
-      join(env.NEXT_DIST_DIR, "standalone/server.cjs"),
-    );
-    cpSync(
-      join(env.NEXT_DIST_DIR, "static"),
-      join(env.NEXT_DIST_DIR, "standalone", env.NEXT_DIST_DIR, "static"),
+      join("apps/backend", env.NEXT_DIST_DIR, "static"),
+      join(
+        "apps/backend",
+        env.NEXT_DIST_DIR,
+        "standalone/apps/backend",
+        env.NEXT_DIST_DIR,
+        "static",
+      ),
       { recursive: true },
     );
     cpSync(
@@ -278,22 +381,44 @@ try {
       ),
       { recursive: true },
     );
-    if (existsSync("public"))
-      cpSync("public", join(env.NEXT_DIST_DIR, "standalone/public"), {
-        recursive: true,
-      });
+    if (existsSync("apps/backend/public"))
+      cpSync(
+        "apps/backend/public",
+        join(
+          "apps/backend",
+          env.NEXT_DIST_DIR,
+          "standalone/apps/backend/public",
+        ),
+        {
+          recursive: true,
+        },
+      );
   }
   const server = start(
     standalone
-      ? [join(env.NEXT_DIST_DIR, "standalone/server.cjs")]
+      ? [
+          join(
+            "apps/backend",
+            env.NEXT_DIST_DIR,
+            "standalone/apps/backend/server.js",
+          ),
+        ]
       : [
           "node_modules/next/dist/bin/next",
           production ? "start" : "dev",
+          "apps/backend",
           "--port",
           "3102",
+          "--hostname",
+          "127.0.0.1",
         ],
     true,
-    { PORT: "3102", HOSTNAME: "127.0.0.1" },
+    {
+      PORT: "3102",
+      HOSTNAME: "127.0.0.1",
+      BENCHMARK_MEMORY_ROLE:
+        benchmark?.diagnostics !== "none" && benchmark ? "backend" : "",
+    },
   );
   await ready("http://127.0.0.1:3102/api/health/live", server);
   const storefront = start(
@@ -311,53 +436,103 @@ try {
           "apps/storefront",
           "--port",
           "3103",
+          "--hostname",
+          "127.0.0.1",
         ],
     true,
-    { PORT: "3103", HOSTNAME: "127.0.0.1" },
+    {
+      PORT: "3103",
+      HOSTNAME: "127.0.0.1",
+      BENCHMARK_MEMORY_ROLE:
+        benchmark?.diagnostics !== "none" && benchmark ? "storefront" : "",
+    },
   );
   await ready(env.APP_URL + "/en", storefront);
-  const testTarget =
-    testArguments.length > 0
-      ? testArguments
-      : [
-          "tests/browser/cross-service-storefront.spec.ts",
-          "tests/browser/cross-service-i18n.spec.ts",
-          "tests/browser/cross-service-sitemap.spec.ts",
-          "tests/browser/cross-service-scale.spec.ts",
-          "tests/browser/storefront-journey-updates.spec.ts",
-        ];
-  await completed(
-    start([
-      "node_modules/@playwright/test/cli.js",
-      "test",
-      "--output=test-results/storefront",
-      ...testTarget,
-    ]),
-  );
-  if (measure) {
-    console.log(
-      JSON.stringify(
-        {
-          metric:
-            "Production Next process RSS after synthetic browser journeys",
-          platform: process.platform,
-          runtime: standalone ? "standalone" : "Next CLI",
-          nodeVersion: process.version,
-          workload: testTarget,
-          services: measureFixtureResources([
-            { service: "backend", pid: server.pid },
-            { service: "storefront", pid: storefront.pid },
-          ]),
-        },
-        null,
-        2,
-      ),
+  if (benchmark) {
+    await completed(
+      start([
+        "node_modules/@playwright/test/cli.js",
+        "test",
+        "tests/browser/representative-benchmark.spec.ts",
+        "--output=" + join(benchmarkReport, "playwright"),
+      ]),
     );
-    await completed(start(["scripts/measure-storefront-bundle.mjs"]));
+    Object.assign(env, {
+      BENCHMARK_BACKEND_PID: String(server.pid),
+      BENCHMARK_STOREFRONT_PID: String(storefront.pid),
+      BENCHMARK_POSTGRES_PID: readFileSync(
+        join(databaseDir, "postmaster.pid"),
+        "utf8",
+      ).split(/\r?\n/)[0],
+      BENCHMARK_RUNTIME_MODE: standalone ? "standalone" : "Next CLI",
+    });
+    await completed(
+      start([
+        "node_modules/tsx/dist/cli.mjs",
+        "scripts/benchmark/run.ts",
+        ...process.argv.slice(2),
+      ]),
+    );
+  } else {
+    const testTarget =
+      testArguments.length > 0
+        ? testArguments
+        : [
+            "tests/browser/original-storefront-separation.spec.ts",
+            "tests/browser/storefront-redesign.spec.ts",
+            "tests/browser/storefront-refinement.spec.ts",
+            "tests/browser/storefront-fixes.spec.ts",
+            "tests/browser/storefront-performance.spec.ts",
+            "tests/browser/cuj.spec.ts",
+            "tests/browser/i18n.spec.ts",
+            "tests/browser/boundaries.spec.ts",
+            "tests/browser/error-handling.spec.ts",
+            "tests/browser/cross-service-sitemap.spec.ts",
+            "tests/browser/sitemap.spec.ts",
+            "tests/browser/cross-service-scale.spec.ts",
+            "tests/browser/sales-usability.spec.ts",
+            "tests/browser/manual-launch-profiles.spec.ts",
+            "tests/browser/contextual-commerce.spec.ts",
+            "tests/browser/catalog-polish.spec.ts",
+            "tests/browser/commerce-management.spec.ts",
+            "tests/browser/session-isolation.spec.ts",
+            "tests/browser/sms-consent.spec.ts",
+            "tests/browser/admin-history-pagination.spec.ts",
+            "tests/browser/ui-page-audit.spec.ts",
+          ];
+    await completed(
+      start([
+        "node_modules/@playwright/test/cli.js",
+        "test",
+        "--output=test-results/storefront",
+        ...testTarget,
+      ]),
+    );
+    if (measure) {
+      console.log(
+        JSON.stringify(
+          {
+            metric:
+              "Production Next process RSS after synthetic browser journeys",
+            platform: process.platform,
+            runtime: standalone ? "standalone" : "Next CLI",
+            nodeVersion: process.version,
+            workload: testTarget,
+            services: measureFixtureResources([
+              { service: "backend", pid: server.pid },
+              { service: "storefront", pid: storefront.pid },
+            ]),
+          },
+          null,
+          2,
+        ),
+      );
+      await completed(start(["scripts/measure-storefront-bundle.mjs"]));
+    }
   }
 } catch (error) {
   console.error(
-    error ?? "Browser infrastructure failed; check ports 55449, 3102 and 3103.",
+    error ?? "Browser infrastructure failed; check ports 25449, 3102 and 3103.",
   );
   exitCode = 1;
 } finally {

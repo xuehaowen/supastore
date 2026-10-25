@@ -1,6 +1,6 @@
 Customer storefront localization supports English (`en`) and Simplified Chinese (`zh`) in both applications.
 
-Page/component catalogs are `src/i18n/locales/*.json` and `apps/storefront/lib/locales/*.json`. Shared customer copy, API error messages, status labels and US state names live in `packages/i18n/src/locales/*.json`. Both catalog loaders merge those shared resources; `next-intl` receives the same merged messages used by client components. Add UI copy to a catalog rather than embedding bilingual conditionals or English JSX fallbacks.
+Page/component catalogs are `packages/i18n/src/app/locales/*.json` and `apps/storefront/lib/locales/*.json`. Shared customer copy, API error messages, status labels and US state names live in `packages/i18n/src/locales/*.json`. Both catalog loaders merge those shared resources; `next-intl` receives the same merged messages used by client components. Add UI copy to a catalog rather than embedding bilingual conditionals or English JSX fallbacks.
 
 Shared helpers localize currency with the store's precision, local calendar dates without timezone shifts, status codes, known system-generated credit-activity descriptions, and recognized API/auth errors. Unknown errors use a translated generic retry message instead of exposing provider text. To retain a specific actionable error, add its English protocol message and Chinese translation to the shared error catalog. Status additions need a key in both shared catalogs; unknown statuses have a translated fallback.
 

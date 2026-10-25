@@ -104,6 +104,23 @@ describe("disaster recovery command failures", () => {
     expect(f.run("backup", [target], { FAIL_DUMP: "true" }).status).not.toBe(0);
     expect(existsSync(join(target, "backup-manifest.json"))).toBe(false);
   });
+  it("verifies valid and corrupt directory backups with Alpine-compatible checksums", () => {
+    const f = fixture();
+    writeFileSync(
+      join(f.bin, "sha256sum"),
+      '#!/usr/bin/env bash\nfor arg in "$@"; do [ "$arg" != "--check" ] || exit 2; done\nexec /usr/bin/sha256sum "$@"\n',
+      { mode: 0o755 },
+    );
+    const target = join(f.root, "backup");
+    expect(f.run("backup", [target]).status).toBe(0);
+    const valid = f.run("restore", [target]);
+    expect(valid.status).toBe(0);
+    expect(valid.stdout).toContain("migrations executed");
+    writeFileSync(join(target, "database.dump"), "corrupted fixture");
+    const corrupt = f.run("restore", [target]);
+    expect(corrupt.status).not.toBe(0);
+    expect(corrupt.stdout).not.toContain("migrations executed");
+  });
   it("requires an explicit cold maintenance window", () => {
     const f = fixture();
     expect(

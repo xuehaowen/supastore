@@ -1,0 +1,27 @@
+name: Bounded feature proposal
+description: Describe a merchant problem and a small proposed change.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      {
+        label: Merchant problem,
+        description: Who encounters this and what task is blocked?,
+      }
+    validations: { required: true }
+  - type: textarea
+    id: scope
+    attributes:
+      {
+        label: Proposed scope,
+        description: Explain the result and what can remain outside this change.,
+      }
+    validations: { required: true }
+  - type: textarea
+    id: acceptance
+    attributes:
+      {
+        label: Acceptance,
+        description: How could a contributor verify the change using synthetic data?,
+      }
+    validations: { required: true }

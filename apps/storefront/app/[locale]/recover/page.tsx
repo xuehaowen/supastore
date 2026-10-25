@@ -1,5 +1,4 @@
-﻿import { RecoveryClient } from "../../account-client";
-import { getStorefrontMessages } from "../../../lib/i18n";
+import { redirect } from "next/navigation";
 export const metadata = { robots: { index: false, follow: false } };
 export default async function Recover({
   params,
@@ -10,11 +9,7 @@ export default async function Recover({
 }) {
   const { locale } = await params;
   const query = await searchParams;
-  const m = getStorefrontMessages(locale);
-  return (
-    <>
-      <h1>{m.recovery.title}</h1>
-      <RecoveryClient locale={locale} messages={m.recovery} {...query} />
-    </>
-  );
+  const search = new URLSearchParams({ locale });
+  if (query.token) search.set("token", query.token);
+  redirect((query.token ? "/recover/exchange" : "/recover") + "?" + search);
 }

@@ -8,28 +8,34 @@ The audience sells physical goods through shipping, pickup or local delivery. Tr
 
 ## Release boundaries
 
-| First release                                                  | Deferred                                                          |
-| -------------------------------------------------------------- | ----------------------------------------------------------------- |
-| One business and currency per deployment                       | Multi-currency and multiple businesses                            |
-| Storefront, admin and one configurable theme                   | Theme marketplace and plugin framework                            |
-| Products, variants, categories and optional tracked inventory  | Multiple warehouses                                               |
-| Guest/accounts, address books and proof-based order claiming   | Multi-tenant identities                                           |
-| Unpaid order before instructions; credit plus external funding | Installment schedules and transferable wallets                    |
-| Manual payments and online-payment adapter                     | General payment plugin framework                                  |
-| Original-source refunds and configurable purchase rewards      | Reward expiry, transfers and historical backfill                  |
-| Price changes only before any receipt is recorded              | Post-payment price-change proposals                               |
-| Flat shipping rates and one optional pickup location           | Carrier labels, calculated shipping and multiple pickup locations |
-| Configured tax rates and one rounding policy                   | Automatic global tax compliance                                   |
-| Transactional email                                            | Admin direct messages, SMS and WeChat                             |
-| Product CSV import; product/order export                       | Order import and general data round-trip tooling                  |
+| First release                                                  | Deferred                                         |
+| -------------------------------------------------------------- | ------------------------------------------------ |
+| One business and currency per deployment                       | Multi-currency and multiple businesses           |
+| Storefront, admin and one configurable theme                   | Theme marketplace and plugin framework           |
+| Products, variants, categories and optional tracked inventory  | Multiple warehouses                              |
+| Guest/accounts, address books and proof-based order claiming   | Multi-tenant identities                          |
+| Unpaid order before instructions; credit plus external funding | Installment schedules and transferable wallets   |
+| Manual payments and online-payment adapter                     | General payment plugin framework                 |
+| Original-source refunds and configurable purchase rewards      | Reward expiry, transfers and historical backfill |
+| Price changes only before any receipt is recorded              | Post-payment price-change proposals              |
+| Flat shipping rates and optional pickup locations              | Carrier labels and calculated shipping           |
+| Configured tax rates and one rounding policy                   | Automatic global tax compliance                  |
+| Transactional email and gated SMS infrastructure               | Admin direct messages and WeChat                 |
+| Product CSV import; product/order export                       | Order import and general data round-trip tooling |
 
-Subscriptions, configurable products, marketplaces and arbitrary workflow builders are outside the product's initial direction. Deferred capabilities require separate designs before release.
+Subscriptions, configurable products, marketplaces and arbitrary workflow builders are outside the product's initial direction. Deferred capabilities require separate designs before release. Live SMS sending remains disabled until deployment authorization and provider acceptance; see [SMS consent](sms-consent.md).
 
 Receipt corrections cover wrong amounts and duplicate entries. Reassigning an existing receipt to another receiving account is deferred; detected wrong-account entries require an owner investigation hold and cannot be repaired by voiding and recreating the payment. A separate design must address identity collisions, funding and historical payouts before reassignment is supported.
 
 Accounts, inventory and store credit are existing capabilities. The implementation adds configurable rewards and Stripe as the first online-payment adapter. This specification does not claim every expansion milestone has shipped; track implementation and acceptance in the [generic plan](../plans/generic-store-implementation.md). Money is requested only after an order exists.
 
 ## Merchant defaults
+
+Optional [contextual commerce rules](commerce-evaluation.md) select variant
+prices/availability, reward rates, shipping minimums and existing promotion
+eligibility by fulfillment, destination, pickup location and activation dates.
+They share the store's inventory and customer accounts. The backend revalidates
+accepted terms; previews never reserve stock or issue credit.
 
 Use one store timezone, currency and supported precision. Currency is locked after the first order is created, including free orders. English and Simplified Chinese are initial locales, with fallback to the default locale. Language never changes currency.
 

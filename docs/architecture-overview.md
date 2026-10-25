@@ -22,7 +22,7 @@ Backend and storefront build into separate images. Image and memory budgets rema
 
 1. **Single Unified Engine:** Standardizes on **Better-Auth** (storing users and sessions directly in PostgreSQL via Drizzle) and the **S3-compatible API** (`@aws-sdk/client-s3`), eliminating multiple fragmented auth/storage implementations.
 2. **Universal Portability:** Connects to any standard PostgreSQL 16+ instance via `DATABASE_URL` (local container, self-hosted VPS, or cloud-managed PostgreSQL such as Supabase, Neon, or AWS RDS). Object storage connects to any S3-compatible backend (RustFS, Cloudflare R2, AWS S3, or Supabase Storage).
-3. **Worker placement:** An in-process loop is the default; worker-only container mode is optional. In the standalone Next.js container, the loop initializes safely via `instrumentation.ts` (`register()` hook, guarded to `process.env.NEXT_RUNTIME === 'nodejs'`) or a server runner. Both implement the same [delivery and coordination contract](api-events-spec.md#worker-lifecycle-and-retry). Operators configure supervision through the [deployment guide](development-deployment.md#configuration-and-process-supervision).
+3. **Worker placement:** A dedicated Node worker consumes PostgreSQL-backed pg-boss queues through `scripts/worker.ts`. Local launchers supervise it when `ENABLE_OUTBOX_WORKER=true`; Compose runs the separate worker service. See [background jobs](background-jobs.md) and the [delivery and coordination contract](api-events-spec.md#worker-lifecycle-and-retry). Operators configure supervision through the [deployment guide](development-deployment.md#configuration-and-process-supervision).
 
 ### Redis-Free Rate Limiting & Abuse Defense
 
@@ -62,6 +62,8 @@ The intended dependency direction is UI/routes -> application use cases -> domai
 A command such as `createOrder`, `recordReceipt`, `confirmOrder`, `cancelOrder`, `authorizeRefund` or `reconcilePayout` has one implementation called by every entry point. Pricing is one pure calculation used by quoting and permitted pre-payment adjustments. See [transaction contracts](transaction-contracts.md).
 
 ## Authorization boundary
+
+Staff and customer sessions are independent realms of Better Auth. Customers use `/api/auth`, `supastore-customer` cookies and the `session` table; merchants use `/api/admin-auth`, `supastore-staff` cookies and `staff_session`. Signing secrets are derived separately from the configured authentication secret, and cookie session caching is disabled. Sharing a user identity or browser does not share login state, token lookup, session listing or ordinary logout. Staff session creation checks active membership; merchant use cases also retain transactional role checks. Password reset is a credential-security exception: shared user/password records require revocation in both realms. Owner recovery establishes a staff session only. Migration 0038 creates the new table; existing cookies require fresh sign-in.
 
 All business mutations and private reads go through trusted server use cases. Use a dedicated least-privilege database role for application access; reserve elevated credentials for migrations and narrowly scoped platform administration. Enable RLS on exposed application tables and deny direct browser financial access. RLS is defense in depth and does not replace use-case authorization. Document and test the actual privileges of the chosen runtime role.
 

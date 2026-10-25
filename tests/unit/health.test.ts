@@ -3,12 +3,25 @@ import { GET as getLive } from "@/app/api/health/live/route";
 import { GET as getReady } from "@/app/api/health/ready/route";
 import { GET as getWorker } from "@/app/api/health/worker/route";
 import { db } from "@/infrastructure/db";
-import {
-  createWorkerRunner,
-  resetWorkerState,
-} from "@/infrastructure/runtime/worker";
+const queueHealth = vi.hoisted(() => vi.fn());
+vi.mock("@/infrastructure/queue/health", () => ({
+  queueWorkerHealth: queueHealth,
+}));
 
 describe("Health Endpoints", () => {
+  it("reports notifications requiring review as degraded even when the scheduler runs", async () => {
+    queueHealth.mockResolvedValue({
+      status: "ok",
+      enabled: true,
+      workers: [{ id: "fixture" }],
+    });
+    vi.spyOn(db, "execute")
+      .mockResolvedValueOnce([{ status: "review", count: 1 }] as any)
+      .mockResolvedValueOnce([] as any);
+    const response = await getWorker();
+    expect(response.status).toBe(503);
+    expect((await response.json()).status).toBe("degraded");
+  });
   it("/api/health/live returns 200 with status ok and uptime", async () => {
     const response = await getLive();
     expect(response.status).toBe(200);
@@ -45,11 +58,11 @@ describe("Health Endpoints", () => {
   });
 
   it("/api/health/worker returns 200 with outbox metrics", async () => {
-    const runner = createWorkerRunner(
-      [{ name: "fixture", intervalMs: 5000, run: async () => 0 }],
-      { onError: vi.fn() },
-    );
-    await runner.tick();
+    queueHealth.mockResolvedValue({
+      status: "ok",
+      enabled: true,
+      workers: [{ id: "fixture" }],
+    });
     vi.spyOn(db, "execute")
       .mockResolvedValueOnce([
         { status: "pending", count: 3 },
@@ -67,14 +80,17 @@ describe("Health Endpoints", () => {
     expect(body.outbox.pending).toBe(3);
     expect(body.outbox.delivered).toBe(15);
     expect(body.outbox.oldestPendingAgeSeconds).toBeGreaterThanOrEqual(25);
-    runner.stop();
   });
-  it("reports a disabled worker instead of healthy database-only metrics", async () => {
-    resetWorkerState();
+  it("reports a missing worker instead of healthy database-only metrics", async () => {
+    queueHealth.mockResolvedValue({
+      status: "stalled",
+      enabled: false,
+      workers: [],
+    });
     vi.spyOn(db, "execute").mockResolvedValue([] as any);
     const response = await getWorker();
     expect(response.status).toBe(503);
-    expect((await response.json()).status).toBe("disabled");
+    expect((await response.json()).status).toBe("stalled");
   });
   it("does not expose database exception details", async () => {
     vi.spyOn(db, "execute").mockRejectedValueOnce(

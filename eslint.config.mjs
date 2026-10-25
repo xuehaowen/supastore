@@ -35,8 +35,31 @@ const nextConfigs = compat.extends("next/core-web-vitals").map((config) => {
 
 const eslintConfig = [
   ...nextConfigs,
+  { settings: { next: { rootDir: ["apps/backend/", "apps/storefront/"] } } },
   {
-    files: ["src/domain/**/*.ts"],
+    files: ["apps/storefront/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "**/backend/**",
+                "@/domain/**",
+                "@/application/**",
+                "@/infrastructure/**",
+              ],
+              message:
+                "Use shared packages and HTTP contracts; storefront must not import backend source.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["apps/backend/src/domain/**/*.ts"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -65,7 +88,7 @@ const eslintConfig = [
   },
   {
     ignores: [
-      ".next/**",
+      "**/.next*/**",
       ".next-cuj/**",
       "coverage/**",
       "node_modules/**",

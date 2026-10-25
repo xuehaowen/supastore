@@ -3,13 +3,16 @@ import AxeBuilder from "@axe-core/playwright";
 import { openOrder, clickAction } from "./fixtures";
 test("C1-C6 storefront, persistent cart, order, refresh and direct upload", async ({
   page,
+  sql,
 }) => {
+  const [store] = await sql`select store_name from store_settings limit 1`;
   await page.goto("/en");
   await expect(
-    page.getByRole("heading", { name: "Considered essentials." }),
+    page.getByRole("heading", { name: store!.store_name, exact: true }),
   ).toBeVisible();
   await page.getByRole("link", { name: "Everyday shirt" }).click();
   await page.getByRole("button", { name: "Add to bag" }).click();
+  await page.getByRole("link", { name: "View bag", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Your bag" })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { name: "Your bag" })).toBeVisible();
@@ -59,14 +62,15 @@ test("C1-C6 storefront, persistent cart, order, refresh and direct upload", asyn
     ),
   ).toEqual([]);
 });
-test("C1 language and C8 generic recovery response", async ({ page }) => {
+test("C1 language and C8 generic recovery response", async ({ page, sql }) => {
+  const [store] = await sql`select store_name from store_settings limit 1`;
   await page.goto("/zh");
   await expect(
-    page.getByRole("heading", { name: "精心挑选，日常之美。" }),
+    page.getByRole("heading", { name: store!.store_name, exact: true }),
   ).toBeVisible();
   await page.goto("/recover");
   await page.getByLabel("Email", { exact: true }).fill("nobody@example.test");
-  await page.getByLabel("Payment reference").fill("SP-NOTFOUND");
+  await page.getByLabel("Payment reference").fill("ORD-99999999999999999999");
   await page.getByRole("button", { name: "Send recovery link" }).click();
   await expect(page.getByRole("status")).toHaveText(
     "If an order was found, a recovery link has been sent.",
@@ -155,6 +159,7 @@ test("C8-C10 recovery, proposal acceptance and failed email visibility", async (
 }) => {
   await page.goto("/en/products/studio-cup");
   await page.getByRole("button", { name: "Add to bag" }).click();
+  await page.getByRole("link", { name: "View bag", exact: true }).click();
   await page.getByRole("link", { name: "Continue to checkout" }).click();
   await page.getByLabel("Street address").fill("1 Test Street");
   await page
@@ -183,7 +188,7 @@ test("C8-C10 recovery, proposal acceptance and failed email visibility", async (
     .click();
   await expect(admin).toHaveURL(/admin(?:\/setup)?$/);
   const row = await openOrder(admin, reference);
-  await row.getByLabel("Proposed total (minor units)").fill("2500");
+  await row.getByLabel("Proposed total (USD)").fill("25.00");
   await row
     .getByLabel("Reason", { exact: true })
     .fill("Synthetic price adjustment");
@@ -245,7 +250,7 @@ test("C8-C10 recovery, proposal acceptance and failed email visibility", async (
       const replay = await replayContext.newPage();
       await replay.goto(event!.payload.recoveryUrl);
       await replay.getByRole("button", { name: "Continue to order" }).click();
-      await expect(replay).toHaveURL(/recover\?error=/);
+      await expect(replay).toHaveURL(/recover\?.*error=/);
       await replay.goto(url);
       await expect(replay).toHaveURL(/recover/);
     } finally {
@@ -285,6 +290,7 @@ test("M2/C3/C7 publish variants, free pickup checkout and availability", async (
   const customer = await context.newPage();
   await customer.goto("/en/products/" + handle);
   await customer.getByRole("button", { name: "Add to bag" }).click();
+  await customer.getByRole("link", { name: "View bag", exact: true }).click();
   await customer.getByRole("link", { name: "Continue to checkout" }).click();
   await customer.getByLabel("Local pickup", { exact: true }).check();
   await customer.locator('input[name="pickupLocationId"]').first().check();

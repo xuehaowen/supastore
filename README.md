@@ -1,8 +1,12 @@
-# SupaStore
+# Supastore
 
-A self-hosted commerce application for independent merchants, with catalog options, collections, stock tracking, customer accounts, store credit and rewards, manual and Stripe payments, refunds, and physical returns. Backend and storefront are independently deployable applications; the backend owns merchant admin, APIs, authentication, and the outbox worker. Combined local development remains available.
+A self-hosted storefront and merchant admin for independent businesses, with catalog options, stock tracking, customer accounts, manual and Stripe payments, refunds, returns, store credit and rewards. Backend and storefront are independently deployable; PostgreSQL coordinates business data and background delivery without Redis.
 
-Start with [Current System Capabilities](docs/system-capabilities.md) for implemented features and limits, and the [Maintenance Guide](docs/system-maintenance.md) for operational workflows. Directory READMEs explain the code beside each module; the navigation index below links their entry points.
+**Developer-beta source preview.** No stable production release is supported yet. [Production acceptance](docs/launch-acceptance.md) and the [observed merchant pilot](docs/merchant-pilot.md) remain open. See the [beta release checklist](docs/beta-release.md), [changelog](CHANGELOG.md) and [security policy](SECURITY.md).
+
+Start with [Current System Capabilities](docs/system-capabilities.md) for implemented features and limits, the [Operator Cookbook](docs/operator-cookbook.md) for task recipes, and the [Command Reference](docs/commands.md) for commands and prerequisites. Directory READMEs explain the code beside each module; the navigation index below links their entry points.
+
+The workspace contains `apps/backend` for admin, APIs and workers, `apps/storefront` for the original customer pages, and `packages/{ui,i18n,shipping,contracts}` for shared presentation and public contracts. Root scripts coordinate development, database setup and testing. The backend reads the existing root `.env`; the storefront communicates through HTTP.
 
 Licensed under MIT.
 
@@ -14,6 +18,7 @@ Licensed under MIT.
 - **Zero-External-Cache Architecture:** Redis-free architecture using PostgreSQL session management, row-level locks (`SELECT ... FOR UPDATE SKIP LOCKED`), and in-memory LRU token buckets.
 - **Transactional Outbox Worker:** Reliable asynchronous email notification worker with durable delivery leases and bounded exponential backoff (1m, 5m, 15m, 1h, 6h $\to$ exhausted).
 - **Exact Financial Invariants:** Integer minor-unit arithmetic, canonical financial projections, audited receipt corrections, and component-level payout discrepancies.
+- **Contextual Commerce Rules:** Optional prices, availability, rewards, shipping minimums and promotion eligibility by fulfillment or destination, with customer previews and server-enforced quotes. See [commerce evaluation](docs/commerce-evaluation.md).
 - **Merchant Daily Queue:** Mobile-first admin dashboard for order confirmation, packing slips, thermal printing (58mm/80mm), cash reconciliation, and CSV tools.
 - **Disaster Recovery & Safety:** Verified cold restore procedures with mandatory outbound email suppression (`DISABLE_OUTBOUND_DELIVERY=true`).
 
@@ -21,18 +26,56 @@ Licensed under MIT.
 
 ## Quickstart
 
+### Try an isolated demo
+
+With Node >=22.13.0 and Docker Compose installed:
+
+```bash
+git clone https://github.com/xuehaowen/supastore.git
+cd supastore
+node scripts/demo.mjs
+```
+
+The first build installs dependencies inside Docker, creates a dedicated database
+and private storage buckets, applies migrations, and seeds synthetic products.
+It leaves the root `.env` and configured store volumes untouched. External
+notifications and payments are disabled.
+
+- Storefront: [http://localhost:3080/en](http://localhost:3080/en)
+- Admin: [http://localhost:3080/admin](http://localhost:3080/admin)
+- Synthetic login: `owner@example.test` / `DemoStorePassword123!`
+- Stop and retain demo data: `node scripts/demo.mjs down`
+
+This loopback-only demo is for evaluation, not public hosting. See
+[first contribution](docs/contributor-start.md) for port changes, diagnostics and
+the architecture introduction. The manual setup below is for source development
+or an intentionally configured installation.
+
+<details>
+<summary>See the synthetic demo</summary>
+
+Storefront with three seeded products (image placeholders):
+
+![Synthetic demo storefront](docs/images/demo-storefront.png)
+
+Merchant overview after signing in as the synthetic owner:
+
+![Synthetic demo admin](docs/images/demo-admin.png)
+
+</details>
+
 ### Prerequisites
 
-- Node.js 22 LTS or newer
-- pnpm 9+
-- PostgreSQL 16+ (or Docker)
+- Node.js >=22.13.0
+- pnpm 11.0.9 (the repository's `packageManager` version)
+- Docker Compose for the supplied PostgreSQL 18/RustFS stack, or separately configured services
 
 ### 1. Clone and Install
 
 ```bash
 git clone https://github.com/xuehaowen/supastore.git
 cd supastore
-pnpm install
+pnpm install --frozen-lockfile
 ```
 
 ### 2. Configure Environment
@@ -49,15 +92,30 @@ uses the PostgreSQL administrator password. Migrations provision the application
 role when `APP_DATABASE_USER` and `APP_DATABASE_PASSWORD` are set. See the
 [deployment guide](docs/two-service-deployment.md) for generation and existing-volume recovery.
 
-### 3. Run Migrations & Seed Demo Store
+### 3. Start Dependencies, Migrate & Seed a Local Demo
+
+Use a dedicated local database. Before starting the application, set
+`DISABLE_OUTBOUND_DELIVERY=true` and `ENABLE_OUTBOX_WORKER=false` in the demo `.env`.
 
 ```bash
+docker compose up -d postgres rustfs
+
 # Apply database migrations
 pnpm db:migrate
 
 # Seed synthetic demo catalog & owner (owner@example.test / AdminSetupSecret123!)
-M1_DEMO=true DEMO_OWNER_PASSWORD=AdminSetupSecret123! pnpm db:seed
+node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx --input-type=module -e "process.env.DEMO_SEED='true'; process.env.DATABASE_URL=process.env.MIGRATION_DATABASE_URL; await import('./scripts/seed-demo.ts')"
 ```
+
+The seed command requires the configured `MIGRATION_DATABASE_URL` and uses it
+only in its child process because the seed also runs migrations. It uses the
+synthetic default password; set `DEMO_OWNER_PASSWORD`
+in the demo environment to override it. It works in Bash and PowerShell. Never
+seed a real merchant database. In the RustFS console at `http://localhost:9001`,
+create the buckets named by `S3_BUCKET_PUBLIC` and `S3_BUCKET_PRIVATE` before
+testing uploads. See the [local demo recipe](docs/operator-cookbook.md#local-demo-store)
+for expected results and storage checks. A real store uses the separate
+[first-owner recipe](docs/operator-cookbook.md#provision-the-first-owner).
 
 ### 4. Start Development Server
 
@@ -65,8 +123,18 @@ M1_DEMO=true DEMO_OWNER_PASSWORD=AdminSetupSecret123! pnpm db:seed
 pnpm dev
 ```
 
-- Storefront: [http://localhost:3000](http://localhost:3000)
-- Admin Portal: [http://localhost:3000/admin](http://localhost:3000/admin)
+This starts the backend on port 3000 and the original customer storefront on port 3001. To run them in separate terminals, use `pnpm dev:backend` and `pnpm dev:storefront`. Development launchers default the public origin to port 3001 when none is configured, without changing `.env`.
+
+`pnpm build` builds both apps, and `pnpm start` runs both production servers.
+Use `build:backend`, `build:storefront`, `start:backend` and `start:storefront`
+for individual services. `BACKEND_PORT` and `STOREFRONT_PORT` select their ports.
+Production requires an explicit public origin; use `STOREFRONT_ORIGIN` and keep
+any `APP_URL`/`BETTER_AUTH_URL` aliases consistent. See the command reference for
+environment-file precedence. `pnpm test:all` runs the main verification chain;
+the error-coverage and container checks are separate commands.
+
+- Storefront: [http://localhost:3001](http://localhost:3001)
+- Admin Portal: [http://localhost:3001/admin](http://localhost:3001/admin)
 - Health Check: [http://localhost:3000/api/health/ready](http://localhost:3000/api/health/ready)
 
 Customers can check out as guests using private order links or register and verify an account. Verified accounts have an address book, owned order history, and store credit. Claiming a guest order requires its private access proof; matching an email address does not transfer ownership. The admin login is sign-in only; trusted server-side tooling provisions the owner.
@@ -79,13 +147,22 @@ Checkout shows a final total before placing the order. Pickup requires a locatio
 
 ## Docker & Deployment
 
-Run Supastore and PostgreSQL via Docker Compose:
+Build the services, start dependencies, and run the explicit migration job before
+starting the applications:
 
 ```bash
-docker compose up -d
+docker compose build backend storefront migrate
+docker compose up -d postgres rustfs
+docker compose --profile migration run --rm migrate
+docker compose up -d backend storefront
 ```
 
-See [Deployment Recipes](docs/deployment-recipes.md) for Coolify, Railway, Fly.io, and managed cloud databases.
+Configure secrets, storage buckets, the public origin and ingress first. For an
+existing installation, back up and rehearse the upgrade before migrations. See
+the [deployment cookbook](docs/operator-cookbook.md#deploy-or-upgrade-with-compose)
+and [Deployment Recipes](docs/deployment-recipes.md). Other container platforms
+have general configuration guidance; provider-specific deployment acceptance is
+separate.
 
 ---
 
@@ -122,7 +199,7 @@ pnpm test:e2e
 
 For short explanations beside the code, open the directory READMEs:
 
-- [Backend source](src/README.md): routes, business workflows, domain rules, and integrations.
+- [Backend source](apps/backend/src/README.md): routes, business workflows, domain rules, and integrations.
 - [Applications](apps/README.md): backend launcher and separate customer storefront.
 - [Shared packages](packages/README.md): HTTP contracts, localization, and destination helpers.
 - [Scripts](scripts/README.md): development, deployment, migration, and recovery tools.
@@ -133,6 +210,10 @@ Each module README explains its responsibility, maintenance constraints, and whe
 | Document                                                          | Description                                                         |
 | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
 | [Current System Capabilities](docs/system-capabilities.md)        | Implemented capabilities, boundaries, workflows and evidence limits |
+| [Command Reference](docs/commands.md)                             | Every package command, prerequisites, effects and outputs           |
+| [Operator Cookbook](docs/operator-cookbook.md)                    | Local setup, owner provisioning, deployment, recovery and diagnosis |
+| [Production Acceptance](docs/launch-acceptance.md)                | Target, HTTPS, live providers, recovery and release evidence        |
+| [Human Merchant Pilot](docs/merchant-pilot.md)                    | Participant task script, observation sheet and acceptance criteria  |
 | [System Maintenance Guide](docs/system-maintenance.md)            | Configuration, verification, diagnosis, upgrades and recovery       |
 | [Product Scope](docs/product-scope.md)                            | Audience, release boundary and document ownership                   |
 | [Business Workflows](docs/business-workflows.md)                  | User operations and state transitions                               |
@@ -150,4 +231,7 @@ Each module README explains its responsibility, maintenance constraints, and whe
 
 ## Contributing & Security
 
-See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and [LICENSE](LICENSE).
+Start with [your first contribution](docs/contributor-start.md) and
+[starter contributions](docs/starter-contributions.md), then read
+[CONTRIBUTING.md](CONTRIBUTING.md). Use [private vulnerability reporting](https://github.com/xuehaowen/supastore/security/advisories/new)
+for security issues. See [SECURITY.md](SECURITY.md) and [LICENSE](LICENSE).

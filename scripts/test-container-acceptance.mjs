@@ -37,7 +37,7 @@ try {
   await run("docker", [...compose, "down", "--volumes"]);
   if (process.env.CONTAINER_SKIP_BUILD !== "true")
     await run("docker", [
-      "compose",
+      ...compose,
       "build",
       "backend",
       "storefront",
@@ -78,6 +78,18 @@ try {
   ])
     await run(process.execPath, [`scripts/${script}`]);
   if (interrupted) throw new Error("Acceptance interrupted");
+} catch (error) {
+  try {
+    await run(
+      "docker",
+      [...compose, "logs", "--no-color", "--tail", "100"],
+      undefined,
+      true,
+    );
+  } catch (logError) {
+    console.error("Unable to read fixture container logs:", logError);
+  }
+  throw error;
 } finally {
   await run("docker", [...compose, "down", "--volumes"], undefined, true);
 }

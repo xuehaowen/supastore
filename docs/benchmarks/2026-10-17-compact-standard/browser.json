@@ -1,0 +1,944 @@
+{
+  "scope": "representative-browser-diagnostic",
+  "browser": "153.0.8010.12",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "network": "local loopback, no latency or CPU emulation",
+  "cold": "fresh context and cleared browser HTTP cache; server already started",
+  "samplesPerRouteAndCache": 3,
+  "summary": {
+    "catalog": {
+      "cold": {
+        "samples": 3,
+        "ttfbMs": {
+          "p50": 28.400000005960464,
+          "p95": 42.20000001788139
+        },
+        "domContentLoadedMs": {
+          "p50": 63.80000001192093,
+          "p95": 192.7000000178814
+        },
+        "encodedBytes": {
+          "html": {
+            "p50": 22915,
+            "p95": 22915
+          },
+          "rsc": {
+            "p50": 155,
+            "p95": 466
+          },
+          "script": {
+            "p50": 167958,
+            "p95": 167958
+          },
+          "image": {
+            "p50": 344366,
+            "p95": 344388
+          },
+          "other": {
+            "p50": 15470,
+            "p95": 15470
+          }
+        }
+      },
+      "warm": {
+        "samples": 3,
+        "ttfbMs": {
+          "p50": 20,
+          "p95": 26.900000005960464
+        },
+        "domContentLoadedMs": {
+          "p50": 74.5,
+          "p95": 79.40000000596046
+        },
+        "encodedBytes": {
+          "html": {
+            "p50": 22915,
+            "p95": 22915
+          },
+          "rsc": {
+            "p50": 461,
+            "p95": 466
+          },
+          "script": {
+            "p50": 0,
+            "p95": 0
+          },
+          "image": {
+            "p50": 0,
+            "p95": 0
+          },
+          "other": {
+            "p50": 0,
+            "p95": 0
+          }
+        }
+      }
+    },
+    "search": {
+      "cold": {
+        "samples": 3,
+        "ttfbMs": {
+          "p50": 52.69999998807907,
+          "p95": 55.89999997615814
+        },
+        "domContentLoadedMs": {
+          "p50": 139.19999998807907,
+          "p95": 152.80000001192093
+        },
+        "encodedBytes": {
+          "html": {
+            "p50": 21961,
+            "p95": 21961
+          },
+          "rsc": {
+            "p50": 494,
+            "p95": 699
+          },
+          "script": {
+            "p50": 167958,
+            "p95": 167958
+          },
+          "image": {
+            "p50": 375672,
+            "p95": 375696
+          },
+          "other": {
+            "p50": 15470,
+            "p95": 15470
+          }
+        }
+      },
+      "warm": {
+        "samples": 3,
+        "ttfbMs": {
+          "p50": 48.39999997615814,
+          "p95": 50.80000001192093
+        },
+        "domContentLoadedMs": {
+          "p50": 88.80000001192093,
+          "p95": 97.30000001192093
+        },
+        "encodedBytes": {
+          "html": {
+            "p50": 21961,
+            "p95": 21961
+          },
+          "rsc": {
+            "p50": 2133,
+            "p95": 2302
+          },
+          "script": {
+            "p50": 0,
+            "p95": 0
+          },
+          "image": {
+            "p50": 0,
+            "p95": 0
+          },
+          "other": {
+            "p50": 0,
+            "p95": 0
+          }
+        }
+      }
+    },
+    "product": {
+      "cold": {
+        "samples": 3,
+        "ttfbMs": {
+          "p50": 31.30000001192093,
+          "p95": 38.70000001788139
+        },
+        "domContentLoadedMs": {
+          "p50": 63.599999994039536,
+          "p95": 66.2999999821186
+        },
+        "encodedBytes": {
+          "html": {
+            "p50": 9288,
+            "p95": 9288
+          },
+          "rsc": {
+            "p50": 1599,
+            "p95": 2265
+          },
+          "script": {
+            "p50": 171574,
+            "p95": 171574
+          },
+          "image": {
+            "p50": 33225,
+            "p95": 33228
+          },
+          "other": {
+            "p50": 15470,
+            "p95": 15470
+          }
+        }
+      },
+      "warm": {
+        "samples": 3,
+        "ttfbMs": {
+          "p50": 30.19999998807907,
+          "p95": 32.10000002384186
+        },
+        "domContentLoadedMs": {
+          "p50": 64.09999999403954,
+          "p95": 65.2999999821186
+        },
+        "encodedBytes": {
+          "html": {
+            "p50": 9288,
+            "p95": 9288
+          },
+          "rsc": {
+            "p50": 307,
+            "p95": 461
+          },
+          "script": {
+            "p50": 0,
+            "p95": 0
+          },
+          "image": {
+            "p50": 0,
+            "p95": 0
+          },
+          "other": {
+            "p50": 0,
+            "p95": 0
+          }
+        }
+      }
+    },
+    "cart": {
+      "cold": {
+        "samples": 3,
+        "ttfbMs": {
+          "p50": 26,
+          "p95": 34.30000001192093
+        },
+        "domContentLoadedMs": {
+          "p50": 58,
+          "p95": 63.60000002384186
+        },
+        "encodedBytes": {
+          "html": {
+            "p50": 9439,
+            "p95": 9439
+          },
+          "rsc": {
+            "p50": 1735,
+            "p95": 2649
+          },
+          "script": {
+            "p50": 166874,
+            "p95": 166874
+          },
+          "image": {
+            "p50": 0,
+            "p95": 0
+          },
+          "other": {
+            "p50": 15470,
+            "p95": 15470
+          }
+        }
+      },
+      "warm": {
+        "samples": 3,
+        "ttfbMs": {
+          "p50": 32.80000001192093,
+          "p95": 33.599999994039536
+        },
+        "domContentLoadedMs": {
+          "p50": 64.7000000178814,
+          "p95": 69
+        },
+        "encodedBytes": {
+          "html": {
+            "p50": 9439,
+            "p95": 9439
+          },
+          "rsc": {
+            "p50": 690,
+            "p95": 1177
+          },
+          "script": {
+            "p50": 0,
+            "p95": 0
+          },
+          "image": {
+            "p50": 0,
+            "p95": 0
+          },
+          "other": {
+            "p50": 0,
+            "p95": 0
+          }
+        }
+      }
+    },
+    "checkout": {
+      "cold": {
+        "samples": 3,
+        "ttfbMs": {
+          "p50": 58.19999998807907,
+          "p95": 73.7000000178814
+        },
+        "domContentLoadedMs": {
+          "p50": 88,
+          "p95": 183.40000000596046
+        },
+        "encodedBytes": {
+          "html": {
+            "p50": 11867,
+            "p95": 11867
+          },
+          "rsc": {
+            "p50": 452,
+            "p95": 1565
+          },
+          "script": {
+            "p50": 174797,
+            "p95": 174797
+          },
+          "image": {
+            "p50": 0,
+            "p95": 0
+          },
+          "other": {
+            "p50": 15470,
+            "p95": 15470
+          }
+        }
+      },
+      "warm": {
+        "samples": 3,
+        "ttfbMs": {
+          "p50": 39.20000001788139,
+          "p95": 47.29999998211861
+        },
+        "domContentLoadedMs": {
+          "p50": 83,
+          "p95": 95.90000000596046
+        },
+        "encodedBytes": {
+          "html": {
+            "p50": 11867,
+            "p95": 11867
+          },
+          "rsc": {
+            "p50": 152,
+            "p95": 306
+          },
+          "script": {
+            "p50": 0,
+            "p95": 0
+          },
+          "image": {
+            "p50": 0,
+            "p95": 0
+          },
+          "other": {
+            "p50": 0,
+            "p95": 0
+          }
+        }
+      }
+    }
+  },
+  "samples": [
+    {
+      "route": "catalog",
+      "cache": "cold",
+      "ttfbMs": 42.20000001788139,
+      "domContentLoadedMs": 192.7000000178814,
+      "transfers": {
+        "encodedBytes": {
+          "html": 22915,
+          "rsc": 154,
+          "script": 167958,
+          "image": 344388,
+          "other": 15470
+        },
+        "requests": 46,
+        "cachedRequests": 0,
+        "canceledRequests": 5,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "catalog",
+      "cache": "warm",
+      "ttfbMs": 26.900000005960464,
+      "domContentLoadedMs": 79.40000000596046,
+      "transfers": {
+        "encodedBytes": {
+          "html": 22915,
+          "rsc": 461,
+          "script": 0,
+          "image": 0,
+          "other": 0
+        },
+        "requests": 46,
+        "cachedRequests": 40,
+        "canceledRequests": 5,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "catalog",
+      "cache": "cold",
+      "ttfbMs": 28.400000005960464,
+      "domContentLoadedMs": 63.80000001192093,
+      "transfers": {
+        "encodedBytes": {
+          "html": 22915,
+          "rsc": 466,
+          "script": 167958,
+          "image": 344366,
+          "other": 15470
+        },
+        "requests": 46,
+        "cachedRequests": 0,
+        "canceledRequests": 5,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "catalog",
+      "cache": "warm",
+      "ttfbMs": 19.799999982118607,
+      "domContentLoadedMs": 74.5,
+      "transfers": {
+        "encodedBytes": {
+          "html": 22915,
+          "rsc": 306,
+          "script": 0,
+          "image": 0,
+          "other": 0
+        },
+        "requests": 46,
+        "cachedRequests": 40,
+        "canceledRequests": 5,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "catalog",
+      "cache": "cold",
+      "ttfbMs": 23.099999994039536,
+      "domContentLoadedMs": 55.19999998807907,
+      "transfers": {
+        "encodedBytes": {
+          "html": 22915,
+          "rsc": 155,
+          "script": 167958,
+          "image": 344366,
+          "other": 15470
+        },
+        "requests": 46,
+        "cachedRequests": 0,
+        "canceledRequests": 5,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "catalog",
+      "cache": "warm",
+      "ttfbMs": 20,
+      "domContentLoadedMs": 71.09999999403954,
+      "transfers": {
+        "encodedBytes": {
+          "html": 22915,
+          "rsc": 466,
+          "script": 0,
+          "image": 0,
+          "other": 0
+        },
+        "requests": 46,
+        "cachedRequests": 40,
+        "canceledRequests": 5,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "search",
+      "cache": "cold",
+      "ttfbMs": 55.89999997615814,
+      "domContentLoadedMs": 87.40000000596046,
+      "transfers": {
+        "encodedBytes": {
+          "html": 21961,
+          "rsc": 180,
+          "script": 167958,
+          "image": 375696,
+          "other": 15470
+        },
+        "requests": 52,
+        "cachedRequests": 0,
+        "canceledRequests": 9,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "search",
+      "cache": "warm",
+      "ttfbMs": 50.80000001192093,
+      "domContentLoadedMs": 88.80000001192093,
+      "transfers": {
+        "encodedBytes": {
+          "html": 21961,
+          "rsc": 2302,
+          "script": 0,
+          "image": 0,
+          "other": 0
+        },
+        "requests": 52,
+        "cachedRequests": 42,
+        "canceledRequests": 6,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "search",
+      "cache": "cold",
+      "ttfbMs": 46.900000005960464,
+      "domContentLoadedMs": 139.19999998807907,
+      "transfers": {
+        "encodedBytes": {
+          "html": 21961,
+          "rsc": 494,
+          "script": 167958,
+          "image": 375672,
+          "other": 15470
+        },
+        "requests": 52,
+        "cachedRequests": 0,
+        "canceledRequests": 9,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "search",
+      "cache": "warm",
+      "ttfbMs": 40.70000001788139,
+      "domContentLoadedMs": 84.39999997615814,
+      "transfers": {
+        "encodedBytes": {
+          "html": 21961,
+          "rsc": 2133,
+          "script": 0,
+          "image": 0,
+          "other": 0
+        },
+        "requests": 52,
+        "cachedRequests": 42,
+        "canceledRequests": 6,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "search",
+      "cache": "cold",
+      "ttfbMs": 52.69999998807907,
+      "domContentLoadedMs": 152.80000001192093,
+      "transfers": {
+        "encodedBytes": {
+          "html": 21961,
+          "rsc": 699,
+          "script": 167958,
+          "image": 375672,
+          "other": 15470
+        },
+        "requests": 52,
+        "cachedRequests": 0,
+        "canceledRequests": 9,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "search",
+      "cache": "warm",
+      "ttfbMs": 48.39999997615814,
+      "domContentLoadedMs": 97.30000001192093,
+      "transfers": {
+        "encodedBytes": {
+          "html": 21961,
+          "rsc": 542,
+          "script": 0,
+          "image": 0,
+          "other": 0
+        },
+        "requests": 52,
+        "cachedRequests": 42,
+        "canceledRequests": 9,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "product",
+      "cache": "cold",
+      "ttfbMs": 38.70000001788139,
+      "domContentLoadedMs": 66.2999999821186,
+      "transfers": {
+        "encodedBytes": {
+          "html": 9288,
+          "rsc": 1599,
+          "script": 171574,
+          "image": 33228,
+          "other": 15470
+        },
+        "requests": 28,
+        "cachedRequests": 0,
+        "canceledRequests": 2,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "product",
+      "cache": "warm",
+      "ttfbMs": 29.700000017881393,
+      "domContentLoadedMs": 59.5,
+      "transfers": {
+        "encodedBytes": {
+          "html": 9288,
+          "rsc": 307,
+          "script": 0,
+          "image": 0,
+          "other": 0
+        },
+        "requests": 28,
+        "cachedRequests": 22,
+        "canceledRequests": 5,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "product",
+      "cache": "cold",
+      "ttfbMs": 31.30000001192093,
+      "domContentLoadedMs": 59.70000001788139,
+      "transfers": {
+        "encodedBytes": {
+          "html": 9288,
+          "rsc": 852,
+          "script": 171574,
+          "image": 33225,
+          "other": 15470
+        },
+        "requests": 28,
+        "cachedRequests": 0,
+        "canceledRequests": 4,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "product",
+      "cache": "warm",
+      "ttfbMs": 30.19999998807907,
+      "domContentLoadedMs": 65.2999999821186,
+      "transfers": {
+        "encodedBytes": {
+          "html": 9288,
+          "rsc": 155,
+          "script": 0,
+          "image": 0,
+          "other": 0
+        },
+        "requests": 28,
+        "cachedRequests": 22,
+        "canceledRequests": 5,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "product",
+      "cache": "cold",
+      "ttfbMs": 30.30000001192093,
+      "domContentLoadedMs": 63.599999994039536,
+      "transfers": {
+        "encodedBytes": {
+          "html": 9288,
+          "rsc": 2265,
+          "script": 171574,
+          "image": 33225,
+          "other": 15470
+        },
+        "requests": 28,
+        "cachedRequests": 0,
+        "canceledRequests": 1,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "product",
+      "cache": "warm",
+      "ttfbMs": 32.10000002384186,
+      "domContentLoadedMs": 64.09999999403954,
+      "transfers": {
+        "encodedBytes": {
+          "html": 9288,
+          "rsc": 461,
+          "script": 0,
+          "image": 0,
+          "other": 0
+        },
+        "requests": 28,
+        "cachedRequests": 22,
+        "canceledRequests": 5,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "cart",
+      "cache": "cold",
+      "ttfbMs": 34.30000001192093,
+      "domContentLoadedMs": 63.60000002384186,
+      "transfers": {
+        "encodedBytes": {
+          "html": 9439,
+          "rsc": 2649,
+          "script": 166874,
+          "image": 0,
+          "other": 15470
+        },
+        "requests": 25,
+        "cachedRequests": 0,
+        "canceledRequests": 1,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "cart",
+      "cache": "warm",
+      "ttfbMs": 33.599999994039536,
+      "domContentLoadedMs": 69,
+      "transfers": {
+        "encodedBytes": {
+          "html": 9439,
+          "rsc": 523,
+          "script": 0,
+          "image": 0,
+          "other": 0
+        },
+        "requests": 25,
+        "cachedRequests": 18,
+        "canceledRequests": 5,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "cart",
+      "cache": "cold",
+      "ttfbMs": 24.599999994039536,
+      "domContentLoadedMs": 58,
+      "transfers": {
+        "encodedBytes": {
+          "html": 9439,
+          "rsc": 844,
+          "script": 166874,
+          "image": 0,
+          "other": 15470
+        },
+        "requests": 25,
+        "cachedRequests": 0,
+        "canceledRequests": 5,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "cart",
+      "cache": "warm",
+      "ttfbMs": 32.80000001192093,
+      "domContentLoadedMs": 64.7000000178814,
+      "transfers": {
+        "encodedBytes": {
+          "html": 9439,
+          "rsc": 1177,
+          "script": 0,
+          "image": 0,
+          "other": 0
+        },
+        "requests": 25,
+        "cachedRequests": 18,
+        "canceledRequests": 5,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "cart",
+      "cache": "cold",
+      "ttfbMs": 26,
+      "domContentLoadedMs": 55.099999994039536,
+      "transfers": {
+        "encodedBytes": {
+          "html": 9436,
+          "rsc": 1735,
+          "script": 166874,
+          "image": 0,
+          "other": 15470
+        },
+        "requests": 25,
+        "cachedRequests": 0,
+        "canceledRequests": 3,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "cart",
+      "cache": "warm",
+      "ttfbMs": 28.900000005960464,
+      "domContentLoadedMs": 59.19999998807907,
+      "transfers": {
+        "encodedBytes": {
+          "html": 9436,
+          "rsc": 690,
+          "script": 0,
+          "image": 0,
+          "other": 0
+        },
+        "requests": 25,
+        "cachedRequests": 18,
+        "canceledRequests": 5,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "checkout",
+      "cache": "cold",
+      "ttfbMs": 73.7000000178814,
+      "domContentLoadedMs": 183.40000000596046,
+      "transfers": {
+        "encodedBytes": {
+          "html": 11867,
+          "rsc": 1565,
+          "script": 174797,
+          "image": 0,
+          "other": 15470
+        },
+        "requests": 25,
+        "cachedRequests": 0,
+        "canceledRequests": 2,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "checkout",
+      "cache": "warm",
+      "ttfbMs": 39.20000001788139,
+      "domContentLoadedMs": 81.59999999403954,
+      "transfers": {
+        "encodedBytes": {
+          "html": 11867,
+          "rsc": 0,
+          "script": 0,
+          "image": 0,
+          "other": 0
+        },
+        "requests": 25,
+        "cachedRequests": 19,
+        "canceledRequests": 5,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "checkout",
+      "cache": "cold",
+      "ttfbMs": 55.69999998807907,
+      "domContentLoadedMs": 86,
+      "transfers": {
+        "encodedBytes": {
+          "html": 11866,
+          "rsc": 143,
+          "script": 174797,
+          "image": 0,
+          "other": 15470
+        },
+        "requests": 25,
+        "cachedRequests": 0,
+        "canceledRequests": 5,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "checkout",
+      "cache": "warm",
+      "ttfbMs": 47.29999998211861,
+      "domContentLoadedMs": 95.90000000596046,
+      "transfers": {
+        "encodedBytes": {
+          "html": 11866,
+          "rsc": 306,
+          "script": 0,
+          "image": 0,
+          "other": 0
+        },
+        "requests": 25,
+        "cachedRequests": 19,
+        "canceledRequests": 5,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "checkout",
+      "cache": "cold",
+      "ttfbMs": 58.19999998807907,
+      "domContentLoadedMs": 88,
+      "transfers": {
+        "encodedBytes": {
+          "html": 11867,
+          "rsc": 452,
+          "script": 174797,
+          "image": 0,
+          "other": 15470
+        },
+        "requests": 25,
+        "cachedRequests": 0,
+        "canceledRequests": 5,
+        "unexpectedFailures": 0
+      }
+    },
+    {
+      "route": "checkout",
+      "cache": "warm",
+      "ttfbMs": 37.099999994039536,
+      "domContentLoadedMs": 83,
+      "transfers": {
+        "encodedBytes": {
+          "html": 11867,
+          "rsc": 152,
+          "script": 0,
+          "image": 0,
+          "other": 0
+        },
+        "requests": 25,
+        "cachedRequests": 19,
+        "canceledRequests": 5,
+        "unexpectedFailures": 0
+      }
+    }
+  ],
+  "clientNavigation": {
+    "encodedBytes": {
+      "html": 22915,
+      "rsc": 3303,
+      "script": 171574,
+      "image": 406943,
+      "other": 15470
+    },
+    "requests": 59,
+    "cachedRequests": 0,
+    "canceledRequests": 12,
+    "unexpectedFailures": 0
+  },
+  "clientNavigationScope": "source catalog load, prefetch and product transition combined",
+  "canceledTransferBytes": "partial encoded body bytes observed before cancellation; excludes headers",
+  "authorization": {
+    "privateOrderStatus": 401,
+    "untrustedOriginStatus": 403
+  }
+}

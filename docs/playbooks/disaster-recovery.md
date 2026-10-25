@@ -19,12 +19,18 @@ This playbook guides the recovery of Supastore following severe infrastructure l
 
 ### Step 2: Execute Restore Script
 
-Stop the backend, worker-only containers, and other clients of the target
+Stop the backend (including its in-process worker) and other clients of the target
 database before restoring. Exporting variables in a shell does not change the
 environment of an already-running service. The restore script requires explicit
 cold-maintenance confirmation and refuses a target with active sessions.
 New backup directories contain SHA256SUMS; verify and retain that file alongside
 the dumps. A database backup is separate from the object-storage backup.
+
+Run the scripts with Bash and LF line endings (enforced by `.gitattributes` in
+fresh checkouts). Install compatible PostgreSQL clients, Node and `sha256sum`;
+checksum verification supports GNU and Alpine BusyBox via `-c`. See the
+[synthetic shell rehearsal](../reliability-acceptance-2026-10-17.md#actual-shell-procedure-follow-up)
+for tested guards and the remaining merchant database/assets acceptance.
 
 ```bash
 # Set outbound delivery suppression

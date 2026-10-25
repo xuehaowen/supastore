@@ -14,13 +14,13 @@ vi.mock("@/application/use-cases/catalog/export-csv", () => ({
     "guest_name",
     "fulfillment_type",
     "fulfillment_status",
-    "discount_cents",
-    "purchase_total_cents",
+    "discount",
+    "purchase_total",
     "sku",
     "variant_title",
     "quantity",
-    "unit_price_cents",
-    "line_total_cents",
+    "unit_price",
+    "line_total",
     "receipt_references",
     "created_at",
   ],
@@ -33,13 +33,13 @@ vi.mock("@/application/use-cases/catalog/export-csv", () => ({
         guest_name: fixture.name,
         fulfillment_type: "shipping",
         fulfillment_status: "unfulfilled",
-        discount_cents: 250,
-        purchase_total_cents: 2250,
+        discount: 2.5,
+        purchase_total: 22.5,
         sku: "CUP-1",
         variant_title: "Cup",
         quantity: 2,
-        unit_price_cents: 1250,
-        line_total_cents: 2500,
+        unit_price: 12.5,
+        line_total: 25,
         receipt_references: "BANK-100",
         created_at: new Date("2026-09-14T12:00:00Z"),
       };
@@ -71,8 +71,9 @@ describe("order XLSX export", () => {
     expect(sheet.views[0]).toMatchObject({ state: "frozen", ySplit: 1 });
     expect(sheet.autoFilter).toEqual("A1:O1");
     expect(sheet.getCell("A2").value).toBe("SP-100");
-    expect(sheet.getCell("G2").value).toBe(250);
-    expect(sheet.getCell("H2").value).toBe(2250);
+    expect(sheet.getCell("G2").value).toBe(2.5);
+    expect(sheet.getCell("H2").value).toBe(22.5);
+    expect(sheet.getCell("G2").numFmt).toBe("#,##0.00####");
     expect(sheet.getCell("O2").value).toEqual(new Date("2026-09-14T12:00:00Z"));
   });
 });

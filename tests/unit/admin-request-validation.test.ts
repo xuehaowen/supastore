@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { fulfillOrder } from "@/application/use-cases/fulfill-order";
 import { completePickupHandoff } from "@/application/use-cases/fulfillment/fulfillment-operations";
 import { cancelOrder } from "@/application/use-cases/orders/cancel-order";
 import { authorizeRefund } from "@/application/use-cases/refund-payout";
@@ -11,12 +10,6 @@ import {
 } from "@/application/use-cases/refund-payout";
 
 describe("admin command validation", () => {
-  it("requires an explicit carrier or manual delivery method", async () => {
-    await expect(
-      fulfillOrder({ orderId: "order", staffUserId: "staff" }),
-    ).rejects.toThrow("Carrier or manual delivery method is required.");
-  });
-
   it("requires a recipient and supported pickup verification method", async () => {
     await expect(
       completePickupHandoff({

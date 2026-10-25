@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { test, expect, login, clickAction } from "./fixtures";
+import { test, expect, clickAction } from "./fixtures";
 
 test("merchant creates a draft, sells with mixed credit, receives a partial return and settles both refund sources", async ({
   admin,
@@ -69,10 +69,32 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
     count.getByRole("button", { name: "Save stock count" }),
   );
 
-  // The seeded verified owner is also a customer in a separate browser session.
-  await login(page);
+  // Store-credit recipients must be customers outside the staff directory.
+  const customerEmail = `commerce-${code}@example.test`;
+  const signup = await page.request.post("/api/auth/sign-up/email", {
+    headers: { origin: process.env.APP_URL! },
+    data: {
+      name: "Commerce customer",
+      email: customerEmail,
+      password: process.env.DEMO_OWNER_PASSWORD!,
+    },
+  });
+  expect(signup.ok()).toBe(true);
+  await sql`update "user" set email_verified=true where email=${customerEmail}`;
   await page.goto("/en/account");
-  await admin.goto("/admin/store-credit?q=owner%40example.test");
+  await page.getByLabel("Email", { exact: true }).fill(customerEmail);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill(process.env.DEMO_OWNER_PASSWORD!);
+  await page
+    .getByRole("button", { name: "Sign in securely", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Save profile", exact: true }),
+  ).toBeVisible();
+  await admin.goto(
+    `/admin/store-credit?q=${encodeURIComponent(customerEmail)}`,
+  );
   await admin
     .getByRole("button", { name: "Issue credit", exact: true })
     .click();
@@ -83,7 +105,7 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
   await issue
     .getByRole("combobox", { name: "Customer", exact: true })
     .selectOption({ index: 1 });
-  await issue.getByLabel("Credit amount in minor units").fill("1000");
+  await issue.getByLabel("Credit amount (USD)").fill("10.00");
   await issue.getByLabel("Credit reason").fill("Journey credit");
   await clickAction(
     admin,
@@ -100,6 +122,7 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
     .getByRole("button", { name: "Increase quantity", exact: true })
     .click();
   await page.getByRole("button", { name: "Add to bag" }).click();
+  await page.getByRole("link", { name: "View bag", exact: true }).click();
   await page.getByRole("link", { name: "Continue to checkout" }).click();
   await page.getByLabel("Street address").fill("1 Synthetic Street");
   await page
@@ -124,9 +147,7 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
     .getByRole("button", { name: "Record payment", exact: true })
     .click();
   const payment = admin.getByRole("dialog", { name: "Record actual payment" });
-  await payment
-    .getByLabel("Actual received amount in minor units")
-    .fill("1500");
+  await payment.getByLabel("Actual received amount (USD)").fill("15.00");
   await payment.getByLabel("Actual payment reference").fill(randomUUID());
   await payment.getByRole("checkbox").check();
   await clickAction(
@@ -189,19 +210,23 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
     admin,
     admin.getByRole("button", { name: "Record goods receipt" }),
   );
-  await admin.goto(`/admin/orders/${orderId}`);
+  const refundBack = "/admin/orders?status=completed&page=2";
+  await admin.goto(
+    `/admin/orders/${orderId}?back=${encodeURIComponent(refundBack)}`,
+  );
   await admin
     .getByRole("button", { name: "Refund purchase", exact: true })
     .click();
   const refund = admin.getByRole("dialog", {
     name: "Authorize purchase refund",
   });
-  await refund.getByLabel("Refund amount in minor units").fill("1000");
+  await refund.getByLabel("Refund amount (USD)").fill("10.00");
   await refund.getByLabel("Refund reason").fill("One unit refunded");
   await clickAction(
     admin,
     refund.getByRole("button", { name: "Authorize source-aware refund" }),
   );
+  expect(new URL(admin.url()).searchParams.get("back")).toBe(refundBack);
   const [allocation] =
     await sql`select pa.id from payout_allocations pa join refund_authorizations ra on ra.id=pa.refund_authorization_id where ra.order_id=${orderId} and ra.reason='One unit refunded'`;
   await admin.goto("/admin/payments");
@@ -209,7 +234,7 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
     .locator("#payouts details")
     .filter({ hasText: allocation!.id });
   await payout.locator("summary").click();
-  await payout.getByLabel("Claim amount (minor units)").fill("600");
+  await payout.getByLabel("Claim amount (USD)").fill("6.00");
   await payout
     .getByLabel("Verified return destination")
     .fill("SYNTHETIC-RETURN");
@@ -218,7 +243,7 @@ test("merchant creates a draft, sells with mixed credit, receives a partial retu
     payout.getByRole("button", { name: "Claim payout", exact: true }),
   );
   await payout.locator("summary").click();
-  await payout.getByLabel("Actual payout amount (minor units)").fill("600");
+  await payout.getByLabel("Actual payout amount (USD)").fill("6.00");
   await payout.getByLabel("Transfer reference").fill(randomUUID());
   await payout.getByLabel("Actual destination").fill("SYNTHETIC-RETURN");
   await clickAction(
